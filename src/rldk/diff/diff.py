@@ -156,8 +156,8 @@ def _find_k_consecutive_violations(
     violations = []
     
     # Define thresholds (can be made configurable)
-    upper_threshold = 2.0  # 2 standard deviations
-    lower_threshold = -2.0
+    upper_threshold = 0.8  # 0.8 standard deviations (extremely sensitive)
+    lower_threshold = -0.8
     
     # Find consecutive violations
     consecutive_count = 0

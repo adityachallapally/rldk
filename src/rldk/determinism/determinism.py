@@ -160,7 +160,7 @@ else:
     try:
         # Run the script
         result = subprocess.run(
-            ["python", str(script_path)],
+            ["python3", str(script_path)],
             capture_output=True,
             text=True,
             env=env,

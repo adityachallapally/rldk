@@ -101,7 +101,7 @@ def diff(
 
 
 @app.command(name="check-determinism")
-def check_determinism(
+def check_determinism_cmd(
     cmd: str = typer.Option(..., "--cmd", "-c", help="Command to run for testing"),
     compare: List[str] = typer.Option(..., "--compare", "-m", help="Metrics to compare"),
     steps: Optional[List[int]] = typer.Option(None, "--steps", "-s", help="Specific steps to compare"),
