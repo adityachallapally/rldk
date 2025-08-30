@@ -63,10 +63,10 @@ if report.diverged:
 ### Check Determinism
 
 ```python
-from rldk.determinism import check_determinism
+from rldk.determinism import check
 
 # Check if training is deterministic
-report = check_determinism(
+report = check(
     cmd="python train.py --cfg config.yml",
     compare=['kl_mean', 'entropy_mean'],
     steps=[50, 100, 150]  # Specific steps to compare

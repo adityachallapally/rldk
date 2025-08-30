@@ -74,7 +74,28 @@ class WandBAdapter(BaseAdapter):
             return pd.DataFrame(metrics)
             
         except Exception as e:
+            # Try to fall back to local export if W&B API fails
+            if "authentication" in str(e).lower() or "credentials" in str(e).lower():
+                return self._load_from_local_export()
             raise ValueError(f"Failed to load wandb run {self.run_id}: {e}")
+    
+    def _load_from_local_export(self) -> pd.DataFrame:
+        """Fallback to local W&B export files."""
+        # Look for common local export patterns
+        local_patterns = [
+            f"wandb-export-{self.run_id}.jsonl",
+            f"{self.run_id}-export.jsonl",
+            f"wandb-{self.run_id}.jsonl",
+        ]
+        
+        for pattern in local_patterns:
+            if Path(pattern).exists():
+                try:
+                    return pd.read_json(pattern, lines=True)
+                except Exception:
+                    continue
+        
+        raise ValueError(f"No local export found for run {self.run_id}. Please export from W&B or check credentials.")
     
     def _convert_wandb_history(self, history: pd.DataFrame, run) -> List[Dict[str, Any]]:
         """Convert wandb history to standard metrics format."""
@@ -101,6 +122,7 @@ class WandBAdapter(BaseAdapter):
                 'loss': row.get('loss') or row.get('total_loss'),
                 'tokens_in': row.get('tokens_in') or row.get('input_tokens'),
                 'tokens_out': row.get('tokens_out') or row.get('output_tokens'),
+                # _runtime is in seconds from W&B
                 'wall_time': row.get('_runtime') if '_runtime' in row else None,
                 'seed': run_metadata['seed'],
                 'run_id': run_metadata['run_id'],

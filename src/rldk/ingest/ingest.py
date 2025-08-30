@@ -45,7 +45,7 @@ def ingest_runs(source: Union[str, Path], adapter_hint: Optional[str] = None) ->
     # Validate schema
     required_cols = ['step', 'phase', 'reward_mean', 'reward_std', 'kl_mean', 
                     'entropy_mean', 'clip_frac', 'grad_norm', 'lr', 'loss',
-                    'tokens_in', 'tokens_out', 'wall_time_ms', 'seed', 'run_id', 'git_sha']
+                    'tokens_in', 'tokens_out', 'wall_time', 'seed', 'run_id', 'git_sha']
     
     for col in required_cols:
         if col not in df.columns:

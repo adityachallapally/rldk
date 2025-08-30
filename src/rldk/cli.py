@@ -9,7 +9,7 @@ from rldk.ingest import ingest_runs
 from rldk.diff.first_divergence import first_divergence
 from rldk.determinism.check import check
 from rldk.bisect import bisect_commits
-from rldk.io import write_drift_card, write_determinism_card
+from rldk.io import write_drift_card, write_determinism_card, write_diff_report
 
 app = typer.Typer(
     name="rldk",
@@ -56,6 +56,7 @@ def diff(
     a: str = typer.Option(..., "--a", "-a", help="Path or wandb:// URI for run A"),
     b: str = typer.Option(..., "--b", "-b", help="Path or wandb:// URI for run B"),
     signals: List[str] = typer.Option(..., "--signals", "-s", help="Metrics to monitor for divergence"),
+    tolerance: float = typer.Option(2.0, "--tolerance", "-t", help="Z-score threshold for violation detection"),
     k: int = typer.Option(3, "--k", "-k", help="Number of consecutive violations required"),
     window: int = typer.Option(50, "--window", "-w", help="Rolling window size for z-score calculation"),
     output_dir: str = typer.Option("diff_analysis", "--output-dir", "-o", help="Output directory for reports"),
@@ -66,6 +67,7 @@ def diff(
         typer.echo(f"  Run A: {a}")
         typer.echo(f"  Run B: {b}")
         typer.echo(f"  Signals: {', '.join(signals)}")
+        typer.echo(f"  Tolerance: {tolerance}")
         typer.echo(f"  K-consecutive: {k}")
         typer.echo(f"  Window size: {window}")
         
@@ -78,10 +80,11 @@ def diff(
         
         # Find divergence
         typer.echo("\nAnalyzing divergence...")
-        report = first_divergence(df_a, df_b, signals, k, window)
+        report = first_divergence(df_a, df_b, signals, k, window, tolerance)
         
-        # Write report
+        # Write reports
         output_path = Path(output_dir)
+        write_diff_report(report, output_path)
         write_drift_card(report, output_path)
         
         # Display results
@@ -92,7 +95,10 @@ def diff(
             typer.echo("\n✅ No significant divergence detected")
         
         typer.echo(f"\nReports saved to: {output_dir}")
+        typer.echo(f"  - diff_report.md")
         typer.echo(f"  - drift_card.md")
+        if not report.details.empty:
+            typer.echo(f"  - diff_events.csv")
         
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)

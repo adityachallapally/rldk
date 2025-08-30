@@ -76,7 +76,6 @@ class TestDeterminismHarness:
             replica_results.append(mock_result)
         
         with patch('subprocess.run', side_effect=replica_results), \
-             patch('src.rldk.determinism.check._run_deterministic_cmd', side_effect=replica_results), \
              patch('rldk.determinism.check._run_deterministic_cmd', side_effect=replica_results):
             report = check(
                 cmd="python train.py",

@@ -123,6 +123,9 @@ def _get_deterministic_env(device: str) -> Dict[str, str]:
     env.update({
         'PYTHONHASHSEED': '42',
         'PYTHONUNBUFFERED': '1',
+        'OMP_NUM_THREADS': '1',
+        'MKL_NUM_THREADS': '1',
+        'NUMEXPR_NUM_THREADS': '1',
     })
     
     return env
@@ -140,6 +143,14 @@ def _run_deterministic_cmd(
     
     # Modify command to output to our file
     modified_cmd = f"{cmd} --output {output_file}"
+    
+    # Note: For full determinism, ensure your training script includes:
+    # import torch
+    # torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
+    # torch.use_deterministic_algorithms(True)
+    # torch.backends.cuda.matmul.allow_tf32 = False
+    # torch.backends.cudnn.allow_tf32 = False
     
     try:
         # Run the command
