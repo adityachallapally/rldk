@@ -23,7 +23,12 @@ class WandBAdapter(BaseAdapter):
             raise ImportError("wandb package is required for WandBAdapter")
         
         # Parse wandb://entity/project/run_id format
-        self.entity, self.project, self.run_id = self._parse_wandb_uri(source)
+        try:
+            self.entity, self.project, self.run_id = self._parse_wandb_uri(source)
+        except ValueError:
+            self.entity = None
+            self.project = None
+            self.run_id = None
     
     def _parse_wandb_uri(self, uri: str) -> tuple[str, str, str]:
         """Parse wandb://entity/project/run_id format."""
@@ -41,7 +46,9 @@ class WandBAdapter(BaseAdapter):
     
     def can_handle(self) -> bool:
         """Check if source is a valid wandb URI."""
-        return self.source.startswith('wandb://')
+        return (self.entity is not None and 
+                self.project is not None and 
+                self.run_id is not None)
     
     def load(self) -> pd.DataFrame:
         """Load wandb run data and convert to standard format."""
@@ -94,7 +101,7 @@ class WandBAdapter(BaseAdapter):
                 'loss': row.get('loss') or row.get('total_loss'),
                 'tokens_in': row.get('tokens_in') or row.get('input_tokens'),
                 'tokens_out': row.get('tokens_out') or row.get('output_tokens'),
-                'wall_time_ms': row.get('_runtime') * 1000 if '_runtime' in row else None,
+                'wall_time': row.get('_runtime') if '_runtime' in row else None,
                 'seed': run_metadata['seed'],
                 'run_id': run_metadata['run_id'],
                 'git_sha': run_metadata['git_sha'],

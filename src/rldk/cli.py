@@ -6,10 +6,10 @@ from typing import List, Optional
 import pandas as pd
 
 from rldk.ingest import ingest_runs
-from rldk.diff import first_divergence
-from rldk.determinism import check_determinism
+from rldk.diff.first_divergence import first_divergence
+from rldk.determinism.check import check
 from rldk.bisect import bisect_commits
-from rldk.io import write_diff_report, write_determinism_report
+from rldk.io import write_drift_card, write_determinism_card
 
 app = typer.Typer(
     name="rldk",
@@ -82,7 +82,7 @@ def diff(
         
         # Write report
         output_path = Path(output_dir)
-        write_diff_report(report, output_path)
+        write_drift_card(report, output_path)
         
         # Display results
         if report.diverged:
@@ -92,8 +92,7 @@ def diff(
             typer.echo("\n✅ No significant divergence detected")
         
         typer.echo(f"\nReports saved to: {output_dir}")
-        typer.echo(f"  - diff_report.md")
-        typer.echo(f"  - diff_events.csv")
+        typer.echo(f"  - drift_card.md")
         
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
@@ -105,7 +104,7 @@ def check_determinism_cmd(
     cmd: str = typer.Option(..., "--cmd", "-c", help="Command to run for testing"),
     compare: List[str] = typer.Option(..., "--compare", "-m", help="Metrics to compare"),
     steps: Optional[List[int]] = typer.Option(None, "--steps", "-s", help="Specific steps to compare"),
-    stride: int = typer.Option(50, "--stride", "-i", help="Step interval for comparison"),
+    replicas: int = typer.Option(5, "--replicas", "-r", help="Number of replicas to run"),
     device: Optional[str] = typer.Option(None, "--device", "-d", help="Device to use (auto-detected if None)"),
     output_dir: str = typer.Option("determinism_analysis", "--output-dir", "-o", help="Output directory for reports"),
 ):
@@ -116,16 +115,16 @@ def check_determinism_cmd(
         if steps:
             typer.echo(f"Steps to compare: {steps}")
         else:
-            typer.echo(f"Stride: {stride}")
+            typer.echo(f"Replicas: {replicas}")
         typer.echo(f"Device: {device or 'auto-detected'}")
         
         # Check determinism
         typer.echo("\nRunning determinism check...")
-        report = check_determinism(cmd, compare, steps, stride, device)
+        report = check(cmd, compare, steps, replicas, device)
         
         # Write report
         output_path = Path(output_dir)
-        write_determinism_report(report, output_path)
+        write_determinism_card(report, output_path)
         
         # Display results
         if report.passed:
@@ -139,7 +138,7 @@ def check_determinism_cmd(
                 for fix in report.fixes[:3]:  # Show first 3 fixes
                     typer.echo(f"  - {fix}")
         
-        typer.echo(f"\nReport saved to: {output_dir}/determinism_report.md")
+        typer.echo(f"\nReport saved to: {output_dir}/determinism_card.md")
         
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)

@@ -20,7 +20,7 @@ class TrainingMetrics(BaseModel):
     loss: Optional[float] = Field(None, description="Training loss")
     tokens_in: Optional[int] = Field(None, description="Input tokens")
     tokens_out: Optional[int] = Field(None, description="Output tokens")
-    wall_time_ms: Optional[float] = Field(None, description="Wall time in milliseconds")
+    wall_time: Optional[float] = Field(None, description="Wall time in seconds")
     seed: Optional[int] = Field(None, description="Random seed")
     run_id: Optional[str] = Field(None, description="Run identifier")
     git_sha: Optional[str] = Field(None, description="Git commit SHA")
