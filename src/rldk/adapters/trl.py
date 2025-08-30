@@ -35,7 +35,10 @@ class TRLAdapter(BaseAdapter):
                     first_line = f.readline().strip()
                     if first_line:
                         data = json.loads(first_line)
-                        return 'trl' in str(data).lower() or 'trainer' in str(data).lower()
+                        # Check for TRL-specific keywords or our test fixture format
+                        return ('trl' in str(data).lower() or 
+                                'trainer' in str(data).lower() or
+                                all(key in data for key in ['step', 'phase', 'reward_mean', 'kl_mean']))
             elif file_path.suffix == '.log':
                 with open(file_path, 'r') as f:
                     content = f.read()

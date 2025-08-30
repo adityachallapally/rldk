@@ -48,7 +48,7 @@ class TestFirstDivergence:
         for i in range(spike_start, spike_end):
             df_b.loc[df_b['step'] == i, 'kl_mean'] *= 3.0  # 3x spike
         
-        report = first_divergence(df_b, df_a, ['kl_mean'], k_consecutive=3, window=20)
+        report = first_divergence(df_a, df_b, ['kl_mean'], k_consecutive=3, window=20)
         
         # Should detect divergence around the spike
         assert report.diverged
