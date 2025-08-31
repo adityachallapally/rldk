@@ -104,7 +104,7 @@ def _plot_reward_timeline(ax: plt.Axes, data: pd.DataFrame, reward_col: str):
     if len(sample_data) > 10:
         z = np.polyfit(sample_data['step'], sample_data[reward_col], 1)
         p = np.poly1d(z)
-        ax.plot(sample_data['step'], p(sample_data['step]), "r--", alpha=0.8, linewidth=2)
+        ax.plot(sample_data['step'], p(sample_data['step']), "r--", alpha=0.8, linewidth=2)
 
 
 def _plot_reward_distribution(ax: plt.Axes, reward_values: pd.Series):

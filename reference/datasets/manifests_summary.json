@@ -1,0 +1,13 @@
+{
+  "manifests": {
+    "ag_news": "reference/datasets/ag_news_manifest.jsonl",
+    "imdb": "reference/datasets/imdb_manifest.jsonl",
+    "ag_news_code": "reference/datasets/ag_news_code_manifest.jsonl"
+  },
+  "total_samples": 150,
+  "datasets": [
+    "ag_news",
+    "imdb",
+    "ag_news_code"
+  ]
+}
