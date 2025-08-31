@@ -27,6 +27,52 @@ rldk check-determinism --cmd "python train.py" --compare kl_mean,entropy_mean --
 
 # Find regression using git bisect
 rldk bisect --good abc123 --bad HEAD --cmd "python train.py" --metric kl_mean --cmp "> 0.2"
+
+## 🔬 Reference Suite
+
+The reference suite provides end-to-end examples of rldk functionality on real datasets with CPU-only execution.
+
+### Quick Start
+
+```bash
+# Install dependencies
+pip install -e .
+
+# Run CPU smoke tests (generates determinism, drift, and reward health cards)
+make reference:cpu_smoke
+
+# Run bisect demonstration (identifies bad commit)
+make reference:bisect_demo
+
+# Clean generated files
+make clean
+
+# Run tests
+make test
+```
+
+### Expected Outputs
+
+After running `make reference:cpu_smoke`, you should see these files in `reference/expected/`:
+
+- `determinism_card.json` - Determinism analysis results
+- `drift_card.json` - First divergence detection results  
+- `reward_card.json` - Reward health analysis results
+- `determinism_card.png` - Determinism visualization
+
+After running `make reference:bisect_demo`, you should see:
+
+- `bisect.json` - Bisect results identifying the bad commit
+
+### Tasks
+
+The reference suite includes three tasks:
+
+1. **Summarization** - GPT-2 training on SAMSum dataset (50 steps)
+2. **Safety Evaluation** - GPT-2 evaluation on Anthropic HH dataset
+3. **Code Generation** - GPT-2 evaluation on MBPP dataset
+
+All tasks use pinned dataset revisions and generate strict JSONL logs with the required schema.
 ```
 
 ## 📚 API Examples

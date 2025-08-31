@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Union, Optional
 import pandas as pd
 
-from ..adapters import TRLAdapter, OpenRLHFAdapter, WandBAdapter
+from ..adapters import TRLAdapter, OpenRLHFAdapter, WandBAdapter, CustomJSONLAdapter
 from ..io import write_metrics_jsonl
 
 
@@ -36,6 +36,8 @@ def ingest_runs(source: Union[str, Path], adapter_hint: Optional[str] = None) ->
         adapter = OpenRLHFAdapter(source)
     elif adapter_hint == 'wandb':
         adapter = WandBAdapter(source)
+    elif adapter_hint == 'custom_jsonl':
+        adapter = CustomJSONLAdapter(source)
     else:
         raise ValueError(f"Unknown adapter type: {adapter_hint}")
     
@@ -67,6 +69,11 @@ def _detect_adapter_type(source: Union[str, Path]) -> str:
     
     if not source_path.exists():
         return 'trl'  # Default fallback
+    
+    # Check for our custom JSONL format first
+    custom_adapter = CustomJSONLAdapter(source_path)
+    if custom_adapter.can_handle():
+        return 'custom_jsonl'
     
     # Check for TRL-specific patterns
     trl_adapter = TRLAdapter(source_path)
