@@ -337,3 +337,134 @@ class TestSchemaCompatibility:
             wall_time_values = df['wall_time'].dropna()
             # Wall time should be reasonable values (not in the thousands like milliseconds would be)
             assert wall_time_values.max() < 10000  # Should be less than 10k seconds
+    
+    def test_cpu_determinism_pass(self):
+        """Test that CPU determinism check passes with identical replicas."""
+        from rldk.determinism.check import check
+        
+        # Create a simple deterministic script
+        script_content = '''
+import json
+import random
+import numpy as np
+import torch
+
+# Set seeds for determinism
+random.seed(42)
+np.random.seed(42)
+torch.manual_seed(42)
+
+# Generate deterministic metrics
+metrics = []
+for step in range(10):
+    metric = {
+        'step': step,
+        'reward_mean': 0.5 + step * 0.01,
+        'kl_mean': 0.1 + step * 0.001,
+        'entropy_mean': 0.8 - step * 0.002
+    }
+    metrics.append(metric)
+
+# Write to output file
+import sys
+output_file = sys.argv[-1]  # Last argument is output file
+with open(output_file, 'w') as f:
+    for metric in metrics:
+        json.dump(metric, f)
+        f.write('\\n')
+'''
+        
+        # Write script to temporary file
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write(script_content)
+            script_path = f.name
+        
+        try:
+            # Run determinism check
+            report = check(
+                cmd=f"python {script_path}",
+                compare=['reward_mean', 'kl_mean', 'entropy_mean'],
+                replicas=2,
+                steps=[5, 9],
+                device='cpu'
+            )
+            
+            # Should pass
+            assert report.passed, f"Determinism check failed: {report.mismatches}"
+            
+            # Should have no mismatches
+            assert len(report.mismatches) == 0
+            
+            # Should have RNG settings
+            assert 'torch_deterministic' in report.rng_map
+            assert 'torch_seed' in report.rng_map
+            
+            # CUDA settings should be marked as N/A on CPU
+            assert report.rng_map['cuda_launch_blocking'] == 'N/A (CPU only)'
+            
+        finally:
+            # Clean up
+            import os
+            os.unlink(script_path)
+    
+    def test_cpu_determinism_fail(self):
+        """Test that CPU determinism check fails with non-deterministic replicas."""
+        from rldk.determinism.check import check
+        
+        # Create a non-deterministic script
+        script_content = '''
+import json
+import random
+import numpy as np
+import torch
+
+# Don't set seeds - this should be non-deterministic
+# random.seed(42)  # Commented out intentionally
+# np.random.seed(42)  # Commented out intentionally
+# torch.manual_seed(42)  # Commented out intentionally
+
+# Generate non-deterministic metrics
+metrics = []
+for step in range(10):
+    metric = {
+        'step': step,
+        'reward_mean': 0.5 + step * 0.01 + random.uniform(-0.1, 0.1),
+        'kl_mean': 0.1 + step * 0.001 + random.uniform(-0.02, 0.02),
+        'entropy_mean': 0.8 - step * 0.002 + random.uniform(-0.02, 0.02)
+    }
+    metrics.append(metric)
+
+# Write to output file
+import sys
+output_file = sys.argv[-1]  # Last argument is output file
+with open(output_file, 'w') as f:
+    for metric in metrics:
+        json.dump(metric, f)
+        f.write('\\n')
+'''
+        
+        # Write script to temporary file
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write(script_content)
+            script_path = f.name
+        
+        try:
+            # Run determinism check
+            report = check(
+                cmd=f"python {script_path}",
+                compare=['reward_mean', 'kl_mean', 'entropy_mean'],
+                replicas=2,
+                steps=[5, 9],
+                device='cpu'
+            )
+            
+            # Should fail
+            assert not report.passed, "Determinism check should have failed"
+            
+            # Should have mismatches
+            assert len(report.mismatches) > 0
+            
+        finally:
+            # Clean up
+            import os
+            os.unlink(script_path)
