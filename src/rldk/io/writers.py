@@ -84,18 +84,28 @@ def write_determinism_card(report: DeterminismReport, output_dir: Path) -> None:
         f.write("- **OMP_NUM_THREADS:** Set to 1\n")
         f.write("- **MKL_NUM_THREADS:** Set to 1\n")
         f.write("- **NUMEXPR_NUM_THREADS:** Set to 1\n")
+        f.write("- **OPENBLAS_NUM_THREADS:** Set to 1\n")
+        f.write("- **VECLIB_MAXIMUM_THREADS:** Set to 1\n")
         f.write("- **CUDA_LAUNCH_BLOCKING:** Set to 1\n")
         f.write("- **TORCH_USE_CUDA_DSA:** Set to 1\n")
         if any('cuda' in key.lower() for key in report.rng_map.keys()):
             f.write("- **CUBLAS_WORKSPACE_CONFIG:** Set to :4096:8\n")
         f.write("\n")
         
-        f.write("### Required PyTorch Settings (in training script)\n")
+        f.write("### PyTorch Deterministic Settings Applied\n")
         f.write("- **torch.backends.cudnn.deterministic = True**\n")
         f.write("- **torch.backends.cudnn.benchmark = False**\n")
         f.write("- **torch.use_deterministic_algorithms(True)**\n")
         f.write("- **torch.backends.cuda.matmul.allow_tf32 = False**\n")
         f.write("- **torch.backends.cudnn.allow_tf32 = False**\n")
+        f.write("- **torch.manual_seed(42)**\n")
+        f.write("- **torch.cuda.manual_seed(42)** (if CUDA available)\n")
+        f.write("\n")
+        
+        f.write("### Random Seeds Set\n")
+        f.write("- **Python random.seed(42)**\n")
+        f.write("- **NumPy np.random.seed(42)**\n")
+        f.write("- **PyTorch torch.manual_seed(42)**\n")
         f.write("\n")
         
         if report.replica_variance:

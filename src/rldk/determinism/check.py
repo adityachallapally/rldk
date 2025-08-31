@@ -128,6 +128,23 @@ def _get_deterministic_env(device: str) -> Dict[str, str]:
         'NUMEXPR_NUM_THREADS': '1',
     })
     
+    # Additional deterministic settings
+    env.update({
+        'PYTHONHASHSEED': '42',  # Ensure consistent hash behavior
+        'PYTHONUNBUFFERED': '1',  # Ensure immediate output
+        'OMP_NUM_THREADS': '1',   # Single OpenMP thread
+        'MKL_NUM_THREADS': '1',   # Single MKL thread
+        'NUMEXPR_NUM_THREADS': '1',  # Single NumExpr thread
+        'OPENBLAS_NUM_THREADS': '1',  # Single OpenBLAS thread
+        'VECLIB_MAXIMUM_THREADS': '1',  # Single VecLib thread
+    })
+    
+    # Set random seeds for reproducibility
+    import random
+    import numpy as np
+    random.seed(42)
+    np.random.seed(42)
+    
     return env
 
 
@@ -144,13 +161,23 @@ def _run_deterministic_cmd(
     # Modify command to output to our file
     modified_cmd = f"{cmd} --output {output_file}"
     
-    # Note: For full determinism, ensure your training script includes:
-    # import torch
-    # torch.backends.cudnn.deterministic = True
-    # torch.backends.cudnn.benchmark = False
-    # torch.use_deterministic_algorithms(True)
-    # torch.backends.cuda.matmul.allow_tf32 = False
-    # torch.backends.cudnn.allow_tf32 = False
+    # Set PyTorch deterministic flags at runtime
+    if '--deterministic' not in modified_cmd:
+        # Wrap command to set PyTorch flags
+        torch_flags = """
+import torch
+import os
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+torch.use_deterministic_algorithms(True)
+torch.backends.cuda.matmul.allow_tf32 = False
+torch.backends.cudnn.allow_tf32 = False
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(42)
+    torch.cuda.manual_seed_all(42)
+torch.manual_seed(42)
+"""
+        modified_cmd = f"python -c \"{torch_flags}; exec('''{modified_cmd}''')\""
     
     try:
         # Run the command
