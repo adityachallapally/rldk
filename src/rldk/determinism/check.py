@@ -72,8 +72,11 @@ def check(
     # Calculate variance across replicas
     replica_variance = _calculate_replica_variance(replica_results, compare)
     
+    # Detect CUDA availability for truthful RNG map
+    cuda_available = _detect_device() == "cuda"
+    
     # Create RNG map
-    rng_map = _create_rng_map(env)
+    rng_map = _create_rng_map(env, cuda_available)
     
     # Detect DataLoader issues
     dataloader_notes = _detect_dataloader_issues(replica_results)
@@ -110,7 +113,7 @@ def _get_deterministic_env(device: str) -> Dict[str, str]:
     """Get environment variables for deterministic execution."""
     env = os.environ.copy()
     
-    # Always set Python deterministic settings
+    # Set Python deterministic settings (only once)
     env.update({
         'PYTHONHASHSEED': '42',
         'PYTHONUNBUFFERED': '1',
@@ -121,8 +124,8 @@ def _get_deterministic_env(device: str) -> Dict[str, str]:
         'VECLIB_MAXIMUM_THREADS': '1',
     })
     
-    # Set CUDA-specific settings only when CUDA is available
-    if device == "cuda":
+    # Set CUDA-specific settings only when CUDA is actually available
+    if device == "cuda" or (device is None and _detect_device() == "cuda"):
         env.update({
             'CUDA_LAUNCH_BLOCKING': '1',
             'CUBLAS_WORKSPACE_CONFIG': ':4096:8',
@@ -143,8 +146,19 @@ def _run_deterministic_cmd(
     with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
         output_file = f.name
     
-    # Modify command to output to our file
-    modified_cmd = f"{cmd} --output {output_file}"
+    # Check if command already has --output
+    if '--output' in cmd:
+        # Command already specifies output, don't modify it
+        modified_cmd = cmd
+    else:
+        # Check if RLDK_METRICS_PATH is set in environment
+        if 'RLDK_METRICS_PATH' in env:
+            # Export the path for user code to use
+            env['RLDK_METRICS_PATH'] = output_file
+            modified_cmd = cmd
+        else:
+            # Fallback: append --output (but this may break some commands)
+            modified_cmd = f"{cmd} --output {output_file}"
     
     # Always wrap command to set deterministic environment and seeds
     # This ensures seeds are set even on CPU-only runs
@@ -353,7 +367,7 @@ def _calculate_replica_variance(
     return variance
 
 
-def _create_rng_map(env: Dict[str, str]) -> Dict[str, str]:
+def _create_rng_map(env: Dict[str, str], cuda_available: bool = False) -> Dict[str, str]:
     """Create a map of RNG settings that were actually enforced."""
     rng_map = {}
     
@@ -369,9 +383,9 @@ def _create_rng_map(env: Dict[str, str]) -> Dict[str, str]:
     rng_map['numpy_seed'] = 'Set per replica (42 + replica_id)'
     rng_map['random_seed'] = 'Set per replica (42 + replica_id)'
     
-    # CUDA settings (only if CUDA is available)
-    if 'CUDA_LAUNCH_BLOCKING' in env:
-        rng_map['cuda_launch_blocking'] = env['CUDA_LAUNCH_BLOCKING']
+    # CUDA settings (based on actual availability, not env key presence)
+    if cuda_available:
+        rng_map['cuda_launch_blocking'] = env.get('CUDA_LAUNCH_BLOCKING', 'Not set')
         rng_map['cublas_workspace'] = env.get('CUBLAS_WORKSPACE_CONFIG', 'Not set')
         rng_map['cudnn_deterministic'] = 'True (enforced)'
         rng_map['cudnn_benchmark'] = 'False (enforced)'

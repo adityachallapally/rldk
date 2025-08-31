@@ -338,6 +338,50 @@ class TestSchemaCompatibility:
             # Wall time should be reasonable values (not in the thousands like milliseconds would be)
             assert wall_time_values.max() < 10000  # Should be less than 10k seconds
     
+    def test_all_adapters_wall_time_seconds(self):
+        """Test that all adapters output wall_time in seconds, not milliseconds."""
+        from rldk.ingest import ingest_runs
+        
+        # Test TRL adapter
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
+            json.dump({
+                'step': 0,
+                'phase': 'train',
+                'reward_mean': 0.5,
+                'wall_time_ms': 5000,  # 5 seconds in milliseconds
+                'seed': 42,
+                'run_id': 'test_run',
+                'git_sha': 'abc123'
+            }, f)
+            f.write('\n')
+            f.flush()
+            
+            df = ingest_runs(f.name, adapter_hint='trl')
+            assert 'wall_time' in df.columns
+            assert 'wall_time_ms' not in df.columns
+            assert 0 < df['wall_time'].iloc[0] < 1e7  # Should be in seconds, not milliseconds
+            os.unlink(f.name)
+        
+        # Test OpenRLHF adapter
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
+            json.dump({
+                'step': 0,
+                'phase': 'train',
+                'reward_mean': 0.5,
+                'wall_time_ms': 3000,  # 3 seconds in milliseconds
+                'seed': 42,
+                'run_id': 'test_run',
+                'git_sha': 'abc123'
+            }, f)
+            f.write('\n')
+            f.flush()
+            
+            df = ingest_runs(f.name, adapter_hint='openrlhf')
+            assert 'wall_time' in df.columns
+            assert 'wall_time_ms' not in df.columns
+            assert 0 < df['wall_time'].iloc[0] < 1e7  # Should be in seconds, not milliseconds
+            os.unlink(f.name)
+    
     def test_cpu_determinism_pass(self):
         """Test that CPU determinism check passes with identical replicas."""
         from rldk.determinism.check import check
@@ -401,6 +445,12 @@ with open(output_file, 'w') as f:
             
             # CUDA settings should be marked as N/A on CPU
             assert report.rng_map['cuda_launch_blocking'] == 'N/A (CPU only)'
+            
+            # Verify no CUDA env vars are set on CPU
+            assert 'CUDA_LAUNCH_BLOCKING' not in env
+            assert 'CUBLAS_WORKSPACE_CONFIG' not in env
+            assert 'PYTORCH_CUDA_ALLOC_CONF' not in env
+            assert 'TORCH_USE_CUDA_DSA' not in env
             
         finally:
             # Clean up
