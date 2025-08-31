@@ -148,13 +148,14 @@ rldk check-determinism --cmd "python train.py" --compare <metrics>
 rldk check-determinism \
     --cmd "python train.py --cfg config.yml" \
     --compare kl_mean,entropy_mean \
-    --replicas 3 \
+    --stride 25 \
     --steps 50,100,150 \
     --device cuda
 
 # Examples
-rldk check-determinism --cmd "python train.py" --compare kl_mean --replicas 2
-rldk check-determinism --cmd "bash train.sh" --compare reward_mean,loss --replicas 5
+rldk check-determinism --cmd "python train.py" --compare kl_mean --stride 50
+rldk check-determinism --cmd "bash train.sh" --compare reward_mean,loss --stride 25
+rldk check-determinism --cmd "python train.py" --compare kl_mean --steps 50,100,150
 ```
 
 ### Bisect Command
