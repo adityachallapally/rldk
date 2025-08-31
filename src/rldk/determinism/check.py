@@ -149,32 +149,32 @@ def _run_deterministic_cmd(
     # Always wrap command to set deterministic environment and seeds
     # This ensures seeds are set even on CPU-only runs
     deterministic_wrapper = f"""
-import torch
-import random
-import numpy as np
-import os
+        import torch
+        import random
+        import numpy as np
+        import os
 
-# Always set seeds regardless of device
-random.seed(42 + {replica_id})
-np.random.seed(42 + {replica_id})
-torch.manual_seed(42 + {replica_id})
+        # Always set seeds regardless of device
+        random.seed(42 + {replica_id})
+        np.random.seed(42 + {replica_id})
+        torch.manual_seed(42 + {replica_id})
 
-# Set deterministic algorithms
-torch.use_deterministic_algorithms(True)
+        # Set deterministic algorithms
+        torch.use_deterministic_algorithms(True)
 
-# Set CUDA-specific settings only if CUDA is available
-if torch.cuda.is_available():
-    torch.cuda.manual_seed(42 + {replica_id})
-    torch.cuda.manual_seed_all(42 + {replica_id})
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cuda.matmul.allow_tf32 = False
-    torch.backends.cudnn.allow_tf32 = False
+        # Set CUDA-specific settings only if CUDA is available
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(42 + {replica_id})
+            torch.cuda.manual_seed_all(42 + {replica_id})
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+            torch.backends.cuda.matmul.allow_tf32 = False
+            torch.backends.cudnn.allow_tf32 = False
 
-# Execute the original command
-exec('''{modified_cmd}''')
-"""
-        modified_cmd = f"python -c \"{deterministic_wrapper}\""
+        # Execute the original command
+        exec('''{modified_cmd}''')
+        """
+    modified_cmd = f"python -c \"{deterministic_wrapper}\""
     
     try:
         # Run the command
