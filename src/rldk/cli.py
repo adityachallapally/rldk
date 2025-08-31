@@ -6,7 +6,7 @@ from typing import List, Optional
 import pandas as pd
 
 from rldk.ingest import ingest_runs
-from rldk.diff.first_divergence import first_divergence
+from rldk.diff import first_divergence
 from rldk.determinism.check import check
 from rldk.bisect import bisect_commits
 from rldk.io import write_drift_card, write_determinism_card, write_diff_report
@@ -80,6 +80,12 @@ def diff(
         
         # Find divergence
         typer.echo("\nAnalyzing divergence...")
+        # Handle case where signals might be a comma-separated string
+        if isinstance(signals, str):
+            signals = [s.strip() for s in signals.split(',')]
+        elif len(signals) == 1 and ',' in signals[0]:
+            # Handle case where signals is a list with one comma-separated string
+            signals = [s.strip() for s in signals[0].split(',')]
         report = first_divergence(df_a, df_b, signals, k, window, tolerance)
         
         # Write reports
@@ -108,25 +114,31 @@ def diff(
 @app.command(name="check-determinism")
 def check_determinism_cmd(
     cmd: str = typer.Option(..., "--cmd", "-c", help="Command to run for testing"),
-    compare: List[str] = typer.Option(..., "--compare", "-m", help="Metrics to compare"),
-    steps: Optional[List[int]] = typer.Option(None, "--steps", "-s", help="Specific steps to compare"),
+    compare: str = typer.Option(..., "--compare", "-m", help="Metrics to compare (comma-separated)"),
+    steps: Optional[str] = typer.Option(None, "--steps", "-s", help="Specific steps to compare (comma-separated)"),
     replicas: int = typer.Option(5, "--replicas", "-r", help="Number of replicas to run"),
     device: Optional[str] = typer.Option(None, "--device", "-d", help="Device to use (auto-detected if None)"),
     output_dir: str = typer.Option("determinism_analysis", "--output-dir", "-o", help="Output directory for reports"),
 ):
     """Check if a training command is deterministic."""
     try:
-        typer.echo(f"Checking determinism for command: {cmd}")
-        typer.echo(f"Metrics to compare: {', '.join(compare)}")
+        # Parse comma-separated values
+        compare_list = [c.strip() for c in compare.split(',')]
+        steps_list = None
         if steps:
-            typer.echo(f"Steps to compare: {steps}")
+            steps_list = [int(s.strip()) for s in steps.split(',')]
+        
+        typer.echo(f"Checking determinism for command: {cmd}")
+        typer.echo(f"Metrics to compare: {', '.join(compare_list)}")
+        if steps_list:
+            typer.echo(f"Steps to compare: {steps_list}")
         else:
             typer.echo(f"Replicas: {replicas}")
         typer.echo(f"Device: {device or 'auto-detected'}")
         
         # Check determinism
         typer.echo("\nRunning determinism check...")
-        report = check(cmd, compare, steps, replicas, device)
+        report = check(cmd, compare_list, steps_list, replicas, device)
         
         # Write report
         output_path = Path(output_dir)

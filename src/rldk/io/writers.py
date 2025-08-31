@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 import pandas as pd
 
-from ..diff.first_divergence import DivergenceReport
+from ..diff import DivergenceReport
 from ..determinism.check import DeterminismReport
 
 
