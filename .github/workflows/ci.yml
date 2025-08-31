@@ -80,7 +80,7 @@ jobs:
     - name: Generate determinism report
       run: |
         echo "import pandas as pd; df = pd.DataFrame({'step': [1,2], 'reward_mean': [0.5, 0.6]}); df.to_json('metrics.jsonl', orient='records', lines=True)" > test_script.py
-        rldk check-determinism --cmd "python test_script.py" --compare reward_mean --stride 1
+        rldk check-determinism --cmd "python test_script.py" --compare reward_mean
     
     - name: Upload reports as artifacts
       uses: actions/upload-artifact@v3
