@@ -49,3 +49,15 @@ class TestCLI:
         result = runner.invoke(app, ["bisect", "--help"])
         assert result.exit_code == 0
         assert "Find regression using git bisect" in result.stdout
+    
+    def test_reward_health_help(self):
+        """Test reward-health help."""
+        result = runner.invoke(app, ["reward-health", "--help"])
+        assert result.exit_code == 0
+        assert "Analyze reward model health" in result.stdout
+    
+    def test_eval_help(self):
+        """Test eval help."""
+        result = runner.invoke(app, ["eval", "--help"])
+        assert result.exit_code == 0
+        assert "Run evaluation suite" in result.stdout
