@@ -117,6 +117,7 @@ def check_determinism_cmd(
     cmd: str = typer.Option(..., "--cmd", "-c", help="Command to run for testing"),
     compare: str = typer.Option(..., "--compare", "-m", help="Metrics to compare (comma-separated)"),
     steps: Optional[str] = typer.Option(None, "--steps", "-s", help="Specific steps to compare (comma-separated)"),
+    stride: int = typer.Option(50, "--stride", help="Step interval for comparison if steps not specified"),
     replicas: int = typer.Option(5, "--replicas", "-r", help="Number of replicas to run"),
     device: Optional[str] = typer.Option(None, "--device", "-d", help="Device to use (auto-detected if None)"),
     output_dir: str = typer.Option("determinism_analysis", "--output-dir", "-o", help="Output directory for reports"),
@@ -134,12 +135,12 @@ def check_determinism_cmd(
         if steps_list:
             typer.echo(f"Steps to compare: {steps_list}")
         else:
-            typer.echo(f"Replicas: {replicas}")
+            typer.echo(f"Stride: {stride}")
         typer.echo(f"Device: {device or 'auto-detected'}")
         
         # Check determinism
         typer.echo("\nRunning determinism check...")
-        report = check(cmd, compare_list, steps_list, replicas, device)
+        report = check(cmd, compare_list, steps_list, stride, device)
         
         # Write report
         output_path = Path(output_dir)
