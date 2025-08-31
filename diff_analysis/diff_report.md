@@ -1,25 +1,22 @@
 # Divergence Analysis Report
 
-## 🚨 Divergence Detected
+## 📊 Summary
 
-**First divergence at step:** 29
+- **Diverged:** Yes
+- **First divergence step:** 45
+- **Tripped signals:** kl_mean, reward_mean
+- **Total divergence events:** 2
+- **Signals analyzed:** Most affected signal: kl_mean (1 violations)
 
-**Tripped signals:** kl_mean
+## 📈 Detailed Events
 
-## 📊 Analysis
+| Step | Signal | Z-Score | Run A Value | Run B Value | Consecutive Count |
+|------|--------|---------|-------------|-------------|-------------------|
+| 103 | kl_mean | -2.033 | 0.197400 | 0.594000 | 3 |
+| 45 | reward_mean | 2.097 | 0.990500 | 0.905700 | 3 |
 
-The runs have diverged significantly. Here are the most likely causes:
+## 📁 Files Generated
 
-1. **Learning rate changes** - Sudden spikes in learning rate can cause instability
-2. **Reward scaling issues** - Inconsistent reward normalization between runs
-3. **Random seed differences** - Different initialization or sampling
-
-## 📝 Additional Notes
-
-- Divergence detected using 3-consecutive rule
-- Rolling window size: 50
-- Signals monitored: kl_mean
-
-## 📈 Events CSV
-
-Detailed divergence events saved to: `diff_analysis/diff_events.csv`
+- **Diff Report:** `diff_analysis/diff_report.md`
+- **Drift Card:** `diff_analysis/drift_card.md`
+- **Events CSV:** `diff_analysis/diff_events.csv`

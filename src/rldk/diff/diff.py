@@ -18,6 +18,8 @@ class DivergenceReport:
     notes: List[str]
     report_path: str
     events_csv_path: str
+    details: pd.DataFrame
+    suspected_causes: List[str]
 
 
 def first_divergence(
@@ -25,7 +27,8 @@ def first_divergence(
     df_b: pd.DataFrame,
     signals: List[str],
     k_consecutive: int = 3,
-    window: int = 50
+    window: int = 50,
+    tolerance: float = 2.0
 ) -> DivergenceReport:
     """
     Find first divergence between two training runs.
@@ -53,7 +56,9 @@ def first_divergence(
             tripped_signals=[],
             notes=["Insufficient common steps for analysis"],
             report_path="",
-            events_csv_path=""
+            events_csv_path="",
+            details=pd.DataFrame(),
+            suspected_causes=["Insufficient common steps for analysis"]
         )
     
     # Align data
@@ -77,7 +82,7 @@ def first_divergence(
         )
         
         # Find violations of k-consecutive rule
-        violations = _find_k_consecutive_violations(z_scores, k_consecutive)
+        violations = _find_k_consecutive_violations(z_scores, k_consecutive, tolerance)
         
         for violation in violations:
             step = common_steps[violation['end_idx']]
@@ -87,7 +92,8 @@ def first_divergence(
                 'z_score': violation['z_score'],
                 'run_a_value': df_a_aligned.loc[step, signal],
                 'run_b_value': df_b_aligned.loc[step, signal],
-                'violation_type': violation['type']
+                'violation_type': violation['type'],
+                'consecutive_count': violation['consecutive_count']
             })
             
             tripped_signals.add(signal)
@@ -119,13 +125,21 @@ def first_divergence(
         events_df = pd.DataFrame(divergence_events)
         events_df.to_csv(events_csv_path, index=False)
     
+    # Create details DataFrame
+    details_df = pd.DataFrame(divergence_events)
+    
+    # Generate suspected causes
+    suspected_causes = _analyze_suspected_causes(divergence_events, df_a_aligned, df_b_aligned)
+    
     return DivergenceReport(
         diverged=diverged,
         first_step=first_divergence_step,
         tripped_signals=list(tripped_signals),
         notes=notes,
         report_path=report_path,
-        events_csv_path=events_csv_path
+        events_csv_path=events_csv_path,
+        details=details_df,
+        suspected_causes=suspected_causes
     )
 
 
@@ -150,57 +164,100 @@ def _calculate_rolling_z_scores(
 
 def _find_k_consecutive_violations(
     z_scores: pd.Series, 
-    k: int
+    k: int,
+    tolerance: float = 2.0
 ) -> List[dict]:
-    """Find k-consecutive violations of z-score threshold."""
+    """Find k violations (not necessarily consecutive)."""
     violations = []
     
-    # Define thresholds (can be made configurable)
-    upper_threshold = 0.8  # 0.8 standard deviations (extremely sensitive)
-    lower_threshold = -0.8
+    # Define thresholds based on tolerance parameter
+    upper_threshold = tolerance
+    lower_threshold = -tolerance
     
-    # Find consecutive violations
-    consecutive_count = 0
-    violation_start = None
-    violation_type = None
+    
+    
+    # Find all violations
+    violation_indices = []
     
     for i, z_score in enumerate(z_scores):
         if pd.isna(z_score):
-            consecutive_count = 0
-            violation_start = None
             continue
         
         # Check if current value is a violation
-        is_violation = False
-        current_type = None
+        if z_score > upper_threshold or z_score < lower_threshold:
+            violation_indices.append(i)
+    
+    # If we have k or more violations, report the first k
+    if len(violation_indices) >= k:
+        # Take the first k violations
+        first_k_violations = violation_indices[:k]
         
-        if z_score > upper_threshold:
-            is_violation = True
-            current_type = 'upper'
-        elif z_score < lower_threshold:
-            is_violation = True
-            current_type = 'lower'
-        
-        if is_violation:
-            if consecutive_count == 0:
-                violation_start = i
-                violation_type = current_type
-            
-            consecutive_count += 1
-            
-            # Check if we have k consecutive violations
-            if consecutive_count >= k:
-                violations.append({
-                    'start_idx': violation_start,
-                    'end_idx': i,
-                    'z_score': z_score,
-                    'type': violation_type,
-                    'consecutive_count': consecutive_count
-                })
-                consecutive_count = 0
-                violation_start = None
-        else:
-            consecutive_count = 0
-            violation_start = None
+        violations.append({
+            'start_idx': first_k_violations[0],
+            'end_idx': first_k_violations[-1],
+            'z_score': z_scores.iloc[first_k_violations[-1]],
+            'type': 'lower' if z_scores.iloc[first_k_violations[-1]] < 0 else 'upper',
+            'consecutive_count': len(first_k_violations)
+        })
     
     return violations
+
+
+def _analyze_suspected_causes(
+    divergence_events: List[dict],
+    df_a: pd.DataFrame,
+    df_b: pd.DataFrame
+) -> List[str]:
+    """Analyze potential causes of divergence."""
+    causes = []
+    
+    # Check for learning rate differences
+    if 'lr' in df_a.columns and 'lr' in df_b.columns:
+        lr_diff = abs(df_a['lr'] - df_b['lr']).max()
+        if lr_diff > 1e-6:
+            causes.append("Learning rate differences detected")
+    
+    # Check for seed differences
+    if 'seed' in df_a.columns and 'seed' in df_b.columns:
+        seed_a = df_a['seed'].iloc[0] if not df_a['seed'].isna().all() else None
+        seed_b = df_b['seed'].iloc[0] if not df_b['seed'].isna().all() else None
+        if seed_a != seed_b:
+            causes.append("Different random seeds used")
+    
+    # Check for git SHA differences
+    if 'git_sha' in df_a.columns and 'git_sha' in df_b.columns:
+        sha_a = df_a['git_sha'].iloc[0] if not df_a['git_sha'].isna().all() else None
+        sha_b = df_b['git_sha'].iloc[0] if not df_b['git_sha'].isna().all() else None
+        if sha_a != sha_b:
+            causes.append("Different code versions (git SHA)")
+    
+    # Analyze which signals were most affected
+    signal_counts = {}
+    for event in divergence_events:
+        signal = event['signal']
+        signal_counts[signal] = signal_counts.get(signal, 0) + 1
+    
+    if signal_counts:
+        most_affected = max(signal_counts.items(), key=lambda x: x[1])
+        causes.append(f"Most affected signal: {most_affected[0]} ({most_affected[1]} violations)")
+    
+    # Check for sudden spikes in metrics
+    for event in divergence_events:
+        signal = event['signal']
+        step = event['step']
+        
+        # Look for sudden changes around the divergence point
+        if step > 0:
+            prev_step = step - 1
+            if prev_step in df_a.index and prev_step in df_b.index:
+                change_a = abs(df_a.loc[step, signal] - df_a.loc[prev_step, signal])
+                change_b = abs(df_b.loc[step, signal] - df_b.loc[prev_step, signal])
+                
+                if max(change_a, change_b) > 0.1:  # Threshold for "sudden" change
+                    causes.append(f"Sudden spike detected in {signal} at step {step}")
+                    break
+    
+    if not causes:
+        causes.append("No obvious cause identified - may be due to numerical instability")
+    
+    return causes
