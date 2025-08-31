@@ -156,6 +156,34 @@ class TestOpenRLHFAdapter:
             assert 'wall_time' in df.columns
             assert df['step'].iloc[0] == 0
             assert df['reward_mean'].iloc[0] == 0.5
+    
+    def test_wall_time_ms_conversion(self):
+        """Test that wall_time_ms is converted to wall_time in seconds."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
+            # Write test data with wall_time_ms
+            json.dump({
+                'step': 0,
+                'phase': 'train',
+                'reward_mean': 0.5,
+                'kl_mean': 0.1,
+                'entropy_mean': 0.8,
+                'loss': 0.4,
+                'lr': 0.001,
+                'wall_time_ms': 5000,  # 5 seconds in milliseconds
+                'seed': 42,
+                'run_id': 'test_run',
+                'git_sha': 'abc123'
+            }, f)
+            f.write('\n')
+            f.flush()
+            
+            adapter = TRLAdapter(f.name)
+            df = adapter.load()
+            
+            # Should have wall_time column, not wall_time_ms
+            assert 'wall_time' in df.columns
+            assert 'wall_time_ms' not in df.columns
+            assert df['wall_time'].iloc[0] == 5.0  # Converted to seconds
 
 
 class TestWandBAdapter:
@@ -254,3 +282,58 @@ class TestSchemaCompatibility:
             assert metric.reward_mean == 0.5
             assert metric.kl_mean == 0.1
             assert metric.wall_time == 10.0
+    
+    def test_openrlhf_wall_time_ms_conversion(self):
+        """Test that OpenRLHF adapter converts wall_time_ms to wall_time in seconds."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
+            # Write test data with wall_time_ms
+            json.dump({
+                'step': 0,
+                'phase': 'train',
+                'reward_mean': 0.5,
+                'kl_mean': 0.1,
+                'entropy_mean': 0.8,
+                'loss': 0.4,
+                'lr': 0.001,
+                'wall_time_ms': 3000,  # 3 seconds in milliseconds
+                'seed': 42,
+                'run_id': 'test_run',
+                'git_sha': 'abc123'
+            }, f)
+            f.write('\n')
+            f.flush()
+            
+            adapter = OpenRLHFAdapter(f.name)
+            df = adapter.load()
+            
+            # Should have wall_time column, not wall_time_ms
+            assert 'wall_time' in df.columns
+            assert 'wall_time_ms' not in df.columns
+            assert df['wall_time'].iloc[0] == 3.0  # Converted to seconds
+    
+    def test_schema_loads_fixtures_correctly(self):
+        """Test that loading runs_fixtures/clean_ppo.jsonl through ingest produces correct schema."""
+        from rldk.ingest import ingest_runs
+        
+        # Load the fixture through ingest
+        df = ingest_runs('runs_fixtures/clean_ppo.jsonl')
+        
+        # Should have wall_time column
+        assert 'wall_time' in df.columns
+        
+        # Should not have wall_time_ms column
+        assert 'wall_time_ms' not in df.columns
+        
+        # Should have other required columns
+        assert 'step' in df.columns
+        assert 'reward_mean' in df.columns
+        assert 'kl_mean' in df.columns
+        
+        # Should have some data
+        assert len(df) > 0
+        
+        # Check that wall_time values are reasonable (should be in seconds, not milliseconds)
+        if df['wall_time'].notna().any():
+            wall_time_values = df['wall_time'].dropna()
+            # Wall time should be reasonable values (not in the thousands like milliseconds would be)
+            assert wall_time_values.max() < 10000  # Should be less than 10k seconds
