@@ -86,7 +86,7 @@ def diff(
         elif len(signals) == 1 and ',' in signals[0]:
             # Handle case where signals is a list with one comma-separated string
             signals = [s.strip() for s in signals[0].split(',')]
-        report = first_divergence(df_a, df_b, signals, k, window, tolerance)
+        report = first_divergence(df_a, df_b, signals, k, window, tolerance, output_dir)
         
         # Write reports
         output_path = Path(output_dir)

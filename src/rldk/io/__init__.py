@@ -2,7 +2,7 @@
 
 from .schema import TrainingMetrics, MetricsSchema
 from .readers import read_metrics_jsonl, write_metrics_jsonl
-from .writers import write_drift_card, write_determinism_card, write_diff_report
+from .writers import write_drift_card, write_determinism_card, write_diff_report, write_diff_events_csv
 
 __all__ = [
     "TrainingMetrics",
@@ -12,4 +12,5 @@ __all__ = [
     "write_drift_card",
     "write_determinism_card",
     "write_diff_report",
+    "write_diff_events_csv",
 ]
