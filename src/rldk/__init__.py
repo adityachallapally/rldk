@@ -4,12 +4,12 @@ __version__ = "0.1.0"
 
 from .ingest import ingest_runs
 from .diff import first_divergence
-from .determinism import check_determinism
+from .determinism import check
 from .bisect import bisect_commits
 
 __all__ = [
     "ingest_runs",
     "first_divergence", 
-    "check_determinism",
+    "check",
     "bisect_commits",
 ]

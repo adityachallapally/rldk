@@ -71,7 +71,7 @@ class TRLAdapter(BaseAdapter):
         # Ensure required columns exist
         required_cols = ['step', 'phase', 'reward_mean', 'reward_std', 'kl_mean', 
                         'entropy_mean', 'clip_frac', 'grad_norm', 'lr', 'loss',
-                        'tokens_in', 'tokens_out', 'wall_time_ms', 'seed', 'run_id', 'git_sha']
+                        'tokens_in', 'tokens_out', 'wall_time', 'seed', 'run_id', 'git_sha']
         
         for col in required_cols:
             if col not in df.columns:
@@ -125,7 +125,7 @@ class TRLAdapter(BaseAdapter):
             'loss': data.get('loss') or data.get('total_loss'),
             'tokens_in': data.get('tokens_in') or data.get('input_tokens'),
             'tokens_out': data.get('tokens_out') or data.get('output_tokens'),
-            'wall_time_ms': data.get('wall_time_ms') or data.get('time'),
+            'wall_time': data.get('wall_time') or (data.get('wall_time_ms', 0) / 1000.0 if data.get('wall_time_ms') is not None else None),
             'seed': data.get('seed'),
             'run_id': data.get('run_id') or data.get('experiment_id'),
             'git_sha': data.get('git_sha') or data.get('commit_hash'),

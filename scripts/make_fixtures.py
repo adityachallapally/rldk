@@ -35,7 +35,7 @@ def create_clean_ppo_log():
             'loss': round(loss, 4),
             'tokens_in': 512,
             'tokens_out': 128,
-            'wall_time_ms': 100 + random.uniform(-10, 10),
+            'wall_time': 100 + random.uniform(-10, 10),
             'seed': 42,
             'run_id': 'clean_ppo_run',
             'git_sha': 'abc123def456'

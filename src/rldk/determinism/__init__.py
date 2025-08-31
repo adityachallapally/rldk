@@ -1,5 +1,5 @@
 """Determinism checking for training runs."""
 
-from .determinism import check_determinism, DeterminismReport
+from .check import check, DeterminismReport
 
-__all__ = ["check_determinism", "DeterminismReport"]
+__all__ = ["check", "DeterminismReport"]
