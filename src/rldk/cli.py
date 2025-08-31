@@ -13,6 +13,7 @@ from rldk.io import write_drift_card, write_determinism_card, write_diff_report,
 from rldk.reward import health
 from rldk.evals import run
 from rldk.io.reward_writers import generate_reward_health_report
+from rldk.replay import replay
 
 app = typer.Typer(
     name="rldk",
@@ -285,6 +286,69 @@ def reward_health(
         if health_report.drift_metrics is not None and not health_report.drift_metrics.empty:
             typer.echo(f"  - drift_analysis.csv")
         typer.echo(f"  - calibration_plots.png")
+        
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+@app.command(name="replay")
+def replay_cmd(
+    run_path: str = typer.Option(..., "--run", "-r", help="Path to original training run data"),
+    command: str = typer.Option(..., "--command", "-c", help="Training command to replay (should accept --seed)"),
+    metrics: List[str] = typer.Option(..., "--metrics", "-m", help="Metrics to compare (comma-separated)"),
+    tolerance: float = typer.Option(0.01, "--tolerance", "-t", help="Tolerance for metric differences (relative)"),
+    max_steps: Optional[int] = typer.Option(None, "--max-steps", "-s", help="Maximum steps to replay"),
+    output_dir: str = typer.Option("replay_results", "--output-dir", "-o", help="Output directory for results"),
+    device: Optional[str] = typer.Option(None, "--device", "-d", help="Device to use (auto-detected if None)"),
+):
+    """Replay a training run with the original seed and verify reproducibility."""
+    try:
+        # Parse comma-separated metrics
+        metrics_list = [m.strip() for m in metrics.split(',')]
+        
+        typer.echo(f"Replaying training run: {run_path}")
+        typer.echo(f"Training command: {command}")
+        typer.echo(f"Metrics to compare: {', '.join(metrics_list)}")
+        typer.echo(f"Tolerance: {tolerance}")
+        if max_steps:
+            typer.echo(f"Max steps: {max_steps}")
+        typer.echo(f"Device: {device or 'auto-detected'}")
+        
+        # Run replay
+        typer.echo("\nStarting seeded replay...")
+        replay_report = replay(
+            run_path=run_path,
+            training_command=command,
+            metrics_to_compare=metrics_list,
+            tolerance=tolerance,
+            max_steps=max_steps,
+            output_dir=output_dir,
+            device=device
+        )
+        
+        # Display results
+        if replay_report.passed:
+            typer.echo("\n✅ Seeded replay passed - metrics match within tolerance")
+        else:
+            typer.echo(f"\n🚨 Seeded replay failed - {len(replay_report.mismatches)} tolerance violations")
+            
+            # Show summary of violations
+            for metric in replay_report.metrics_compared:
+                stats = replay_report.comparison_stats.get(metric, {})
+                violations = stats.get('tolerance_violations', 0)
+                max_diff = stats.get('max_diff', 0.0)
+                if violations > 0:
+                    typer.echo(f"  {metric}: {violations} violations, max diff: {max_diff:.6f}")
+        
+        typer.echo(f"\nReplay completed in {replay_report.replay_duration:.2f} seconds")
+        typer.echo(f"Original seed: {replay_report.original_seed}")
+        typer.echo(f"Replay seed: {replay_report.replay_seed}")
+        typer.echo(f"\nResults saved to: {output_dir}")
+        typer.echo(f"  - replay_metrics.jsonl")
+        typer.echo(f"  - replay_comparison.json")
+        if replay_report.mismatches:
+            typer.echo(f"  - replay_mismatches.json")
         
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
