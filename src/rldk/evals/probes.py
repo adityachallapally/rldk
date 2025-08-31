@@ -281,6 +281,182 @@ def evaluate_hallucination(data: pd.DataFrame, seed: int = 42, **kwargs) -> Dict
     }
 
 
+def evaluate_kl_divergence(data: pd.DataFrame, 
+                          reference_data: Optional[pd.DataFrame] = None,
+                          seed: int = 42, 
+                          **kwargs) -> Dict[str, Any]:
+    """
+    Evaluate KL divergence between current run and reference distribution.
+    
+    Args:
+        data: Current training run data
+        reference_data: Reference data for comparison (if None, uses baseline)
+        seed: Random seed for reproducibility
+        **kwargs: Additional arguments including metrics to compare
+    
+    Returns:
+        Dictionary with KL divergence scores and analysis
+    """
+    
+    np.random.seed(seed)
+    
+    # Import KL divergence functions
+    from .metrics import (
+        calculate_kl_divergence_between_runs,
+        calculate_kl_divergence_confidence_interval
+    )
+    
+    # Determine metrics to evaluate
+    metrics_to_evaluate = kwargs.get('metrics', ['reward_mean', 'kl_mean', 'entropy_mean'])
+    
+    # If no reference data provided, create a synthetic baseline
+    if reference_data is None:
+        # Create baseline distribution based on expected behavior
+        # This could be from a pre-trained model or theoretical expectations
+        baseline_data = _create_baseline_distribution(data, metrics_to_evaluate, seed)
+        reference_data = baseline_data
+        reference_source = 'synthetic_baseline'
+    else:
+        reference_source = 'provided_reference'
+    
+    kl_results = {}
+    overall_score = 0.0
+    valid_metrics = 0
+    
+    for metric in metrics_to_evaluate:
+        if metric not in data.columns:
+            continue
+            
+        try:
+            # Calculate KL divergence for this metric
+            kl_result = calculate_kl_divergence_between_runs(
+                reference_data, data, metric=metric
+            )
+            
+            if 'kl_divergence' in kl_result and not np.isnan(kl_result['kl_divergence']):
+                kl_div = kl_result['kl_divergence']
+                
+                # Convert KL divergence to a score (lower KL = higher score)
+                # Use exponential decay: score = exp(-kl_div / scale_factor)
+                scale_factor = 0.1  # Adjust based on expected KL divergence range
+                metric_score = np.exp(-kl_div / scale_factor)
+                
+                kl_results[metric] = {
+                    'kl_divergence': kl_div,
+                    'score': metric_score,
+                    'details': kl_result
+                }
+                
+                overall_score += metric_score
+                valid_metrics += 1
+            else:
+                kl_results[metric] = {
+                    'kl_divergence': np.nan,
+                    'score': np.nan,
+                    'error': kl_result.get('error', 'Unknown error')
+                }
+                
+        except Exception as e:
+            kl_results[metric] = {
+                'kl_divergence': np.nan,
+                'score': np.nan,
+                'error': str(e)
+            }
+    
+    # Calculate overall score
+    if valid_metrics > 0:
+        overall_score = overall_score / valid_metrics
+    else:
+        overall_score = 0.0
+    
+    # Calculate confidence intervals if we have sufficient data
+    confidence_intervals = {}
+    if valid_metrics > 0 and len(data) > 20:
+        for metric in metrics_to_evaluate:
+            if metric in kl_results and 'kl_divergence' in kl_results[metric]:
+                try:
+                    ci_result = calculate_kl_divergence_confidence_interval(
+                        reference_data, data, metric=metric
+                    )
+                    if 'confidence_interval' in ci_result:
+                        confidence_intervals[metric] = ci_result['confidence_interval']
+                except Exception:
+                    confidence_intervals[metric] = (np.nan, np.nan)
+    
+    return {
+        'score': float(overall_score),
+        'kl_divergence_mean': float(np.mean([r.get('kl_divergence', np.nan) for r in kl_results.values() 
+                                           if not np.isnan(r.get('kl_divergence', np.nan))])),
+        'details': f'KL divergence evaluation across {valid_metrics} metrics',
+        'method': 'distribution_comparison',
+        'reference_source': reference_source,
+        'metrics_evaluated': list(kl_results.keys()),
+        'kl_results': kl_results,
+        'confidence_intervals': confidence_intervals,
+        'sample_size': len(data),
+        'reference_size': len(reference_data) if reference_data is not None else 0
+    }
+
+
+def _create_baseline_distribution(data: pd.DataFrame, 
+                                metrics: list, 
+                                seed: int) -> pd.DataFrame:
+    """
+    Create a synthetic baseline distribution for KL divergence comparison.
+    
+    Args:
+        data: Current run data to base baseline on
+        metrics: List of metrics to create baselines for
+        seed: Random seed for reproducibility
+    
+    Returns:
+        DataFrame with baseline distributions
+    """
+    np.random.seed(seed)
+    
+    baseline_data = pd.DataFrame()
+    
+    for metric in metrics:
+        if metric in data.columns:
+            # Get current metric values
+            current_values = data[metric].dropna()
+            
+            if len(current_values) > 0:
+                # Create baseline with similar distribution but slight differences
+                # This simulates a "good" reference model
+                mean_val = np.mean(current_values)
+                std_val = np.std(current_values)
+                
+                # Add small random variation to create baseline
+                baseline_values = np.random.normal(
+                    mean_val, 
+                    std_val * 0.8,  # Slightly more concentrated
+                    size=len(current_values)
+                )
+                
+                # Ensure baseline values are in reasonable range
+                if metric == 'reward_mean':
+                    baseline_values = np.clip(baseline_values, -10, 10)
+                elif metric == 'kl_mean':
+                    baseline_values = np.clip(baseline_values, 0, 5)
+                elif metric == 'entropy_mean':
+                    baseline_values = np.clip(baseline_values, 0, 10)
+                
+                baseline_data[metric] = baseline_values
+            else:
+                # If no data, create reasonable defaults
+                if metric == 'reward_mean':
+                    baseline_data[metric] = np.random.normal(0, 1, size=100)
+                elif metric == 'kl_mean':
+                    baseline_data[metric] = np.random.exponential(0.1, size=100)
+                elif metric == 'entropy_mean':
+                    baseline_data[metric] = np.random.uniform(0, 5, size=100)
+                else:
+                    baseline_data[metric] = np.random.normal(0, 1, size=100)
+    
+    return baseline_data
+
+
 def evaluate_reward_alignment(data: pd.DataFrame, seed: int = 42, **kwargs) -> Dict[str, Any]:
     """
     Evaluate correlation between reward scores and human judgments.

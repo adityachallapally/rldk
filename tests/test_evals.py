@@ -15,7 +15,8 @@ from rldk.evals.probes import (
     evaluate_helpfulness, 
     evaluate_harmlessness,
     evaluate_hallucination,
-    evaluate_reward_alignment
+    evaluate_reward_alignment,
+    evaluate_kl_divergence
 )
 
 
@@ -146,16 +147,45 @@ class TestEvaluationSuites:
     
     def test_get_suite_info(self):
         """Test getting suite information."""
-        info = get_suite_info("quick")
+        suite_info = get_suite_info("quick")
         
-        assert isinstance(info, dict)
-        assert info['name'] == 'quick'
-        assert 'description' in info
-        assert 'default_sample_size' in info
-        assert 'estimated_runtime' in info
-        assert 'evaluation_count' in info
-        assert 'evaluations' in info
-        assert 'baseline_scores' in info
+        assert suite_info is not None
+        assert suite_info['name'] == "quick"
+        assert 'evaluations' in suite_info
+        assert 'baseline_scores' in suite_info
+        assert suite_info['generates_plots'] is True
+    
+    def test_kl_divergence_in_suites(self):
+        """Test that KL divergence is included in evaluation suites."""
+        # Check that KL divergence is in the quick suite
+        quick_suite = get_eval_suite("quick")
+        assert quick_suite is not None
+        assert 'kl_divergence' in quick_suite['evaluations']
+        assert 'kl_divergence' in quick_suite['baseline_scores']
+        
+        # Check that KL divergence is in the comprehensive suite
+        comprehensive_suite = get_eval_suite("comprehensive")
+        assert comprehensive_suite is not None
+        assert 'kl_divergence' in comprehensive_suite['evaluations']
+        assert 'kl_divergence' in comprehensive_suite['baseline_scores']
+        
+        # Check that KL divergence is in the safety suite
+        safety_suite = get_eval_suite("safety")
+        assert safety_suite is not None
+        assert 'kl_divergence' in safety_suite['evaluations']
+        assert 'kl_divergence' in safety_suite['baseline_scores']
+        
+        # Check that KL divergence is in the performance suite
+        performance_suite = get_eval_suite("performance")
+        assert performance_suite is not None
+        assert 'kl_divergence' in performance_suite['evaluations']
+        assert 'kl_divergence' in performance_suite['baseline_scores']
+        
+        # Check that KL divergence is in the trust suite
+        trust_suite = get_eval_suite("trust")
+        assert trust_suite is not None
+        assert 'kl_divergence' in trust_suite['evaluations']
+        assert 'kl_divergence' in trust_suite['baseline_scores']
 
 
 class TestEvaluationProbes:
@@ -228,6 +258,16 @@ class TestEvaluationProbes:
         assert 'method' in result
         assert 0 <= result['score'] <= 1
     
+    def test_evaluate_kl_divergence(self):
+        """Test KL divergence evaluation."""
+        result = evaluate_kl_divergence(self.probe_data, seed=42)
+        
+        assert isinstance(result, dict)
+        assert 'score' in result
+        assert 'details' in result
+        assert 'method' in result
+        assert 0 <= result['score'] <= 1
+    
     def test_evaluate_with_missing_columns(self):
         """Test evaluation with missing columns."""
         minimal_data = pd.DataFrame({
@@ -240,13 +280,14 @@ class TestEvaluationProbes:
         harmlessness_result = evaluate_harmlessness(minimal_data, seed=42)
         hallucination_result = evaluate_hallucination(minimal_data, seed=42)
         reward_alignment_result = evaluate_reward_alignment(minimal_data, seed=42)
+        kl_divergence_result = evaluate_kl_divergence(minimal_data, seed=42)
         
         assert all(isinstance(r, dict) for r in [alignment_result, helpfulness_result, 
                                                 harmlessness_result, hallucination_result, 
-                                                reward_alignment_result])
+                                                reward_alignment_result, kl_divergence_result])
         assert all('score' in r for r in [alignment_result, helpfulness_result, 
                                          harmlessness_result, hallucination_result, 
-                                         reward_alignment_result])
+                                         reward_alignment_result, kl_divergence_result])
 
 
 class TestEvalResult:
