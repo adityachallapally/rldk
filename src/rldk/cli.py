@@ -9,7 +9,7 @@ from rldk.ingest import ingest_runs
 from rldk.diff import first_divergence
 from rldk.determinism.check import check
 from rldk.bisect import bisect_commits
-from rldk.io import write_drift_card, write_determinism_card, write_diff_report
+from rldk.io import write_drift_card, write_determinism_card, write_diff_report, write_diff_events_csv
 
 app = typer.Typer(
     name="rldk",
@@ -92,6 +92,7 @@ def diff(
         output_path = Path(output_dir)
         write_diff_report(report, output_path)
         write_drift_card(report, output_path)
+        write_diff_events_csv(report, output_path)
         
         # Display results
         if report.diverged:
