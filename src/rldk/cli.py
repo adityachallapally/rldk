@@ -10,6 +10,9 @@ from rldk.diff import first_divergence
 from rldk.determinism.check import check
 from rldk.bisect import bisect_commits
 from rldk.io import write_drift_card, write_determinism_card, write_diff_report, write_diff_events_csv
+from rldk.reward import health
+from rldk.evals import run
+from rldk.io.reward_writers import generate_reward_health_report
 
 app = typer.Typer(
     name="rldk",
@@ -208,6 +211,132 @@ def bisect(
         typer.echo(f"Culprit commit: {result.culprit_sha}")
         typer.echo(f"Iterations: {result.iterations}")
         typer.echo(f"Logs: {result.logs_path}")
+        
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+@app.command(name="reward-health")
+def reward_health(
+    run_path: str = typer.Option(..., "--run", "-r", help="Path to training run data"),
+    reference_path: Optional[str] = typer.Option(None, "--reference", "-ref", help="Path to reference run data"),
+    output_dir: str = typer.Option("reward_analysis", "--output-dir", "-o", help="Output directory for reports"),
+    reward_col: str = typer.Option("reward_mean", "--reward-col", help="Column name for reward values"),
+    step_col: str = typer.Option("step", "--step-col", help="Column name for training steps"),
+    threshold_drift: float = typer.Option(0.1, "--threshold-drift", help="P-value threshold for drift detection"),
+    threshold_saturation: float = typer.Option(0.8, "--threshold-saturation", help="Threshold for saturation detection"),
+    threshold_calibration: float = typer.Option(0.7, "--threshold-calibration", help="Threshold for calibration quality"),
+    threshold_shortcut: float = typer.Option(0.6, "--threshold-shortcut", help="Threshold for shortcut signal detection"),
+    threshold_leakage: float = typer.Option(0.3, "--threshold-leakage", help="Threshold for label leakage risk"),
+):
+    """Analyze reward model health and detect pathologies."""
+    try:
+        typer.echo(f"Analyzing reward health for run: {run_path}")
+        
+        # Ingest run data
+        typer.echo("Ingesting run data...")
+        run_data = ingest_runs(run_path)
+        
+        # Ingest reference data if provided
+        reference_data = None
+        if reference_path:
+            typer.echo("Ingesting reference data...")
+            reference_data = ingest_runs(reference_path)
+        
+        # Run reward health analysis
+        typer.echo("Running reward health analysis...")
+        health_report = health(
+            run_data=run_data,
+            reference_data=reference_data,
+            reward_col=reward_col,
+            step_col=step_col,
+            threshold_drift=threshold_drift,
+            threshold_saturation=threshold_saturation,
+            threshold_calibration=threshold_calibration,
+            threshold_shortcut=threshold_shortcut,
+            threshold_leakage=threshold_leakage
+        )
+        
+        # Generate reports
+        typer.echo("Generating reports...")
+        generate_reward_health_report(health_report, output_dir)
+        
+        # Display results
+        if health_report.passed:
+            typer.echo("\n✅ Reward health check passed")
+        else:
+            typer.echo("\n🚨 Reward health issues detected")
+            
+            if health_report.drift_detected:
+                typer.echo(f"  - Reward drift detected")
+            if health_report.saturation_issues:
+                typer.echo(f"  - {len(health_report.saturation_issues)} saturation issues")
+            if health_report.calibration_score < threshold_calibration:
+                typer.echo(f"  - Poor calibration (score: {health_report.calibration_score:.3f})")
+            if health_report.shortcut_signals:
+                typer.echo(f"  - {len(health_report.shortcut_signals)} shortcut signals")
+            if health_report.label_leakage_risk > threshold_leakage:
+                typer.echo(f"  - Label leakage risk: {health_report.label_leakage_risk:.3f}")
+        
+        typer.echo(f"\nReports saved to: {output_dir}")
+        typer.echo(f"  - reward_health_card.md")
+        typer.echo(f"  - reward_health_summary.json")
+        if health_report.drift_metrics is not None and not health_report.drift_metrics.empty:
+            typer.echo(f"  - drift_analysis.csv")
+        typer.echo(f"  - calibration_plots.png")
+        
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+@app.command(name="eval")
+def eval_cmd(
+    run_path: str = typer.Option(..., "--run", "-r", help="Path to training run data"),
+    suite: str = typer.Option("quick", "--suite", "-s", help="Evaluation suite to run"),
+    output_dir: str = typer.Option("eval_results", "--output-dir", "-o", help="Output directory for results"),
+    seed: int = typer.Option(42, "--seed", help="Random seed for reproducibility"),
+    sample_size: Optional[int] = typer.Option(None, "--sample-size", help="Number of samples to evaluate"),
+):
+    """Run evaluation suite with statistical analysis."""
+    try:
+        typer.echo(f"Running evaluation suite '{suite}' on run: {run_path}")
+        
+        # Ingest run data
+        typer.echo("Ingesting run data...")
+        run_data = ingest_runs(run_path)
+        
+        # Run evaluation
+        typer.echo(f"Running {suite} evaluation suite...")
+        eval_result = run(
+            run_data=run_data,
+            suite=suite,
+            seed=seed,
+            sample_size=sample_size,
+            output_dir=output_dir
+        )
+        
+        # Display results
+        typer.echo(f"\n📊 Evaluation Results for {suite} suite")
+        typer.echo(f"Sample size: {eval_result.sample_size}")
+        typer.echo(f"Seed: {eval_result.seed}")
+        
+        typer.echo("\nScores:")
+        for metric, score in eval_result.scores.items():
+            if not np.isnan(score):
+                ci = eval_result.confidence_intervals.get(metric, (np.nan, np.nan))
+                effect_size = eval_result.effect_sizes.get(metric, np.nan)
+                
+                ci_str = f"[{ci[0]:.3f}, {ci[1]:.3f}]" if not np.isnan(ci[0]) else "N/A"
+                effect_str = f"{effect_size:.3f}" if not np.isnan(effect_size) else "N/A"
+                
+                typer.echo(f"  {metric}: {score:.3f} (CI: {ci_str}, Effect: {effect_str})")
+        
+        typer.echo(f"\nResults saved to: {output_dir}")
+        typer.echo(f"  - eval_card.md")
+        typer.echo(f"  - eval_results.jsonl")
+        typer.echo(f"  - eval_summary.json")
         
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
