@@ -100,13 +100,11 @@ def _get_deterministic_env(device: str) -> Dict[str, str]:
     # PyTorch deterministic settings
     env['PYTHONPATH'] = f"{env.get('PYTHONPATH', '')}:{os.getcwd()}"
     
-    # Add deterministic Python code
-    deterministic_code = f"""
-import torch
-torch.use_deterministic_algorithms(True)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
-"""
+    # Python hash seed for deterministic behavior
+    env['PYTHONHASHSEED'] = '42'
+    
+    # PyTorch deterministic settings
+    env['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:128'
     
     if device == "cuda":
         env['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
@@ -119,20 +117,47 @@ def _run_deterministic_cmd(cmd: str, env: Dict[str, str]) -> subprocess.Complete
     """Run command with deterministic environment."""
     # Create temporary script with deterministic settings
     script_content = f"""#!/usr/bin/env python3
-import torch
-torch.use_deterministic_algorithms(True)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
-
-# Set random seeds
+import os
 import random
 import numpy as np
+
+# Set Python hash seed
+os.environ['PYTHONHASHSEED'] = '42'
+
+# Set random seeds for all sources
 random.seed(42)
 np.random.seed(42)
-torch.manual_seed(42)
-if torch.cuda.is_available():
-    torch.cuda.manual_seed(42)
-    torch.cuda.manual_seed_all(42)
+
+# PyTorch deterministic settings
+try:
+    import torch
+    torch.manual_seed(42)
+    torch.use_deterministic_algorithms(True)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    
+    # Disable TF32 for better determinism
+    if hasattr(torch.backends.cuda, 'matmul.allow_tf32'):
+        torch.backends.cuda.matmul.allow_tf32 = False
+    if hasattr(torch.backends.cudnn, 'allow_tf32'):
+        torch.backends.cudnn.allow_tf32 = False
+    
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(42)
+        torch.cuda.manual_seed_all(42)
+        # Set CUDA workspace config
+        os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+except ImportError:
+    pass
+
+# TensorFlow deterministic settings
+try:
+    import tensorflow as tf
+    tf.random.set_seed(42)
+    os.environ['TF_DETERMINISTIC_OPS'] = '1'
+    os.environ['TF_CUDNN_DETERMINISTIC'] = '1'
+except ImportError:
+    pass
 
 # Execute original command
 import subprocess

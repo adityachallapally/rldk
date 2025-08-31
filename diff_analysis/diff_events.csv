@@ -1,3 +1,0 @@
-step,signal,z_score,run_a_value,run_b_value,violation_type,consecutive_count
-103,kl_mean,-2.033059304661903,0.1974,0.5940000000000001,lower,3
-45,reward_mean,2.0969826179560562,0.9905,0.9057,upper,3

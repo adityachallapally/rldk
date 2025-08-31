@@ -147,7 +147,7 @@ rldk check-determinism \
 
 # Examples
 rldk check-determinism --cmd "python train.py" --compare kl_mean
-rldk check-determinism --cmd "bash train.sh" --compare reward_mean,loss --stride 25
+rldk check-determinism --cmd "bash train.sh" --compare reward_mean,loss
 ```
 
 ### Bisect Command

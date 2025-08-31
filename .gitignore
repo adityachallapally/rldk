@@ -131,3 +131,11 @@ dmypy.json
 # OS
 .DS_Store
 Thumbs.db
+
+# RL Debug Kit generated artifacts
+diff_analysis/
+determinism_analysis/
+*.jsonl
+out.jsonl
+final_test_metrics.jsonl
+test_metrics.jsonl
