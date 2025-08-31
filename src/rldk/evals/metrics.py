@@ -323,6 +323,288 @@ def calculate_effect_size_interpretation(effect_size: float) -> str:
         return "huge"
 
 
+def calculate_kl_divergence(p: np.ndarray, q: np.ndarray, 
+                           epsilon: float = 1e-10) -> float:
+    """
+    Calculate KL divergence D_KL(P||Q) between two probability distributions.
+    
+    Args:
+        p: Probability distribution P (target/reference)
+        q: Probability distribution Q (model under test)
+        epsilon: Small value to avoid log(0)
+    
+    Returns:
+        KL divergence value (non-negative)
+    
+    Note:
+        - D_KL(P||Q) measures how much information is lost when Q is used to approximate P
+        - Lower values indicate Q is closer to P
+        - Not symmetric: D_KL(P||Q) ≠ D_KL(Q||P)
+    """
+    if len(p) != len(q):
+        raise ValueError("Distributions must have the same length")
+    
+    # Ensure probabilities sum to 1 and handle edge cases
+    p = np.array(p, dtype=np.float64)
+    q = np.array(q, dtype=np.float64)
+    
+    # Normalize to probability distributions
+    p = p / (np.sum(p) + epsilon)
+    q = q / (np.sum(q) + epsilon)
+    
+    # Add small epsilon to avoid log(0)
+    p = p + epsilon
+    q = q + epsilon
+    
+    # Renormalize
+    p = p / np.sum(p)
+    q = q / np.sum(q)
+    
+    # Calculate KL divergence: sum(p * log(p/q))
+    # Only sum where p > 0 to avoid log(0)
+    mask = p > epsilon
+    if not np.any(mask):
+        return 0.0
+    
+    kl_div = np.sum(p[mask] * np.log(p[mask] / q[mask]))
+    
+    # Ensure non-negative result (numerical issues can cause small negative values)
+    return max(0.0, float(kl_div))
+
+
+def calculate_kl_divergence_between_runs(run1_data: np.ndarray, 
+                                       run2_data: np.ndarray,
+                                       metric: str = 'reward_mean',
+                                       bins: int = 20,
+                                       epsilon: float = 1e-10) -> Dict[str, Any]:
+    """
+    Calculate KL divergence between two training runs for a specific metric.
+    
+    Args:
+        run1_data: Data from first run (reference)
+        run2_data: Data from second run (model under test)
+        metric: Metric column name to compare
+        bins: Number of bins for histogram discretization
+        epsilon: Small value to avoid log(0)
+    
+    Returns:
+        Dictionary with KL divergence results and analysis
+    """
+    try:
+        # Extract metric data
+        if hasattr(run1_data, 'columns') and metric in run1_data.columns:
+            # DataFrame case
+            data1 = run1_data[metric].dropna().values
+            data2 = run2_data[metric].dropna().values
+        else:
+            # Array case
+            data1 = np.array(run1_data).flatten()
+            data2 = np.array(run2_data).flatten()
+        
+        # Remove NaN values
+        data1 = data1[~np.isnan(data1)]
+        data2 = data2[~np.isnan(data2)]
+        
+        if len(data1) == 0 or len(data2) == 0:
+            return {
+                'kl_divergence': np.nan,
+                'error': 'Insufficient data for KL divergence calculation',
+                'data1_size': len(data1),
+                'data2_size': len(data2)
+            }
+        
+        # Create histograms (discretize continuous data)
+        min_val = min(np.min(data1), np.min(data2))
+        max_val = max(np.max(data1), np.max(data2))
+        
+        # Add small buffer to avoid edge cases
+        buffer = (max_val - min_val) * 0.01
+        min_val -= buffer
+        max_val += buffer
+        
+        # Create histograms
+        hist1, _ = np.histogram(data1, bins=bins, range=(min_val, max_val), density=True)
+        hist2, _ = np.histogram(data2, bins=bins, range=(min_val, max_val), density=True)
+        
+        # Calculate KL divergence
+        kl_div = calculate_kl_divergence(hist1, hist2, epsilon)
+        
+        # Additional analysis
+        mean_diff = np.mean(data2) - np.mean(data1)
+        std_diff = np.std(data2) - np.std(data1)
+        
+        # Calculate Jensen-Shannon divergence (symmetric version)
+        js_div = calculate_jensen_shannon_divergence(hist1, hist2, epsilon)
+        
+        return {
+            'kl_divergence': float(kl_div),
+            'jensen_shannon_divergence': float(js_div),
+            'mean_difference': float(mean_diff),
+            'std_difference': float(std_diff),
+            'data1_size': len(data1),
+            'data2_size': len(data2),
+            'data1_mean': float(np.mean(data1)),
+            'data2_mean': float(np.mean(data2)),
+            'data1_std': float(np.std(data1)),
+            'data2_std': float(np.std(data2)),
+            'bins': bins,
+            'metric': metric
+        }
+        
+    except Exception as e:
+        return {
+            'kl_divergence': np.nan,
+            'error': str(e),
+            'data1_size': len(run1_data) if hasattr(run1_data, '__len__') else 0,
+            'data2_size': len(run2_data) if hasattr(run2_data, '__len__') else 0
+        }
+
+
+def calculate_jensen_shannon_divergence(p: np.ndarray, q: np.ndarray, 
+                                      epsilon: float = 1e-10) -> float:
+    """
+    Calculate Jensen-Shannon divergence between two probability distributions.
+    
+    Args:
+        p: Probability distribution P
+        q: Probability distribution Q
+        epsilon: Small value to avoid log(0)
+    
+    Returns:
+        Jensen-Shannon divergence value (symmetric, bounded by log(2))
+    
+    Note:
+        - JSD(P,Q) = 0.5 * [D_KL(P||M) + D_KL(Q||M)] where M = 0.5 * (P + Q)
+        - Symmetric: JSD(P,Q) = JSD(Q,P)
+        - Bounded: 0 ≤ JSD(P,Q) ≤ log(2)
+        - Lower values indicate distributions are more similar
+    """
+    if len(p) != len(q):
+        raise ValueError("Distributions must have the same length")
+    
+    # Ensure probabilities sum to 1 and handle edge cases
+    p = np.array(p, dtype=np.float64)
+    q = np.array(q, dtype=np.float64)
+    
+    # Normalize to probability distributions
+    p = p / (np.sum(p) + epsilon)
+    q = q / (np.sum(q) + epsilon)
+    
+    # Add small epsilon to avoid log(0)
+    p = p + epsilon
+    q = q + epsilon
+    
+    # Renormalize
+    p = p / np.sum(p)
+    q = q / np.sum(q)
+    
+    # Calculate midpoint distribution M = 0.5 * (P + Q)
+    m = 0.5 * (p + q)
+    
+    # Calculate JSD = 0.5 * [D_KL(P||M) + D_KL(Q||M)]
+    kl_pm = calculate_kl_divergence(p, m, epsilon)
+    kl_qm = calculate_kl_divergence(q, m, epsilon)
+    
+    jsd = 0.5 * (kl_pm + kl_qm)
+    
+    return float(jsd)
+
+
+def calculate_kl_divergence_confidence_interval(data1: np.ndarray, 
+                                              data2: np.ndarray,
+                                              metric: str = 'reward_mean',
+                                              confidence_level: float = 0.95,
+                                              n_bootstrap: int = 1000) -> Dict[str, Any]:
+    """
+    Calculate KL divergence with bootstrap confidence intervals.
+    
+    Args:
+        data1: Data from first run (reference)
+        data2: Data from second run (model under test)
+        metric: Metric column name to compare
+        confidence_level: Confidence level for intervals
+        n_bootstrap: Number of bootstrap samples
+    
+    Returns:
+        Dictionary with KL divergence and confidence intervals
+    """
+    try:
+        # Extract metric data
+        if hasattr(data1, 'columns') and metric in data1.columns:
+            data1_vals = data1[metric].dropna().values
+            data2_vals = data2[metric].dropna().values
+        else:
+            data1_vals = np.array(data1).flatten()
+            data2_vals = np.array(data2).flatten()
+        
+        # Remove NaN values
+        data1_vals = data1_vals[~np.isnan(data1_vals)]
+        data2_vals = data2_vals[~np.isnan(data2_vals)]
+        
+        if len(data1_vals) < 10 or len(data2_vals) < 10:
+            return {
+                'kl_divergence': np.nan,
+                'confidence_interval': (np.nan, np.nan),
+                'error': 'Insufficient data for bootstrap confidence intervals',
+                'data1_size': len(data1_vals),
+                'data2_size': len(data2_vals)
+            }
+        
+        # Bootstrap KL divergence calculation
+        kl_values = []
+        for _ in range(n_bootstrap):
+            # Bootstrap sample from both datasets
+            boot1 = np.random.choice(data1_vals, size=len(data1_vals), replace=True)
+            boot2 = np.random.choice(data2_vals, size=len(data2_vals), replace=True)
+            
+            # Calculate KL divergence for bootstrap sample
+            try:
+                kl_result = calculate_kl_divergence_between_runs(boot1, boot2, metric)
+                if 'kl_divergence' in kl_result and not np.isnan(kl_result['kl_divergence']):
+                    kl_values.append(kl_result['kl_divergence'])
+            except Exception:
+                continue
+        
+        if len(kl_values) < n_bootstrap // 2:
+            return {
+                'kl_divergence': np.nan,
+                'confidence_interval': (np.nan, np.nan),
+                'error': 'Bootstrap failed to produce sufficient valid samples',
+                'data1_size': len(data1_vals),
+                'data2_size': len(data2_vals)
+            }
+        
+        # Calculate confidence intervals
+        alpha = 1 - confidence_level
+        lower_percentile = (alpha / 2) * 100
+        upper_percentile = (1 - alpha / 2) * 100
+        
+        lower_bound = np.percentile(kl_values, lower_percentile)
+        upper_bound = np.percentile(kl_values, upper_percentile)
+        
+        # Calculate point estimate
+        point_estimate = np.mean(kl_values)
+        
+        return {
+            'kl_divergence': float(point_estimate),
+            'confidence_interval': (float(lower_bound), float(upper_bound)),
+            'bootstrap_samples': len(kl_values),
+            'bootstrap_std': float(np.std(kl_values)),
+            'confidence_level': confidence_level,
+            'data1_size': len(data1_vals),
+            'data2_size': len(data2_vals)
+        }
+        
+    except Exception as e:
+        return {
+            'kl_divergence': np.nan,
+            'confidence_interval': (np.nan, np.nan),
+            'error': str(e),
+            'data1_size': len(data1) if hasattr(data1, '__len__') else 0,
+            'data2_size': len(data2) if hasattr(data2, '__len__') else 0
+        }
+
+
 def calculate_power_analysis(effect_size: float, 
                            alpha: float = 0.05,
                            power: float = 0.8) -> Dict[str, Any]:
