@@ -24,6 +24,7 @@ class DeterminismReport:
     replica_variance: Dict[str, float]
     rng_map: Dict[str, str]
     mismatches: List[Dict[str, Any]]
+    dataloader_notes: List[str]
 
 
 def check(
@@ -71,8 +72,14 @@ def check(
     # Calculate variance across replicas
     replica_variance = _calculate_replica_variance(replica_results, compare)
     
+    # Detect CUDA availability for truthful RNG map
+    cuda_available = _detect_device() == "cuda"
+    
     # Create RNG map
-    rng_map = _create_rng_map(env)
+    rng_map = _create_rng_map(env, cuda_available)
+    
+    # Detect DataLoader issues
+    dataloader_notes = _detect_dataloader_issues(replica_results)
     
     # Determine if passed
     passed = len(mismatches) == 0
@@ -83,7 +90,8 @@ def check(
         fixes=fixes,
         replica_variance=replica_variance,
         rng_map=rng_map,
-        mismatches=mismatches
+        mismatches=mismatches,
+        dataloader_notes=dataloader_notes
     )
 
 
@@ -105,45 +113,25 @@ def _get_deterministic_env(device: str) -> Dict[str, str]:
     """Get environment variables for deterministic execution."""
     env = os.environ.copy()
     
-    # PyTorch deterministic settings
-    env.update({
-        'PYTORCH_CUDA_ALLOC_CONF': 'max_split_size_mb:128',
-        'CUDA_LAUNCH_BLOCKING': '1',
-        'TORCH_USE_CUDA_DSA': '1',
-    })
-    
-    # Set deterministic flags
-    if device == "cuda":
-        env.update({
-            'CUBLAS_WORKSPACE_CONFIG': ':4096:8',
-            'CUDA_LAUNCH_BLOCKING': '1',
-        })
-    
-    # Python deterministic settings
+    # Set Python deterministic settings (only once)
     env.update({
         'PYTHONHASHSEED': '42',
         'PYTHONUNBUFFERED': '1',
         'OMP_NUM_THREADS': '1',
         'MKL_NUM_THREADS': '1',
         'NUMEXPR_NUM_THREADS': '1',
+        'OPENBLAS_NUM_THREADS': '1',
+        'VECLIB_MAXIMUM_THREADS': '1',
     })
     
-    # Additional deterministic settings
-    env.update({
-        'PYTHONHASHSEED': '42',  # Ensure consistent hash behavior
-        'PYTHONUNBUFFERED': '1',  # Ensure immediate output
-        'OMP_NUM_THREADS': '1',   # Single OpenMP thread
-        'MKL_NUM_THREADS': '1',   # Single MKL thread
-        'NUMEXPR_NUM_THREADS': '1',  # Single NumExpr thread
-        'OPENBLAS_NUM_THREADS': '1',  # Single OpenBLAS thread
-        'VECLIB_MAXIMUM_THREADS': '1',  # Single VecLib thread
-    })
-    
-    # Set random seeds for reproducibility
-    import random
-    import numpy as np
-    random.seed(42)
-    np.random.seed(42)
+    # Set CUDA-specific settings only when CUDA is actually available
+    if device == "cuda" or (device is None and _detect_device() == "cuda"):
+        env.update({
+            'CUDA_LAUNCH_BLOCKING': '1',
+            'CUBLAS_WORKSPACE_CONFIG': ':4096:8',
+            'PYTORCH_CUDA_ALLOC_CONF': 'max_split_size_mb:128',
+            'TORCH_USE_CUDA_DSA': '1',
+        })
     
     return env
 
@@ -158,26 +146,49 @@ def _run_deterministic_cmd(
     with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
         output_file = f.name
     
-    # Modify command to output to our file
-    modified_cmd = f"{cmd} --output {output_file}"
+    # Check if command already has --output
+    if '--output' in cmd:
+        # Command already specifies output, don't modify it
+        modified_cmd = cmd
+    else:
+        # Check if RLDK_METRICS_PATH is set in environment
+        if 'RLDK_METRICS_PATH' in env:
+            # Export the path for user code to use
+            env['RLDK_METRICS_PATH'] = output_file
+            modified_cmd = cmd
+        else:
+            # Fallback: append --output (but this may break some commands)
+            modified_cmd = f"{cmd} --output {output_file}"
     
-    # Set PyTorch deterministic flags at runtime
-    if '--deterministic' not in modified_cmd:
-        # Wrap command to set PyTorch flags
-        torch_flags = """
-import torch
-import os
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
-torch.use_deterministic_algorithms(True)
-torch.backends.cuda.matmul.allow_tf32 = False
-torch.backends.cudnn.allow_tf32 = False
-if torch.cuda.is_available():
-    torch.cuda.manual_seed(42)
-    torch.cuda.manual_seed_all(42)
-torch.manual_seed(42)
-"""
-        modified_cmd = f"python -c \"{torch_flags}; exec('''{modified_cmd}''')\""
+    # Always wrap command to set deterministic environment and seeds
+    # This ensures seeds are set even on CPU-only runs
+    deterministic_wrapper = f"""
+        import torch
+        import random
+        import numpy as np
+        import os
+
+        # Always set seeds regardless of device
+        random.seed(42 + {replica_id})
+        np.random.seed(42 + {replica_id})
+        torch.manual_seed(42 + {replica_id})
+
+        # Set deterministic algorithms
+        torch.use_deterministic_algorithms(True)
+
+        # Set CUDA-specific settings only if CUDA is available
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(42 + {replica_id})
+            torch.cuda.manual_seed_all(42 + {replica_id})
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+            torch.backends.cuda.matmul.allow_tf32 = False
+            torch.backends.cudnn.allow_tf32 = False
+
+        # Execute the original command
+        exec('''{modified_cmd}''')
+        """
+    modified_cmd = f"python -c \"{deterministic_wrapper}\""
     
     try:
         # Run the command
@@ -356,18 +367,65 @@ def _calculate_replica_variance(
     return variance
 
 
-def _create_rng_map(env: Dict[str, str]) -> Dict[str, str]:
-    """Create a map of RNG settings."""
+def _create_rng_map(env: Dict[str, str], cuda_available: bool = False) -> Dict[str, str]:
+    """Create a map of RNG settings that were actually enforced."""
     rng_map = {}
     
-    # PyTorch settings
-    rng_map['torch_seed'] = 'Set via torch.manual_seed()'
-    rng_map['cuda_seed'] = 'Set via torch.cuda.manual_seed_all()'
-    rng_map['numpy_seed'] = 'Set via np.random.seed()'
-    rng_map['python_hash'] = env.get('PYTHONHASHSEED', 'Not set')
+    # Python settings
+    rng_map['python_hash_seed'] = env.get('PYTHONHASHSEED', 'Not set')
+    rng_map['omp_threads'] = env.get('OMP_NUM_THREADS', 'Not set')
+    rng_map['mkl_threads'] = env.get('MKL_NUM_THREADS', 'Not set')
+    rng_map['numexpr_threads'] = env.get('NUMEXPR_NUM_THREADS', 'Not set')
     
-    # CUDA settings
-    if 'CUBLAS_WORKSPACE_CONFIG' in env:
-        rng_map['cublas_workspace'] = env['CUBLAS_WORKSPACE_CONFIG']
+    # PyTorch settings
+    rng_map['torch_deterministic'] = 'True (enforced)'
+    rng_map['torch_seed'] = 'Set per replica (42 + replica_id)'
+    rng_map['numpy_seed'] = 'Set per replica (42 + replica_id)'
+    rng_map['random_seed'] = 'Set per replica (42 + replica_id)'
+    
+    # CUDA settings (based on actual availability, not env key presence)
+    if cuda_available:
+        rng_map['cuda_launch_blocking'] = env.get('CUDA_LAUNCH_BLOCKING', 'Not set')
+        rng_map['cublas_workspace'] = env.get('CUBLAS_WORKSPACE_CONFIG', 'Not set')
+        rng_map['cudnn_deterministic'] = 'True (enforced)'
+        rng_map['cudnn_benchmark'] = 'False (enforced)'
+        rng_map['tf32_disabled'] = 'True (enforced)'
+        rng_map['cuda_seed'] = 'Set per replica (42 + replica_id)'
+    else:
+        rng_map['cuda_launch_blocking'] = 'N/A (CPU only)'
+        rng_map['cublas_workspace'] = 'N/A (CPU only)'
+        rng_map['cudnn_deterministic'] = 'N/A (CPU only)'
+        rng_map['cudnn_benchmark'] = 'N/A (CPU only)'
+        rng_map['tf32_disabled'] = 'N/A (CPU only)'
+        rng_map['cuda_seed'] = 'N/A (CPU only)'
     
     return rng_map
+
+
+def _detect_dataloader_issues(replica_results: List[subprocess.CompletedProcess]) -> List[str]:
+    """Detect potential DataLoader-related determinism issues."""
+    issues = []
+    
+    # Check for obvious batch order mismatches
+    if len(replica_results) >= 2:
+        for i, result in enumerate(replica_results[1:], 1):
+            if not result.metrics_df.empty and not replica_results[0].metrics_df.empty:
+                ref_df = replica_results[0].metrics_df
+                rep_df = result.metrics_df
+                
+                # Check if the first few steps have identical values (suggesting same batch order)
+                # This is a simple heuristic - identical early steps might indicate same data order
+                if len(ref_df) >= 3 and len(rep_df) >= 3:
+                    ref_early = ref_df.head(3)[['reward_mean', 'kl_mean', 'entropy_mean']].values
+                    rep_early = rep_df.head(3)[['reward_mean', 'kl_mean', 'entropy_mean']].values
+                    
+                    if np.array_equal(ref_early, rep_early):
+                        issues.append(f"Replica {i} shows identical early metrics - may need worker_init_fn and shuffle=False")
+    
+    # Check stderr for DataLoader warnings
+    for i, result in enumerate(replica_results):
+        if result.stderr and 'DataLoader' in result.stderr:
+            if 'num_workers' in result.stderr and 'shuffle' in result.stderr:
+                issues.append(f"Replica {i} uses DataLoader - ensure worker_init_fn and shuffle=False for determinism")
+    
+    return issues

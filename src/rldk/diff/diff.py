@@ -28,7 +28,8 @@ def first_divergence(
     signals: List[str],
     k_consecutive: int = 3,
     window: int = 50,
-    tolerance: float = 2.0
+    tolerance: float = 2.0,
+    output_dir: str = "diff_analysis"
 ) -> DivergenceReport:
     """
     Find first divergence between two training runs.
@@ -116,13 +117,14 @@ def first_divergence(
         notes.append(f"Rolling window size: {window}")
     
     # Create report paths
-    output_dir = Path("diff_analysis")
-    report_path = str(output_dir / "diff_report.md")
-    events_csv_path = str(output_dir / "diff_events.csv")
+    output_path = Path(output_dir)
+    report_path = str(output_path / "diff_report.md")
+    events_csv_path = str(output_path / "diff_events.csv")
     
     # Save events to CSV
     if divergence_events:
         events_df = pd.DataFrame(divergence_events)
+        output_path.mkdir(parents=True, exist_ok=True)
         events_df.to_csv(events_csv_path, index=False)
     
     # Create details DataFrame

@@ -139,3 +139,7 @@ determinism_analysis/
 out.jsonl
 final_test_metrics.jsonl
 test_metrics.jsonl
+
+# Test artifacts and outputs
+test_metrics.jsonl
+final_test_metrics.jsonl

@@ -18,7 +18,12 @@ rldk ingest runs_fixtures/clean_ppo.jsonl
 rldk diff --a runs_fixtures/clean_ppo.jsonl --b runs_fixtures/kl_spike.jsonl --signals kl_mean,reward_mean
 
 # Check if a training command is deterministic
-rldk check-determinism --cmd "python train.py" --compare kl_mean,entropy_mean
+rldk check-determinism --cmd "python train.py" --compare kl_mean,entropy_mean --replicas 3
+
+**Note:** The determinism checker supports three output capture modes:
+1. **Auto-detect**: If your command already has `--output`, it will be used as-is
+2. **Environment variable**: Set `RLDK_METRICS_PATH` in your environment for custom output paths
+3. **Fallback**: If neither above, `--output <file>` will be appended (may break some commands)
 
 # Find regression using git bisect
 rldk bisect --good abc123 --bad HEAD --cmd "python train.py" --metric kl_mean --cmp "> 0.2"
@@ -63,12 +68,13 @@ if report.diverged:
 ### Check Determinism
 
 ```python
-from rldk.determinism import check
-
 # Check if training is deterministic
-report = check(
+from rldk.determinism import check_determinism
+
+report = check_determinism(
     cmd="python train.py --cfg config.yml",
     compare=['kl_mean', 'entropy_mean'],
+    replicas=3,  # Number of replicas to run
     steps=[50, 100, 150]  # Specific steps to compare
 )
 
@@ -142,12 +148,13 @@ rldk check-determinism --cmd "python train.py" --compare <metrics>
 rldk check-determinism \
     --cmd "python train.py --cfg config.yml" \
     --compare kl_mean,entropy_mean \
+    --replicas 3 \
     --steps 50,100,150 \
     --device cuda
 
 # Examples
-rldk check-determinism --cmd "python train.py" --compare kl_mean
-rldk check-determinism --cmd "bash train.sh" --compare reward_mean,loss
+rldk check-determinism --cmd "python train.py" --compare kl_mean --replicas 2
+rldk check-determinism --cmd "bash train.sh" --compare reward_mean,loss --replicas 5
 ```
 
 ### Bisect Command

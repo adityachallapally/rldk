@@ -156,6 +156,34 @@ class TestOpenRLHFAdapter:
             assert 'wall_time' in df.columns
             assert df['step'].iloc[0] == 0
             assert df['reward_mean'].iloc[0] == 0.5
+    
+    def test_wall_time_ms_conversion(self):
+        """Test that wall_time_ms is converted to wall_time in seconds."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
+            # Write test data with wall_time_ms
+            json.dump({
+                'step': 0,
+                'phase': 'train',
+                'reward_mean': 0.5,
+                'kl_mean': 0.1,
+                'entropy_mean': 0.8,
+                'loss': 0.4,
+                'lr': 0.001,
+                'wall_time_ms': 5000,  # 5 seconds in milliseconds
+                'seed': 42,
+                'run_id': 'test_run',
+                'git_sha': 'abc123'
+            }, f)
+            f.write('\n')
+            f.flush()
+            
+            adapter = TRLAdapter(f.name)
+            df = adapter.load()
+            
+            # Should have wall_time column, not wall_time_ms
+            assert 'wall_time' in df.columns
+            assert 'wall_time_ms' not in df.columns
+            assert df['wall_time'].iloc[0] == 5.0  # Converted to seconds
 
 
 class TestWandBAdapter:
@@ -254,3 +282,239 @@ class TestSchemaCompatibility:
             assert metric.reward_mean == 0.5
             assert metric.kl_mean == 0.1
             assert metric.wall_time == 10.0
+    
+    def test_openrlhf_wall_time_ms_conversion(self):
+        """Test that OpenRLHF adapter converts wall_time_ms to wall_time in seconds."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
+            # Write test data with wall_time_ms
+            json.dump({
+                'step': 0,
+                'phase': 'train',
+                'reward_mean': 0.5,
+                'kl_mean': 0.1,
+                'entropy_mean': 0.8,
+                'loss': 0.4,
+                'lr': 0.001,
+                'wall_time_ms': 3000,  # 3 seconds in milliseconds
+                'seed': 42,
+                'run_id': 'test_run',
+                'git_sha': 'abc123'
+            }, f)
+            f.write('\n')
+            f.flush()
+            
+            adapter = OpenRLHFAdapter(f.name)
+            df = adapter.load()
+            
+            # Should have wall_time column, not wall_time_ms
+            assert 'wall_time' in df.columns
+            assert 'wall_time_ms' not in df.columns
+            assert df['wall_time'].iloc[0] == 3.0  # Converted to seconds
+    
+    def test_schema_loads_fixtures_correctly(self):
+        """Test that loading runs_fixtures/clean_ppo.jsonl through ingest produces correct schema."""
+        from rldk.ingest import ingest_runs
+        
+        # Load the fixture through ingest
+        df = ingest_runs('runs_fixtures/clean_ppo.jsonl')
+        
+        # Should have wall_time column
+        assert 'wall_time' in df.columns
+        
+        # Should not have wall_time_ms column
+        assert 'wall_time_ms' not in df.columns
+        
+        # Should have other required columns
+        assert 'step' in df.columns
+        assert 'reward_mean' in df.columns
+        assert 'kl_mean' in df.columns
+        
+        # Should have some data
+        assert len(df) > 0
+        
+        # Check that wall_time values are reasonable (should be in seconds, not milliseconds)
+        if df['wall_time'].notna().any():
+            wall_time_values = df['wall_time'].dropna()
+            # Wall time should be reasonable values (not in the thousands like milliseconds would be)
+            assert wall_time_values.max() < 10000  # Should be less than 10k seconds
+    
+    def test_all_adapters_wall_time_seconds(self):
+        """Test that all adapters output wall_time in seconds, not milliseconds."""
+        from rldk.ingest import ingest_runs
+        
+        # Test TRL adapter
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
+            json.dump({
+                'step': 0,
+                'phase': 'train',
+                'reward_mean': 0.5,
+                'wall_time_ms': 5000,  # 5 seconds in milliseconds
+                'seed': 42,
+                'run_id': 'test_run',
+                'git_sha': 'abc123'
+            }, f)
+            f.write('\n')
+            f.flush()
+            
+            df = ingest_runs(f.name, adapter_hint='trl')
+            assert 'wall_time' in df.columns
+            assert 'wall_time_ms' not in df.columns
+            assert 0 < df['wall_time'].iloc[0] < 1e7  # Should be in seconds, not milliseconds
+            os.unlink(f.name)
+        
+        # Test OpenRLHF adapter
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
+            json.dump({
+                'step': 0,
+                'phase': 'train',
+                'reward_mean': 0.5,
+                'wall_time_ms': 3000,  # 3 seconds in milliseconds
+                'seed': 42,
+                'run_id': 'test_run',
+                'git_sha': 'abc123'
+            }, f)
+            f.write('\n')
+            f.flush()
+            
+            df = ingest_runs(f.name, adapter_hint='openrlhf')
+            assert 'wall_time' in df.columns
+            assert 'wall_time_ms' not in df.columns
+            assert 0 < df['wall_time'].iloc[0] < 1e7  # Should be in seconds, not milliseconds
+            os.unlink(f.name)
+    
+    def test_cpu_determinism_pass(self):
+        """Test that CPU determinism check passes with identical replicas."""
+        from rldk.determinism.check import check
+        
+        # Create a simple deterministic script
+        script_content = '''
+import json
+import random
+import numpy as np
+import torch
+
+# Set seeds for determinism
+random.seed(42)
+np.random.seed(42)
+torch.manual_seed(42)
+
+# Generate deterministic metrics
+metrics = []
+for step in range(10):
+    metric = {
+        'step': step,
+        'reward_mean': 0.5 + step * 0.01,
+        'kl_mean': 0.1 + step * 0.001,
+        'entropy_mean': 0.8 - step * 0.002
+    }
+    metrics.append(metric)
+
+# Write to output file
+import sys
+output_file = sys.argv[-1]  # Last argument is output file
+with open(output_file, 'w') as f:
+    for metric in metrics:
+        json.dump(metric, f)
+        f.write('\\n')
+'''
+        
+        # Write script to temporary file
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write(script_content)
+            script_path = f.name
+        
+        try:
+            # Run determinism check
+            report = check(
+                cmd=f"python {script_path}",
+                compare=['reward_mean', 'kl_mean', 'entropy_mean'],
+                replicas=2,
+                steps=[5, 9],
+                device='cpu'
+            )
+            
+            # Should pass
+            assert report.passed, f"Determinism check failed: {report.mismatches}"
+            
+            # Should have no mismatches
+            assert len(report.mismatches) == 0
+            
+            # Should have RNG settings
+            assert 'torch_deterministic' in report.rng_map
+            assert 'torch_seed' in report.rng_map
+            
+            # CUDA settings should be marked as N/A on CPU
+            assert report.rng_map['cuda_launch_blocking'] == 'N/A (CPU only)'
+            
+            # Verify no CUDA env vars are set on CPU
+            assert 'CUDA_LAUNCH_BLOCKING' not in env
+            assert 'CUBLAS_WORKSPACE_CONFIG' not in env
+            assert 'PYTORCH_CUDA_ALLOC_CONF' not in env
+            assert 'TORCH_USE_CUDA_DSA' not in env
+            
+        finally:
+            # Clean up
+            import os
+            os.unlink(script_path)
+    
+    def test_cpu_determinism_fail(self):
+        """Test that CPU determinism check fails with non-deterministic replicas."""
+        from rldk.determinism.check import check
+        
+        # Create a non-deterministic script
+        script_content = '''
+import json
+import random
+import numpy as np
+import torch
+
+# Don't set seeds - this should be non-deterministic
+# random.seed(42)  # Commented out intentionally
+# np.random.seed(42)  # Commented out intentionally
+# torch.manual_seed(42)  # Commented out intentionally
+
+# Generate non-deterministic metrics
+metrics = []
+for step in range(10):
+    metric = {
+        'step': step,
+        'reward_mean': 0.5 + step * 0.01 + random.uniform(-0.1, 0.1),
+        'kl_mean': 0.1 + step * 0.001 + random.uniform(-0.02, 0.02),
+        'entropy_mean': 0.8 - step * 0.002 + random.uniform(-0.02, 0.02)
+    }
+    metrics.append(metric)
+
+# Write to output file
+import sys
+output_file = sys.argv[-1]  # Last argument is output file
+with open(output_file, 'w') as f:
+    for metric in metrics:
+        json.dump(metric, f)
+        f.write('\\n')
+'''
+        
+        # Write script to temporary file
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write(script_content)
+            script_path = f.name
+        
+        try:
+            # Run determinism check
+            report = check(
+                cmd=f"python {script_path}",
+                compare=['reward_mean', 'kl_mean', 'entropy_mean'],
+                replicas=2,
+                steps=[5, 9],
+                device='cpu'
+            )
+            
+            # Should fail
+            assert not report.passed, "Determinism check should have failed"
+            
+            # Should have mismatches
+            assert len(report.mismatches) > 0
+            
+        finally:
+            # Clean up
+            import os
+            os.unlink(script_path)

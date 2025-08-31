@@ -45,11 +45,8 @@ def write_drift_card(report: DivergenceReport, output_dir: Path) -> None:
         f.write("## 📁 Report Location\n\n")
         f.write(f"Full report saved to: `{report_path}`\n")
         
-        # Also save details to CSV for further analysis
-        if not report.details.empty:
-            csv_path = output_dir / "diff_events.csv"
-            report.details.to_csv(csv_path, index=False)
-            f.write(f"Detailed events saved to: `{csv_path}`\n")
+        # Note: CSV is saved separately by write_diff_report function
+        f.write(f"Detailed events saved to: `{output_dir}/diff_events.csv`\n")
         
         f.write("\n## 🔍 Analysis Parameters\n\n")
         f.write(f"- **Total divergence events:** {len(report.details)}\n")
@@ -175,3 +172,16 @@ def write_diff_report(report: DivergenceReport, output_dir: Path) -> None:
         f.write(f"- **Drift Card:** `{output_dir}/drift_card.md`\n")
         if not report.details.empty:
             f.write(f"- **Events CSV:** `{output_dir}/diff_events.csv`\n")
+
+
+def write_diff_events_csv(report: DivergenceReport, output_dir: Path) -> None:
+    """Write divergence events to CSV file."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = output_dir / "diff_events.csv"
+    
+    if not report.details.empty:
+        report.details.to_csv(csv_path, index=False)
+    else:
+        # Create empty CSV with headers if no events
+        empty_df = pd.DataFrame(columns=['step', 'signal', 'z_score', 'run_a_value', 'run_b_value', 'violation_type', 'consecutive_count'])
+        empty_df.to_csv(csv_path, index=False)
