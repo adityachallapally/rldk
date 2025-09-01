@@ -165,10 +165,11 @@ class TestFirstDivergence:
 
     def test_tolerance_sensitivity(self):
         """Test that tolerance affects detection."""
-        # Create data with small differences
+        # Create data with varying differences that will produce non-zero z-scores
         steps = list(range(100))
         base_reward = [0.5 + i * 0.01 for i in steps]
-        reward_with_diff = [r + 0.1 for r in base_reward]  # Small consistent difference
+        # Add varying differences that will create detectable z-scores
+        reward_with_diff = [r + 0.1 + (i % 10) * 0.01 for i, r in enumerate(base_reward)]
 
         df_a = pd.DataFrame({"step": steps, "reward_mean": base_reward})
         df_b = pd.DataFrame({"step": steps, "reward_mean": reward_with_diff})
