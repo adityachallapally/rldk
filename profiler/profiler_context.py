@@ -16,14 +16,18 @@ import torch
 class ProfilerContext:
     """Context manager for profiling training stages."""
     
-    def __init__(self, output_dir: str):
+    def __init__(self, output_dir: str, model_name: Optional[str] = None, config: Optional[Dict[str, Any]] = None):
         """
         Initialize profiler context.
         
         Args:
             output_dir: Directory to save stage profiling data
+            model_name: Name of the model being profiled (optional)
+            config: Configuration dictionary (optional)
         """
         self.output_dir = Path(output_dir)
+        self.model_name = model_name
+        self.config = config
         self.stages: Dict[str, List[float]] = {}
         self.current_stage: Optional[str] = None
         self.start_time: Optional[float] = None
@@ -80,6 +84,12 @@ class ProfilerContext:
             "timestamp": time.time()
         }
         
+        if self.model_name is not None:
+            stage_data["model_name"] = self.model_name
+        
+        if self.config is not None:
+            stage_data["config"] = self.config
+        
         with open(stage_times_path, 'w') as f:
             json.dump(stage_data, f, indent=2)
     
@@ -96,9 +106,17 @@ class ProfilerContext:
     
     def get_summary(self) -> Dict[str, Any]:
         """Get profiler context summary."""
-        return {
+        summary = {
             "output_dir": str(self.output_dir),
             "stages": list(self.stages.keys()),
             "average_times": self.get_average_times(),
             "total_stages": len(self.stages)
         }
+        
+        if self.model_name is not None:
+            summary["model_name"] = self.model_name
+        
+        if self.config is not None:
+            summary["config"] = self.config
+            
+        return summary
