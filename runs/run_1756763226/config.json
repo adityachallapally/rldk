@@ -1,0 +1,12 @@
+{
+  "batch_size": 32,
+  "learning_rate": 0.001,
+  "num_epochs": 3,
+  "num_steps_per_epoch": 10,
+  "input_size": 100,
+  "hidden_size": 50,
+  "output_size": 10,
+  "seed": 42,
+  "device": "cpu",
+  "profiler_enabled": true
+}

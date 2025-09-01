@@ -1,0 +1,56 @@
+{
+  "profiler_manager": {
+    "enabled": true,
+    "output_dir": "runs/run_1756763157",
+    "stage_times": {},
+    "total_steps": 10,
+    "artifacts": {
+      "trace_json": true,
+      "op_stats_csv": true,
+      "stage_times_json": true
+    }
+  },
+  "torch_profiler": {
+    "is_active": false,
+    "step_count": 0,
+    "output_dir": "runs/run_1756763157/torch_profiler",
+    "artifacts": {
+      "trace_json": false,
+      "op_stats_csv": false,
+      "memory_stats_json": false
+    }
+  },
+  "profiler_context": {
+    "output_dir": "runs/run_1756763157/profiler_context",
+    "stages": [
+      "epoch_0",
+      "forward",
+      "backward",
+      "epoch_1"
+    ],
+    "average_times": {
+      "epoch_0": 0.0006246566772460938,
+      "forward": 0.0005887031555175781,
+      "backward": 0.0008245229721069336,
+      "epoch_1": 0.00045490264892578125
+    },
+    "total_stages": 4
+  },
+  "step_profiler": {
+    "step_count": 10,
+    "average_step_time": 0.0015288829803466798,
+    "total_time": 0.015288829803466797,
+    "step_times": [
+      0.003070831298828125,
+      0.0030431747436523438,
+      0.0016183853149414062,
+      0.0012104511260986328,
+      0.0012772083282470703,
+      0.0012366771697998047,
+      0.0011844635009765625,
+      0.00089263916015625,
+      0.0005164146423339844,
+      0.0012385845184326172
+    ]
+  }
+}
