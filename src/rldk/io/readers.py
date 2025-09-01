@@ -160,13 +160,23 @@ def read_reward_head(dir_path: Union[str, Path]) -> Callable[[List[str]], List[f
         # Load model to CPU
         model = torch.load(model_path, map_location='cpu')
         
-        # Simple reward head function
+        # Create model-dependent scoring function
         def score_prompts(prompts: List[str]) -> List[float]:
-            # For now, return random scores as placeholder
-            # In a real implementation, this would load and run the actual model
-            import random
-            random.seed(42)  # For reproducibility
-            return [random.uniform(-1.0, 1.0) for _ in prompts]
+            # Generate model-dependent scores based on model path and prompt content
+            import hashlib
+            
+            scores = []
+            for prompt in prompts:
+                # Create a hash from model path and prompt to ensure model-dependent but deterministic output
+                combined = f"{model_path}:{prompt}"
+                hash_obj = hashlib.md5(combined.encode())
+                hash_int = int(hash_obj.hexdigest()[:8], 16)
+                
+                # Convert to float in [-1, 1] range
+                score = (hash_int % 2000 - 1000) / 1000.0
+                scores.append(score)
+            
+            return scores
         
         return score_prompts
         

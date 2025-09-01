@@ -47,3 +47,15 @@ def test_env_audit_nondeterminism_detection():
         
         # Check that pass is boolean
         assert isinstance(determinism_card["pass"], bool)
+
+
+def test_env_audit_boolean_flags():
+    """Test that boolean flags are properly converted."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        determinism_card, _ = audit_environment(temp_dir)
+        
+        # Check that flags are boolean
+        flags = determinism_card["flags"]
+        assert isinstance(flags["cudnn_deterministic"], bool)
+        assert isinstance(flags["cudnn_benchmark"], bool)
+        assert isinstance(flags["tokenizers_parallelism"], (str, type(None)))

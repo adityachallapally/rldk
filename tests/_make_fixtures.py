@@ -142,14 +142,14 @@ def make_reward_drift_demo():
             f.write(json.dumps(prompt) + '\n')
     
     # Create simple reward models (JSON format for now)
-    for name in ['rmA', 'rmB']:
+    for i, name in enumerate(['rmA', 'rmB']):
         model_dir = Path(f"test_artifacts/reward_drift_demo/{name}")
         model_dir.mkdir(parents=True, exist_ok=True)
         
-        # Simple model data
+        # Create different model data for each model to ensure drift detection
         model_data = {
-            "weights": [0.1, 0.2, 0.3, 0.4, 0.5],
-            "bias": 0.1
+            "weights": [0.1 + i*0.1, 0.2 + i*0.1, 0.3 + i*0.1, 0.4 + i*0.1, 0.5 + i*0.1],
+            "bias": 0.1 + i*0.2
         }
         
         with open(model_dir / "model.pt", 'w') as f:

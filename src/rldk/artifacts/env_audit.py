@@ -56,8 +56,19 @@ def collect_env_info() -> Dict[str, Any]:
     
     # Environment variables
     info["tokenizers_parallelism"] = os.environ.get("TOKENIZERS_PARALLELISM")
-    info["cudnn_deterministic"] = os.environ.get("CUDNN_DETERMINISTIC")
-    info["cudnn_benchmark"] = os.environ.get("CUDNN_BENCHMARK")
+    
+    # Convert environment variables to boolean flags
+    cudnn_deterministic_env = os.environ.get("CUDNN_DETERMINISTIC")
+    info["cudnn_deterministic"] = (
+        cudnn_deterministic_env is not None and 
+        cudnn_deterministic_env.lower() in ("1", "true", "yes", "on")
+    )
+    
+    cudnn_benchmark_env = os.environ.get("CUDNN_BENCHMARK")
+    info["cudnn_benchmark"] = (
+        cudnn_benchmark_env is None or 
+        cudnn_benchmark_env.lower() in ("1", "true", "yes", "on")
+    )
     
     # PyTorch settings
     info["torch_cudnn_deterministic"] = torch.backends.cudnn.deterministic
