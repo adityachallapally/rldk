@@ -1,11 +1,12 @@
 # Makefile for RL Debug Kit Reference Suite
 
-.PHONY: help reference\:cpu_smoke reference\:bisect_demo clean profile profile-check profile-train profile-dashboard profile-clean
+.PHONY: help reference\:cpu_smoke reference\:bisect_demo reference\:setup clean profile profile-check profile-train profile-dashboard profile-clean
 
 help:
 	@echo "RL Debug Kit Reference Suite"
 	@echo ""
 	@echo "Available targets:"
+	@echo "  reference:setup        - Setup reference runs for testing"
 	@echo "  reference:cpu_smoke    - Run CPU smoke tests and generate cards"
 	@echo "  reference:bisect_demo  - Run bisect demonstration"
 	@echo "  profile                - Run profiler test"
@@ -16,10 +17,17 @@ help:
 	@echo "  clean                  - Clean generated files"
 	@echo ""
 	@echo "Examples:"
+	@echo "  make reference:setup"
 	@echo "  make reference:cpu_smoke"
 	@echo "  make reference:bisect_demo"
 	@echo "  make profile"
 	@echo "  make profile-train"
+
+# Setup Reference Runs Target
+reference\:setup:
+	@echo "Setting up reference runs for testing..."
+	python3 scripts/setup_reference_runs.py
+	@echo "✅ Reference runs setup complete!"
 
 # CPU Smoke Test Target
 reference\:cpu_smoke:
