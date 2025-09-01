@@ -210,7 +210,7 @@ class TestCalibration:
         score, details = analyze_calibration(insufficient_data, 'reward_mean')
         
         assert score == 0.0
-        assert 'error' in details
+        assert 'human_preference' in details and 'error' in details['human_preference']
 
 
 class TestDriftDetection:
@@ -261,7 +261,7 @@ class TestDriftDetection:
             different_reference, 
             'reward_mean', 
             'step',
-            threshold=0.1
+            threshold_drift=0.1
         )
         
         # Should detect drift with clearly different distributions
@@ -278,7 +278,7 @@ class TestDriftDetection:
             similar_reference, 
             'reward_mean', 
             'step',
-            threshold=0.1
+            threshold_drift=0.1
         )
         
         # Should not detect drift with similar distributions

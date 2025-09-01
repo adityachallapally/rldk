@@ -65,7 +65,7 @@ PPOScanReportV1 = {
                 }
             }
         },
-        "earliest_step": {"type": "integer"},
+        "earliest_step": {"oneOf": [{"type": "integer"}, {"type": "null"}]},
         "stats": {
             "type": "object",
             "properties": {

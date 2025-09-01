@@ -128,7 +128,9 @@ class TestDeterminismHarness:
         mock_result1.stderr = "cuDNN convolution is non-deterministic"
         mock_result1.metrics_df = pd.DataFrame({
             'step': list(range(10)),
-            'reward_mean': [0.5 + i * 0.01 for i in range(10)]
+            'reward_mean': [0.5 + i * 0.01 for i in range(10)],
+            'kl_mean': [0.1 + i * 0.001 for i in range(10)],
+            'entropy_mean': [0.8 - i * 0.002 for i in range(10)]
         })
         
         mock_result2 = MagicMock()
@@ -136,7 +138,9 @@ class TestDeterminismHarness:
         mock_result2.stderr = "dropout operation is non-deterministic"
         mock_result2.metrics_df = pd.DataFrame({
             'step': list(range(10)),
-            'reward_mean': [0.5 + i * 0.01 for i in range(10)]
+            'reward_mean': [0.5 + i * 0.01 for i in range(10)],
+            'kl_mean': [0.1 + i * 0.001 for i in range(10)],
+            'entropy_mean': [0.8 - i * 0.002 for i in range(10)]
         })
         
         with patch('subprocess.run', side_effect=[mock_result1, mock_result2]), \
@@ -191,7 +195,9 @@ class TestDeterminismHarness:
         mock_result.stderr = ""
         mock_result.metrics_df = pd.DataFrame({
             'step': list(range(10)),
-            'reward_mean': [0.5 + i * 0.01 for i in range(10)]
+            'reward_mean': [0.5 + i * 0.01 for i in range(10)],
+            'kl_mean': [0.1 + i * 0.001 for i in range(10)],
+            'entropy_mean': [0.8 - i * 0.002 for i in range(10)]
         })
         
         with patch('subprocess.run', return_value=mock_result), \
@@ -206,7 +212,7 @@ class TestDeterminismHarness:
             # Should create RNG map
             assert 'torch_seed' in report.rng_map
             assert 'numpy_seed' in report.rng_map
-            assert 'python_hash' in report.rng_map
+            assert 'python_hash_seed' in report.rng_map
     
     def test_insufficient_replicas(self):
         """Test handling of insufficient replicas."""
@@ -216,7 +222,9 @@ class TestDeterminismHarness:
         mock_result.stderr = ""
         mock_result.metrics_df = pd.DataFrame({
             'step': list(range(10)),
-            'reward_mean': [0.5 + i * 0.01 for i in range(10)]
+            'reward_mean': [0.5 + i * 0.01 for i in range(10)],
+            'kl_mean': [0.1 + i * 0.001 for i in range(10)],
+            'entropy_mean': [0.8 - i * 0.002 for i in range(10)]
         })
         
         with patch('subprocess.run', return_value=mock_result), \
@@ -240,7 +248,9 @@ class TestDeterminismHarness:
         mock_result1.stderr = ""
         mock_result1.metrics_df = pd.DataFrame({
             'step': list(range(10)),
-            'reward_mean': [0.5 + i * 0.01 for i in range(10)]
+            'reward_mean': [0.5 + i * 0.01 for i in range(10)],
+            'kl_mean': [0.1 + i * 0.001 for i in range(10)],
+            'entropy_mean': [0.8 - i * 0.002 for i in range(10)]
         })
         
         # Create second replica that times out
@@ -270,7 +280,9 @@ class TestDeterminismHarness:
         mock_result1.stderr = ""
         mock_result1.metrics_df = pd.DataFrame({
             'step': list(range(10)),
-            'reward_mean': [0.5 + i * 0.01 for i in range(10)]
+            'reward_mean': [0.5 + i * 0.01 for i in range(10)],
+            'kl_mean': [0.1 + i * 0.001 for i in range(10)],
+            'entropy_mean': [0.8 - i * 0.002 for i in range(10)]
         })
         
         # Create second replica with empty data
@@ -298,7 +310,8 @@ class TestDeterminismHarness:
         base_data = {
             'step': steps,
             'reward_mean': [0.5 + i * 0.01 for i in steps],
-            'kl_mean': [0.1 + i * 0.001 for i in steps]
+            'kl_mean': [0.1 + i * 0.001 for i in steps],
+            'entropy_mean': [0.8 - i * 0.002 for i in steps]
         }
         
         # Create identical results

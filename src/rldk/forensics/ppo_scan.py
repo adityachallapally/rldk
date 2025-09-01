@@ -15,6 +15,7 @@ def scan_ppo_events(events: Iterator[Dict[str, Any]]) -> Dict[str, Any]:
         return {
             "version": "1",
             "rules_fired": [],
+            "earliest_step": None,
             "stats": {}
         }
     
@@ -89,7 +90,7 @@ def detect_kl_spikes(steps: List[int], kl_values: List[float]) -> List[Dict[str,
     
     # Detect spikes
     spike_threshold = 4.0
-    consecutive_threshold = 5
+    consecutive_threshold = 3  # Reduced from 5 to catch more spikes
     
     consecutive_spikes = 0
     spike_start = None

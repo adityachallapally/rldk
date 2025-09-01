@@ -416,11 +416,17 @@ def _detect_dataloader_issues(replica_results: List[subprocess.CompletedProcess]
                 # Check if the first few steps have identical values (suggesting same batch order)
                 # This is a simple heuristic - identical early steps might indicate same data order
                 if len(ref_df) >= 3 and len(rep_df) >= 3:
-                    ref_early = ref_df.head(3)[['reward_mean', 'kl_mean', 'entropy_mean']].values
-                    rep_early = rep_df.head(3)[['reward_mean', 'kl_mean', 'entropy_mean']].values
+                    # Use common columns between the two dataframes
+                    common_cols = list(set(ref_df.columns) & set(rep_df.columns))
+                    # Filter out non-numeric columns
+                    numeric_cols = [col for col in common_cols if col != 'step' and pd.api.types.is_numeric_dtype(ref_df[col])]
                     
-                    if np.array_equal(ref_early, rep_early):
-                        issues.append(f"Replica {i} shows identical early metrics - may need worker_init_fn and shuffle=False")
+                    if numeric_cols:
+                        ref_early = ref_df.head(3)[numeric_cols].values
+                        rep_early = rep_df.head(3)[numeric_cols].values
+                        
+                        if np.array_equal(ref_early, rep_early):
+                            issues.append(f"Replica {i} shows identical early metrics - may need worker_init_fn and shuffle=False")
     
     # Check stderr for DataLoader warnings
     for i, result in enumerate(replica_results):

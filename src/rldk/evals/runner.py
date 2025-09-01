@@ -53,9 +53,14 @@ def run(run_data: pd.DataFrame,
     if eval_suite is None:
         raise ValueError(f"Unknown evaluation suite: {suite}")
     
-    # Determine sample size
+    # Determine sample size - use actual data size for empty or small datasets
     if sample_size is None:
-        sample_size = eval_suite.get('default_sample_size', 100)
+        if len(run_data) == 0:
+            sample_size = 0
+        elif len(run_data) <= eval_suite.get('default_sample_size', 100):
+            sample_size = len(run_data)
+        else:
+            sample_size = eval_suite.get('default_sample_size', 100)
     
     # Sample data if needed
     if len(run_data) > sample_size:
@@ -67,30 +72,40 @@ def run(run_data: pd.DataFrame,
     raw_results = []
     scores = {}
     
-    for eval_name, eval_func in eval_suite['evaluations'].items():
-        try:
-            result = eval_func(sampled_data, seed=seed)
+    # If no data, return empty results
+    if sample_size == 0:
+        for eval_name in eval_suite['evaluations'].keys():
             raw_results.append({
                 'evaluation': eval_name,
-                'result': result,
-                'timestamp': pd.Timestamp.now().isoformat()
-            })
-            
-            # Extract score if available
-            if isinstance(result, dict) and 'score' in result:
-                scores[eval_name] = result['score']
-            elif isinstance(result, (int, float)):
-                scores[eval_name] = float(result)
-            else:
-                scores[eval_name] = np.nan
-                
-        except Exception as e:
-            raw_results.append({
-                'evaluation': eval_name,
-                'error': str(e),
+                'result': {'score': np.nan, 'details': f'{eval_name} evaluation based on 0 metrics'},
                 'timestamp': pd.Timestamp.now().isoformat()
             })
             scores[eval_name] = np.nan
+    else:
+        for eval_name, eval_func in eval_suite['evaluations'].items():
+            try:
+                result = eval_func(sampled_data, seed=seed)
+                raw_results.append({
+                    'evaluation': eval_name,
+                    'result': result,
+                    'timestamp': pd.Timestamp.now().isoformat()
+                })
+                
+                # Extract score if available
+                if isinstance(result, dict) and 'score' in result:
+                    scores[eval_name] = result['score']
+                elif isinstance(result, (int, float)):
+                    scores[eval_name] = float(result)
+                else:
+                    scores[eval_name] = np.nan
+                    
+            except Exception as e:
+                raw_results.append({
+                    'evaluation': eval_name,
+                    'error': str(e),
+                    'timestamp': pd.Timestamp.now().isoformat()
+                })
+                scores[eval_name] = np.nan
     
     # Calculate confidence intervals
     confidence_intervals = calculate_confidence_intervals(scores, sample_size)
