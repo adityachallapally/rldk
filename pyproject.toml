@@ -44,6 +44,8 @@ dependencies = [
     "nltk>=3.8",
     "tokenizers>=0.13.0",
     "jsonschema>=4.0.0",
+    "streamlit>=1.28.0",
+    "plotly>=5.0.0",
 ]
 
 [project.optional-dependencies]

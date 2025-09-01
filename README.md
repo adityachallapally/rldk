@@ -9,8 +9,11 @@ A tiny, sharp kit that makes RL work reliable, explainable, and reproducible acr
 ## 🚀 Quick Start (60 seconds)
 
 ```bash
-# Install the package
+# Install the package and all dependencies
 pip install -e .
+
+# For systems with package conflicts, use:
+# pip install -e . --break-system-packages
 
 # Generate test fixtures
 python3 tests/_make_fixtures.py
@@ -144,6 +147,42 @@ The reference suite includes three tasks:
 3. **Code Generation** - GPT-2 evaluation on MBPP dataset
 
 All tasks use pinned dataset revisions and generate strict JSONL logs with the required schema.
+
+## 🚀 Training Examples
+
+### Basic Training with Profiler
+```bash
+# Train with simple model and profiler enabled
+python train.py --profiler on
+
+# Train with profiler disabled
+python train.py --profiler off
+```
+
+### Hugging Face Model Training
+```bash
+# Train with DistilBERT (lightweight, fast)
+python examples/train_hf_model.py --model distilbert-base-uncased --profiler on
+
+# Train with BERT (larger, more accurate)
+python examples/train_hf_model.py --model bert-base-uncased --profiler on
+
+# Train with custom parameters
+python examples/train_hf_model.py \
+    --model distilbert-base-uncased \
+    --epochs 5 \
+    --batch-size 32 \
+    --learning-rate 1e-5 \
+    --profiler on
+```
+
+The Hugging Face example includes:
+- **Real transformer models** (DistilBERT, BERT, etc.)
+- **Proper tokenization** with attention masks
+- **Mean pooling fallback** for models without pooler_output
+- **Learning rate scheduling** with warmup
+- **Full profiler integration** with all artifacts
+- **Error handling** for missing dependencies
 
 ## 📚 API Examples
 
@@ -346,6 +385,64 @@ src/rldk/
 4. **Bisect**: Git bisect with metric/shell predicates → BisectResult
 5. **Forensics**: PPO-specific anomaly detection → PPOReport
 6. **Reward**: Drift detection with correlation analysis → DriftReport
+
+## 📦 Installation & Dependencies
+
+### Core Dependencies
+The package includes all necessary dependencies for the profiler system and monitoring dashboard:
+
+- **Core ML**: `torch`, `transformers`, `datasets`, `scikit-learn`
+- **Data Processing**: `numpy`, `pandas`, `scipy`
+- **Visualization**: `matplotlib`, `seaborn`, `plotly`
+- **Monitoring**: `streamlit` (for dashboard), `wandb`
+- **Utilities**: `typer`, `pydantic`, `rich`, `pyyaml`
+
+### Installation Options
+
+```bash
+# Standard installation
+pip install -e .
+
+# For systems with package conflicts (e.g., some Linux distributions)
+pip install -e . --break-system-packages
+
+# Development installation with additional tools
+pip install -e ".[dev]"
+```
+
+### Troubleshooting Installation Issues
+
+If you encounter dependency conflicts:
+
+1. **Use `--break-system-packages` flag** for systems with strict package management
+2. **Install optional dependencies separately** if needed:
+   ```bash
+   pip install streamlit --break-system-packages
+   pip install plotly --break-system-packages
+   ```
+3. **Use virtual environment** for isolated installation:
+   ```bash
+   python -m venv rldk_env
+   source rldk_env/bin/activate  # On Windows: rldk_env\Scripts\activate
+   pip install -e .
+   ```
+
+### Verify Installation
+
+Test that all dependencies are properly installed:
+
+```bash
+# Check all optional dependencies
+python test_dependencies.py
+
+# Test basic functionality
+python train.py --profiler on
+
+# Test monitoring dashboard (requires streamlit/plotly)
+python monitor/app.py
+```
+
+The dependency checker will provide helpful error messages if any optional dependencies are missing, along with specific installation commands.
 
 ## 🔧 Development
 

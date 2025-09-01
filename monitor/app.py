@@ -5,10 +5,6 @@ This dashboard provides real-time visualization of profiler metrics,
 access to profiler artifacts, and training alerts.
 """
 
-import streamlit as st
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 import json
 import os
 from pathlib import Path
@@ -19,7 +15,25 @@ import sys
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
 
-from profiler.report import ProfilerReport
+# Check dependencies before importing
+try:
+    from utils.dependency_checker import check_streamlit_dependencies
+    check_streamlit_dependencies()
+    
+    import streamlit as st
+    import pandas as pd
+    import plotly.express as px
+    import plotly.graph_objects as go
+    
+    from profiler.report import ProfilerReport
+    
+except ImportError as e:
+    print(f"❌ Error: {e}")
+    print("\n💡 To fix this, install the missing dependencies:")
+    print("   pip install streamlit plotly")
+    print("   # or with --break-system-packages if needed:")
+    print("   pip install streamlit plotly --break-system-packages")
+    sys.exit(1)
 
 
 class ProfilerDashboard:
