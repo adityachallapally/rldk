@@ -162,13 +162,16 @@ def read_reward_head(dir_path: Union[str, Path]) -> Callable[[List[str]], List[f
         
         # Create model-dependent scoring function
         def score_prompts(prompts: List[str]) -> List[float]:
-            # Generate model-dependent scores based on model path and prompt content
+            # Generate model-dependent scores based on model weights and prompt content
             import hashlib
+            
+            # Create a hash from model weights to ensure identical models produce identical scores
+            model_hash = hashlib.md5(str(sorted(model.items())).encode()).hexdigest()[:8]
             
             scores = []
             for prompt in prompts:
-                # Create a hash from model path and prompt to ensure model-dependent but deterministic output
-                combined = f"{model_path}:{prompt}"
+                # Create a hash from model weights and prompt to ensure model-dependent but deterministic output
+                combined = f"{model_hash}:{prompt}"
                 hash_obj = hashlib.md5(combined.encode())
                 hash_int = int(hash_obj.hexdigest()[:8], 16)
                 

@@ -4,6 +4,7 @@ import pytest
 import pandas as pd
 import tempfile
 import json
+import os
 from pathlib import Path
 
 from rldk.adapters.trl import TRLAdapter
@@ -377,6 +378,7 @@ class TestSchemaCompatibility:
                 'step': 0,
                 'phase': 'train',
                 'reward_mean': 0.5,
+                'kl_mean': 0.1,
                 'wall_time_ms': 3000,  # 3 seconds in milliseconds
                 'seed': 42,
                 'run_id': 'test_run',
@@ -424,7 +426,7 @@ output_file = sys.argv[-1]  # Last argument is output file
 with open(output_file, 'w') as f:
     for metric in metrics:
         json.dump(metric, f)
-        f.write('\\n')
+        f.write('\n')
 '''
         
         # Write script to temporary file
@@ -471,26 +473,31 @@ with open(output_file, 'w') as f:
         """Test that CPU determinism check fails with non-deterministic replicas."""
         from rldk.determinism.check import check
         
-        # Create a non-deterministic script
+        # Create a non-deterministic script that uses microsecond timing
         script_content = '''
 import json
-import random
-import numpy as np
-import torch
+import time
+import os
 
-# Don't set seeds - this should be non-deterministic
-# random.seed(42)  # Commented out intentionally
-# np.random.seed(42)  # Commented out intentionally
-# torch.manual_seed(42)  # Commented out intentionally
+# Use microsecond timing to create non-deterministic behavior
+# This will be different even with seeds set
+current_time = time.time()
+microseconds = int((current_time - int(current_time)) * 1000000)
 
-# Generate non-deterministic metrics
+# Generate non-deterministic metrics based on microsecond timing
 metrics = []
 for step in range(10):
+    # Use microsecond timing to create non-deterministic values
+    # Add some computation to make timing more variable
+    for _ in range(1000):  # Waste some time
+        pass
+    current_micro = int((time.time() - int(time.time())) * 1000000)
+    noise = (current_micro + step) % 0.1
     metric = {
         'step': step,
-        'reward_mean': 0.5 + step * 0.01 + random.uniform(-0.1, 0.1),
-        'kl_mean': 0.1 + step * 0.001 + random.uniform(-0.02, 0.02),
-        'entropy_mean': 0.8 - step * 0.002 + random.uniform(-0.02, 0.02)
+        'reward_mean': 0.5 + step * 0.01 + noise,
+        'kl_mean': 0.1 + step * 0.001 + noise * 0.2,
+        'entropy_mean': 0.8 - step * 0.002 + noise * 0.2
     }
     metrics.append(metric)
 
@@ -500,7 +507,7 @@ output_file = sys.argv[-1]  # Last argument is output file
 with open(output_file, 'w') as f:
     for metric in metrics:
         json.dump(metric, f)
-        f.write('\\n')
+        f.write('\n')
 '''
         
         # Write script to temporary file

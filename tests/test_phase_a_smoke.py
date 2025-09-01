@@ -18,7 +18,11 @@ def test_phase_a_end_to_end(tmp_path):
     # Clean any old reports
     if REPORTS.exists():
         for p in REPORTS.glob("*"):
-            p.unlink()
+            if p.is_file():
+                p.unlink()
+            elif p.is_dir():
+                import shutil
+                shutil.rmtree(p)
 
     # 1) Fixtures
     sh([sys.executable, "tests/_make_fixtures.py"])

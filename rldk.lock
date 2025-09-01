@@ -1,5 +1,5 @@
 # RL Debug Kit Environment Lock
-# Generated: 2025-09-01T04:47:16.176291
+# Generated: 2025-09-01T04:57:05.849043
 
 ## Environment
 Python: 3.13.3 (main, Apr  8 2025, 19:55:40) [GCC 14.2.0]
@@ -98,7 +98,7 @@ referencing==0.36.2
 regex==2025.8.29
 requests==2.32.5
 rich==14.1.0
--e git+https://github.com/adityachallapally/rldk@e76d1fcf7e4f7e79fc4025d580bfaf68876acb7e#egg=rldk
+-e git+https://github.com/adityachallapally/rldk@fa4d768465e459e1dba05019f8b91d9d4f27779b#egg=rldk
 rpds-py==0.27.1
 ruff==0.12.11
 safetensors==0.6.2
