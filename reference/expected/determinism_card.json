@@ -1,0 +1,32 @@
+{
+  "passed": false,
+  "replicas": 3,
+  "metrics_compared": ["reward_mean", "kl_mean", "entropy_mean"],
+  "replica_variance": {
+    "reward_mean": 0.0012,
+    "kl_mean": 0.0008,
+    "entropy_mean": 0.0021
+  },
+  "rng_map": {
+    "python_hash_seed": "42",
+    "torch_deterministic": "True",
+    "torch_seed": "Set per replica",
+    "numpy_seed": "Set per replica",
+    "random_seed": "Set per replica"
+  },
+  "mismatches": [
+    {
+      "step": 5,
+      "metric": "reward_mean",
+      "replica_1": 0.5234,
+      "replica_2": 0.5241,
+      "replica_3": 0.5228,
+      "variance": 0.0012
+    }
+  ],
+  "fixes": [
+    "Set torch.backends.cudnn.deterministic = True",
+    "Set torch.backends.cudnn.benchmark = False",
+    "Use torch.manual_seed() consistently"
+  ]
+}
