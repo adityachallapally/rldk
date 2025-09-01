@@ -72,13 +72,15 @@ def make_doctored_kl_spike_logs():
 
 
 def make_identical_checkpoints():
-    """Generate two identical checkpoints (simple JSON format for now)."""
-    # Create simple checkpoint data
+    """Generate two identical checkpoints as PyTorch state dicts."""
+    import torch
+    
+    # Create simple checkpoint data as tensors
     checkpoint_data = {
-        "layer1.weight": [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]],
-        "layer1.bias": [0.1, 0.2],
-        "layer2.weight": [[0.7, 0.8], [0.9, 1.0]],
-        "layer2.bias": [0.3, 0.4]
+        "layer1.weight": torch.tensor([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]], dtype=torch.float32),
+        "layer1.bias": torch.tensor([0.1, 0.2], dtype=torch.float32),
+        "layer2.weight": torch.tensor([[0.7, 0.8], [0.9, 1.0]], dtype=torch.float32),
+        "layer2.bias": torch.tensor([0.3, 0.4], dtype=torch.float32)
     }
     
     # Save identical checkpoints
@@ -86,41 +88,42 @@ def make_identical_checkpoints():
         output_path = Path(f"test_artifacts/ckpt_identical/{name}.pt")
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
-        with open(output_path, 'w') as f:
-            json.dump(checkpoint_data, f)
+        torch.save(checkpoint_data, output_path)
 
 
 def make_value_head_edit_checkpoints():
     """Generate checkpoints with edited value head."""
-    # Create base checkpoint data
+    import torch
+    
+    # Create base checkpoint data as tensors
     base_checkpoint = {
-        "layer1.weight": [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]],
-        "layer1.bias": [0.1, 0.2],
-        "value_head.weight": [[0.7, 0.8], [0.9, 1.0]],
-        "value_head.bias": [0.3, 0.4]
+        "layer1.weight": torch.tensor([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]], dtype=torch.float32),
+        "layer1.bias": torch.tensor([0.1, 0.2], dtype=torch.float32),
+        "value_head.weight": torch.tensor([[0.7, 0.8], [0.9, 1.0]], dtype=torch.float32),
+        "value_head.bias": torch.tensor([0.3, 0.4], dtype=torch.float32)
     }
     
     # Save base checkpoint
-    base_path = Path("test_artifacts/ckpt_value_head_edit/base.pt")
+    base_path = Path("test_artifacts/ckpt_value_head_edit/a.pt")
     base_path.parent.mkdir(parents=True, exist_ok=True)
     
-    with open(base_path, 'w') as f:
-        json.dump(base_checkpoint, f)
+    torch.save(base_checkpoint, base_path)
     
     # Create modified checkpoint with different value head
     modified_checkpoint = base_checkpoint.copy()
-    modified_checkpoint["value_head.weight"] = [[1.05, 1.2], [1.35, 1.5]]  # 1.5x original
-    modified_checkpoint["value_head.bias"] = [0.4, 0.5]  # +0.1 to original
+    modified_checkpoint["value_head.weight"] = torch.tensor([[1.05, 1.2], [1.35, 1.5]], dtype=torch.float32)  # 1.5x original
+    modified_checkpoint["value_head.bias"] = torch.tensor([0.4, 0.5], dtype=torch.float32)  # +0.1 to original
     
     # Save modified checkpoint
-    modified_path = Path("test_artifacts/ckpt_value_head_edit/modified.pt")
+    modified_path = Path("test_artifacts/ckpt_value_head_edit/b.pt")
     
-    with open(modified_path, 'w') as f:
-        json.dump(modified_checkpoint, f)
+    torch.save(modified_checkpoint, modified_path)
 
 
 def make_reward_drift_demo():
     """Generate reward drift demo with diverging behavior on code slice."""
+    import torch
+    
     # Create prompts
     prompts = [
         {"text": "What is 2 + 2?", "tags": ["math"]},
@@ -141,19 +144,18 @@ def make_reward_drift_demo():
         for prompt in prompts:
             f.write(json.dumps(prompt) + '\n')
     
-    # Create simple reward models (JSON format for now)
+    # Create simple reward models as PyTorch files
     for i, name in enumerate(['rmA', 'rmB']):
         model_dir = Path(f"test_artifacts/reward_drift_demo/{name}")
         model_dir.mkdir(parents=True, exist_ok=True)
         
         # Create different model data for each model to ensure drift detection
         model_data = {
-            "weights": [0.1 + i*0.1, 0.2 + i*0.1, 0.3 + i*0.1, 0.4 + i*0.1, 0.5 + i*0.1],
-            "bias": 0.1 + i*0.2
+            "weights": torch.tensor([0.1 + i*0.1, 0.2 + i*0.1, 0.3 + i*0.1, 0.4 + i*0.1, 0.5 + i*0.1], dtype=torch.float32),
+            "bias": torch.tensor(0.1 + i*0.2, dtype=torch.float32)
         }
         
-        with open(model_dir / "model.pt", 'w') as f:
-            json.dump(model_data, f)
+        torch.save(model_data, model_dir / "model.pt")
 
 
 def main():

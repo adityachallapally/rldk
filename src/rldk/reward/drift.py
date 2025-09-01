@@ -2,8 +2,9 @@
 
 import numpy as np
 import re
-from typing import Dict, Any, List
-from scipy.stats import pearsonr, spearmanr
+import pandas as pd
+from typing import Dict, Any, List, Tuple
+from scipy.stats import pearsonr, spearmanr, ks_2samp
 
 from rldk.io.readers import read_reward_head
 
@@ -88,3 +89,46 @@ def compute_slice_deltas(prompts: List[str], scores_a: List[float], scores_b: Li
             }
     
     return slice_deltas
+
+
+def detect_reward_drift(run_data: pd.DataFrame, 
+                       reference_data: pd.DataFrame,
+                       reward_col: str = 'reward_mean',
+                       step_col: str = 'step',
+                       threshold_drift: float = 0.1) -> Tuple[bool, pd.DataFrame]:
+    """
+    Detect reward drift between run data and reference data.
+    
+    Args:
+        run_data: Current run data
+        reference_data: Reference run data for comparison
+        reward_col: Column name for reward values
+        step_col: Column name for training steps
+        threshold_drift: Threshold for drift detection (KS test p-value)
+    
+    Returns:
+        Tuple of (drift_detected, drift_metrics)
+    """
+    # Ensure both datasets have the required columns
+    if reward_col not in run_data.columns or reward_col not in reference_data.columns:
+        return False, pd.DataFrame()
+    
+    # Get reward values
+    run_rewards = run_data[reward_col].dropna()
+    ref_rewards = reference_data[reward_col].dropna()
+    
+    if len(run_rewards) == 0 or len(ref_rewards) == 0:
+        return False, pd.DataFrame()
+    
+    # Perform KS test for drift detection
+    ks_statistic, p_value = ks_2samp(run_rewards, ref_rewards)
+    
+    drift_detected = p_value < threshold_drift
+    
+    # Create drift metrics DataFrame
+    drift_metrics = pd.DataFrame({
+        'metric': ['ks_statistic', 'p_value', 'drift_detected'],
+        'value': [ks_statistic, p_value, drift_detected]
+    })
+    
+    return drift_detected, drift_metrics

@@ -48,11 +48,12 @@ def diff_checkpoints(ckpt_a: str, ckpt_b: str) -> Dict[str, Any]:
         l2_norm = torch.norm(diff).item()
         
         # Compute cosine similarity
-        norm_a = torch.norm(param_a)
-        norm_b = torch.norm(param_b)
+        norm_a = torch.norm(param_a).item()
+        norm_b = torch.norm(param_b).item()
         
         if norm_a > 0 and norm_b > 0:
-            cosine_sim = torch.dot(param_a.flatten(), param_b.flatten()).item() / (norm_a * norm_b)
+            dot_product = torch.dot(param_a.flatten(), param_b.flatten()).item()
+            cosine_sim = dot_product / (norm_a * norm_b)
         else:
             cosine_sim = 1.0 if l2_norm == 0 else 0.0
         
