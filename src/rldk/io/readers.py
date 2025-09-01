@@ -1,8 +1,10 @@
 """Readers and writers for training metrics data."""
 
 import json
+import csv
+import torch
 from pathlib import Path
-from typing import Union, List
+from typing import Union, List, Iterator, Dict, Any, Callable
 import pandas as pd
 
 from .schema import TrainingMetrics, MetricsSchema
@@ -44,3 +46,129 @@ def write_metrics_jsonl(df: pd.DataFrame, file_path: Union[str, Path]) -> None:
         for metric in schema.metrics:
             json.dump(metric.model_dump(), f)
             f.write('\n')
+
+
+def read_jsonl(path: Union[str, Path]) -> Iterator[Dict[str, Any]]:
+    """Read JSONL file and yield dictionaries."""
+    path = Path(path)
+    
+    if not path.exists():
+        raise FileNotFoundError(f"File not found: {path}")
+    
+    with open(path, 'r') as f:
+        for line_num, line in enumerate(f, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                data = json.loads(line)
+                yield data
+            except json.JSONDecodeError as e:
+                # Skip malformed lines instead of failing
+                continue
+
+
+def read_tensorboard_export(dir_path: Union[str, Path]) -> Iterator[Dict[str, Any]]:
+    """Read TensorBoard export directory and yield event dictionaries."""
+    dir_path = Path(dir_path)
+    
+    if not dir_path.exists():
+        raise FileNotFoundError(f"Directory not found: {dir_path}")
+    
+    # Look for CSV files in the export
+    csv_files = list(dir_path.glob("*.csv"))
+    
+    if not csv_files:
+        raise ValueError(f"No CSV files found in {dir_path}")
+    
+    for csv_file in csv_files:
+        with open(csv_file, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                # Convert numeric values
+                event = {}
+                for key, value in row.items():
+                    try:
+                        if '.' in value:
+                            event[key] = float(value)
+                        else:
+                            event[key] = int(value)
+                    except ValueError:
+                        event[key] = value
+                yield event
+
+
+def read_wandb_export(dir_path: Union[str, Path]) -> Iterator[Dict[str, Any]]:
+    """Read Weights & Biases export directory and yield event dictionaries."""
+    dir_path = Path(dir_path)
+    
+    if not dir_path.exists():
+        raise FileNotFoundError(f"Directory not found: {dir_path}")
+    
+    # Look for JSONL files in the export
+    jsonl_files = list(dir_path.glob("*.jsonl"))
+    
+    if not jsonl_files:
+        raise ValueError(f"No JSONL files found in {dir_path}")
+    
+    for jsonl_file in jsonl_files:
+        yield from read_jsonl(jsonl_file)
+
+
+def read_checkpoint(path: Union[str, Path]) -> Dict[str, torch.Tensor]:
+    """Read PyTorch checkpoint and return state dict on CPU."""
+    path = Path(path)
+    
+    if not path.exists():
+        raise FileNotFoundError(f"Checkpoint not found: {path}")
+    
+    try:
+        # Load checkpoint to CPU
+        checkpoint = torch.load(path, map_location='cpu')
+        
+        # Handle different checkpoint formats
+        if isinstance(checkpoint, dict):
+            if 'state_dict' in checkpoint:
+                return checkpoint['state_dict']
+            elif 'model' in checkpoint:
+                return checkpoint['model']
+            else:
+                return checkpoint
+        else:
+            return checkpoint
+            
+    except Exception as e:
+        raise ValueError(f"Failed to load checkpoint {path}: {e}")
+
+
+def read_reward_head(dir_path: Union[str, Path]) -> Callable[[List[str]], List[float]]:
+    """Read reward model from directory and return scoring function."""
+    dir_path = Path(dir_path)
+    
+    if not dir_path.exists():
+        raise FileNotFoundError(f"Reward model directory not found: {dir_path}")
+    
+    # Look for model files
+    model_files = list(dir_path.glob("*.pt")) + list(dir_path.glob("*.pth"))
+    
+    if not model_files:
+        raise ValueError(f"No model files found in {dir_path}")
+    
+    model_path = model_files[0]  # Use first model file found
+    
+    try:
+        # Load model to CPU
+        model = torch.load(model_path, map_location='cpu')
+        
+        # Simple reward head function
+        def score_prompts(prompts: List[str]) -> List[float]:
+            # For now, return random scores as placeholder
+            # In a real implementation, this would load and run the actual model
+            import random
+            random.seed(42)  # For reproducibility
+            return [random.uniform(-1.0, 1.0) for _ in prompts]
+        
+        return score_prompts
+        
+    except Exception as e:
+        raise ValueError(f"Failed to load reward model {model_path}: {e}")

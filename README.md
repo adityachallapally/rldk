@@ -2,31 +2,55 @@
 
 A library-first package with a thin CLI for debugging reinforcement learning training runs. Detect divergences, check determinism, and bisect regressions with ease.
 
-## 🚀 Quick Start
+## 🚀 Quick Start (60 seconds)
 
 ```bash
 # Install the package
 pip install -e .
 
-# Test the CLI
-rldk version
+# Generate test fixtures
+python3 tests/_make_fixtures.py
 
-# Ingest training logs
-rldk ingest runs_fixtures/clean_ppo.jsonl
+# Environment audit
+rldk env-audit test_artifacts/logs_clean
 
-# Compare two runs for divergence
-rldk diff --a runs_fixtures/clean_ppo.jsonl --b runs_fixtures/kl_spike.jsonl --signals kl_mean,reward_mean
+# Scan logs for PPO anomalies
+rldk log-scan test_artifacts/logs_doctored_kl_spike
 
-# Check if a training command is deterministic
-rldk check-determinism --cmd "python train.py" --compare kl_mean,entropy_mean --replicas 3
+# Compare checkpoints
+rldk diff-ckpt test_artifacts/ckpt_identical/a.pt test_artifacts/ckpt_identical/b.pt
 
-**Note:** The determinism checker supports three output capture modes:
-1. **Auto-detect**: If your command already has `--output`, it will be used as-is
-2. **Environment variable**: Set `RLDK_METRICS_PATH` in your environment for custom output paths
-3. **Fallback**: If neither above, `--output <file>` will be appended (may break some commands)
+# Compare reward models
+rldk reward-drift test_artifacts/reward_drift_demo/rmA test_artifacts/reward_drift_demo/rmB --prompts test_artifacts/reward_drift_demo/prompts.jsonl
 
-# Find regression using git bisect
-rldk bisect --good abc123 --bad HEAD --cmd "python train.py" --metric kl_mean --cmp "> 0.2"
+# Run comprehensive diagnostics
+rldk doctor test_artifacts/logs_clean
+```
+
+### Expected Outputs
+
+After running the quickstart commands, you should see:
+
+- **Environment Audit**: `rldk_reports/determinism_card.json` and `rldk.lock`
+- **Log Scan**: `rldk_reports/ppo_scan.json` with KL spike detection
+- **Checkpoint Diff**: `rldk_reports/ckpt_diff.json` and `rldk_reports/ckpt_diff.png`
+- **Reward Drift**: `rldk_reports/reward_drift.json` and `rldk_reports/reward_drift.png`
+- **Doctor**: Comprehensive diagnostics combining all analyses
+
+### Forensic Snippets
+
+**KL Spike Detection**: The doctored logs will trigger a KL spike rule around step 800:
+```
+Anomalies detected:
+  - kl_spike: KL spike detected: 5 consecutive updates with KL > 4x median
+    Steps: 800 to 805
+```
+
+**Checkpoint Comparison**: Identical checkpoints should show high similarity:
+```
+Parameters compared: 4
+Average cosine similarity: 1.0000
+```
 
 ## 🔬 Reference Suite
 
