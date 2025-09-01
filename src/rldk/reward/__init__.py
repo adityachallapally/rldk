@@ -1,4 +1,4 @@
-"""Reward health analysis module for RL Debug Kit."""
+"""Reward module for RL Debug Kit."""
 
 from .health import health, RewardHealthReport
 

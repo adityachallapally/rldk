@@ -15,11 +15,19 @@ from rldk.evals import run
 from rldk.io.reward_writers import generate_reward_health_report
 from rldk.replay import replay
 
+# Import new forensics and reward CLI modules
+from rldk.cli_forensics import app as forensics_app
+from rldk.cli_reward import app as reward_app
+
 app = typer.Typer(
     name="rldk",
     help="RL Debug Kit - Library and CLI for debugging reinforcement learning training runs",
     add_completion=False,
 )
+
+# Add sub-apps for forensics and reward commands
+app.add_typer(forensics_app, name="forensics")
+app.add_typer(reward_app, name="reward")
 
 
 @app.command(name="ingest")
@@ -405,6 +413,65 @@ def eval_cmd(
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(1)
+
+
+# Add individual forensics commands to main app
+@app.command(name="compare-runs")
+def compare_runs(
+    run_a: str = typer.Argument(..., help="Path to first run directory"),
+    run_b: str = typer.Argument(..., help="Path to second run directory"),
+):
+    """Compare two training runs and identify divergences."""
+    from rldk.cli_forensics import compare_runs as _compare_runs
+    _compare_runs(run_a, run_b)
+
+
+@app.command(name="diff-ckpt")
+def diff_ckpt(
+    ckpt_a: str = typer.Argument(..., help="Path to first checkpoint"),
+    ckpt_b: str = typer.Argument(..., help="Path to second checkpoint"),
+):
+    """Compare two model checkpoints and identify parameter differences."""
+    from rldk.cli_forensics import diff_ckpt as _diff_ckpt
+    _diff_ckpt(ckpt_a, ckpt_b)
+
+
+@app.command(name="env-audit")
+def env_audit(
+    repo_or_run: str = typer.Argument(..., help="Path to repository or run directory"),
+):
+    """Audit environment for determinism and reproducibility."""
+    from rldk.cli_forensics import env_audit as _env_audit
+    _env_audit(repo_or_run)
+
+
+@app.command(name="log-scan")
+def log_scan(
+    run_or_export: str = typer.Argument(..., help="Path to run or export directory"),
+):
+    """Scan training logs for PPO anomalies and issues."""
+    from rldk.cli_forensics import log_scan as _log_scan
+    _log_scan(run_or_export)
+
+
+@app.command(name="reward-drift")
+def reward_drift(
+    model_a: str = typer.Argument(..., help="Path to first reward model directory"),
+    model_b: str = typer.Argument(..., help="Path to second reward model directory"),
+    prompts: str = typer.Option(..., "--prompts", "-p", help="Path to prompts JSONL file"),
+):
+    """Compare two reward models and detect drift."""
+    from rldk.cli_reward import reward_drift as _reward_drift
+    _reward_drift(model_a, model_b, prompts)
+
+
+@app.command(name="doctor")
+def doctor(
+    run_or_repo: str = typer.Argument(..., help="Path to run or repository directory"),
+):
+    """Run comprehensive diagnostics on a training run or repository."""
+    from rldk.cli_forensics import doctor as _doctor
+    _doctor(run_or_repo)
 
 
 @app.command(name="version")
