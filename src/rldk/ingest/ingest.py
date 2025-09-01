@@ -1,11 +1,12 @@
 """Main ingest function for training runs."""
 
 from pathlib import Path
-from typing import Union, Optional
+from typing import Union, Optional, List
 import pandas as pd
 
 from ..adapters import TRLAdapter, OpenRLHFAdapter, WandBAdapter, CustomJSONLAdapter
 from ..io import write_metrics_jsonl
+from ..io.event_schema import Event, dataframe_to_events
 
 
 def ingest_runs(source: Union[str, Path], adapter_hint: Optional[str] = None) -> pd.DataFrame:
@@ -61,6 +62,30 @@ def ingest_runs(source: Union[str, Path], adapter_hint: Optional[str] = None) ->
     df = df.sort_values('step').reset_index(drop=True)
     
     return df[required_cols]
+
+
+def ingest_runs_to_events(source: Union[str, Path], adapter_hint: Optional[str] = None) -> List[Event]:
+    """
+    Ingest training runs and convert to normalized Event objects.
+    
+    Args:
+        source: Path to logs directory, file, or wandb:// URI
+        adapter_hint: Optional hint for adapter type ('trl', 'openrlhf', 'wandb')
+    
+    Returns:
+        List of Event objects with normalized training data
+    """
+    # Get the DataFrame first
+    df = ingest_runs(source, adapter_hint)
+    
+    # Extract run_id from the data
+    run_id = df['run_id'].iloc[0] if 'run_id' in df.columns and not df['run_id'].isna().all() else str(source)
+    git_sha = df['git_sha'].iloc[0] if 'git_sha' in df.columns and not df['git_sha'].isna().all() else None
+    
+    # Convert to events
+    events = dataframe_to_events(df, run_id, git_sha)
+    
+    return events
 
 
 def _detect_adapter_type(source: Union[str, Path]) -> str:

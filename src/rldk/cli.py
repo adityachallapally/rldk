@@ -20,6 +20,10 @@ from rldk.replay import replay
 from rldk.cli_forensics import app as forensics_app
 from rldk.cli_reward import app as reward_app
 
+# Import card generation modules
+from rldk.cards import generate_determinism_card, generate_drift_card, generate_reward_card
+from rldk.ingest import ingest_runs_to_events
+
 app = typer.Typer(
     name="rldk",
     help="RL Debug Kit - Library and CLI for debugging reinforcement learning training runs",
@@ -518,6 +522,85 @@ def version():
     """Show version information."""
     from rldk import __version__
     typer.echo(f"RL Debug Kit version {__version__}")
+
+
+# Card generation commands
+@app.command(name="card")
+def card(
+    card_type: str = typer.Argument(..., help="Type of card to generate (determinism, drift, reward)"),
+    run_a: str = typer.Argument(..., help="Path to first run directory"),
+    run_b: Optional[str] = typer.Argument(None, help="Path to second run directory (for drift cards)"),
+    output_dir: Optional[str] = typer.Option(None, "--output-dir", "-o", help="Output directory for cards"),
+):
+    """Generate trust cards for RL training runs."""
+    try:
+        if card_type == "determinism":
+            typer.echo(f"Generating determinism card for run: {run_a}")
+            
+            # Ingest events
+            events = ingest_runs_to_events(run_a)
+            
+            # Generate card
+            card_data = generate_determinism_card(events, run_a, output_dir)
+            
+            typer.echo(f"✅ Determinism card generated")
+            typer.echo(f"  Status: {'PASS' if card_data['passed'] else 'FAIL'}")
+            typer.echo(f"  Replicas: {card_data['replicas']}")
+            typer.echo(f"  Issues: {len(card_data['nondeterminism_hints'])}")
+            
+        elif card_type == "drift":
+            if not run_b:
+                typer.echo("Error: drift cards require two runs", err=True)
+                raise typer.Exit(1)
+            
+            typer.echo(f"Generating drift card comparing runs:")
+            typer.echo(f"  Run A: {run_a}")
+            typer.echo(f"  Run B: {run_b}")
+            
+            # Ingest events
+            events_a = ingest_runs_to_events(run_a)
+            events_b = ingest_runs_to_events(run_b)
+            
+            # Generate card
+            card_data = generate_drift_card(events_a, events_b, run_a, run_b, output_dir)
+            
+            typer.echo(f"✅ Drift card generated")
+            typer.echo(f"  Diverged: {'Yes' if card_data['diverged'] else 'No'}")
+            if card_data['first_step']:
+                typer.echo(f"  First divergence: Step {card_data['first_step']}")
+            typer.echo(f"  Signals tripped: {len(card_data['tripped_signals'])}")
+            
+        elif card_type == "reward":
+            typer.echo(f"Generating reward card for run: {run_a}")
+            
+            # Ingest events
+            events = ingest_runs_to_events(run_a)
+            
+            # Generate card
+            card_data = generate_reward_card(events, run_a, output_dir)
+            
+            typer.echo(f"✅ Reward card generated")
+            typer.echo(f"  Status: {'HEALTHY' if card_data['passed'] else 'ISSUES'}")
+            typer.echo(f"  Calibration: {card_data['calibration_score']:.2f}")
+            typer.echo(f"  Drift detected: {'Yes' if card_data['drift_detected'] else 'No'}")
+            
+        else:
+            typer.echo(f"Error: Unknown card type '{card_type}'", err=True)
+            typer.echo("Available types: determinism, drift, reward", err=True)
+            raise typer.Exit(1)
+        
+        # Show output location
+        if output_dir:
+            typer.echo(f"\nCards saved to: {output_dir}")
+        else:
+            typer.echo(f"\nCards saved to runs/run_id/rldk_cards/")
+        
+        typer.echo("  - card_name.json")
+        typer.echo("  - card_name.png")
+        
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":

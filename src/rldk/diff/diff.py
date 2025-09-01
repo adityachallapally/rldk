@@ -7,6 +7,8 @@ import pandas as pd
 import numpy as np
 from scipy import stats
 
+from ..io.event_schema import Event
+
 
 @dataclass
 class DivergenceReport:
@@ -61,88 +63,40 @@ def first_divergence(
             details=pd.DataFrame(),
             suspected_causes=["Insufficient common steps for analysis"]
         )
+
+
+def first_divergence_events(
+    events_a: List[Event],
+    events_b: List[Event],
+    signals: List[str],
+    k_consecutive: int = 3,
+    window: int = 50,
+    tolerance: float = 2.0,
+    output_dir: str = "diff_analysis"
+) -> DivergenceReport:
+    """
+    Find first divergence between two training runs using Event objects.
     
-    # Align data
-    df_a_aligned = df_a.loc[common_steps]
-    df_b_aligned = df_b.loc[common_steps]
+    Args:
+        events_a: List of Event objects for run A
+        events_b: List of Event objects for run B
+        signals: List of metric names to monitor
+        k_consecutive: Number of consecutive violations required
+        window: Rolling window size for z-score calculation
+        tolerance: Z-score threshold for violation detection
+        output_dir: Directory to save analysis results
     
-    # Calculate rolling z-scores for each signal
-    divergence_events = []
-    tripped_signals = set()
-    first_divergence_step = None
+    Returns:
+        DivergenceReport with analysis results
+    """
+    # Convert events to DataFrames for analysis
+    from ..io.event_schema import events_to_dataframe
     
-    for signal in signals:
-        if signal not in df_a_aligned.columns or signal not in df_b_aligned.columns:
-            continue
-        
-        # Calculate rolling z-scores
-        z_scores = _calculate_rolling_z_scores(
-            df_a_aligned[signal], 
-            df_b_aligned[signal], 
-            window
-        )
-        
-        # Find violations of k-consecutive rule
-        violations = _find_k_consecutive_violations(z_scores, k_consecutive, tolerance)
-        
-        for violation in violations:
-            step = common_steps[violation['end_idx']]
-            divergence_events.append({
-                'step': step,
-                'signal': signal,
-                'z_score': violation['z_score'],
-                'run_a_value': df_a_aligned.loc[step, signal],
-                'run_b_value': df_b_aligned.loc[step, signal],
-                'violation_type': violation['type'],
-                'consecutive_count': violation['consecutive_count']
-            })
-            
-            tripped_signals.add(signal)
-            
-            if first_divergence_step is None or step < first_divergence_step:
-                first_divergence_step = step
+    df_a = events_to_dataframe(events_a)
+    df_b = events_to_dataframe(events_b)
     
-    # Determine if divergence occurred
-    diverged = len(divergence_events) > 0
-    
-    # Generate notes
-    notes = []
-    if diverged:
-        notes.append(f"Divergence detected using {k_consecutive}-consecutive rule")
-        notes.append(f"Rolling window size: {window}")
-        notes.append(f"Signals monitored: {', '.join(signals)}")
-    else:
-        notes.append("No significant divergence detected")
-        notes.append(f"Threshold: {k_consecutive} consecutive violations")
-        notes.append(f"Rolling window size: {window}")
-    
-    # Create report paths
-    output_path = Path(output_dir)
-    report_path = str(output_path / "diff_report.md")
-    events_csv_path = str(output_path / "diff_events.csv")
-    
-    # Save events to CSV
-    if divergence_events:
-        events_df = pd.DataFrame(divergence_events)
-        output_path.mkdir(parents=True, exist_ok=True)
-        events_df.to_csv(events_csv_path, index=False)
-    
-    # Create details DataFrame
-    details_df = pd.DataFrame(divergence_events)
-    
-    # Generate suspected causes
-    suspected_causes = _analyze_suspected_causes(divergence_events, df_a_aligned, df_b_aligned)
-    
-    return DivergenceReport(
-        diverged=diverged,
-        first_step=first_divergence_step,
-        tripped_signals=list(tripped_signals),
-        notes=notes,
-        report_path=report_path,
-        events_csv_path=events_csv_path,
-        details=details_df,
-        suspected_causes=suspected_causes
-    )
+    # Use the existing DataFrame-based analysis
+    return first_divergence(df_a, df_b, signals, k_consecutive, window, tolerance, output_dir)
 
 
 def _calculate_rolling_z_scores(
