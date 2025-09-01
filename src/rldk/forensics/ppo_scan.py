@@ -15,6 +15,7 @@ def scan_ppo_events(events: Iterator[Dict[str, Any]]) -> Dict[str, Any]:
         return {
             "version": "1",
             "rules_fired": [],
+            "earliest_step": None,
             "stats": {}
         }
     

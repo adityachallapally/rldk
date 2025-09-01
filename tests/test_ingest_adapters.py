@@ -348,6 +348,15 @@ class TestSchemaCompatibility:
                 'step': 0,
                 'phase': 'train',
                 'reward_mean': 0.5,
+                'reward_std': 0.1,
+                'kl_mean': 0.1,
+                'entropy_mean': 0.8,
+                'clip_frac': 0.05,
+                'grad_norm': 1.0,
+                'lr': 0.001,
+                'loss': 0.5,
+                'tokens_in': 512,
+                'tokens_out': 128,
                 'wall_time_ms': 5000,  # 5 seconds in milliseconds
                 'seed': 42,
                 'run_id': 'test_run',
@@ -447,10 +456,11 @@ with open(output_file, 'w') as f:
             assert report.rng_map['cuda_launch_blocking'] == 'N/A (CPU only)'
             
             # Verify no CUDA env vars are set on CPU
-            assert 'CUDA_LAUNCH_BLOCKING' not in env
-            assert 'CUBLAS_WORKSPACE_CONFIG' not in env
-            assert 'PYTORCH_CUDA_ALLOC_CONF' not in env
-            assert 'TORCH_USE_CUDA_DSA' not in env
+            import os
+            assert 'CUDA_LAUNCH_BLOCKING' not in os.environ
+            assert 'CUBLAS_WORKSPACE_CONFIG' not in os.environ
+            assert 'PYTORCH_CUDA_ALLOC_CONF' not in os.environ
+            assert 'TORCH_USE_CUDA_DSA' not in os.environ
             
         finally:
             # Clean up

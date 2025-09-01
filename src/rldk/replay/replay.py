@@ -132,9 +132,9 @@ def _prepare_replay_command(command: str, seed: int) -> str:
     """Prepare the replay command with seed argument."""
     # Check if command already has --seed
     if '--seed' in command:
-        # Replace existing seed
+        # Replace first existing seed only
         import re
-        command = re.sub(r'--seed\s+\d+', f'--seed {seed}', command)
+        command = re.sub(r'--seed\s+\d+', f'--seed {seed}', command, count=1)
     else:
         # Add seed argument
         command = f"{command} --seed {seed}"
@@ -293,6 +293,7 @@ def _compare_metrics(
                 metric_stats['tolerance_violations'] += 1
                 metric_mismatches.append({
                     'step': step,
+                    'metric': metric,
                     'original': orig_val,
                     'replay': replay_val,
                     'absolute_diff': abs(replay_val - orig_val),
@@ -326,14 +327,29 @@ def _save_replay_results(report: ReplayReport, output_path: Path):
     
     # Save comparison report
     comparison_file = output_path / "replay_comparison.json"
+    # Convert numpy types to Python types for JSON serialization
+    def convert_numpy_types(obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, dict):
+            return {k: convert_numpy_types(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_numpy_types(item) for item in obj]
+        else:
+            return obj
+    
     comparison_data = {
         'passed': report.passed,
-        'original_seed': report.original_seed,
-        'replay_seed': report.replay_seed,
+        'original_seed': convert_numpy_types(report.original_seed),
+        'replay_seed': convert_numpy_types(report.replay_seed),
         'metrics_compared': report.metrics_compared,
         'tolerance': report.tolerance,
         'tolerance_violations': len(report.mismatches),
-        'comparison_stats': report.comparison_stats,
+        'comparison_stats': convert_numpy_types(report.comparison_stats),
         'replay_command': report.replay_command,
         'replay_duration': report.replay_duration
     }

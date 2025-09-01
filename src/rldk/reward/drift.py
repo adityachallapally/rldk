@@ -110,8 +110,10 @@ def detect_reward_drift(run_data: pd.DataFrame,
         Tuple of (drift_detected, drift_metrics)
     """
     # Ensure both datasets have the required columns
-    if reward_col not in run_data.columns or reward_col not in reference_data.columns:
-        return False, pd.DataFrame()
+    if reward_col not in run_data.columns:
+        raise ValueError(f"Column '{reward_col}' not found in run_data")
+    if reward_col not in reference_data.columns:
+        raise ValueError(f"Column '{reward_col}' not found in reference_data")
     
     # Get reward values
     run_rewards = run_data[reward_col].dropna()
@@ -123,7 +125,7 @@ def detect_reward_drift(run_data: pd.DataFrame,
     # Perform KS test for drift detection
     ks_statistic, p_value = ks_2samp(run_rewards, ref_rewards)
     
-    drift_detected = p_value < threshold_drift
+    drift_detected = bool(p_value < threshold_drift)
     
     # Create drift metrics DataFrame
     drift_metrics = pd.DataFrame({
