@@ -106,11 +106,12 @@ class RLHFTrainer:
         self.run_dir = self.output_dir / self.run_id
         self.run_dir.mkdir(parents=True, exist_ok=True)
         
-        # Initialize profiler components
+        # Initialize profiler components - all use the same run directory for unified artifacts
         if self.profiler_enabled:
             self.profiler_manager = ProfilerManager(str(self.run_dir), enabled=True)
-            self.torch_profiler = TorchProfiler(str(self.run_dir / "torch_profiler"))
-            self.profiler_context = ProfilerContext(str(self.run_dir / "profiler_context"))
+            # Use ProfilerManager for all profiling - it already includes TorchProfiler functionality
+            self.torch_profiler = None  # Disabled to avoid conflicts
+            self.profiler_context = ProfilerContext(str(self.run_dir))  # Use main run directory
             self.step_profiler = StepProfiler()
         else:
             self.profiler_manager = None
@@ -165,7 +166,8 @@ class RLHFTrainer:
         inputs, targets = inputs.to(self.config.device), targets.to(self.config.device)
         
         # Forward pass
-        with self.profiler_context.stage("forward") if self.profiler_context else nullcontext():
+        with self.profiler_context.stage("forward") if self.profiler_context else nullcontext(), \
+             self.profiler_manager.stage("forward") if self.profiler_manager else nullcontext():
             if self.step_profiler:
                 self.step_profiler.forward_pass()
             
@@ -173,7 +175,8 @@ class RLHFTrainer:
             loss = self.criterion(outputs, targets)
         
         # Backward pass
-        with self.profiler_context.stage("backward") if self.profiler_context else nullcontext():
+        with self.profiler_context.stage("backward") if self.profiler_context else nullcontext(), \
+             self.profiler_manager.stage("backward") if self.profiler_manager else nullcontext():
             if self.step_profiler:
                 self.step_profiler.backward_pass()
             
@@ -198,8 +201,6 @@ class RLHFTrainer:
         # Step profilers
         if self.profiler_manager:
             self.profiler_manager.step_profiler()
-        if self.torch_profiler:
-            self.torch_profiler.step()
         
         return {
             "loss": loss.item(),
@@ -217,8 +218,12 @@ class RLHFTrainer:
         # Start profiling
         if self.profiler_enabled:
             print("Starting profilers...")
-            self.profiler_manager.start_profiling(warmup_steps=2, active_steps=5, repeat=2)
-            self.torch_profiler.start()
+            try:
+                self.profiler_manager.start_profiling(warmup_steps=1, active_steps=3, repeat=1)
+                print("Profilers started successfully")
+            except Exception as e:
+                print(f"Warning: Failed to start some profilers: {e}")
+                print("Continuing with training without full profiling...")
         
         # Create data loader
         data_loader = self._create_dummy_data()
@@ -247,10 +252,19 @@ class RLHFTrainer:
         # Stop profiling
         if self.profiler_enabled:
             print("Stopping profilers...")
-            self.profiler_manager.stop_profiling()
-            self.torch_profiler.stop()
-            self.profiler_context.save_stage_times()
-            self.profiler_manager.save_stage_times()
+            try:
+                self.profiler_manager.stop_profiling()
+                self.profiler_context.save_stage_times()
+                self.profiler_manager.save_stage_times()
+                print("Profilers stopped successfully")
+            except Exception as e:
+                print(f"Warning: Error stopping profilers: {e}")
+                # Try to save what we can
+                try:
+                    self.profiler_context.save_stage_times()
+                    self.profiler_manager.save_stage_times()
+                except:
+                    pass
         
         # Save training results
         self._save_training_results()
@@ -291,7 +305,6 @@ class RLHFTrainer:
         if self.profiler_enabled:
             profiler_summary = {
                 "profiler_manager": self.profiler_manager.get_profiler_summary(),
-                "torch_profiler": self.torch_profiler.get_summary(),
                 "profiler_context": self.profiler_context.get_summary(),
                 "step_profiler": self.step_profiler.get_summary()
             }

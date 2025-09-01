@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from contextlib import contextmanager
+import torch
 
 
 class ProfilerContext:
@@ -40,7 +41,12 @@ class ProfilerContext:
         """
         self.start_stage(stage_name)
         try:
-            yield
+            # Add custom event to PyTorch profiler if available
+            if hasattr(torch.profiler, 'record_function'):
+                with torch.profiler.record_function(f"stage_{stage_name}"):
+                    yield
+            else:
+                yield
         finally:
             self.end_stage()
     
