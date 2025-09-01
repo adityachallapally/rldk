@@ -1,0 +1,8 @@
+{
+  "total_steps": 10,
+  "total_epochs": 2,
+  "final_loss": 0.6610244512557983,
+  "final_accuracy": 0.625,
+  "average_step_time": 0.26056275367736814,
+  "average_epoch_time": 1.3075084686279297
+}
