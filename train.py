@@ -47,6 +47,31 @@ class SimpleModel(nn.Module):
         return self.layers(x)
 
 
+class LargeModel(nn.Module):
+    """Large model for comprehensive profiler testing."""
+    
+    def __init__(self, input_size: int = 512, hidden_size: int = 1024, output_size: int = 100):
+        super().__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(input_size, hidden_size),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(hidden_size, hidden_size // 2),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(hidden_size // 2, output_size)
+        )
+    
+    def forward(self, x):
+        return self.layers(x)
+
+
 class TrainingConfig:
     """Training configuration."""
     
@@ -119,11 +144,18 @@ class RLHFTrainer:
             self.step_profiler = None
         
         # Initialize model and training components
-        self.model = SimpleModel(
-            self.config.input_size,
-            self.config.hidden_size,
-            self.config.output_size
-        ).to(self.config.device)
+        if hasattr(self.config, 'use_large_model') and self.config.use_large_model:
+            self.model = LargeModel(
+                self.config.input_size,
+                self.config.hidden_size,
+                self.config.output_size
+            ).to(self.config.device)
+        else:
+            self.model = SimpleModel(
+                self.config.input_size,
+                self.config.hidden_size,
+                self.config.output_size
+            ).to(self.config.device)
         
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.config.learning_rate)
         self.criterion = nn.CrossEntropyLoss()
@@ -326,6 +358,7 @@ def main():
     parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
     parser.add_argument("--learning-rate", type=float, default=0.001, help="Learning rate")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument("--large-model", action="store_true", help="Use large model for comprehensive testing")
     
     args = parser.parse_args()
     
@@ -336,6 +369,13 @@ def main():
     config.batch_size = args.batch_size
     config.learning_rate = args.learning_rate
     config.seed = args.seed
+    config.use_large_model = args.large_model
+    
+    # Adjust model size for large model
+    if args.large_model:
+        config.input_size = 512
+        config.hidden_size = 1024
+        config.output_size = 100
     
     # Create trainer
     profiler_enabled = args.profiler == "on"
