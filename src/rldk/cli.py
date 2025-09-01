@@ -25,7 +25,7 @@ from rldk.cards import (
     generate_drift_card,
     generate_reward_card,
 )
-from rldk.ingest import ingest_runs
+from rldk.ingest import ingest_runs, ingest_runs_to_events
 
 app = typer.Typer(
     name="rldk",
@@ -158,7 +158,9 @@ def diff(
         # Display results
         if report.diverged:
             typer.echo(f"\n🚨 Divergence detected at step {report.first_step}")
-            typer.echo(f"Tripped signals: {', '.join(report.tripped_signals)}")
+            # Format tripped signals (now a list of dicts with 'signal' key)
+            signal_names = [signal_info["signal"] for signal_info in report.tripped_signals]
+            typer.echo(f"Tripped signals: {', '.join(signal_names)}")
         else:
             typer.echo("\n✅ No significant divergence detected")
 

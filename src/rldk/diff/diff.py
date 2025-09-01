@@ -143,8 +143,17 @@ def first_divergence(
     )
     
     # Save report
+    def json_serializer(obj):
+        """Custom JSON serializer for numpy types."""
+        if hasattr(obj, 'item'):  # numpy scalars
+            return obj.item()
+        elif hasattr(obj, 'tolist'):  # numpy arrays
+            return obj.tolist()
+        else:
+            return str(obj)
+    
     with open(report_path, 'w') as f:
-        json.dump(report.__dict__, f, indent=2, default=str)
+        json.dump(report.__dict__, f, indent=2, default=json_serializer)
     
     return report
 

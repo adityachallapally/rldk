@@ -20,8 +20,17 @@ def write_json(report: Dict[str, Any], path: Union[str, Path]) -> None:
     # Ensure directory exists
     path.parent.mkdir(parents=True, exist_ok=True)
 
+    def json_serializer(obj):
+        """Custom JSON serializer for numpy types."""
+        if hasattr(obj, 'item'):  # numpy scalars
+            return obj.item()
+        elif hasattr(obj, 'tolist'):  # numpy arrays
+            return obj.tolist()
+        else:
+            return str(obj)
+    
     with open(path, "w") as f:
-        json.dump(report, f, indent=2)
+        json.dump(report, f, indent=2, default=json_serializer)
 
 
 def write_png(fig: plt.Figure, path: Union[str, Path]) -> None:
