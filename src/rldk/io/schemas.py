@@ -21,8 +21,8 @@ DeterminismCardV1 = {
         "rng": {
             "type": "object",
             "properties": {
-                "python": {"type": "integer"},
-                "torch": {"type": "integer"}
+                "python": {"oneOf": [{"type": "integer"}, {"type": "null"}]},
+                "torch": {"oneOf": [{"type": "integer"}, {"type": "null"}]}
             }
         },
         "flags": {

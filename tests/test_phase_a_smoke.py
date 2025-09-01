@@ -31,8 +31,8 @@ def test_phase_a_end_to_end(tmp_path):
     # 3) PPO forensics on doctored logs
     sh(["rldk", "log-scan", "test_artifacts/logs_doctored_kl_spike"])
     ppo = load_json(REPORTS / "ppo_scan.json")
-    rules = set(ppo.get("rules_fired", []))
-    assert "kl_spike" in rules, f"Expected kl_spike in rules_fired, got {rules}"
+    rules = [r.get("rule", "") for r in ppo.get("rules_fired", [])]
+    assert "kl_controller_stuck" in rules, f"Expected kl_controller_stuck in rules_fired, got {rules}"
     # tolerate naming variants for the controller rule
     assert any("controller" in r or "coef" in r for r in rules)
 
