@@ -137,3 +137,145 @@ RewardDriftReportV1 = {
         }
     }
 }
+
+
+# Card schemas
+DeterminismCardV2 = {
+    "type": "object",
+    "required": ["version", "run_id", "generated_at", "passed", "replicas", "metrics_compared", "replica_variance", "rng_map", "mismatches", "fixes", "nondeterminism_hints", "flags"],
+    "properties": {
+        "version": {"type": "string"},
+        "run_id": {"type": "string"},
+        "generated_at": {"type": "string"},
+        "passed": {"type": "boolean"},
+        "replicas": {"type": "integer"},
+        "metrics_compared": {"type": "array", "items": {"type": "string"}},
+        "replica_variance": {
+            "type": "object",
+            "additionalProperties": {"type": "number"}
+        },
+        "rng_map": {
+            "type": "object",
+            "properties": {
+                "python_hash_seed": {"oneOf": [{"type": "string"}, {"type": "null"}]},
+                "torch_deterministic": {"type": "boolean"},
+                "torch_seed": {"oneOf": [{"type": "string"}, {"type": "null"}]},
+                "numpy_seed": {"oneOf": [{"type": "string"}, {"type": "null"}]},
+                "random_seed": {"oneOf": [{"type": "string"}, {"type": "null"}]}
+            }
+        },
+        "mismatches": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["step", "metric", "replica_1", "replica_2", "variance"],
+                "properties": {
+                    "step": {"type": "integer"},
+                    "metric": {"type": "string"},
+                    "replica_1": {"type": "number"},
+                    "replica_2": {"type": "number"},
+                    "variance": {"type": "number"}
+                }
+            }
+        },
+        "fixes": {"type": "array", "items": {"type": "string"}},
+        "nondeterminism_hints": {"type": "array", "items": {"type": "string"}},
+        "flags": {
+            "type": "object",
+            "required": ["cudnn_deterministic", "cudnn_benchmark", "tokenizers_parallelism"],
+            "properties": {
+                "cudnn_deterministic": {"type": "boolean"},
+                "cudnn_benchmark": {"type": "boolean"},
+                "tokenizers_parallelism": {"oneOf": [{"type": "string"}, {"type": "null"}]}
+            }
+        }
+    }
+}
+
+
+DriftCardV1 = {
+    "type": "object",
+    "required": ["version", "run_a", "run_b", "generated_at", "diverged", "first_step", "tripped_signals", "suspected_causes", "repro", "details", "notes"],
+    "properties": {
+        "version": {"type": "string"},
+        "run_a": {"type": "string"},
+        "run_b": {"type": "string"},
+        "generated_at": {"type": "string"},
+        "diverged": {"type": "boolean"},
+        "first_step": {"oneOf": [{"type": "integer"}, {"type": "null"}]},
+        "tripped_signals": {"type": "array", "items": {"type": "string"}},
+        "suspected_causes": {"type": "array", "items": {"type": "string"}},
+        "repro": {
+            "type": "object",
+            "required": ["command", "changes"],
+            "properties": {
+                "command": {"type": "string"},
+                "changes": {"type": "array", "items": {"type": "string"}}
+            }
+        },
+        "details": {
+            "type": "object",
+            "properties": {
+                "kl_divergence": {
+                    "type": "object",
+                    "additionalProperties": {"type": "number"}
+                },
+                "reward_drift": {
+                    "type": "object",
+                    "required": ["correlation", "mae"],
+                    "properties": {
+                        "correlation": {"type": "number"},
+                        "mae": {"type": "number"}
+                    }
+                },
+                "metric_correlations": {
+                    "type": "object",
+                    "additionalProperties": {"type": "number"}
+                },
+                "drift_patterns": {
+                    "type": "object",
+                    "additionalProperties": {"type": "number"}
+                }
+            }
+        },
+        "notes": {"type": "array", "items": {"type": "string"}}
+    }
+}
+
+
+RewardCardV1 = {
+    "type": "object",
+    "required": ["version", "run_id", "generated_at", "passed", "drift_detected", "calibration_score", "saturation_detected", "shortcut_signals", "label_noise", "metrics", "slice_analysis", "recommendations"],
+    "properties": {
+        "version": {"type": "string"},
+        "run_id": {"type": "string"},
+        "generated_at": {"type": "string"},
+        "passed": {"type": "boolean"},
+        "drift_detected": {"type": "boolean"},
+        "calibration_score": {"type": "number"},
+        "saturation_detected": {"type": "boolean"},
+        "shortcut_signals": {"type": "array", "items": {"type": "string"}},
+        "label_noise": {"type": "number"},
+        "metrics": {
+            "type": "object",
+            "required": ["correlation", "mae", "l2_distance"],
+            "properties": {
+                "correlation": {"type": "number"},
+                "mae": {"type": "number"},
+                "l2_distance": {"type": "number"}
+            }
+        },
+        "slice_analysis": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object",
+                "required": ["delta_mean", "n_samples"],
+                "properties": {
+                    "delta_mean": {"type": "number"},
+                    "n_samples": {"type": "integer"}
+                }
+            }
+        },
+        "recommendations": {"type": "array", "items": {"type": "string"}}
+    }
+}
