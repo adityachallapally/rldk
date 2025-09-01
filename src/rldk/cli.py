@@ -102,9 +102,34 @@ def diff(
         
         # Write reports
         output_path = Path(output_dir)
-        write_diff_report(report, output_path)
-        write_drift_card(report, output_path)
-        write_diff_events_csv(report, output_path)
+        output_path.mkdir(parents=True, exist_ok=True)
+        
+        # Create diff report JSON
+        diff_report = {
+            "version": "1",
+            "diverged": report.diverged,
+            "first_step": report.first_step,
+            "tripped_signals": report.tripped_signals,
+            "notes": report.notes,
+            "suspected_causes": report.suspected_causes
+        }
+        write_json(diff_report, output_path / "diff_report.json")
+        
+        # Create drift card JSON
+        drift_card = {
+            "version": "1",
+            "diverged": report.diverged,
+            "first_step": report.first_step,
+            "signals_monitored": signals,
+            "k_consecutive": k,
+            "window_size": window,
+            "tolerance": tolerance
+        }
+        write_json(drift_card, output_path / "drift_card.json")
+        
+        # Save events CSV if details exist
+        if not report.details.empty:
+            report.details.to_csv(output_path / "diff_events.csv", index=False)
         
         # Display results
         if report.diverged:
@@ -114,8 +139,8 @@ def diff(
             typer.echo("\n✅ No significant divergence detected")
         
         typer.echo(f"\nReports saved to: {output_dir}")
-        typer.echo(f"  - diff_report.md")
-        typer.echo(f"  - drift_card.md")
+        typer.echo(f"  - diff_report.json")
+        typer.echo(f"  - drift_card.json")
         if not report.details.empty:
             typer.echo(f"  - diff_events.csv")
         
@@ -156,7 +181,20 @@ def check_determinism_cmd(
         
         # Write report
         output_path = Path(output_dir)
-        write_determinism_card(report, output_path)
+        output_path.mkdir(parents=True, exist_ok=True)
+        
+        # Create determinism card JSON
+        determinism_card = {
+            "version": "1",
+            "passed": report.passed,
+            "culprit": report.culprit,
+            "fixes": report.fixes,
+            "replica_variance": report.replica_variance,
+            "rng_map": report.rng_map,
+            "mismatches": report.mismatches,
+            "dataloader_notes": report.dataloader_notes
+        }
+        write_json(determinism_card, output_path / "determinism_card.json")
         
         # Display results
         if report.passed:
@@ -170,7 +208,7 @@ def check_determinism_cmd(
                 for fix in report.fixes[:3]:  # Show first 3 fixes
                     typer.echo(f"  - {fix}")
         
-        typer.echo(f"\nReport saved to: {output_dir}/determinism_card.md")
+        typer.echo(f"\nReport saved to: {output_dir}/determinism_card.json")
         
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
