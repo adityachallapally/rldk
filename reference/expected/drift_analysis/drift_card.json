@@ -1,0 +1,16 @@
+{
+  "version": "1",
+  "diverged": false,
+  "first_step": null,
+  "signals_monitored": [
+    "sample_id",
+    "input_ids_sha256",
+    "attention_mask_sha256",
+    "outputs.text",
+    "reward_scalar",
+    "loss"
+  ],
+  "k_consecutive": 3,
+  "window_size": 50,
+  "tolerance": 2.0
+}

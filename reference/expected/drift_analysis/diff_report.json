@@ -1,0 +1,14 @@
+{
+  "version": "1",
+  "diverged": false,
+  "first_step": null,
+  "tripped_signals": [],
+  "notes": [
+    "No significant divergence detected",
+    "Threshold: 3 consecutive violations",
+    "Rolling window size: 50"
+  ],
+  "suspected_causes": [
+    "No obvious cause identified - may be due to numerical instability"
+  ]
+}

@@ -71,7 +71,7 @@ def test_reward_card_structure():
             data = json.load(f)
             
         # Check for required keys (adjust based on actual reward health card structure)
-        required_keys = ["passed", "drift_detected", "calibration_score"]
+        required_keys = ["overall_status", "drift_detected", "calibration_score"]
         for key in required_keys:
             assert key in data, f"Reward health card missing required key: {key}"
 
