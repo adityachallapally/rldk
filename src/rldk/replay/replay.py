@@ -10,8 +10,8 @@ from typing import List, Dict, Any, Optional, Union
 import pandas as pd
 import numpy as np
 
-from ..ingest import ingest_runs
-from ..determinism.check import _get_deterministic_env, _detect_device
+from rldk.ingest import ingest_runs
+from rldk.determinism.check import _get_deterministic_env, _detect_device
 
 
 @dataclass
