@@ -1,6 +1,10 @@
 # RL Debug Kit (rldk)
 
-A library-first package with a thin CLI for debugging reinforcement learning training runs. Detect divergences, check determinism, and bisect regressions with ease.
+**The gold standard companion for LLM + RL** - a tiny, sharp kit that makes RL work reliable, explainable, and reproducible across any trainer or stack. No lock-in. Batteries included for determinism, drift, data, reward health, and evals.
+
+## 🎯 North Star
+
+A tiny, sharp kit that makes RL work reliable, explainable, and reproducible across any trainer or stack. No lock in. Batteries included for determinism, drift, data, reward health, and evals.
 
 ## 🚀 Quick Start (60 seconds)
 
@@ -11,16 +15,19 @@ pip install -e .
 # Generate test fixtures
 python3 tests/_make_fixtures.py
 
-# Environment audit
+# Compare runs to detect divergence
+rldk compare-runs test_artifacts/logs_clean test_artifacts/logs_doctored_kl_spike
+
+# Diff checkpoints to find changes
+rldk diff-ckpt test_artifacts/ckpt_identical/a.pt test_artifacts/ckpt_value_head_edit/b.pt
+
+# Environment audit for determinism
 rldk env-audit test_artifacts/logs_clean
 
 # Scan logs for PPO anomalies
 rldk log-scan test_artifacts/logs_doctored_kl_spike
 
-# Compare checkpoints
-rldk diff-ckpt test_artifacts/ckpt_identical/a.pt test_artifacts/ckpt_identical/b.pt
-
-# Compare reward models
+# Detect reward model drift
 rldk reward-drift test_artifacts/reward_drift_demo/rmA test_artifacts/reward_drift_demo/rmB --prompts test_artifacts/reward_drift_demo/prompts.jsonl
 
 # Run comprehensive diagnostics
@@ -31,9 +38,10 @@ rldk doctor test_artifacts/logs_clean
 
 After running the quickstart commands, you should see:
 
+- **Compare Runs**: `rldk_reports/divergence_report.json` with first divergence step
+- **Checkpoint Diff**: `rldk_reports/ckpt_diff.json` and `rldk_reports/ckpt_diff.png` with top movers
 - **Environment Audit**: `rldk_reports/determinism_card.json` and `rldk.lock`
-- **Log Scan**: `rldk_reports/ppo_scan.json` with KL spike detection
-- **Checkpoint Diff**: `rldk_reports/ckpt_diff.json` and `rldk_reports/ckpt_diff.png`
+- **Log Scan**: `rldk_reports/ppo_scan.json` with KL spike detection and gradient ratio analysis
 - **Reward Drift**: `rldk_reports/reward_drift.json` and `rldk_reports/reward_drift.png`
 - **Doctor**: Comprehensive diagnostics combining all analyses
 
@@ -44,13 +52,52 @@ After running the quickstart commands, you should see:
 Anomalies detected:
   - kl_spike: KL spike detected: 5 consecutive updates with KL > 4x median
     Steps: 800 to 805
+    Details: KL penalty stayed near 0.001 while KL spiked to 0.15
 ```
 
-**Checkpoint Comparison**: Identical checkpoints should show high similarity:
+**Value Head Collapse**: Checkpoint comparison reveals value head changes:
 ```
-Parameters compared: 4
-Average cosine similarity: 1.0000
+Top parameter movers:
+  - model.value_head.weight: cosine=0.87, L2=0.13
+  - model.value_head.bias: cosine=0.92, L2=0.08
+Gradient norm ratio fell from 1.2 to 0.03 - potential value head collapse
 ```
+
+## 🎯 Core Principles
+
+1. **Attach not replace**: Sit beside TRL, OpenRLHF, vLLM, LlamaIndex, Ray
+2. **One command to confidence**: Every feature proves or falsifies a claim in a single run
+3. **Reproducibility first**: Seeds, environment capture, artifact pinning
+4. **Notebook friendly plus CI friendly**: Identical outputs in both
+
+## 🔬 Phase A: Forensics Core (Current Focus)
+
+**Purpose**: Immediate value on any laptop. No keys, no GPU. Make the repo scream real RLHF debugging.
+
+### New Commands
+
+- `rldk compare-runs A B` - Detect first divergence between runs
+- `rldk diff-ckpt ckptA ckptB` - Compare checkpoint parameters with top movers
+- `rldk env-audit <repo_or_run>` - Audit environment for determinism risks
+- `rldk log-scan <run_or_export>` - PPO forensics with KL and gradient health
+- `rldk reward-drift modelA modelB --prompts test.jsonl` - Detect reward model drift
+- `rldk doctor` - Comprehensive health check
+
+### PPO Forensics Inside log-scan
+
+- **KL schedule health**: Detect spikes and static controller while KL drifts
+- **Policy versus value gradient ratio**: Flag collapse or explosion
+- **Advantage sanity**: Mean, spread, sign rate and reward hacking pattern
+
+### Tokenizer Parallelism and Determinism Audit
+
+- Report `TOKENIZERS_PARALLELISM` and known torch and cudnn flags
+- Scan logs for tokenizer fork warnings
+- Emit `rldk.lock` and a Determinism Card JSON
+
+### Reward Model Drift Detector
+
+- Correlation, z scored distance, sign flip rate, slice deltas
 
 ## 🔬 Reference Suite
 
@@ -97,7 +144,6 @@ The reference suite includes three tasks:
 3. **Code Generation** - GPT-2 evaluation on MBPP dataset
 
 All tasks use pinned dataset revisions and generate strict JSONL logs with the required schema.
-```
 
 ## 📚 API Examples
 
@@ -175,7 +221,28 @@ print(f"Iterations: {result.iterations}")
 
 ## 🖥️ CLI Cheatsheet
 
-### Ingest Command
+### Forensics Commands
+```bash
+# Compare runs to detect divergence
+rldk compare-runs <run_a> <run_b>
+
+# Diff checkpoints to find parameter changes
+rldk diff-ckpt <ckpt_a> <ckpt_b>
+
+# Environment audit for determinism
+rldk env-audit <repo_or_run>
+
+# Scan logs for PPO anomalies
+rldk log-scan <run_or_export>
+
+# Detect reward model drift
+rldk reward-drift <model_a> <model_b> --prompts <prompts.jsonl>
+
+# Comprehensive health check
+rldk doctor <run_or_export>
+```
+
+### Legacy Commands (Still Supported)
 ```bash
 # Basic usage
 rldk ingest <path_or_wandb_uri>
@@ -247,14 +314,23 @@ rldk bisect --good v1.0 --bad HEAD --shell-predicate "python test.py"
 ```
 src/rldk/
 ├── __init__.py          # Main package exports
-├── cli.py              # Typer CLI implementation
+├── cli_forensics.py     # New forensics CLI commands
+├── cli_reward.py        # Reward-specific CLI commands
+├── artifacts/           # Artifact analysis
+│   ├── ckpt_diff.py    # Checkpoint comparison
+│   ├── env_audit.py    # Environment determinism audit
+│   └── log_scan.py     # Generic log scanning
+├── forensics/           # PPO-specific forensics
+│   └── ppo_scan.py     # PPO anomaly detection
+├── reward/              # Reward model analysis
+│   └── drift.py        # Reward drift detection
 ├── adapters/           # Log format adapters
 │   ├── base.py        # Base adapter class
 │   ├── trl.py         # TRL logs adapter
 │   ├── openrlhf.py    # OpenRLHF logs adapter
 │   └── wandb.py       # Weights & Biases adapter
 ├── io/                 # I/O utilities
-│   ├── schema.py      # Pydantic schemas
+│   ├── schemas.py     # Pydantic schemas
 │   ├── readers.py     # JSONL readers/writers
 │   └── writers.py     # Report generators
 ├── ingest/            # Main ingest functionality
@@ -268,6 +344,8 @@ src/rldk/
 2. **Diff**: Rolling z-score analysis with k-consecutive rule → DivergenceReport
 3. **Determinism**: Run command twice with deterministic flags → DeterminismReport
 4. **Bisect**: Git bisect with metric/shell predicates → BisectResult
+5. **Forensics**: PPO-specific anomaly detection → PPOReport
+6. **Reward**: Drift detection with correlation analysis → DriftReport
 
 ## 🔧 Development
 
@@ -307,11 +385,14 @@ pytest tests/test_diff.py -v
 - **OpenRLHF logs**: JSONL files with OpenRLHF-specific fields  
 - **Weights & Biases**: `wandb://entity/project/run_id` URIs
 - **Generic JSONL**: Standardized metrics format
+- **Checkpoints**: PyTorch .pt files, SafeTensors, HuggingFace models
 
 ### Output Formats
 - **JSONL**: Standardized training metrics
 - **Markdown**: Human-readable divergence and determinism reports
 - **CSV**: Detailed divergence events for further analysis
+- **PNG**: Small plots for reports and cards
+- **JSON**: Structured reports for CI/CD integration
 
 ## 🎯 Use Cases
 
@@ -319,16 +400,87 @@ pytest tests/test_diff.py -v
 - Detect when runs diverge unexpectedly
 - Identify the exact step of divergence
 - Compare multiple training configurations
+- Find parameter changes in checkpoints
 
 ### Reproducibility
 - Ensure training is deterministic
 - Get specific PyTorch fixes for non-deterministic operations
 - Validate random seed handling
+- Capture environment state for replay
 
 ### Regression Detection
 - Find which commit introduced a bug
 - Use metric-based or shell-based predicates
 - Automate regression testing in CI/CD
+
+### PPO Forensics
+- Detect KL spikes and controller failures
+- Monitor gradient ratio health
+- Track advantage statistics
+- Identify reward hacking patterns
+
+### Reward Model Health
+- Detect drift between model versions
+- Analyze correlation changes
+- Identify problematic slices
+- Validate reward model consistency
+
+## 🔮 Roadmap
+
+### Phase A: Forensics Core (Current)
+- [x] PPO forensics with KL and gradient health
+- [x] Checkpoint comparison with top movers
+- [x] Environment determinism audit
+- [x] Reward drift detection
+- [x] Comprehensive health diagnostics
+
+### Phase B: Trust Cards and Normalized Events
+- [ ] Normalized event schema
+- [ ] Cards as first-class artifacts
+- [ ] CLI for generating trust cards
+- [ ] Stable filenames and field reference
+
+### Phase C: Dataset Lineage and Split Integrity
+- [ ] Lineage auditor for content addressing
+- [ ] Simple leak and dup detector
+- [ ] CLI for data audit
+- [ ] Stable hashes across machines
+
+### Phase D: Minimal Repro Bundle and Bisect Polish
+- [ ] Repro packer for shareable proofs
+- [ ] Bisect upgrades with caching
+- [ ] One-line repro scripts
+- [ ] Tolerance-based verification
+
+### Phase E: Quick Eval Suite
+- [ ] Seedable micro tasks
+- [ ] KL to reference tracking
+- [ ] Confidence intervals
+- [ ] CPU-friendly evaluation
+
+### Phase F: Adapter Protocol and Support Matrix
+- [ ] Adapter protocol for cross-stack support
+- [ ] TRL and OpenRLHF adapters
+- [ ] Support matrix autogen
+- [ ] Contributor guide for new adapters
+
+### Phase G: Safety and Reward Side Effects
+- [ ] Side effect scanners
+- [ ] Toxicity and jailbreak detection
+- [ ] Regurgitation proxy
+- [ ] Configurable thresholds
+
+### Phase H: Visibility and Trust Flywheel
+- [ ] PyPI publish with artifacts
+- [ ] Real bug demonstration
+- [ ] Determinism Checklist PDF
+- [ ] Weekly bug posts
+
+### Optional Phase I: Test Time Autopilot
+- [ ] Best of N strategies
+- [ ] Self-consistency methods
+- [ ] Budget-aware inference
+- [ ] Accuracy vs cost optimization
 
 ## 🤝 Contributing
 
@@ -342,14 +494,6 @@ pytest tests/test_diff.py -v
 ## 📄 License
 
 MIT License - see LICENSE file for details.
-
-## 🔮 Roadmap
-
-- [ ] Dashboard for interactive analysis
-- [ ] Support for more log formats (RLlib, Stable Baselines3)
-- [ ] Advanced divergence detection algorithms
-- [ ] Integration with experiment tracking platforms
-- [ ] Performance profiling and optimization
 
 ---
 
