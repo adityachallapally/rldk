@@ -1,0 +1,17 @@
+{
+  "timestamp": 1756760581.0520084,
+  "profiler_dir": "runs/profiler_test",
+  "artifacts": {
+    "trace_json": false,
+    "op_stats_csv": false,
+    "stage_times_json": false,
+    "memory_stats_json": false
+  },
+  "stage_times": null,
+  "operation_stats": null,
+  "memory_stats": null,
+  "summary": {
+    "total_artifacts": 0,
+    "profiling_successful": false
+  }
+}
