@@ -2,46 +2,6 @@
   "version": "1",
   "rules_fired": [
     {
-      "rule": "kl_controller_stuck",
-      "description": "KL controller stuck: 49 consecutive updates with KL outside [0.01, 0.15] and coef change < 5.0%",
-      "step_range": [
-        800,
-        849
-      ]
-    },
-    {
-      "rule": "kl_controller_stuck",
-      "description": "KL controller stuck: 67 consecutive updates with KL outside [0.01, 0.15] and coef change < 5.0%",
-      "step_range": [
-        851,
-        918
-      ]
-    },
-    {
-      "rule": "kl_controller_stuck",
-      "description": "KL controller stuck: 20 consecutive updates with KL outside [0.01, 0.15] and coef change < 5.0%",
-      "step_range": [
-        920,
-        940
-      ]
-    },
-    {
-      "rule": "kl_controller_stuck",
-      "description": "KL controller stuck: 24 consecutive updates with KL outside [0.01, 0.15] and coef change < 5.0%",
-      "step_range": [
-        944,
-        968
-      ]
-    },
-    {
-      "rule": "kl_controller_stuck",
-      "description": "KL controller stuck: 21 consecutive updates with KL outside [0.01, 0.15] and coef change < 5.0%",
-      "step_range": [
-        978,
-        999
-      ]
-    },
-    {
       "rule": "advantage_reward_hacking",
       "description": "Potential reward hacking: advantage rising, entropy falling, KL rising at step 9",
       "step_range": [
@@ -1336,132 +1296,12 @@
         780,
         785
       ]
-    },
-    {
-      "rule": "advantage_reward_hacking",
-      "description": "Potential reward hacking: advantage rising, entropy falling, KL rising at step 945",
-      "step_range": [
-        940,
-        945
-      ]
-    },
-    {
-      "rule": "advantage_reward_hacking",
-      "description": "Potential reward hacking: advantage rising, entropy falling, KL rising at step 946",
-      "step_range": [
-        941,
-        946
-      ]
-    },
-    {
-      "rule": "advantage_reward_hacking",
-      "description": "Potential reward hacking: advantage rising, entropy falling, KL rising at step 947",
-      "step_range": [
-        942,
-        947
-      ]
-    },
-    {
-      "rule": "advantage_reward_hacking",
-      "description": "Potential reward hacking: advantage rising, entropy falling, KL rising at step 951",
-      "step_range": [
-        946,
-        951
-      ]
-    },
-    {
-      "rule": "advantage_reward_hacking",
-      "description": "Potential reward hacking: advantage rising, entropy falling, KL rising at step 952",
-      "step_range": [
-        947,
-        952
-      ]
-    },
-    {
-      "rule": "advantage_reward_hacking",
-      "description": "Potential reward hacking: advantage rising, entropy falling, KL rising at step 953",
-      "step_range": [
-        948,
-        953
-      ]
-    },
-    {
-      "rule": "advantage_reward_hacking",
-      "description": "Potential reward hacking: advantage rising, entropy falling, KL rising at step 958",
-      "step_range": [
-        953,
-        958
-      ]
-    },
-    {
-      "rule": "advantage_reward_hacking",
-      "description": "Potential reward hacking: advantage rising, entropy falling, KL rising at step 959",
-      "step_range": [
-        954,
-        959
-      ]
-    },
-    {
-      "rule": "advantage_reward_hacking",
-      "description": "Potential reward hacking: advantage rising, entropy falling, KL rising at step 963",
-      "step_range": [
-        958,
-        963
-      ]
-    },
-    {
-      "rule": "advantage_reward_hacking",
-      "description": "Potential reward hacking: advantage rising, entropy falling, KL rising at step 965",
-      "step_range": [
-        960,
-        965
-      ]
-    },
-    {
-      "rule": "advantage_reward_hacking",
-      "description": "Potential reward hacking: advantage rising, entropy falling, KL rising at step 982",
-      "step_range": [
-        977,
-        982
-      ]
-    },
-    {
-      "rule": "advantage_reward_hacking",
-      "description": "Potential reward hacking: advantage rising, entropy falling, KL rising at step 984",
-      "step_range": [
-        979,
-        984
-      ]
-    },
-    {
-      "rule": "advantage_reward_hacking",
-      "description": "Potential reward hacking: advantage rising, entropy falling, KL rising at step 986",
-      "step_range": [
-        981,
-        986
-      ]
-    },
-    {
-      "rule": "advantage_reward_hacking",
-      "description": "Potential reward hacking: advantage rising, entropy falling, KL rising at step 987",
-      "step_range": [
-        982,
-        987
-      ]
-    },
-    {
-      "rule": "advantage_reward_hacking",
-      "description": "Potential reward hacking: advantage rising, entropy falling, KL rising at step 999",
-      "step_range": [
-        994,
-        999
-      ]
     }
   ],
   "earliest_step": 0,
   "stats": {
-    "kl_median": 0.05573519804227527,
-    "grad_ratio_median": 1.6729288633284214,
+    "kl_median": 0.05315322262416586,
+    "grad_ratio_median": 1.6722975974123737,
     "entropy_trend": "stable"
   }
 }
