@@ -9,24 +9,24 @@
   },
   "top_movers": [
     {
-      "name": "layer1.bias",
-      "l2": 0.0,
-      "cosine": 1.0000001133545728
-    },
-    {
       "name": "layer1.weight",
       "l2": 0.0,
       "cosine": 0.9999999674490221
     },
     {
-      "name": "layer2.weight",
+      "name": "layer1.bias",
       "l2": 0.0,
-      "cosine": 0.9999999466792094
+      "cosine": 1.0000001133545728
     },
     {
       "name": "layer2.bias",
       "l2": 0.0,
       "cosine": 1.0
+    },
+    {
+      "name": "layer2.weight",
+      "l2": 0.0,
+      "cosine": 0.9999999466792094
     }
   ],
   "notes": []
