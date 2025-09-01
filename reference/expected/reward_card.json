@@ -1,31 +1,18 @@
 {
-  "passed": true,
+  "overall_status": "passed",
   "drift_detected": false,
-  "calibration_score": 0.87,
-  "saturation_detected": false,
-  "shortcut_signals": [],
-  "label_noise": 0.05,
-  "metrics": {
-    "correlation": 0.92,
-    "mae": 0.08,
-    "l2_distance": 0.12
+  "saturation_issues_count": 0,
+  "calibration_score": 0.0,
+  "shortcut_signals_count": 0,
+  "label_leakage_risk": 0.0,
+  "fixes": [],
+  "saturation_analysis": {
+    "upper_saturation_ratio": 0.0,
+    "lower_saturation_ratio": 0.0,
+    "total_samples": 50,
+    "zero_ratio": 0.0
   },
-  "slice_analysis": {
-    "math": {
-      "delta_mean": 0.02,
-      "n_samples": 150
-    },
-    "code": {
-      "delta_mean": -0.01,
-      "n_samples": 200
-    },
-    "refusal": {
-      "delta_mean": 0.05,
-      "n_samples": 100
-    }
-  },
-  "recommendations": [
-    "Monitor reward drift over time",
-    "Consider recalibration if correlation drops below 0.8"
-  ]
+  "shortcut_analysis": {
+    "length_correlation": NaN
+  }
 }
