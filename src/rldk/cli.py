@@ -4,6 +4,7 @@ import typer
 from pathlib import Path
 from typing import List, Optional
 import pandas as pd
+import numpy as np
 
 from rldk.ingest import ingest_runs
 from rldk.diff import first_divergence
