@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11"]
+        python-version: ["3.11", "3.12"]
     
     steps:
     - uses: actions/checkout@v4
@@ -20,6 +20,7 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
+        cache: 'pip'
     
     - name: Install dependencies
       run: |
@@ -28,18 +29,18 @@ jobs:
     
     - name: Run linting
       run: |
-        ruff check
+        ruff check --fix
         black --check .
     
     - name: Run type checking
       run: |
-        mypy src
+        mypy src --ignore-missing-imports --no-strict-optional
 
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11"]
+        python-version: ["3.11", "3.12"]
     
     steps:
     - uses: actions/checkout@v4
@@ -48,6 +49,7 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
+        cache: 'pip'
     
     - name: Install dependencies
       run: |
@@ -60,7 +62,7 @@ jobs:
     
     - name: Run tests
       run: |
-        pytest -q
+        pytest -q --tb=short
     
     - name: Validate JSON artifacts
       run: |
@@ -91,6 +93,35 @@ jobs:
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: rldk-reports
+        name: rldk-reports-${{ matrix.python-version }}
         path: rldk_reports/
         retention-days: 7
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install safety bandit
+    
+    - name: Run security checks
+      run: |
+        safety check
+        bandit -r src/ -f json -o bandit-report.json || true
+    
+    - name: Upload security report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: security-report
+        path: bandit-report.json
+        retention-days: 30

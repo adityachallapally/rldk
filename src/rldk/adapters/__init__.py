@@ -8,7 +8,7 @@ from .custom_jsonl import CustomJSONLAdapter
 
 __all__ = [
     "BaseAdapter",
-    "TRLAdapter", 
+    "TRLAdapter",
     "OpenRLHFAdapter",
     "WandBAdapter",
     "CustomJSONLAdapter",

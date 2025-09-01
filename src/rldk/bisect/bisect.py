@@ -1,19 +1,15 @@
 """Git bisect wrapper for finding regressions."""
 
 import subprocess
-import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Union, List
-import pandas as pd
-
-from ..io import read_metrics_jsonl
+from typing import Optional
 
 
 @dataclass
 class BisectResult:
     """Result of git bisect operation."""
-    
+
     culprit_sha: str
     iterations: int
     logs_path: str
@@ -26,11 +22,11 @@ def bisect_commits(
     metric: Optional[str] = None,
     cmp: Optional[str] = None,
     window: int = 100,
-    shell_predicate: Optional[str] = None
+    shell_predicate: Optional[str] = None,
 ) -> BisectResult:
     """
     Find regression using git bisect.
-    
+
     Args:
         good_sha: Known good commit SHA
         bad_sha: Known bad commit SHA (default: HEAD)
@@ -39,50 +35,48 @@ def bisect_commits(
         cmp: Comparison operator (e.g., "> 0.2")
         window: Window size for metric statistics
         shell_predicate: Shell command that returns non-zero on failure
-    
+
     Returns:
         BisectResult with culprit commit and iteration count
     """
     # Validate inputs
     if not cmd and not shell_predicate:
         raise ValueError("Either cmd or shell_predicate must be provided")
-    
+
     if metric and not cmp:
         raise ValueError("cmp must be provided when using metric")
-    
+
     # Start git bisect
     _start_bisect(good_sha, bad_sha)
-    
+
     # Create bisect script
     if shell_predicate:
         script_content = _create_shell_bisect_script(shell_predicate)
     else:
         script_content = _create_metric_bisect_script(cmd, metric, cmp, window)
-    
+
     script_path = Path("bisect_script.sh")
-    with open(script_path, 'w') as f:
+    with open(script_path, "w") as f:
         f.write(script_content)
-    
+
     script_path.chmod(0o755)
-    
+
     try:
         # Run git bisect
         result = _run_git_bisect(script_path)
-        
+
         # Parse results
         culprit_sha, iterations = _parse_bisect_result(result)
-        
+
         return BisectResult(
-            culprit_sha=culprit_sha,
-            iterations=iterations,
-            logs_path="bisect_logs.txt"
+            culprit_sha=culprit_sha, iterations=iterations, logs_path="bisect_logs.txt"
         )
-    
+
     finally:
         # Clean up
         if script_path.exists():
             script_path.unlink()
-        
+
         # Reset bisect
         subprocess.run(["git", "bisect", "reset"], check=True)
 
@@ -175,7 +169,7 @@ def _run_git_bisect(script_path: Path) -> subprocess.CompletedProcess:
             ["git", "bisect", "run", str(script_path)],
             capture_output=True,
             text=True,
-            timeout=1800  # 30 minute timeout
+            timeout=1800,  # 30 minute timeout
         )
         return result
     except subprocess.TimeoutExpired:
@@ -187,18 +181,18 @@ def _run_git_bisect(script_path: Path) -> subprocess.CompletedProcess:
 def _parse_bisect_result(result: subprocess.CompletedProcess) -> tuple[str, int]:
     """Parse git bisect output to find culprit and iteration count."""
     output = result.stdout + result.stderr
-    
+
     # Look for the culprit commit
     culprit_match = None
-    for line in output.split('\n'):
-        if 'is the first bad commit' in line:
+    for line in output.split("\n"):
+        if "is the first bad commit" in line:
             culprit_match = line.split()[0]
             break
-    
+
     if not culprit_match:
         raise RuntimeError("Could not find culprit commit in bisect output")
-    
+
     # Count iterations (rough estimate based on output)
-    iterations = output.count('Bisecting:') + 1
-    
+    iterations = output.count("Bisecting:") + 1
+
     return culprit_match, iterations

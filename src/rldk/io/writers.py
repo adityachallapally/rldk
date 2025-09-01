@@ -16,27 +16,36 @@ def mkdir_reports() -> Path:
 def write_json(report: Dict[str, Any], path: Union[str, Path]) -> None:
     """Write report dictionary to JSON file."""
     path = Path(path)
-    
+
     # Ensure directory exists
     path.parent.mkdir(parents=True, exist_ok=True)
+
+    def json_serializer(obj):
+        """Custom JSON serializer for numpy types."""
+        if hasattr(obj, 'item'):  # numpy scalars
+            return obj.item()
+        elif hasattr(obj, 'tolist'):  # numpy arrays
+            return obj.tolist()
+        else:
+            return str(obj)
     
-    with open(path, 'w') as f:
-        json.dump(report, f, indent=2)
+    with open(path, "w") as f:
+        json.dump(report, f, indent=2, default=json_serializer)
 
 
 def write_png(fig: plt.Figure, path: Union[str, Path]) -> None:
     """Save matplotlib figure as PNG."""
     path = Path(path)
-    
+
     # Ensure directory exists
     path.parent.mkdir(parents=True, exist_ok=True)
-    
-    fig.savefig(path, dpi=150, bbox_inches='tight')
+
+    fig.savefig(path, dpi=150, bbox_inches="tight")
 
 
 def write_drift_card(drift_data: Dict[str, Any], output_dir: Union[str, Path]) -> None:
     """Write drift card to both JSON and markdown formats.
-    
+
     Args:
         drift_data: Dictionary containing drift analysis data with keys like:
             - diverged: bool indicating if divergence was detected
@@ -50,18 +59,18 @@ def write_drift_card(drift_data: Dict[str, Any], output_dir: Union[str, Path]) -
     """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-    
+
     # Ensure required keys are present for compatibility with tests
     card_data = drift_data.copy()
     if "tripped_signals" not in card_data:
         card_data["tripped_signals"] = []
-    
+
     # Write JSON format
     write_json(card_data, output_path / "drift_card.json")
-    
+
     # Write markdown format
     md_content = _generate_drift_card_md(card_data)
-    with open(output_path / "drift_card.md", 'w') as f:
+    with open(output_path / "drift_card.md", "w") as f:
         f.write(md_content)
 
 
@@ -70,13 +79,13 @@ def _generate_drift_card_md(drift_data: Dict[str, Any]) -> str:
     lines = []
     lines.append("# Drift Detection Card")
     lines.append("")
-    
+
     if drift_data.get("diverged", False):
         lines.append("## 🚨 Drift Detected")
         lines.append("")
         first_step = drift_data.get("first_step", "unknown")
         lines.append(f"Divergence detected at step {first_step}.")
-        
+
         tripped_signals = drift_data.get("tripped_signals", [])
         if tripped_signals:
             lines.append("")
@@ -87,16 +96,18 @@ def _generate_drift_card_md(drift_data: Dict[str, Any]) -> str:
         lines.append("## ✅ No Drift Detected")
         lines.append("")
         lines.append("The runs appear to be consistent within the specified tolerance.")
-    
+
     lines.append("")
     lines.append("## 📁 Report Location")
     lines.append("")
-    lines.append(f"Full report saved to: `{drift_data.get('output_path', 'drift_card.md')}`")
-    
+    lines.append(
+        f"Full report saved to: `{drift_data.get('output_path', 'drift_card.md')}`"
+    )
+
     lines.append("")
     lines.append("## 🔍 Analysis Parameters")
     lines.append("")
-    
+
     if "signals_monitored" in drift_data:
         signals = drift_data["signals_monitored"]
         if isinstance(signals, list):
@@ -104,20 +115,22 @@ def _generate_drift_card_md(drift_data: Dict[str, Any]) -> str:
         else:
             signals_str = str(signals)
         lines.append(f"- **Signals monitored:** {signals_str}")
-    
+
     if "tolerance" in drift_data:
         lines.append(f"- **Tolerance:** {drift_data['tolerance']}")
-    
+
     if "k_consecutive" in drift_data:
-        lines.append(f"- **Consecutive violations required:** {drift_data['k_consecutive']}")
-    
+        lines.append(
+            f"- **Consecutive violations required:** {drift_data['k_consecutive']}"
+        )
+
     if "window_size" in drift_data:
         lines.append(f"- **Window size:** {drift_data['window_size']}")
-    
+
     if drift_data.get("diverged", False):
         total_events = len(drift_data.get("tripped_signals", []))
     else:
         total_events = 0
     lines.append(f"- **Total divergence events:** {total_events}")
-    
+
     return "\n".join(lines)

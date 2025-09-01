@@ -6,8 +6,6 @@ Comprehensive test script to verify RLDK meets the vision requirements for inten
 import subprocess
 import sys
 import json
-import tempfile
-import os
 from pathlib import Path
 
 
@@ -15,7 +13,7 @@ def run_command(cmd, description):
     """Run a command and return success status."""
     print(f"\n🔍 {description}")
     print(f"Running: {cmd}")
-    
+
     try:
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         if result.returncode == 0:
@@ -35,10 +33,10 @@ def run_command(cmd, description):
 
 def test_cli_functionality():
     """Test all CLI commands mentioned in the vision."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TESTING CLI FUNCTIONALITY")
-    print("="*60)
-    
+    print("=" * 60)
+
     tests = [
         # Core CLI commands from vision
         ("rldk ingest --help", "Ingest command help"),
@@ -48,7 +46,6 @@ def test_cli_functionality():
         ("rldk eval --help", "Eval command help"),
         ("rldk bisect --help", "Bisect command help"),
         ("rldk replay --help", "Replay command help"),
-        
         # Forensics commands
         ("rldk env-audit --help", "Environment audit help"),
         ("rldk log-scan --help", "Log scan help"),
@@ -57,29 +54,30 @@ def test_cli_functionality():
         ("rldk doctor --help", "Doctor command help"),
         ("rldk compare-runs --help", "Compare runs help"),
     ]
-    
+
     passed = 0
     total = len(tests)
-    
+
     for cmd, description in tests:
         if run_command(cmd, description):
             passed += 1
-    
+
     print(f"\n📊 CLI Tests: {passed}/{total} passed")
     return passed == total
 
 
 def test_python_api():
     """Test Python API functionality mentioned in the vision."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TESTING PYTHON API")
-    print("="*60)
-    
+    print("=" * 60)
+
     # Test imports
     try:
         from rldk import ingest, diff, determinism, reward, evals, bisect, replay
+
         print("✅ All core modules imported successfully")
-        
+
         # Test basic functionality
         print("✅ Python API structure matches vision")
         return True
@@ -90,115 +88,115 @@ def test_python_api():
 
 def test_acceptance_criteria():
     """Test the acceptance criteria mentioned in the vision."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TESTING ACCEPTANCE CRITERIA")
-    print("="*60)
-    
+    print("=" * 60)
+
     # Test that identical runs pass
     print("🔍 Testing identical runs pass...")
     # This would require actual test runs, but we can verify the structure
-    
+
     # Test that doctored runs fail at precise steps
     print("🔍 Testing doctored run detection...")
     # This is tested in the acceptance tests
-    
+
     # Test seeded replay matches within tolerance
     print("🔍 Testing seeded replay...")
     # This is tested in the replay functionality
-    
+
     # Test one-line tokenizer change detection
     print("🔍 Testing bisect functionality...")
     # This is tested in the bisect functionality
-    
+
     print("✅ Acceptance criteria structure verified")
     return True
 
 
 def test_output_formats():
     """Test that outputs are PR-ready as mentioned in the vision."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TESTING OUTPUT FORMATS")
-    print("="*60)
-    
+    print("=" * 60)
+
     # Check for generated reports
     reports_dir = Path("rldk_reports")
     if reports_dir.exists():
         print(f"📁 Generated reports in {reports_dir}:")
         for report_file in reports_dir.glob("*"):
             print(f"  - {report_file.name}")
-            
+
             # Check if JSON files are valid
-            if report_file.suffix == '.json':
+            if report_file.suffix == ".json":
                 try:
-                    with open(report_file, 'r') as f:
+                    with open(report_file, "r") as f:
                         data = json.load(f)
-                    print(f"    ✅ Valid JSON structure")
+                    print("    ✅ Valid JSON structure")
                 except json.JSONDecodeError:
-                    print(f"    ❌ Invalid JSON")
-    
+                    print("    ❌ Invalid JSON")
+
     # Check for lock file
     lock_file = Path("rldk.lock")
     if lock_file.exists():
         print(f"✅ Lock file exists: {lock_file}")
     else:
-        print(f"❌ Lock file missing")
-    
+        print("❌ Lock file missing")
+
     print("✅ Output formats verified")
     return True
 
 
 def test_engineering_stance():
     """Test the engineering stance mentioned in the vision."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TESTING ENGINEERING STANCE")
-    print("="*60)
-    
+    print("=" * 60)
+
     # Test "attach not replace" - CLI works alongside existing tools
     print("✅ CLI attaches to existing workflows")
-    
+
     # Test "one command to confidence" - each command provides actionable output
     print("✅ Commands provide actionable output")
-    
+
     # Test "reproducibility first" - determinism checks work
     print("✅ Reproducibility features implemented")
-    
+
     # Test "identical in notebooks and CI" - Python API matches CLI
     print("✅ Python API matches CLI functionality")
-    
+
     # Test "CPU friendly for ingest and analysis"
     print("✅ CPU-friendly analysis implemented")
-    
+
     # Test "strong schema with permissive readers"
     print("✅ Schema validation implemented")
-    
+
     print("✅ Engineering stance verified")
     return True
 
 
 def test_vision_compliance():
     """Test compliance with the overall vision."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TESTING VISION COMPLIANCE")
-    print("="*60)
-    
+    print("=" * 60)
+
     # Test "tiny reliability kit"
     print("✅ Compact, focused functionality")
-    
+
     # Test "sits beside any trainer"
     print("✅ Non-intrusive design")
-    
+
     # Test "finds where runs drift"
     print("✅ Drift detection implemented")
-    
+
     # Test "proves determinism"
     print("✅ Determinism verification implemented")
-    
+
     # Test "validates rewards and evals"
     print("✅ Reward and eval validation implemented")
-    
+
     # Test "produces PR ready evidence"
     print("✅ PR-ready output formats")
-    
+
     print("✅ Vision compliance verified")
     return True
 
@@ -207,7 +205,7 @@ def main():
     """Run comprehensive vision compliance tests."""
     print("🚀 RLDK Vision Compliance Test")
     print("Testing against requirements for intense researchers")
-    
+
     tests = [
         ("CLI Functionality", test_cli_functionality),
         ("Python API", test_python_api),
@@ -216,10 +214,10 @@ def main():
         ("Engineering Stance", test_engineering_stance),
         ("Vision Compliance", test_vision_compliance),
     ]
-    
+
     passed = 0
     total = len(tests)
-    
+
     for test_name, test_func in tests:
         print(f"\n{'='*20} {test_name} {'='*20}")
         if test_func():
@@ -227,11 +225,11 @@ def main():
             print(f"✅ {test_name} PASSED")
         else:
             print(f"❌ {test_name} FAILED")
-    
+
     print(f"\n{'='*60}")
     print(f"📊 OVERALL RESULTS: {passed}/{total} test categories passed")
-    print("="*60)
-    
+    print("=" * 60)
+
     if passed == total:
         print("\n🎉 RLDK MEETS ALL VISION REQUIREMENTS!")
         print("✅ Ready for intense researchers")

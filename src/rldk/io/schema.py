@@ -7,9 +7,11 @@ import pandas as pd
 
 class TrainingMetrics(BaseModel):
     """Schema for individual training metrics record."""
-    
+
     step: int = Field(..., description="Training step")
-    phase: Optional[str] = Field(None, description="Training phase (e.g., 'train', 'eval')")
+    phase: Optional[str] = Field(
+        None, description="Training phase (e.g., 'train', 'eval')"
+    )
     reward_mean: Optional[float] = Field(None, description="Mean reward")
     reward_std: Optional[float] = Field(None, description="Reward standard deviation")
     kl_mean: Optional[float] = Field(None, description="Mean KL divergence")
@@ -28,13 +30,13 @@ class TrainingMetrics(BaseModel):
 
 class MetricsSchema(BaseModel):
     """Schema for a collection of training metrics."""
-    
+
     metrics: List[TrainingMetrics]
-    
+
     def to_dataframe(self) -> pd.DataFrame:
         """Convert to pandas DataFrame."""
         return pd.DataFrame([m.model_dump() for m in self.metrics])
-    
+
     @classmethod
     def from_dataframe(cls, df: pd.DataFrame) -> "MetricsSchema":
         """Create from pandas DataFrame."""
