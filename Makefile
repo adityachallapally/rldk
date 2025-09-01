@@ -1,6 +1,6 @@
 # Makefile for RL Debug Kit Reference Suite
 
-.PHONY: help reference\:cpu_smoke reference\:bisect_demo clean
+.PHONY: help reference\:cpu_smoke reference\:bisect_demo clean profile profile-check profile-train profile-dashboard profile-clean
 
 help:
 	@echo "RL Debug Kit Reference Suite"
@@ -8,11 +8,18 @@ help:
 	@echo "Available targets:"
 	@echo "  reference:cpu_smoke    - Run CPU smoke tests and generate cards"
 	@echo "  reference:bisect_demo  - Run bisect demonstration"
+	@echo "  profile                - Run profiler test"
+	@echo "  profile-check          - Check profiler artifacts"
+	@echo "  profile-train          - Run training with profiler"
+	@echo "  profile-dashboard      - Start profiler dashboard"
+	@echo "  profile-clean          - Clean profiler artifacts"
 	@echo "  clean                  - Clean generated files"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make reference:cpu_smoke"
 	@echo "  make reference:bisect_demo"
+	@echo "  make profile"
+	@echo "  make profile-train"
 
 # CPU Smoke Test Target
 reference\:cpu_smoke:
@@ -147,3 +154,30 @@ test:
 	@echo "Running tests..."
 	pytest tests/ -v
 	@echo "Tests complete!"
+
+# Profiler targets
+profile:
+	@echo "Running profiler test..."
+	python3 tools/run_profile.py --output-dir runs/profiler_test --steps 20
+	@echo "Profiler test complete!"
+
+profile-check:
+	@echo "Checking profiler artifacts..."
+	python3 tools/check_profile.py runs/profiler_test/context --analysis --report
+	@echo "Profiler check complete!"
+
+profile-train:
+	@echo "Running training with profiler enabled..."
+	python3 train.py --profiler on --epochs 3 --steps-per-epoch 10
+	@echo "Training with profiler complete!"
+
+profile-dashboard:
+	@echo "Starting profiler dashboard..."
+	@echo "Dashboard will be available at http://localhost:8501"
+	streamlit run monitor/app.py
+
+profile-clean:
+	@echo "Cleaning profiler artifacts..."
+	rm -rf runs/profiler_test
+	rm -rf runs/run_*
+	@echo "Profiler cleanup complete!"
