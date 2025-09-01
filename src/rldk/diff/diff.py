@@ -45,6 +45,31 @@ def first_divergence(
     Returns:
         DivergenceReport with analysis results
     """
+    # Validate input dataframes
+    if df_a.empty or df_b.empty:
+        return DivergenceReport(
+            diverged=False,
+            first_step=None,
+            tripped_signals=[],
+            notes=["Empty dataframes provided"],
+            report_path="",
+            events_csv_path="",
+            details=pd.DataFrame(),
+            suspected_causes=["Empty dataframes provided"],
+        )
+    
+    if "step" not in df_a.columns or "step" not in df_b.columns:
+        return DivergenceReport(
+            diverged=False,
+            first_step=None,
+            tripped_signals=[],
+            notes=["Missing 'step' column in input dataframes"],
+            report_path="",
+            events_csv_path="",
+            details=pd.DataFrame(),
+            suspected_causes=["Missing 'step' column in input dataframes"],
+        )
+
     # Align dataframes by step
     df_a = df_a.set_index("step").sort_index()
     df_b = df_b.set_index("step").sort_index()
@@ -56,11 +81,11 @@ def first_divergence(
             diverged=False,
             first_step=None,
             tripped_signals=[],
-            notes=["Insufficient common steps for analysis"],
+            notes=[f"Insufficient common steps for analysis: {len(common_steps)} < {window}"],
             report_path="",
             events_csv_path="",
             details=pd.DataFrame(),
-            suspected_causes=["Insufficient common steps for analysis"],
+            suspected_causes=[f"Insufficient common steps for analysis: {len(common_steps)} < {window}"],
         )
     
     # Filter dataframes to common steps
@@ -72,43 +97,53 @@ def first_divergence(
     first_step = None
     tripped_signals = []
     all_violations = []
+    notes = []
     
     # Analyze each signal
     for signal in signals:
         if signal not in df_a_common.columns or signal not in df_b_common.columns:
             continue
-            
-        # Calculate rolling z-scores for this signal
-        z_scores = _calculate_rolling_z_scores(
-            df_a_common[signal], df_b_common[signal], window
-        )
         
-        # Find violations
-        violations = _find_k_consecutive_violations(z_scores, k_consecutive, tolerance)
-        
-        if violations:
-            diverged = True
-            signal_violations = []
+        try:
+            # Calculate rolling z-scores for this signal
+            z_scores = _calculate_rolling_z_scores(
+                df_a_common[signal], df_b_common[signal], window
+            )
             
-            for violation in violations:
-                step_idx = common_steps[violation["start_idx"]]
-                if first_step is None or step_idx < first_step:
-                    first_step = step_idx
+            # Find violations
+            violations = _find_k_consecutive_violations(z_scores, k_consecutive, tolerance)
+            
+            if violations:
+                diverged = True
+                signal_violations = []
                 
-                signal_violations.append({
-                    "signal": signal,
-                    "step": step_idx,
-                    "z_score": violation["z_score"],
-                    "type": violation["type"],
-                    "consecutive_count": violation["consecutive_count"]
-                })
-            
-            tripped_signals.append({
-                "signal": signal,
-                "violations": signal_violations
-            })
-            
-            all_violations.extend(signal_violations)
+                for violation in violations:
+                    # Convert index position to actual step value
+                    if violation["start_idx"] < len(common_steps):
+                        step_idx = common_steps.tolist()[violation["start_idx"]]
+                        if first_step is None or step_idx < first_step:
+                            first_step = step_idx
+                        
+                        signal_violations.append({
+                            "signal": signal,
+                            "step": step_idx,
+                            "z_score": violation["z_score"],
+                            "type": violation["type"],
+                            "consecutive_count": violation["consecutive_count"]
+                        })
+                
+                if signal_violations:  # Only add if we have valid violations
+                    tripped_signals.append({
+                        "signal": signal,
+                        "violations": signal_violations
+                    })
+                    
+                    all_violations.extend(signal_violations)
+                    
+        except Exception as e:
+            # If analysis fails for this signal, add a note but continue
+            notes.append(f"Warning: Analysis failed for signal '{signal}': {str(e)}")
+            continue
     
     # Create details DataFrame
     if all_violations:
@@ -119,41 +154,50 @@ def first_divergence(
     # Analyze suspected causes
     suspected_causes = _analyze_suspected_causes(all_violations, df_a_common, df_b_common)
     
-    # Create output directory
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Generate report
-    report_path = os.path.join(output_dir, "divergence_report.json")
-    events_csv_path = os.path.join(output_dir, "divergence_events.csv")
-    
-    # Save details to CSV
-    if not details.empty:
-        details.to_csv(events_csv_path, index=False)
-    
-    # Create and return report
+    # Create and return report first (before file operations)
     report = DivergenceReport(
         diverged=diverged,
         first_step=first_step,
         tripped_signals=tripped_signals,
-        notes=[],
-        report_path=report_path,
-        events_csv_path=events_csv_path,
+        notes=notes,
+        report_path="",  # Will be set after successful file creation
+        events_csv_path="",  # Will be set after successful file creation
         details=details,
         suspected_causes=suspected_causes,
     )
     
-    # Save report
-    def json_serializer(obj):
-        """Custom JSON serializer for numpy types."""
-        if hasattr(obj, 'item'):  # numpy scalars
-            return obj.item()
-        elif hasattr(obj, 'tolist'):  # numpy arrays
-            return obj.tolist()
-        else:
-            return str(obj)
-    
-    with open(report_path, 'w') as f:
-        json.dump(report.__dict__, f, indent=2, default=json_serializer)
+    # Try to create output files, but don't fail if unable to
+    try:
+        # Create output directory
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Generate file paths
+        report_path = os.path.join(output_dir, "divergence_report.json")
+        events_csv_path = os.path.join(output_dir, "divergence_events.csv")
+        
+        # Save details to CSV
+        if not details.empty:
+            details.to_csv(events_csv_path, index=False)
+            report.events_csv_path = events_csv_path
+        
+        # Save report
+        def json_serializer(obj):
+            """Custom JSON serializer for numpy types."""
+            if hasattr(obj, 'item'):  # numpy scalars
+                return obj.item()
+            elif hasattr(obj, 'tolist'):  # numpy arrays
+                return obj.tolist()
+            else:
+                return str(obj)
+        
+        with open(report_path, 'w') as f:
+            json.dump(report.__dict__, f, indent=2, default=json_serializer)
+        
+        report.report_path = report_path
+        
+    except Exception as e:
+        # If file operations fail, add a note but still return the report
+        report.notes.append(f"Warning: Could not save report files: {str(e)}")
     
     return report
 
@@ -205,8 +249,15 @@ def _calculate_rolling_z_scores(
     rolling_mean = diff.rolling(window=window, center=True).mean()
     rolling_std = diff.rolling(window=window, center=True).std()
 
-    # Calculate z-scores
-    z_scores = (diff - rolling_mean) / rolling_std
+    # Calculate z-scores, handling division by zero
+    z_scores = pd.Series(index=diff.index, dtype=float)
+    
+    # Only calculate z-scores where rolling_std is not zero or NaN
+    valid_mask = (rolling_std > 1e-10) & (~rolling_std.isna()) & (~rolling_mean.isna())
+    z_scores[valid_mask] = (diff[valid_mask] - rolling_mean[valid_mask]) / rolling_std[valid_mask]
+    
+    # Set invalid z-scores to NaN
+    z_scores[~valid_mask] = float('nan')
 
     return z_scores
 
@@ -214,40 +265,46 @@ def _calculate_rolling_z_scores(
 def _find_k_consecutive_violations(
     z_scores: pd.Series, k: int, tolerance: float = 2.0
 ) -> List[dict]:
-    """Find k violations (not necessarily consecutive)."""
+    """Find k consecutive violations above tolerance threshold."""
     violations = []
 
     # Define thresholds based on tolerance parameter
     upper_threshold = tolerance
     lower_threshold = -tolerance
 
-    # Find all violations
-    violation_indices = []
-
+    # Find consecutive violations
+    consecutive_count = 0
+    start_idx = None
+    
     for i, z_score in enumerate(z_scores):
         if pd.isna(z_score):
+            consecutive_count = 0
+            start_idx = None
             continue
 
         # Check if current value is a violation
-        if z_score > upper_threshold or z_score < lower_threshold:
-            violation_indices.append(i)
-
-    # If we have k or more violations, report the first k
-    if len(violation_indices) >= k:
-        # Take the first k violations
-        first_k_violations = violation_indices[:k]
-
-        violations.append(
-            {
-                "start_idx": first_k_violations[0],
-                "end_idx": first_k_violations[-1],
-                "z_score": z_scores.iloc[first_k_violations[-1]],
-                "type": (
-                    "lower" if z_scores.iloc[first_k_violations[-1]] < 0 else "upper"
-                ),
-                "consecutive_count": len(first_k_violations),
-            }
-        )
+        is_violation = z_score > upper_threshold or z_score < lower_threshold
+        
+        if is_violation:
+            if consecutive_count == 0:
+                start_idx = i
+            consecutive_count += 1
+            
+            # Check if we have k consecutive violations
+            if consecutive_count >= k:
+                violations.append({
+                    "start_idx": start_idx,
+                    "end_idx": i,
+                    "z_score": z_score,
+                    "type": "lower" if z_score < 0 else "upper",
+                    "consecutive_count": consecutive_count,
+                })
+                # Return the first occurrence of k consecutive violations
+                return violations
+        else:
+            # Reset consecutive count if not a violation
+            consecutive_count = 0
+            start_idx = None
 
     return violations
 
