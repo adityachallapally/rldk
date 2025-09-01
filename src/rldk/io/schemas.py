@@ -22,24 +22,27 @@ DeterminismCardV1 = {
             "type": "object",
             "properties": {
                 "python": {"oneOf": [{"type": "integer"}, {"type": "null"}]},
-                "torch": {"oneOf": [{"type": "integer"}, {"type": "null"}]}
-            }
+                "torch": {"oneOf": [{"type": "integer"}, {"type": "null"}]},
+            },
         },
         "flags": {
             "type": "object",
-            "required": ["cudnn_deterministic", "cudnn_benchmark", "tokenizers_parallelism"],
+            "required": [
+                "cudnn_deterministic",
+                "cudnn_benchmark",
+                "tokenizers_parallelism",
+            ],
             "properties": {
                 "cudnn_deterministic": {"type": "boolean"},
                 "cudnn_benchmark": {"type": "boolean"},
-                "tokenizers_parallelism": {"oneOf": [{"type": "string"}, {"type": "null"}]}
-            }
+                "tokenizers_parallelism": {
+                    "oneOf": [{"type": "string"}, {"type": "null"}]
+                },
+            },
         },
-        "nondeterminism_hints": {
-            "type": "array",
-            "items": {"type": "string"}
-        },
-        "pass": {"type": "boolean"}
-    }
+        "nondeterminism_hints": {"type": "array", "items": {"type": "string"}},
+        "pass": {"type": "boolean"},
+    },
 }
 
 
@@ -60,10 +63,10 @@ PPOScanReportV1 = {
                         "type": "array",
                         "items": {"type": "integer"},
                         "minItems": 2,
-                        "maxItems": 2
-                    }
-                }
-            }
+                        "maxItems": 2,
+                    },
+                },
+            },
         },
         "earliest_step": {"oneOf": [{"type": "integer"}, {"type": "null"}]},
         "stats": {
@@ -71,10 +74,10 @@ PPOScanReportV1 = {
             "properties": {
                 "kl_median": {"type": "number"},
                 "grad_ratio_median": {"type": "number"},
-                "entropy_trend": {"type": "string"}
-            }
-        }
-    }
+                "entropy_trend": {"type": "string"},
+            },
+        },
+    },
 }
 
 
@@ -91,8 +94,8 @@ CkptDiffReportV1 = {
                 "avg_cosine": {"type": "number"},
                 "l2_p05": {"type": "number"},
                 "l2_p50": {"type": "number"},
-                "l2_p95": {"type": "number"}
-            }
+                "l2_p95": {"type": "number"},
+            },
         },
         "top_movers": {
             "type": "array",
@@ -102,21 +105,26 @@ CkptDiffReportV1 = {
                 "properties": {
                     "name": {"type": "string"},
                     "l2": {"type": "number"},
-                    "cosine": {"type": "number"}
-                }
-            }
+                    "cosine": {"type": "number"},
+                },
+            },
         },
-        "notes": {
-            "type": "array",
-            "items": {"type": "string"}
-        }
-    }
+        "notes": {"type": "array", "items": {"type": "string"}},
+    },
 }
 
 
 RewardDriftReportV1 = {
     "type": "object",
-    "required": ["version", "pearson", "spearman", "mae_z", "l2_z", "sign_flip_rate", "slice_deltas"],
+    "required": [
+        "version",
+        "pearson",
+        "spearman",
+        "mae_z",
+        "l2_z",
+        "sign_flip_rate",
+        "slice_deltas",
+    ],
     "properties": {
         "version": {"type": "string"},
         "pearson": {"type": "number"},
@@ -131,18 +139,31 @@ RewardDriftReportV1 = {
                 "required": ["delta_mean", "n"],
                 "properties": {
                     "delta_mean": {"type": "number"},
-                    "n": {"type": "integer"}
-                }
-            }
-        }
-    }
+                    "n": {"type": "integer"},
+                },
+            },
+        },
+    },
 }
 
 
 # Card schemas
 DeterminismCardV2 = {
     "type": "object",
-    "required": ["version", "run_id", "generated_at", "passed", "replicas", "metrics_compared", "replica_variance", "rng_map", "mismatches", "fixes", "nondeterminism_hints", "flags"],
+    "required": [
+        "version",
+        "run_id",
+        "generated_at",
+        "passed",
+        "replicas",
+        "metrics_compared",
+        "replica_variance",
+        "rng_map",
+        "mismatches",
+        "fixes",
+        "nondeterminism_hints",
+        "flags",
+    ],
     "properties": {
         "version": {"type": "string"},
         "run_id": {"type": "string"},
@@ -152,7 +173,7 @@ DeterminismCardV2 = {
         "metrics_compared": {"type": "array", "items": {"type": "string"}},
         "replica_variance": {
             "type": "object",
-            "additionalProperties": {"type": "number"}
+            "additionalProperties": {"type": "number"},
         },
         "rng_map": {
             "type": "object",
@@ -161,8 +182,8 @@ DeterminismCardV2 = {
                 "torch_deterministic": {"type": "boolean"},
                 "torch_seed": {"oneOf": [{"type": "string"}, {"type": "null"}]},
                 "numpy_seed": {"oneOf": [{"type": "string"}, {"type": "null"}]},
-                "random_seed": {"oneOf": [{"type": "string"}, {"type": "null"}]}
-            }
+                "random_seed": {"oneOf": [{"type": "string"}, {"type": "null"}]},
+            },
         },
         "mismatches": {
             "type": "array",
@@ -174,28 +195,46 @@ DeterminismCardV2 = {
                     "metric": {"type": "string"},
                     "replica_1": {"type": "number"},
                     "replica_2": {"type": "number"},
-                    "variance": {"type": "number"}
-                }
-            }
+                    "variance": {"type": "number"},
+                },
+            },
         },
         "fixes": {"type": "array", "items": {"type": "string"}},
         "nondeterminism_hints": {"type": "array", "items": {"type": "string"}},
         "flags": {
             "type": "object",
-            "required": ["cudnn_deterministic", "cudnn_benchmark", "tokenizers_parallelism"],
+            "required": [
+                "cudnn_deterministic",
+                "cudnn_benchmark",
+                "tokenizers_parallelism",
+            ],
             "properties": {
                 "cudnn_deterministic": {"type": "boolean"},
                 "cudnn_benchmark": {"type": "boolean"},
-                "tokenizers_parallelism": {"oneOf": [{"type": "string"}, {"type": "null"}]}
-            }
-        }
-    }
+                "tokenizers_parallelism": {
+                    "oneOf": [{"type": "string"}, {"type": "null"}]
+                },
+            },
+        },
+    },
 }
 
 
 DriftCardV1 = {
     "type": "object",
-    "required": ["version", "run_a", "run_b", "generated_at", "diverged", "first_step", "tripped_signals", "suspected_causes", "repro", "details", "notes"],
+    "required": [
+        "version",
+        "run_a",
+        "run_b",
+        "generated_at",
+        "diverged",
+        "first_step",
+        "tripped_signals",
+        "suspected_causes",
+        "repro",
+        "details",
+        "notes",
+    ],
     "properties": {
         "version": {"type": "string"},
         "run_a": {"type": "string"},
@@ -210,42 +249,55 @@ DriftCardV1 = {
             "required": ["command", "changes"],
             "properties": {
                 "command": {"type": "string"},
-                "changes": {"type": "array", "items": {"type": "string"}}
-            }
+                "changes": {"type": "array", "items": {"type": "string"}},
+            },
         },
         "details": {
             "type": "object",
             "properties": {
                 "kl_divergence": {
                     "type": "object",
-                    "additionalProperties": {"type": "number"}
+                    "additionalProperties": {"type": "number"},
                 },
                 "reward_drift": {
                     "type": "object",
                     "required": ["correlation", "mae"],
                     "properties": {
                         "correlation": {"type": "number"},
-                        "mae": {"type": "number"}
-                    }
+                        "mae": {"type": "number"},
+                    },
                 },
                 "metric_correlations": {
                     "type": "object",
-                    "additionalProperties": {"type": "number"}
+                    "additionalProperties": {"type": "number"},
                 },
                 "drift_patterns": {
                     "type": "object",
-                    "additionalProperties": {"type": "number"}
-                }
-            }
+                    "additionalProperties": {"type": "number"},
+                },
+            },
         },
-        "notes": {"type": "array", "items": {"type": "string"}}
-    }
+        "notes": {"type": "array", "items": {"type": "string"}},
+    },
 }
 
 
 RewardCardV1 = {
     "type": "object",
-    "required": ["version", "run_id", "generated_at", "passed", "drift_detected", "calibration_score", "saturation_detected", "shortcut_signals", "label_noise", "metrics", "slice_analysis", "recommendations"],
+    "required": [
+        "version",
+        "run_id",
+        "generated_at",
+        "passed",
+        "drift_detected",
+        "calibration_score",
+        "saturation_detected",
+        "shortcut_signals",
+        "label_noise",
+        "metrics",
+        "slice_analysis",
+        "recommendations",
+    ],
     "properties": {
         "version": {"type": "string"},
         "run_id": {"type": "string"},
@@ -262,8 +314,8 @@ RewardCardV1 = {
             "properties": {
                 "correlation": {"type": "number"},
                 "mae": {"type": "number"},
-                "l2_distance": {"type": "number"}
-            }
+                "l2_distance": {"type": "number"},
+            },
         },
         "slice_analysis": {
             "type": "object",
@@ -272,10 +324,10 @@ RewardCardV1 = {
                 "required": ["delta_mean", "n_samples"],
                 "properties": {
                     "delta_mean": {"type": "number"},
-                    "n_samples": {"type": "integer"}
-                }
-            }
+                    "n_samples": {"type": "integer"},
+                },
+            },
         },
-        "recommendations": {"type": "array", "items": {"type": "string"}}
-    }
+        "recommendations": {"type": "array", "items": {"type": "string"}},
+    },
 }

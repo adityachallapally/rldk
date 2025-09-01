@@ -1,8 +1,8 @@
 # RL Debug Kit Environment Lock
-# Generated: 2025-09-01T06:38:40.651568
+# Generated: 2025-09-01T16:56:38.238663
 
 ## Environment
-Python: 3.13.3 (main, Apr  8 2025, 19:55:40) [GCC 14.2.0]
+Python: 3.13.3 (main, Aug 14 2025, 11:53:40) [GCC 14.2.0]
 PyTorch: 2.8.0+cu128
 CUDA Available: False
 
@@ -31,7 +31,6 @@ contourpy==1.3.3
 coverage==7.10.6
 cycler==0.12.1
 datasets==4.0.0
-dbus-python==1.3.2
 dill==0.3.8
 filelock==3.19.1
 fonttools==4.59.2
@@ -86,8 +85,7 @@ protobuf==6.32.0
 pyarrow==21.0.0
 pydantic==2.11.7
 pydantic_core==2.33.2
-Pygments==2.18.0
-PyGObject==3.50.0
+Pygments==2.19.2
 pyparsing==3.2.3
 pytest==8.4.1
 pytest-cov==6.2.1
@@ -98,14 +96,14 @@ referencing==0.36.2
 regex==2025.8.29
 requests==2.32.5
 rich==14.1.0
--e git+https://github.com/adityachallapally/rldk@4a3d0a16bf0b5b3640ed0e19922448ad43032f6b#egg=rldk
+-e git+https://github.com/adityachallapally/rldk@ff71d09697c45a65e5508c5c732a93e4c944bc01#egg=rldk
 rpds-py==0.27.1
 ruff==0.12.11
 safetensors==0.6.2
 scikit-learn==1.7.1
 scipy==1.16.1
 seaborn==0.13.2
-sentry-sdk==2.35.1
+sentry-sdk==2.35.2
 setuptools==80.9.0
 shellingham==1.5.4
 six==1.17.0
@@ -123,6 +121,5 @@ typing_extensions==4.15.0
 tzdata==2025.2
 urllib3==2.5.0
 wandb==0.21.3
-wheel==0.45.1
 xxhash==3.5.0
 yarl==1.20.1

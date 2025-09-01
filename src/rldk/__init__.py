@@ -11,7 +11,7 @@ from .evals import run, EvalResult
 
 __all__ = [
     "ingest_runs",
-    "first_divergence", 
+    "first_divergence",
     "check",
     "bisect_commits",
     "health",

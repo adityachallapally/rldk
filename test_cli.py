@@ -2,7 +2,8 @@
 """Test script for CLI debugging."""
 
 import sys
-sys.path.insert(0, 'src')
+
+sys.path.insert(0, "src")
 
 from rldk.cli import app
 
@@ -13,8 +14,9 @@ print(f"App type: {type(app)}")
 print("\nTesting version command...")
 try:
     from typer.testing import CliRunner
+
     runner = CliRunner()
-    result = runner.invoke(app, ['version'])
+    result = runner.invoke(app, ["version"])
     print(f"Exit code: {result.exit_code}")
     print(f"Output: {repr(result.stdout)}")
     print(f"Error: {repr(result.stderr)}")
@@ -24,7 +26,7 @@ except Exception as e:
 # Test help command
 print("\nTesting help command...")
 try:
-    result = runner.invoke(app, ['--help'])
+    result = runner.invoke(app, ["--help"])
     print(f"Exit code: {result.exit_code}")
     print(f"Output: {repr(result.stdout)}")
     print(f"Error: {repr(result.stderr)}")

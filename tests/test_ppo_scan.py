@@ -1,10 +1,5 @@
 """Test PPO scan functionality."""
 
-import json
-import tempfile
-from pathlib import Path
-import pytest
-
 from rldk.forensics.ppo_scan import scan_ppo_events
 from rldk.io.schemas import validate, PPOScanReportV1
 
@@ -25,13 +20,13 @@ def test_ppo_scan_clean_logs():
             "grad_norm_value": 0.3,
         }
         events.append(event)
-    
+
     # Run scan
     report = scan_ppo_events(iter(events))
-    
+
     # Validate report
     validate(PPOScanReportV1, report)
-    
+
     # Should have no rules fired for clean logs
     assert len(report["rules_fired"]) == 0
     assert report["earliest_step"] == 0
@@ -46,7 +41,7 @@ def test_ppo_scan_kl_spike():
             kl = 0.05  # Normal KL
         else:
             kl = 0.5  # KL spike (10x normal)
-        
+
         event = {
             "step": step,
             "kl": kl,
@@ -58,14 +53,14 @@ def test_ppo_scan_kl_spike():
             "grad_norm_value": 0.3,
         }
         events.append(event)
-    
+
     # Run scan
     report = scan_ppo_events(iter(events))
-    
+
     # Should detect KL spike
     kl_spike_rules = [r for r in report["rules_fired"] if r["rule"] == "kl_spike"]
     assert len(kl_spike_rules) > 0
-    
+
     # Check step range
     for rule in kl_spike_rules:
         assert "step_range" in rule
@@ -83,7 +78,7 @@ def test_ppo_scan_gradient_ratio():
         else:
             policy_norm = 5.0  # Much higher policy gradient
             value_norm = 0.3
-        
+
         event = {
             "step": step,
             "kl": 0.05,
@@ -95,10 +90,10 @@ def test_ppo_scan_gradient_ratio():
             "grad_norm_value": value_norm,
         }
         events.append(event)
-    
+
     # Run scan
     report = scan_ppo_events(iter(events))
-    
+
     # Should detect gradient ratio anomaly
     grad_rules = [r for r in report["rules_fired"] if "grad_ratio" in r["rule"]]
     assert len(grad_rules) > 0
@@ -107,7 +102,7 @@ def test_ppo_scan_gradient_ratio():
 def test_ppo_scan_empty_events():
     """Test PPO scan with empty events."""
     report = scan_ppo_events(iter([]))
-    
+
     # Should return valid report with no rules
     validate(PPOScanReportV1, report)
     assert len(report["rules_fired"]) == 0

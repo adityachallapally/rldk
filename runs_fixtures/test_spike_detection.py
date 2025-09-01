@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """Test script to demonstrate KL spike detection."""
 
-import pandas as pd
 from rldk.ingest import ingest_runs
 from rldk.diff import first_divergence
 
 # Load the fixtures
-df_clean = ingest_runs('runs_fixtures/clean_ppo.jsonl')
-df_spike = ingest_runs('runs_fixtures/kl_spike.jsonl')
+df_clean = ingest_runs("runs_fixtures/clean_ppo.jsonl")
+df_spike = ingest_runs("runs_fixtures/kl_spike.jsonl")
 
 # Find divergence
-report = first_divergence(df_clean, df_spike, ['kl_mean'], k_consecutive=3, window=20)
+report = first_divergence(df_clean, df_spike, ["kl_mean"], k_consecutive=3, window=20)
 
 print(f"Divergence detected: {report.diverged}")
 if report.diverged:
