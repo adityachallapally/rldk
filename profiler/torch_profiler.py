@@ -75,6 +75,8 @@ class TorchProfiler:
                 with_stack=self.with_stack
             )
             
+            # Start the profiler context
+            self.profiler.__enter__()
             self.is_active = True
             self.step_count = 0
         except Exception as e:
@@ -98,7 +100,7 @@ class TorchProfiler:
         """Stop profiling and save results."""
         if self.profiler is not None:
             try:
-                self.profiler.stop()
+                self.profiler.__exit__(None, None, None)
             except Exception as e:
                 print(f"Warning: Error stopping profiler: {e}")
             finally:
@@ -131,17 +133,23 @@ class TorchProfiler:
             ])
             
             for event in prof.events():
+                # Use new device attributes if available, otherwise fall back to cuda attributes
+                self_device_time = getattr(event, 'self_device_time_total', 0)
+                device_time = getattr(event, 'device_time_total', 0)
+                self_device_memory = getattr(event, 'self_device_memory_usage', 0)
+                device_memory = getattr(event, 'device_memory_usage', 0)
+                
                 writer.writerow([
                     event.name,
                     event.self_cpu_time_total,
                     event.cpu_time_total,
-                    event.self_cuda_time_total,
-                    event.cuda_time_total,
+                    self_device_time,
+                    device_time,
                     event.count,
                     event.self_cpu_memory_usage,
                     event.cpu_memory_usage,
-                    event.self_cuda_memory_usage,
-                    event.cuda_memory_usage
+                    self_device_memory,
+                    device_memory
                 ])
     
     def _save_memory_stats(self, prof):

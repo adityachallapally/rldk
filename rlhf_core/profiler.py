@@ -100,6 +100,8 @@ class ProfilerManager:
                 profile_memory=True,
                 with_stack=True
             )
+            # Start the profiler context
+            self.profiler.__enter__()
         except Exception as e:
             print(f"Warning: Failed to start profiler: {e}")
             self.profiler = None
@@ -119,7 +121,7 @@ class ProfilerManager:
         """Stop profiling and save results."""
         if self.profiler is not None:
             try:
-                self.profiler.stop()
+                self.profiler.__exit__(None, None, None)
             except Exception as e:
                 print(f"Warning: Error stopping profiler: {e}")
             finally:
@@ -146,12 +148,16 @@ class ProfilerManager:
             writer.writerow(['Name', 'Self CPU Time (μs)', 'CPU Time (μs)', 'Self CUDA Time (μs)', 'CUDA Time (μs)', 'Count'])
             
             for event in prof.events():
+                # Use new device_time attributes if available, otherwise fall back to cuda_time
+                self_device_time = getattr(event, 'self_device_time_total', 0)
+                device_time = getattr(event, 'device_time_total', 0)
+                
                 writer.writerow([
                     event.name,
                     event.self_cpu_time_total,
                     event.cpu_time_total,
-                    event.self_cuda_time_total,
-                    event.cuda_time_total,
+                    self_device_time,
+                    device_time,
                     event.count
                 ])
     
