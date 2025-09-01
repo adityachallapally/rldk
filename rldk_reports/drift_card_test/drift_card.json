@@ -1,0 +1,17 @@
+{
+  "diverged": true,
+  "first_step": 847,
+  "tripped_signals": [
+    "kl_spike",
+    "controller_stuck"
+  ],
+  "signals_monitored": [
+    "kl",
+    "kl_coef",
+    "grad_ratio"
+  ],
+  "tolerance": 3.0,
+  "k_consecutive": 5,
+  "window_size": 50,
+  "output_path": "rldk_reports/drift_card_test"
+}
