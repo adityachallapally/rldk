@@ -21,6 +21,13 @@ except ImportError:
     PPOTrainer = None
     PPOTrainerClass = None
 
+# Import comprehensive PPO forensics
+try:
+    from rldk.forensics.comprehensive_ppo_forensics import ComprehensivePPOForensics
+    COMPREHENSIVE_FORENSICS_AVAILABLE = True
+except ImportError:
+    COMPREHENSIVE_FORENSICS_AVAILABLE = False
+
 
 @dataclass
 class PPOMetrics:
@@ -575,3 +582,222 @@ class CheckpointMonitor(TrainerCallback):
             json.dump(report, f, indent=2)
         
         print(f"📋 Checkpoint Report: {report}")
+
+
+class ComprehensivePPOMonitor(TrainerCallback):
+    """Comprehensive PPO monitor with advanced forensics capabilities."""
+    
+    def __init__(
+        self,
+        output_dir: Optional[Union[str, Path]] = None,
+        kl_target: float = 0.1,
+        kl_target_tolerance: float = 0.05,
+        enable_kl_schedule_tracking: bool = True,
+        enable_gradient_norms_analysis: bool = True,
+        enable_advantage_statistics: bool = True,
+        log_interval: int = 10,
+        run_id: Optional[str] = None,
+    ):
+        """Initialize comprehensive PPO monitor.
+        
+        Args:
+            output_dir: Directory to save analysis results
+            kl_target: Target KL divergence value
+            kl_target_tolerance: Tolerance around target for "in range" calculation
+            enable_kl_schedule_tracking: Enable KL schedule tracking
+            enable_gradient_norms_analysis: Enable gradient norms analysis
+            enable_advantage_statistics: Enable advantage statistics tracking
+            log_interval: Steps between detailed logging
+            run_id: Unique identifier for this run
+        """
+        if not TRL_AVAILABLE:
+            raise ImportError(
+                "TRL is required for ComprehensivePPOMonitor. Install with: pip install trl"
+            )
+        
+        if not COMPREHENSIVE_FORENSICS_AVAILABLE:
+            raise ImportError(
+                "Comprehensive PPO forensics is required. Ensure all forensics modules are available."
+            )
+        
+        self.output_dir = Path(output_dir) if output_dir else Path("./rldk_comprehensive_ppo_logs")
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        
+        self.log_interval = log_interval
+        self.run_id = run_id or f"comprehensive_ppo_run_{int(time.time())}"
+        
+        # Initialize comprehensive forensics
+        self.forensics = ComprehensivePPOForensics(
+            kl_target=kl_target,
+            kl_target_tolerance=kl_target_tolerance,
+            enable_kl_schedule_tracking=enable_kl_schedule_tracking,
+            enable_gradient_norms_analysis=enable_gradient_norms_analysis,
+            enable_advantage_statistics=enable_advantage_statistics,
+        )
+        
+        # Metrics storage
+        self.comprehensive_metrics_history: List[Dict[str, Any]] = []
+        
+        print(f"🔍 Comprehensive PPO Monitor initialized - Run ID: {self.run_id}")
+        print(f"📊 KL Target: {kl_target}±{kl_target_tolerance}")
+        print(f"📁 Output directory: {self.output_dir}")
+    
+    def on_step_end(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
+        """Monitor PPO training at step end."""
+        # Extract metrics from trainer state if available
+        self._extract_metrics_from_state(state)
+        
+        # Log comprehensive metrics at intervals
+        if state.global_step % self.log_interval == 0:
+            self._log_comprehensive_metrics()
+    
+    def on_log(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, logs: Dict[str, float], **kwargs):
+        """Extract and analyze PPO metrics from training logs."""
+        # Extract basic PPO metrics
+        step = state.global_step
+        kl = logs.get('ppo/policy/kl_mean', 0.0)
+        kl_coef = logs.get('ppo/policy/kl_coef', 1.0)
+        entropy = logs.get('ppo/policy/entropy', 0.0)
+        reward_mean = logs.get('ppo/rewards/mean', 0.0)
+        reward_std = logs.get('ppo/rewards/std', 0.0)
+        
+        # Extract gradient norms
+        policy_grad_norm = logs.get('ppo/policy/grad_norm', None)
+        value_grad_norm = logs.get('ppo/val/grad_norm', None)
+        total_grad_norm = logs.get('grad_norm', None)
+        
+        # Extract advantage statistics
+        advantage_mean = logs.get('ppo/advantages/mean', None)
+        advantage_std = logs.get('ppo/advantages/std', None)
+        advantage_min = logs.get('ppo/advantages/min', None)
+        advantage_max = logs.get('ppo/advantages/max', None)
+        
+        # Update comprehensive forensics
+        comprehensive_metrics = self.forensics.update(
+            step=step,
+            kl=kl,
+            kl_coef=kl_coef,
+            entropy=entropy,
+            reward_mean=reward_mean,
+            reward_std=reward_std,
+            policy_grad_norm=policy_grad_norm,
+            value_grad_norm=value_grad_norm,
+            total_grad_norm=total_grad_norm,
+            advantage_mean=advantage_mean,
+            advantage_std=advantage_std,
+            advantage_min=advantage_min,
+            advantage_max=advantage_max,
+        )
+        
+        # Store metrics
+        self.comprehensive_metrics_history.append(comprehensive_metrics.to_dict())
+        
+        # Check for anomalies
+        anomalies = self.forensics.get_anomalies()
+        if anomalies:
+            self._handle_anomalies(anomalies, step)
+    
+    def on_save(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
+        """Save comprehensive analysis when checkpoint is saved."""
+        # Save comprehensive analysis
+        analysis_path = self.output_dir / f"{self.run_id}_comprehensive_analysis_step_{state.global_step}.json"
+        self.forensics.save_analysis(str(analysis_path))
+        
+        # Save metrics history
+        self._save_metrics_history()
+        
+        print(f"💾 Comprehensive PPO analysis saved at step {state.global_step}")
+    
+    def on_train_end(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
+        """Generate final comprehensive analysis."""
+        print("🏁 Comprehensive PPO Monitor: Training completed")
+        
+        # Generate final analysis
+        final_analysis = self.forensics.get_comprehensive_analysis()
+        health_summary = self.forensics.get_health_summary()
+        
+        # Save final analysis
+        final_analysis_path = self.output_dir / f"{self.run_id}_final_comprehensive_analysis.json"
+        with open(final_analysis_path, "w") as f:
+            json.dump(final_analysis, f, indent=2)
+        
+        # Save health summary
+        health_summary_path = self.output_dir / f"{self.run_id}_health_summary.json"
+        with open(health_summary_path, "w") as f:
+            json.dump(health_summary, f, indent=2)
+        
+        # Save metrics history
+        self._save_metrics_history()
+        
+        # Print final summary
+        print(f"📋 Final Health Summary: {health_summary}")
+        print(f"📁 Comprehensive analysis saved to: {self.output_dir}")
+    
+    def _extract_metrics_from_state(self, state: TrainerState):
+        """Extract additional metrics from trainer state."""
+        # This method can be extended to extract more metrics from the trainer state
+        pass
+    
+    def _log_comprehensive_metrics(self):
+        """Log comprehensive metrics at intervals."""
+        current_metrics = self.forensics.current_metrics
+        
+        print(f"🔍 Comprehensive PPO Step {current_metrics.step}:")
+        print(f"   Overall Health: {current_metrics.overall_health_score:.3f}")
+        print(f"   Training Stability: {current_metrics.training_stability_score:.3f}")
+        print(f"   Convergence Quality: {current_metrics.convergence_quality_score:.3f}")
+        print(f"   KL: {current_metrics.kl:.4f}, KL Coef: {current_metrics.kl_coef:.4f}")
+        print(f"   Reward: {current_metrics.reward_mean:.4f}±{current_metrics.reward_std:.4f}")
+        
+        # Log tracker-specific metrics
+        if current_metrics.kl_schedule_metrics:
+            kl_metrics = current_metrics.kl_schedule_metrics
+            print(f"   KL Health: {kl_metrics.kl_health_score:.3f}, "
+                  f"Schedule Health: {kl_metrics.schedule_health_score:.3f}")
+        
+        if current_metrics.gradient_norms_metrics:
+            grad_metrics = current_metrics.gradient_norms_metrics
+            print(f"   Gradient Health: {grad_metrics.gradient_health_score:.3f}, "
+                  f"Policy/Value Ratio: {grad_metrics.policy_value_ratio:.3f}")
+        
+        if current_metrics.advantage_statistics_metrics:
+            adv_metrics = current_metrics.advantage_statistics_metrics
+            print(f"   Advantage Health: {adv_metrics.advantage_health_score:.3f}, "
+                  f"Bias: {adv_metrics.advantage_bias:.4f}")
+    
+    def _handle_anomalies(self, anomalies: List[Dict[str, Any]], step: int):
+        """Handle detected anomalies."""
+        for anomaly in anomalies:
+            severity = anomaly.get("severity", "warning")
+            message = anomaly.get("message", "Unknown anomaly")
+            tracker = anomaly.get("tracker", "unknown")
+            
+            if severity == "critical":
+                print(f"🚨 CRITICAL ANOMALY [{tracker}]: {message}")
+            elif severity == "warning":
+                print(f"⚠️  WARNING [{tracker}]: {message}")
+    
+    def _save_metrics_history(self):
+        """Save comprehensive metrics history."""
+        if not self.comprehensive_metrics_history:
+            return
+        
+        # Save as CSV
+        df = pd.DataFrame(self.comprehensive_metrics_history)
+        csv_path = self.output_dir / f"{self.run_id}_comprehensive_metrics.csv"
+        df.to_csv(csv_path, index=False)
+        
+        # Save as JSON
+        json_path = self.output_dir / f"{self.run_id}_comprehensive_metrics.json"
+        with open(json_path, "w") as f:
+            json.dump(self.comprehensive_metrics_history, f, indent=2)
+        
+        print(f"💾 Comprehensive metrics saved: {csv_path}")
+    
+    def get_current_health_summary(self) -> Dict[str, Any]:
+        """Get current health summary."""
+        return self.forensics.get_health_summary()
+    
+    def get_anomalies(self) -> List[Dict[str, Any]]:
+        """Get current anomalies."""
+        return self.forensics.get_anomalies()
