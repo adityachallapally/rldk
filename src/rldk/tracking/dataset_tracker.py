@@ -184,9 +184,15 @@ class DatasetTracker:
                 hash_obj.update(split_name.encode())
                 hash_obj.update(self._compute_dataset_checksum(split_dataset).encode())
         else:
-            # Sample a subset for large datasets
+            # Sample a subset for large datasets using deterministic sampling
             sample_size = min(1000, len(dataset))
-            sample_indices = np.random.choice(len(dataset), sample_size, replace=False)
+            if len(dataset) > sample_size:
+                # Use deterministic sampling: take every nth element
+                step = len(dataset) // sample_size
+                sample_indices = list(range(0, len(dataset), step))[:sample_size]
+            else:
+                # Use all indices if dataset is small
+                sample_indices = list(range(len(dataset)))
             
             for idx in sample_indices:
                 sample = dataset[idx]
@@ -200,9 +206,15 @@ class DatasetTracker:
         """Compute checksum of a PyTorch dataset."""
         hash_obj = hashlib.new(self.algorithm)
         
-        # Sample a subset for large datasets
+        # Sample a subset for large datasets using deterministic sampling
         sample_size = min(100, len(dataset))
-        sample_indices = np.random.choice(len(dataset), sample_size, replace=False)
+        if len(dataset) > sample_size:
+            # Use deterministic sampling: take every nth element
+            step = len(dataset) // sample_size
+            sample_indices = list(range(0, len(dataset), step))[:sample_size]
+        else:
+            # Use all indices if dataset is small
+            sample_indices = list(range(len(dataset)))
         
         for idx in sample_indices:
             sample = dataset[idx]
@@ -222,11 +234,13 @@ class DatasetTracker:
     
     def _compute_numpy_checksum(self, dataset: np.ndarray) -> str:
         """Compute checksum of a NumPy array."""
-        # For large arrays, sample a subset
+        # For large arrays, sample a subset deterministically
         if dataset.size > 1000000:  # 1M elements
             flat = dataset.flatten()
             sample_size = min(100000, len(flat))
-            sample_indices = np.random.choice(len(flat), sample_size, replace=False)
+            # Use deterministic sampling: take every nth element
+            step = len(flat) // sample_size
+            sample_indices = list(range(0, len(flat), step))[:sample_size]
             sample = flat[sample_indices]
         else:
             sample = dataset.flatten()

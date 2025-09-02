@@ -142,11 +142,11 @@ class ModelTracker:
         """Compute checksum of model weights."""
         hash_obj = hashlib.new(self.algorithm)
         
-        # For large models, sample a subset of weights
+        # For large models, sample a subset of weights deterministically
         total_params = sum(p.numel() for p in model.parameters())
         
         if total_params > 100000000:  # 100M parameters
-            # Sample weights for very large models
+            # Sample weights for very large models using deterministic sampling
             sample_size = min(1000000, total_params)  # 1M parameters max
             sampled_weights = []
             
@@ -154,9 +154,10 @@ class ModelTracker:
                 if param.numel() > 0:
                     flat_param = param.detach().cpu().flatten()
                     if len(flat_param) > 10000:
-                        # Sample from large tensors
-                        indices = torch.randperm(len(flat_param))[:10000]
-                        sampled_weights.append(flat_param[indices])
+                        # Use deterministic sampling: take every nth element
+                        step = len(flat_param) // 10000
+                        sample_indices = list(range(0, len(flat_param), step))[:10000]
+                        sampled_weights.append(flat_param[sample_indices])
                     else:
                         sampled_weights.append(flat_param)
             

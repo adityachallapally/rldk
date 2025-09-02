@@ -205,10 +205,12 @@ class SeedTracker:
         # Restore states
         random.setstate(tuple(seed_state["python_state"]))
         np.random.set_state(tuple(seed_state["numpy_state"]))
-        torch.set_rng_state(torch.tensor(seed_state["torch_state"]))
+        # Fix: Use uint8 dtype for torch RNG state
+        torch.set_rng_state(torch.tensor(seed_state["torch_state"], dtype=torch.uint8))
         
         if seed_state["cuda_state"] is not None and torch.cuda.is_available():
-            torch.cuda.set_rng_state(torch.tensor(seed_state["cuda_state"]))
+            # Fix: Use uint8 dtype for CUDA RNG state
+            torch.cuda.set_rng_state(torch.tensor(seed_state["cuda_state"], dtype=torch.uint8))
         
         self.seed_info = seed_state["seed_info"]
         return seed_state
