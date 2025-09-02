@@ -118,12 +118,27 @@ class StepProfiler:
         self.step_start_time = time.time()
         self.hooks.call_hooks("before_step", self.step_count)
     
-    def end_step(self):
-        """End profiling a training step."""
+    def end_step(self, model=None, optimizer=None, loss=None, **kwargs):
+        """End profiling a training step.
+        
+        Args:
+            model: The model being trained (optional)
+            optimizer: The optimizer being used (optional) 
+            loss: The loss value for this step (optional)
+            **kwargs: Additional training context parameters
+        """
         if hasattr(self, 'step_start_time'):
             step_duration = time.time() - self.step_start_time
             self.step_times.append(step_duration)
-            self.hooks.call_hooks("after_step", self.step_count, step_duration)
+            
+            # Pass training context to hooks
+            hook_kwargs = {
+                'model': model,
+                'optimizer': optimizer,
+                'loss': loss,
+                **kwargs
+            }
+            self.hooks.call_hooks("after_step", self.step_count, step_duration, **hook_kwargs)
             self.step_count += 1
     
     def forward_pass(self):
