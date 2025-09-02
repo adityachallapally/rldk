@@ -122,16 +122,13 @@ def run_demo():
         fp16=False,
     )
     
-    # Create PPO trainer with RLDK callbacks
-    trainer = PPOTrainer(
-        args=ppo_config,
-        model=model,
-        tokenizer=tokenizer,
-        dataset=dataset,
-        callbacks=[rldk_callback, ppo_monitor, checkpoint_monitor],
-    )
+    # Note: PPOTrainer requires additional parameters (reward_model, value_model, etc.)
+    # For this demo, we'll focus on testing the RLDK callbacks directly
+    # In real usage, you would create the full PPOTrainer with all required parameters
     
-    print("✅ PPO Trainer created with RLDK monitoring")
+    print("✅ RLDK callbacks ready for PPOTrainer integration")
+    print("   Note: PPOTrainer requires reward_model, value_model, and other parameters")
+    print("   This demo focuses on testing the RLDK monitoring components")
     
     # Simulate training with realistic metrics
     print("\n🎯 Starting training simulation...")

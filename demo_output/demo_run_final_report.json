@@ -1,0 +1,10 @@
+{
+  "run_id": "demo_run",
+  "total_steps": 8,
+  "total_time": 0.7084431648254395,
+  "final_loss": 0.0,
+  "final_reward": 0.76,
+  "total_alerts": 2,
+  "training_stability": 1.0,
+  "convergence_indicator": 0.0
+}

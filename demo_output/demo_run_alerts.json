@@ -1,0 +1,16 @@
+[
+  {
+    "type": "high_kl_divergence",
+    "message": "KL divergence 0.1200 exceeds threshold 0.1",
+    "step": 0,
+    "timestamp": 1756836745.4881687,
+    "severity": "warning"
+  },
+  {
+    "type": "high_kl_divergence",
+    "message": "KL divergence 0.1100 exceeds threshold 0.1",
+    "step": 0,
+    "timestamp": 1756836745.5885212,
+    "severity": "warning"
+  }
+]

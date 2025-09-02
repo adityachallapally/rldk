@@ -1,0 +1,28 @@
+{
+  "checkpoint_info": {
+    "step": 7,
+    "epoch": 1.5,
+    "timestamp": 1756836746.0948856,
+    "total_parameters": 11,
+    "trainable_parameters": 11,
+    "model_size_mb": 4.1961669921875e-05,
+    "weight_mean": 0.05064108595252037,
+    "weight_std": 0.1575569063425064,
+    "weight_min": -0.1595621407032013,
+    "weight_max": 0.2611200511455536,
+    "gradient_mean": 0.0,
+    "gradient_std": 0.0,
+    "gradient_norm": 0.0,
+    "parameter_drift": 0.0,
+    "gradient_flow_health": 1.0,
+    "model_health_score": 1.0
+  },
+  "model_info": {
+    "total_parameters": 11,
+    "trainable_parameters": 11,
+    "model_size_mb": 4.1961669921875e-05
+  },
+  "timestamp": 1756836746.0950437,
+  "step": 7,
+  "epoch": 1.5
+}

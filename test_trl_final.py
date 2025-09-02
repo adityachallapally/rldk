@@ -331,8 +331,8 @@ def test_advanced_monitoring():
             ppo_monitor.on_log(args, state, control, scenario['logs'])
             
             # Check if alerts were triggered
-            if len(ppo_monitor.alerts) > 0:
-                print(f"    ⚠️  {len(ppo_monitor.alerts)} alerts triggered")
+            if len(ppo_monitor.ppo_alerts) > 0:
+                print(f"    ⚠️  {len(ppo_monitor.ppo_alerts)} alerts triggered")
             else:
                 print(f"    ✅ No alerts (normal)")
         
