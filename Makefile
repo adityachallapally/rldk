@@ -1,6 +1,6 @@
 # Makefile for RL Debug Kit Reference Suite
 
-.PHONY: help reference\:cpu_smoke reference\:bisect_demo reference\:setup clean profile profile-check profile-train profile-dashboard profile-clean
+.PHONY: help reference\:cpu_smoke reference\:bisect_demo reference\:setup clean profile profile-check profile-train profile-dashboard profile-clean test-trl test-trl-unit test-trl-integration test-trl-slow
 
 help:
 	@echo "RL Debug Kit Reference Suite"
@@ -14,6 +14,10 @@ help:
 	@echo "  profile-train          - Run training with profiler"
 	@echo "  profile-dashboard      - Start profiler dashboard"
 	@echo "  profile-clean          - Clean profiler artifacts"
+	@echo "  test-trl               - Run all TRL tests (unit + integration without downloads)"
+	@echo "  test-trl-unit          - Run TRL unit tests only"
+	@echo "  test-trl-integration   - Run TRL integration tests (without model downloads)"
+	@echo "  test-trl-slow          - Run TRL tests with real model downloads (slow)"
 	@echo "  clean                  - Clean generated files"
 	@echo ""
 	@echo "Examples:"
@@ -189,3 +193,28 @@ profile-clean:
 	rm -rf runs/profiler_test
 	rm -rf runs/run_*
 	@echo "Profiler cleanup complete!"
+
+# TRL Test Targets
+test-trl:
+	@echo "Running all TRL tests (unit + integration without downloads)..."
+	@echo "1. Running unit tests..."
+	python3 -m pytest test_trl_unit.py -v --tb=short
+	@echo "2. Running integration tests (without model downloads)..."
+	SKIP_MODEL_LOADING=true python3 test_trl_integration.py
+	@echo "✅ All TRL tests completed!"
+
+test-trl-unit:
+	@echo "Running TRL unit tests..."
+	python3 -m pytest test_trl_unit.py -v --tb=short
+	@echo "✅ TRL unit tests completed!"
+
+test-trl-integration:
+	@echo "Running TRL integration tests (without model downloads)..."
+	SKIP_MODEL_LOADING=true python3 test_trl_integration.py
+	@echo "✅ TRL integration tests completed!"
+
+test-trl-slow:
+	@echo "Running TRL tests with real model downloads (slow)..."
+	@echo "⚠️  This will download models and may take several minutes"
+	python3 -m pytest test_trl_integration_optional.py -m integration -v --tb=short
+	@echo "✅ TRL slow tests completed!"
