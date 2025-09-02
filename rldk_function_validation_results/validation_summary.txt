@@ -1,0 +1,31 @@
+================================================================================
+RLDK FUNCTION VALIDATION SUMMARY
+================================================================================
+Overall Success: ❌ FAILED
+Total Duration: 0.00 seconds
+Errors: 0
+Warnings: 0
+
+CATEGORY SUMMARY:
+----------------------------------------
+INGEST: ❌ ERROR - RLDK not available
+DIFF: ❌ ERROR - RLDK not available
+DETERMINISM: ❌ ERROR - RLDK not available
+REWARD: ❌ ERROR - RLDK not available
+EVAL: ❌ ERROR - RLDK not available
+FORENSICS: ❌ ERROR - RLDK not available
+CHECKPOINT: ❌ ERROR - RLDK not available
+TRACKING: ❌ ERROR - RLDK not available
+ADAPTER: ❌ ERROR - RLDK not available
+PROFILER: 1/3 functions passed
+
+DETAILED RESULTS:
+----------------------------------------
+
+PROFILER:
+  ✅ AdvancedAnomalyDetector
+  ❌ TorchProfiler
+    Error: TorchProfiler.__init__() missing 1 required positional argument: 'output_dir'
+  ❌ ProfilerContext
+    Error: ProfilerContext.__init__() missing 1 required positional argument: 'output_dir'
+================================================================================
