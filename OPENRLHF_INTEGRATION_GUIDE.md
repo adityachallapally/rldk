@@ -32,11 +32,12 @@ The RLDK OpenRLHF integration provides:
 ### Prerequisites
 
 ```bash
-# Install OpenRLHF
+# Install OpenRLHF (optional - integration works without it)
 pip install openrlhf
 
-# Install additional dependencies
-pip install flask plotly psutil
+# Core dependencies are included in RLDK
+# Optional: Install Parquet support for better performance
+pip install pyarrow
 ```
 
 ### Install RLDK with OpenRLHF Support

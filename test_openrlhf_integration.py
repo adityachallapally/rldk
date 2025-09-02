@@ -47,6 +47,7 @@ def test_imports():
         except ImportError as e:
             print(f"⚠️  OpenRLHF not available: {e}")
             print("   Install with: pip install openrlhf")
+            print("   Note: Integration works without OpenRLHF for testing purposes")
             return False
             
     except ImportError as e:

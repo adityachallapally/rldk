@@ -197,7 +197,13 @@ class OpenRLHFCallback:
                 self.current_metrics.world_size = dist.get_world_size()
                 self.current_metrics.local_rank = dist.get_local_rank()
                 self.current_metrics.global_rank = dist.get_rank()
-                self.current_metrics.node_id = f"node_{dist.get_rank() // torch.cuda.device_count()}"
+                
+                # Safe node ID calculation - handle CPU-only distributed training
+                if torch.cuda.is_available() and torch.cuda.device_count() > 0:
+                    self.current_metrics.node_id = f"node_{dist.get_rank() // torch.cuda.device_count()}"
+                else:
+                    # For CPU-only distributed training, use a simple node identifier
+                    self.current_metrics.node_id = f"node_{dist.get_rank()}"
         except Exception as e:
             warnings.warn(f"Failed to initialize distributed monitoring: {e}")
     
@@ -506,9 +512,15 @@ class OpenRLHFCallback:
         csv_file = self.output_dir / f"metrics_{self.run_id}.csv"
         df.to_csv(csv_file, index=False)
         
-        # Save as Parquet for better performance
+        # Save as Parquet for better performance (with fallback)
         parquet_file = self.output_dir / f"metrics_{self.run_id}.parquet"
-        df.to_parquet(parquet_file, index=False)
+        try:
+            df.to_parquet(parquet_file, index=False)
+        except ImportError as e:
+            warnings.warn(f"Parquet export failed (missing engine): {e}. Install pyarrow or fastparquet for Parquet support.")
+            # Fallback to JSON for better performance than CSV for large datasets
+            json_file = self.output_dir / f"metrics_{self.run_id}.json"
+            df.to_json(json_file, orient='records', indent=2)
         
         # Save summary statistics
         summary = {
@@ -606,7 +618,14 @@ class MultiGPUMonitor(OpenRLHFCallback):
             **kwargs
         )
         
-        self.gpu_count = torch.cuda.device_count() if torch.cuda.is_available() else 0
+        # Safe GPU count calculation
+        self.gpu_count = 0
+        if torch.cuda.is_available():
+            try:
+                self.gpu_count = torch.cuda.device_count()
+            except Exception:
+                self.gpu_count = 0
+        
         self.gpu_metrics = {}
     
     def _collect_resource_metrics(self):

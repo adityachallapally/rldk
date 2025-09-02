@@ -143,11 +143,19 @@ class DistributedMetricsCollector:
         rank = dist.get_rank() if DIST_AVAILABLE and dist.is_initialized() else 0
         local_rank = dist.get_local_rank() if DIST_AVAILABLE and dist.is_initialized() else 0
         
+        # Safe GPU count calculation
+        gpu_count = 0
+        if torch.cuda.is_available():
+            try:
+                gpu_count = torch.cuda.device_count()
+            except Exception:
+                gpu_count = 0
+        
         metrics = NodeMetrics(
             node_id=node_id,
             rank=rank,
             local_rank=local_rank,
-            gpu_count=torch.cuda.device_count() if torch.cuda.is_available() else 0,
+            gpu_count=gpu_count,
             timestamp=time.time()
         )
         
@@ -297,12 +305,20 @@ class MultiNodeMonitor:
     
     def _get_node_info(self) -> Dict[str, Any]:
         """Get information about the current node."""
+        # Safe GPU count calculation
+        gpu_count = 0
+        if torch.cuda.is_available():
+            try:
+                gpu_count = torch.cuda.device_count()
+            except Exception:
+                gpu_count = 0
+        
         return {
             'hostname': socket.gethostname(),
             'ip_address': socket.gethostbyname(socket.gethostname()),
             'cpu_count': psutil.cpu_count(),
             'memory_total': psutil.virtual_memory().total / 1024**3,  # GB
-            'gpu_count': torch.cuda.device_count() if torch.cuda.is_available() else 0,
+            'gpu_count': gpu_count,
         }
     
     def start_monitoring(self):
@@ -432,7 +448,14 @@ class GPUMemoryMonitor:
     
     def __init__(self):
         """Initialize GPU memory monitor."""
-        self.gpu_count = torch.cuda.device_count() if torch.cuda.is_available() else 0
+        # Safe GPU count calculation
+        self.gpu_count = 0
+        if torch.cuda.is_available():
+            try:
+                self.gpu_count = torch.cuda.device_count()
+            except Exception:
+                self.gpu_count = 0
+        
         self.memory_history: Dict[int, List[float]] = {i: [] for i in range(self.gpu_count)}
         self.allocation_history: Dict[int, List[float]] = {i: [] for i in range(self.gpu_count)}
     

@@ -181,20 +181,14 @@ A comprehensive test suite is included (`test_openrlhf_integration.py`) that cov
 To use the OpenRLHF integration, install the following dependencies:
 
 ```bash
-# Core dependencies
-pip install torch pandas numpy
+# Core dependencies (included in RLDK)
+# torch, pandas, numpy, flask, plotly, psutil are already included
 
-# OpenRLHF (if available)
+# Optional: Install OpenRLHF for actual training
 pip install openrlhf
 
-# Dashboard dependencies
-pip install flask plotly
-
-# System monitoring
-pip install psutil
-
-# Optional: For better performance
-pip install pyarrow  # For Parquet support
+# Optional: Install Parquet support for better performance
+pip install pyarrow
 ```
 
 ## 🎯 Key Features Delivered
