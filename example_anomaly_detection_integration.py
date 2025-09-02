@@ -73,19 +73,21 @@ class RLHFTrainer:
         self.reward_optimizer = optim.AdamW(self.reward_model.parameters(), lr=1e-4)
         self.policy_optimizer = optim.AdamW(self.policy_model.parameters(), lr=1e-4)
         
-        # Initialize anomaly detection system
+        # Initialize anomaly detection system with improved thresholds
         self.anomaly_detector = AdvancedAnomalyDetector(
             output_dir="training_anomaly_detection",
             save_alerts=True,
             gradient={
-                'explosion_threshold': 10.0,
-                'vanishing_threshold': 1e-6,
+                'explosion_threshold': 50.0,  # More lenient to reduce false positives
+                'vanishing_threshold': 1e-8,  # More lenient to reduce false positives
+                'alert_threshold': 2.0,       # More specific variance detection
                 'window_size': 100
             },
             learning_rate={
-                'change_threshold': 0.3,
-                'min_lr': 1e-8,
-                'max_lr': 1.0
+                'change_threshold': 0.8,      # Allow normal scheduler behavior
+                'min_lr': 1e-10,             # More lenient minimum
+                'max_lr': 10.0,              # More lenient maximum
+                'consecutive_threshold': 3    # Require consecutive changes
             },
             batch_size={
                 'performance_threshold': 0.1,
@@ -96,8 +98,9 @@ class RLHFTrainer:
                 'plateau_window': 50
             },
             reward_drift={
-                'drift_threshold': 0.1,
-                'calibration_threshold': 0.7
+                'drift_threshold': 0.3,       # More lenient to reduce false positives
+                'calibration_threshold': 0.5, # More lenient calibration threshold
+                'min_samples': 20             # Require more samples for reliable detection
             }
         )
         

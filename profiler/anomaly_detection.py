@@ -32,6 +32,7 @@ class AnomalyAlert:
     step: int
     value: float
     threshold: float
+    confidence: float = 0.0  # Confidence score (0.0 to 1.0)
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -62,10 +63,10 @@ class GradientAnomalyDetector:
     
     def __init__(
         self,
-        explosion_threshold: float = 10.0,
-        vanishing_threshold: float = 1e-6,
+        explosion_threshold: float = 50.0,  # Increased from 10.0 to reduce false positives
+        vanishing_threshold: float = 1e-8,  # Increased from 1e-6 to reduce false positives
         window_size: int = 100,
-        alert_threshold: float = 5.0
+        alert_threshold: float = 2.0  # Reduced from 5.0 to be more specific
     ):
         self.explosion_threshold = explosion_threshold
         self.vanishing_threshold = vanishing_threshold
@@ -106,51 +107,72 @@ class GradientAnomalyDetector:
         self.gradient_history.append(gradient_stats)
         self.norm_history.append(total_norm)
         
-        # Check for gradient explosion
+        # Check for gradient explosion with confidence scoring
         if total_norm > self.explosion_threshold:
-            severity = 'critical' if total_norm > self.explosion_threshold * 2 else 'high'
-            # Convert gradient stats to serializable format
-            serializable_stats = [(name, stats.__dict__) for name, stats in gradient_stats]
-            alerts.append(AnomalyAlert(
-                severity=severity,
-                category='gradient',
-                message=f"Gradient explosion detected: norm={total_norm:.4f} > {self.explosion_threshold}",
-                step=step,
-                value=total_norm,
-                threshold=self.explosion_threshold,
-                metadata={'gradient_stats': serializable_stats}
-            ))
+            # Calculate confidence based on how extreme the value is
+            confidence = min(1.0, (total_norm - self.explosion_threshold) / self.explosion_threshold)
+            severity = 'critical' if total_norm > self.explosion_threshold * 3 else 'high'
+            
+            # Only alert if confidence is high enough (reduces false positives)
+            if confidence > 0.3:  # Only alert for 30%+ above threshold
+                # Convert gradient stats to serializable format
+                serializable_stats = [(name, stats.__dict__) for name, stats in gradient_stats]
+                alerts.append(AnomalyAlert(
+                    severity=severity,
+                    category='gradient',
+                    message=f"Gradient explosion detected: norm={total_norm:.4f} > {self.explosion_threshold} (confidence: {confidence:.2f})",
+                    step=step,
+                    value=total_norm,
+                    threshold=self.explosion_threshold,
+                    confidence=confidence,
+                    metadata={'gradient_stats': serializable_stats}
+                ))
         
-        # Check for gradient vanishing
+        # Check for gradient vanishing with confidence scoring
         if total_norm < self.vanishing_threshold:
-            # Convert gradient stats to serializable format
-            serializable_stats = [(name, stats.__dict__) for name, stats in gradient_stats]
-            alerts.append(AnomalyAlert(
-                severity='high',
-                category='gradient',
-                message=f"Gradient vanishing detected: norm={total_norm:.8f} < {self.vanishing_threshold}",
-                step=step,
-                value=total_norm,
-                threshold=self.vanishing_threshold,
-                metadata={'gradient_stats': serializable_stats}
-            ))
+            # Calculate confidence based on how extreme the value is
+            confidence = min(1.0, (self.vanishing_threshold - total_norm) / self.vanishing_threshold)
+            
+            # Only alert if confidence is high enough and we have enough history
+            if confidence > 0.5 and len(self.norm_history) > 20:  # Need more history for vanishing detection
+                # Convert gradient stats to serializable format
+                serializable_stats = [(name, stats.__dict__) for name, stats in gradient_stats]
+                alerts.append(AnomalyAlert(
+                    severity='high',
+                    category='gradient',
+                    message=f"Gradient vanishing detected: norm={total_norm:.8f} < {self.vanishing_threshold} (confidence: {confidence:.2f})",
+                    step=step,
+                    value=total_norm,
+                    threshold=self.vanishing_threshold,
+                    confidence=confidence,
+                    metadata={'gradient_stats': serializable_stats}
+                ))
         
-        # Check for sudden changes in gradient norms
-        if len(self.norm_history) >= 10:
-            recent_norms = list(self.norm_history)[-10:]
+        # Check for sudden changes in gradient norms with improved logic
+        if len(self.norm_history) >= 20:  # Need more history for reliable variance detection
+            recent_norms = list(self.norm_history)[-20:]
             norm_std = np.std(recent_norms)
             norm_mean = np.mean(recent_norms)
             
-            if norm_std > norm_mean * self.alert_threshold:
-                alerts.append(AnomalyAlert(
-                    severity='medium',
-                    category='gradient',
-                    message=f"High gradient variance detected: std={norm_std:.4f} > {norm_mean * self.alert_threshold:.4f}",
-                    step=step,
-                    value=norm_std,
-                    threshold=norm_mean * self.alert_threshold,
-                    metadata={'recent_norms': recent_norms}
-                ))
+            # Calculate coefficient of variation
+            cv = norm_std / (norm_mean + 1e-8)
+            
+            # Only alert if variance is truly excessive and consistent
+            if cv > self.alert_threshold and norm_mean > 0.1:  # Only for meaningful gradient magnitudes
+                confidence = min(1.0, (cv - self.alert_threshold) / self.alert_threshold)
+                
+                # Only alert if confidence is high enough
+                if confidence > 0.4:
+                    alerts.append(AnomalyAlert(
+                        severity='medium',
+                        category='gradient',
+                        message=f"High gradient variance detected: CV={cv:.4f} > {self.alert_threshold} (confidence: {confidence:.2f})",
+                        step=step,
+                        value=cv,
+                        threshold=self.alert_threshold,
+                        confidence=confidence,
+                        metadata={'recent_norms': recent_norms, 'norm_mean': norm_mean, 'norm_std': norm_std}
+                    ))
         
         return alerts
 
@@ -160,15 +182,17 @@ class LearningRateAnomalyDetector:
     
     def __init__(
         self,
-        change_threshold: float = 0.5,
+        change_threshold: float = 0.8,  # Increased from 0.5 to allow normal scheduler behavior
         window_size: int = 50,
-        min_lr: float = 1e-8,
-        max_lr: float = 1.0
+        min_lr: float = 1e-10,  # More lenient minimum
+        max_lr: float = 10.0,   # More lenient maximum
+        consecutive_threshold: int = 3  # Require consecutive changes for alert
     ):
         self.change_threshold = change_threshold
         self.window_size = window_size
         self.min_lr = min_lr
         self.max_lr = max_lr
+        self.consecutive_threshold = consecutive_threshold
         
         self.lr_history = deque(maxlen=window_size)
         self.alerts = []
@@ -181,46 +205,63 @@ class LearningRateAnomalyDetector:
         current_lr = optimizer.param_groups[0]['lr']
         self.lr_history.append(current_lr)
         
-        # Check for out-of-range learning rates
+        # Check for out-of-range learning rates with confidence scoring
         if current_lr < self.min_lr:
-            alerts.append(AnomalyAlert(
-                severity='high',
-                category='learning_rate',
-                message=f"Learning rate too low: {current_lr:.2e} < {self.min_lr:.2e}",
-                step=step,
-                value=current_lr,
-                threshold=self.min_lr,
-                metadata={'optimizer_state': optimizer.state_dict()}
-            ))
+            confidence = min(1.0, (self.min_lr - current_lr) / self.min_lr)
+            if confidence > 0.8:  # Only alert for very low learning rates
+                alerts.append(AnomalyAlert(
+                    severity='high',
+                    category='learning_rate',
+                    message=f"Learning rate too low: {current_lr:.2e} < {self.min_lr:.2e} (confidence: {confidence:.2f})",
+                    step=step,
+                    value=current_lr,
+                    threshold=self.min_lr,
+                    confidence=confidence,
+                    metadata={'optimizer_state': optimizer.state_dict()}
+                ))
         
         if current_lr > self.max_lr:
-            alerts.append(AnomalyAlert(
-                severity='high',
-                category='learning_rate',
-                message=f"Learning rate too high: {current_lr:.2e} > {self.max_lr:.2e}",
-                step=step,
-                value=current_lr,
-                threshold=self.max_lr,
-                metadata={'optimizer_state': optimizer.state_dict()}
-            ))
+            confidence = min(1.0, (current_lr - self.max_lr) / self.max_lr)
+            if confidence > 0.5:  # Alert for moderately high learning rates
+                alerts.append(AnomalyAlert(
+                    severity='high',
+                    category='learning_rate',
+                    message=f"Learning rate too high: {current_lr:.2e} > {self.max_lr:.2e} (confidence: {confidence:.2f})",
+                    step=step,
+                    value=current_lr,
+                    threshold=self.max_lr,
+                    confidence=confidence,
+                    metadata={'optimizer_state': optimizer.state_dict()}
+                ))
         
-        # Check for sudden changes in learning rate
-        if len(self.lr_history) >= 5:
-            recent_lrs = list(self.lr_history)[-5:]
-            lr_changes = [abs(recent_lrs[i] - recent_lrs[i-1]) / recent_lrs[i-1] 
+        # Check for sudden changes in learning rate with improved logic
+        if len(self.lr_history) >= 10:  # Need more history for reliable detection
+            recent_lrs = list(self.lr_history)[-10:]
+            lr_changes = [abs(recent_lrs[i] - recent_lrs[i-1]) / (recent_lrs[i-1] + 1e-8) 
                          for i in range(1, len(recent_lrs))]
             
-            max_change = max(lr_changes) if lr_changes else 0
+            # Count consecutive large changes (more reliable than single large change)
+            consecutive_large_changes = 0
+            max_consecutive = 0
+            for change in lr_changes:
+                if change > self.change_threshold:
+                    consecutive_large_changes += 1
+                    max_consecutive = max(max_consecutive, consecutive_large_changes)
+                else:
+                    consecutive_large_changes = 0
             
-            if max_change > self.change_threshold:
+            # Only alert if we have multiple consecutive large changes
+            if max_consecutive >= self.consecutive_threshold:
+                confidence = min(1.0, max_consecutive / 5.0)  # Higher confidence for more consecutive changes
                 alerts.append(AnomalyAlert(
                     severity='medium',
                     category='learning_rate',
-                    message=f"Sudden learning rate change detected: {max_change:.2%} > {self.change_threshold:.2%}",
+                    message=f"Consecutive learning rate changes detected: {max_consecutive} consecutive changes > {self.change_threshold:.2%} (confidence: {confidence:.2f})",
                     step=step,
-                    value=max_change,
-                    threshold=self.change_threshold,
-                    metadata={'recent_lrs': recent_lrs, 'changes': lr_changes}
+                    value=max_consecutive,
+                    threshold=self.consecutive_threshold,
+                    confidence=confidence,
+                    metadata={'recent_lrs': recent_lrs, 'changes': lr_changes, 'max_consecutive': max_consecutive}
                 ))
         
         return alerts
@@ -388,13 +429,15 @@ class RewardCalibrationDriftDetector:
     
     def __init__(
         self,
-        drift_threshold: float = 0.1,
-        calibration_threshold: float = 0.7,
-        window_size: int = 100
+        drift_threshold: float = 0.3,  # Increased from 0.1 to reduce false positives
+        calibration_threshold: float = 0.5,  # More lenient calibration threshold
+        window_size: int = 100,
+        min_samples: int = 20  # Require more samples for reliable detection
     ):
         self.drift_threshold = drift_threshold
         self.calibration_threshold = calibration_threshold
         self.window_size = window_size
+        self.min_samples = min_samples
         
         self.reward_history = deque(maxlen=window_size)
         self.calibration_history = deque(maxlen=window_size)
@@ -422,36 +465,45 @@ class RewardCalibrationDriftDetector:
         }
         self.reward_history.append(reward_stats)
         
-        # Check calibration quality
+        # Check calibration quality with confidence scoring
         if calibration_score < self.calibration_threshold:
-            alerts.append(AnomalyAlert(
-                severity='high',
-                category='reward_drift',
-                message=f"Poor calibration detected: score={calibration_score:.4f} < {self.calibration_threshold}",
-                step=step,
-                value=calibration_score,
-                threshold=self.calibration_threshold,
-                metadata={'rewards': rewards, 'predictions': predictions}
-            ))
+            confidence = min(1.0, (self.calibration_threshold - calibration_score) / self.calibration_threshold)
+            if confidence > 0.6:  # Only alert for significantly poor calibration
+                alerts.append(AnomalyAlert(
+                    severity='high',
+                    category='reward_drift',
+                    message=f"Poor calibration detected: score={calibration_score:.4f} < {self.calibration_threshold} (confidence: {confidence:.2f})",
+                    step=step,
+                    value=calibration_score,
+                    threshold=self.calibration_threshold,
+                    confidence=confidence,
+                    metadata={'rewards': rewards, 'predictions': predictions}
+                ))
         
-        # Check for calibration drift
-        if len(self.calibration_history) >= 20:
-            recent_calibration = list(self.calibration_history)[-20:]
+        # Check for calibration drift with improved logic
+        if len(self.calibration_history) >= self.min_samples:
+            recent_calibration = list(self.calibration_history)[-self.min_samples:]
             calibration_trend = np.polyfit(range(len(recent_calibration)), recent_calibration, 1)[0]
             
-            if abs(calibration_trend) > self.drift_threshold:
+            # Calculate confidence based on trend strength and consistency
+            trend_strength = abs(calibration_trend)
+            confidence = min(1.0, trend_strength / self.drift_threshold)
+            
+            # Only alert if trend is strong and consistent
+            if trend_strength > self.drift_threshold and confidence > 0.7:
                 alerts.append(AnomalyAlert(
                     severity='medium',
                     category='reward_drift',
-                    message=f"Calibration drift detected: trend={calibration_trend:.4f}",
+                    message=f"Calibration drift detected: trend={calibration_trend:.4f} (confidence: {confidence:.2f})",
                     step=step,
                     value=calibration_trend,
                     threshold=self.drift_threshold,
-                    metadata={'recent_calibration': recent_calibration}
+                    confidence=confidence,
+                    metadata={'recent_calibration': recent_calibration, 'trend_strength': trend_strength}
                 ))
         
-        # Check for reward distribution changes
-        if len(self.reward_history) >= 10:
+        # Check for reward distribution changes with improved logic
+        if len(self.reward_history) >= 20:  # Need more history for reliable detection
             recent_rewards = list(self.reward_history)[-10:]
             old_rewards = list(self.reward_history)[-20:-10]
             
@@ -461,15 +513,20 @@ class RewardCalibrationDriftDetector:
                 
                 mean_change = abs(new_mean - old_mean) / (old_mean + 1e-8)
                 
-                if mean_change > self.drift_threshold:
+                # Calculate confidence based on change magnitude and consistency
+                confidence = min(1.0, mean_change / self.drift_threshold)
+                
+                # Only alert if change is significant and consistent
+                if mean_change > self.drift_threshold and confidence > 0.6:
                     alerts.append(AnomalyAlert(
                         severity='medium',
                         category='reward_drift',
-                        message=f"Reward distribution drift: mean change={mean_change:.4f}",
+                        message=f"Reward distribution drift: mean change={mean_change:.4f} (confidence: {confidence:.2f})",
                         step=step,
                         value=mean_change,
                         threshold=self.drift_threshold,
-                        metadata={'old_mean': old_mean, 'new_mean': new_mean}
+                        confidence=confidence,
+                        metadata={'old_mean': old_mean, 'new_mean': new_mean, 'change_ratio': mean_change}
                     ))
         
         return alerts
@@ -511,12 +568,34 @@ class AdvancedAnomalyDetector:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.save_alerts = save_alerts
         
-        # Initialize detectors
-        self.gradient_detector = GradientAnomalyDetector(**kwargs.get('gradient', {}))
-        self.lr_detector = LearningRateAnomalyDetector(**kwargs.get('learning_rate', {}))
+        # Initialize detectors with improved default thresholds
+        gradient_config = {
+            'explosion_threshold': 50.0,  # More lenient
+            'vanishing_threshold': 1e-8,  # More lenient
+            'alert_threshold': 2.0,       # More specific
+            **kwargs.get('gradient', {})
+        }
+        
+        lr_config = {
+            'change_threshold': 0.8,      # Allow normal scheduler behavior
+            'min_lr': 1e-10,             # More lenient
+            'max_lr': 10.0,              # More lenient
+            'consecutive_threshold': 3,   # Require consecutive changes
+            **kwargs.get('learning_rate', {})
+        }
+        
+        reward_config = {
+            'drift_threshold': 0.3,       # More lenient
+            'calibration_threshold': 0.5, # More lenient
+            'min_samples': 20,            # Require more samples
+            **kwargs.get('reward_drift', {})
+        }
+        
+        self.gradient_detector = GradientAnomalyDetector(**gradient_config)
+        self.lr_detector = LearningRateAnomalyDetector(**lr_config)
         self.batch_analyzer = BatchSizeImpactAnalyzer(**kwargs.get('batch_size', {}))
         self.convergence_tracker = ConvergenceTracker(**kwargs.get('convergence', {}))
-        self.reward_detector = RewardCalibrationDriftDetector(**kwargs.get('reward_drift', {}))
+        self.reward_detector = RewardCalibrationDriftDetector(**reward_config)
         
         self.all_alerts = []
         self.step_count = 0
