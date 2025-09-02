@@ -85,27 +85,27 @@ def test_basic_ppo_integration():
     
     # PPO configuration
     ppo_config = PPOConfig(
-        model_name=model_name,
         learning_rate=1e-5,
-        batch_size=4,
+        per_device_train_batch_size=4,
         mini_batch_size=2,
-        ppo_epochs=2,
+        num_ppo_epochs=2,
         max_grad_norm=0.5,
-        log_with="tensorboard",
         logging_dir=output_dir,
         save_steps=10,
         eval_steps=10,
         num_train_epochs=1,
         output_dir=output_dir,
         remove_unused_columns=False,
+        bf16=False,  # Disable bf16 for compatibility
+        fp16=False,  # Disable fp16 for compatibility
     )
     
     # Create PPO trainer
     trainer = PPOTrainer(
-        config=ppo_config,
+        args=ppo_config,
         model=model,
-        tokenizer=tokenizer,
-        dataset=dataset,
+        processing_class=tokenizer,
+        train_dataset=dataset,
         callbacks=[rldk_callback, ppo_monitor, checkpoint_monitor],
     )
     
