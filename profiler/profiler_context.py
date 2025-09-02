@@ -77,10 +77,19 @@ class ProfilerContext:
         """Save stage timing data to JSON."""
         stage_times_path = self.output_dir / "stage_times.json"
         
+        # Derive total_steps from the recorded stage timing data
+        # Use the maximum number of recorded timings across all stages
+        total_steps = 0
+        if self.stages:
+            # Find the stage with the most recorded timings
+            max_timings = max(len(timings) for timings in self.stages.values())
+            total_steps = max_timings
+        
         stage_data = {
             "stage_times": self.stages,
             "average_times": self.get_average_times(),
             "total_stages": len(self.stages),
+            "total_steps": total_steps,
             "timestamp": time.time()
         }
         
@@ -106,11 +115,20 @@ class ProfilerContext:
     
     def get_summary(self) -> Dict[str, Any]:
         """Get profiler context summary."""
+        # Derive total_steps from the recorded stage timing data
+        # Use the maximum number of recorded timings across all stages
+        total_steps = 0
+        if self.stages:
+            # Find the stage with the most recorded timings
+            max_timings = max(len(timings) for timings in self.stages.values())
+            total_steps = max_timings
+        
         summary = {
             "output_dir": str(self.output_dir),
             "stages": list(self.stages.keys()),
             "average_times": self.get_average_times(),
-            "total_stages": len(self.stages)
+            "total_stages": len(self.stages),
+            "total_steps": total_steps
         }
         
         if self.model_name is not None:
