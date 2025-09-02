@@ -5,6 +5,7 @@ from typing import Dict, Any, Iterator, List, Optional
 from dataclasses import dataclass
 import json
 import time
+import copy
 
 from .kl_schedule_tracker import KLScheduleTracker, KLScheduleMetrics
 from .gradient_norms_analyzer import GradientNormsAnalyzer, GradientNormsMetrics
@@ -171,8 +172,8 @@ class ComprehensivePPOForensics:
         # Calculate overall health scores
         self._calculate_overall_health_scores()
         
-        # Store metrics
-        metrics_copy = ComprehensivePPOMetrics(**self.current_metrics.to_dict())
+        # Store metrics - use deep copy to avoid issues with nested dataclasses
+        metrics_copy = copy.deepcopy(self.current_metrics)
         self.comprehensive_metrics_history.append(metrics_copy)
         
         return metrics_copy
@@ -266,14 +267,14 @@ class ComprehensivePPOForensics:
     
     def scan_ppo_events_comprehensive(self, events: Iterator[Dict[str, Any]]) -> Dict[str, Any]:
         """Enhanced PPO scan with comprehensive tracking."""
-        # First run the original PPO scan
-        original_scan = scan_ppo_events(events)
-        
-        # Convert events to list for comprehensive analysis
+        # Convert events to list first to avoid iterator exhaustion
         events_list = list(events) if hasattr(events, '__iter__') else []
         
         if not events_list:
-            return original_scan
+            return {"version": "1", "rules_fired": [], "earliest_step": None, "stats": {}}
+        
+        # Run the original PPO scan on the buffered events
+        original_scan = scan_ppo_events(iter(events_list))
         
         # Run comprehensive analysis on the events
         for event in events_list:

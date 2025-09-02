@@ -317,9 +317,21 @@ comprehensive_analysis = result["comprehensive_analysis"]
 - `psutil`: For resource monitoring
 - `matplotlib`: For visualization (future enhancement)
 
+## 🐛 Critical Bug Fixes
+
+### Fixed Issues
+1. **Metrics Copy Bug (P0)**: Fixed crash in `ComprehensivePPOForensics.update()` when copying metrics with nested dataclasses. The `to_dict()` method flattened nested tracker metrics into keys that don't exist on `ComprehensivePPOMetrics`, causing `TypeError: __init__() got an unexpected keyword argument`. **Fix**: Use `copy.deepcopy()` instead of unpacking flattened dictionary.
+
+2. **Iterator Exhaustion Bug (P1)**: Fixed issue in `scan_ppo_events_comprehensive()` where the events iterator was exhausted by the original PPO scan before comprehensive analysis could run. **Fix**: Convert iterator to list first, then pass to both analyses.
+
+### Technical Details
+- **Root Cause**: The `to_dict()` method in nested dataclasses creates flattened keys like `kl_schedule_current_kl` that don't match the `ComprehensivePPOMetrics` field names
+- **Solution**: Use `copy.deepcopy()` for proper dataclass copying without field name conflicts
+- **Impact**: Both fixes ensure the comprehensive forensics system works reliably in production
+
 ## ✅ Implementation Status
 
-All planned features have been successfully implemented:
+All planned features have been successfully implemented and critical bugs fixed:
 
 - ✅ **KL Schedule Tracking**: Complete with adaptive coefficient monitoring
 - ✅ **Gradient Norms Analysis**: Complete with exploding/vanishing detection  
@@ -328,5 +340,6 @@ All planned features have been successfully implemented:
 - ✅ **TRL Integration**: Complete with real-time monitoring
 - ✅ **Testing**: Complete with comprehensive test suite
 - ✅ **Documentation**: Complete with examples and usage guides
+- ✅ **Bug Fixes**: Critical P0 and P1 issues resolved
 
 The comprehensive PPO forensics system is now ready for production use and provides unprecedented visibility into PPO training dynamics.
