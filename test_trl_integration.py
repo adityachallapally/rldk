@@ -263,15 +263,19 @@ def test_file_structure():
 
 
 def run_example_tests():
-    """Run the example test scripts."""
+    """Run the example test scripts without downloading models."""
     print("\n🚀 Running example tests...")
+    
+    # Set environment variable to skip model loading
+    env = os.environ.copy()
+    env["SKIP_MODEL_LOADING"] = "true"
     
     try:
         # Run basic integration test
         print("Running basic integration test...")
         result = subprocess.run([
             sys.executable, "examples/trl_integration/basic_ppo_integration.py"
-        ], capture_output=True, text=True, timeout=60)
+        ], capture_output=True, text=True, timeout=60, env=env)
         
         if result.returncode == 0:
             print("✅ Basic integration test passed")
@@ -283,7 +287,7 @@ def run_example_tests():
         print("Running advanced monitoring test...")
         result = subprocess.run([
             sys.executable, "examples/trl_integration/advanced_monitoring.py"
-        ], capture_output=True, text=True, timeout=60)
+        ], capture_output=True, text=True, timeout=60, env=env)
         
         if result.returncode == 0:
             print("✅ Advanced monitoring test passed")
@@ -295,7 +299,7 @@ def run_example_tests():
         print("Running custom callbacks test...")
         result = subprocess.run([
             sys.executable, "examples/trl_integration/custom_callbacks.py"
-        ], capture_output=True, text=True, timeout=60)
+        ], capture_output=True, text=True, timeout=60, env=env)
         
         if result.returncode == 0:
             print("✅ Custom callbacks test passed")
