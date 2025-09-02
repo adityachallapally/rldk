@@ -109,12 +109,18 @@ def diff_checkpoints(ckpt_a: str, ckpt_b: str) -> Dict[str, Any]:
     # Handle infinite values in L2 norms for percentile calculations
     finite_l2_norms = l2_norms[np.isfinite(l2_norms)]
     
+    # Handle empty cosine_similarities array (e.g., when all common params have shape mismatches)
+    if len(cosine_similarities) > 0:
+        avg_cosine = float(np.mean(cosine_similarities))
+    else:
+        avg_cosine = 0.0  # Default to 0 when no comparable tensors exist
+    
     summary = {
         "num_params": len(differences),
         "num_common_params": len(common_param_names),
         "num_only_in_a": len(only_in_a),
         "num_only_in_b": len(only_in_b),
-        "avg_cosine": float(np.mean(cosine_similarities)),
+        "avg_cosine": avg_cosine,
     }
     
     if len(finite_l2_norms) > 0:
@@ -140,6 +146,10 @@ def diff_checkpoints(ckpt_a: str, ckpt_b: str) -> Dict[str, Any]:
         notes.append(f"Checkpoint B has {len(only_in_b)} unique parameters: {list(only_in_b)}")
     if len(common_param_names) > 0:
         notes.append(f"Both checkpoints share {len(common_param_names)} parameters")
+    
+    # Report if no comparable parameters exist (all have shape mismatches)
+    if len(cosine_similarities) == 0 and len(common_param_names) > 0:
+        notes.append("No comparable parameters found - all common parameters have shape mismatches")
 
     # Check for optimizer states
     optimizer_keys = [k for k in state_a.keys() if "optimizer" in k.lower()]
