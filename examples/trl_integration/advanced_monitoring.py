@@ -3,6 +3,7 @@
 import os
 import torch
 import numpy as np
+import pandas as pd
 from typing import Dict, Any, List
 from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments
 
@@ -199,9 +200,7 @@ class AdvancedPPOMonitor(PPOMonitor):
         """Enhanced step end with anomaly detection."""
         super().on_step_end(args, state, control, **kwargs)
         
-        if self.enable_advanced_analytics:
-            self._detect_anomalies()
-            self._analyze_convergence()
+        # Note: Advanced analytics are now called in on_log after metrics are populated
     
     def get_convergence_report(self) -> Dict[str, Any]:
         """Get convergence analysis report."""

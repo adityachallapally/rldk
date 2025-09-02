@@ -179,11 +179,8 @@ class RLDKCallback(TrainerCallback):
         # Collect PPO-specific metrics if available
         self._collect_ppo_metrics(kwargs)
         
-        # Store metrics
-        self.metrics_history.append(RLDKMetrics(**self.current_metrics.to_dict()))
-        
-        # Check for alerts
-        self._check_alerts()
+        # Note: We don't store metrics here because on_log is called after on_step_end
+        # and contains the actual logged values. We'll store metrics in on_log instead.
         
         # Log detailed metrics at intervals
         if state.global_step % self.log_interval == 0:
@@ -219,6 +216,12 @@ class RLDKCallback(TrainerCallback):
         
         # Real-time analysis
         self._analyze_logs(logs, state)
+        
+        # Store metrics AFTER log values are applied
+        self.metrics_history.append(RLDKMetrics(**self.current_metrics.to_dict()))
+        
+        # Check for alerts AFTER metrics are stored
+        self._check_alerts()
     
     def on_save(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
         """Called when a checkpoint is saved."""

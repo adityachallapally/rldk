@@ -134,17 +134,8 @@ class PPOMonitor(TrainerCallback):
         # Extract PPO metrics from logs
         self._extract_ppo_metrics_from_logs(state)
         
-        # Advanced analytics
-        if self.enable_advanced_analytics:
-            self._analyze_policy_health()
-            self._detect_reward_hacking()
-            self._monitor_convergence()
-        
-        # Store metrics
-        self.ppo_metrics_history.append(PPOMetrics(**self.current_ppo_metrics.to_dict()))
-        
-        # Check for PPO-specific alerts
-        self._check_ppo_alerts()
+        # Note: We don't store metrics here because on_log is called after on_step_end
+        # and contains the actual logged values. We'll store metrics in on_log instead.
         
         # Log PPO metrics
         if state.global_step % 10 == 0:
@@ -189,6 +180,18 @@ class PPOMonitor(TrainerCallback):
             self.current_ppo_metrics.learning_rate = logs['learning_rate']
         if 'grad_norm' in logs:
             self.current_ppo_metrics.gradient_norm = logs['grad_norm']
+        
+        # Advanced analytics
+        if self.enable_advanced_analytics:
+            self._analyze_policy_health()
+            self._detect_reward_hacking()
+            self._monitor_convergence()
+        
+        # Store metrics AFTER log values are applied
+        self.ppo_metrics_history.append(PPOMetrics(**self.current_ppo_metrics.to_dict()))
+        
+        # Check for PPO-specific alerts AFTER metrics are stored
+        self._check_ppo_alerts()
     
     def _extract_ppo_metrics_from_logs(self, state: TrainerState):
         """Extract PPO metrics from trainer state."""
