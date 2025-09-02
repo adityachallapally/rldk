@@ -1,0 +1,42 @@
+[
+  {
+    "severity": "medium",
+    "category": "learning_rate",
+    "message": "Sudden learning rate change detected: 9999900.00% > 30.00%",
+    "step": 124,
+    "value": 99999.0,
+    "threshold": 0.3,
+    "metadata": {
+      "recent_lrs": [
+        0.0001,
+        10.0,
+        0.0001,
+        10.0,
+        0.0001
+      ],
+      "changes": [
+        99999.0,
+        0.99999,
+        99999.0,
+        0.99999
+      ]
+    }
+  },
+  {
+    "severity": "high",
+    "category": "convergence",
+    "message": "Loss increasing: convergence_rate=-14027885337.0553",
+    "step": 124,
+    "value": -14027885337.05533,
+    "threshold": -0.1,
+    "metadata": {
+      "metrics": {
+        "loss_trend": 1382254388281.8826,
+        "plateau_detected": false,
+        "convergence_rate": -14027885337.05533,
+        "stability_score": 2.7402362473808355e-15,
+        "improvement_rate": -27868172568940.703
+      }
+    }
+  }
+]

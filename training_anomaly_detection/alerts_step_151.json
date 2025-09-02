@@ -1,0 +1,179 @@
+[
+  {
+    "severity": "critical",
+    "category": "gradient",
+    "message": "Gradient explosion detected: norm=221761423.5892 > 10.0",
+    "step": 151,
+    "value": 221761423.5891848,
+    "threshold": 10.0,
+    "metadata": {
+      "gradient_stats": [
+        [
+          "layers.0.weight",
+          {
+            "mean": -2386.7724609375,
+            "std": 536955.9375,
+            "max": 22805914.0,
+            "min": -29049800.0,
+            "norm": 194400000.0,
+            "explosion_ratio": 29865.035022796343,
+            "vanishing_ratio": 29865.035022796343
+          }
+        ],
+        [
+          "layers.0.bias",
+          {
+            "mean": 339138.40625,
+            "std": 6268952.5,
+            "max": 98624200.0,
+            "min": -14571747.0,
+            "norm": 100254096.0,
+            "explosion_ratio": 349468.64909158513,
+            "vanishing_ratio": 349468.64909158513
+          }
+        ],
+        [
+          "layers.3.weight",
+          {
+            "mean": 2279.845703125,
+            "std": 103550.7265625,
+            "max": 5539215.0,
+            "min": -91721.953125,
+            "norm": 26515208.0,
+            "explosion_ratio": 7201.646758585014,
+            "vanishing_ratio": 7201.646758585014
+          }
+        ],
+        [
+          "layers.3.bias",
+          {
+            "mean": 22897.5234375,
+            "std": 75736.3828125,
+            "max": 341452.75,
+            "min": -4663.08056640625,
+            "norm": 1263685.0,
+            "explosion_ratio": 5059.407228853831,
+            "vanishing_ratio": 5059.407228853831
+          }
+        ],
+        [
+          "layers.6.weight",
+          {
+            "mean": -399634.5625,
+            "std": 1521540.125,
+            "max": 0.0,
+            "min": -8455066.0,
+            "norm": 25124326.0,
+            "explosion_ratio": 114864.53380346006,
+            "vanishing_ratio": 114864.53380346006
+          }
+        ],
+        [
+          "layers.6.bias",
+          {
+            "mean": -17762.541015625,
+            "std": NaN,
+            "max": -17762.541015625,
+            "min": -17762.541015625,
+            "norm": 17762.541015625,
+            "explosion_ratio": 1087.9036652821899,
+            "vanishing_ratio": 1087.9036652821899
+          }
+        ]
+      ]
+    }
+  },
+  {
+    "severity": "high",
+    "category": "learning_rate",
+    "message": "Learning rate too high: 1.00e+01 > 1.00e+00",
+    "step": 151,
+    "value": 10.0,
+    "threshold": 1.0,
+    "metadata": {
+      "optimizer_state": {
+        "state": {
+          "0": {
+            "step": {},
+            "exp_avg": {},
+            "exp_avg_sq": {}
+          },
+          "1": {
+            "step": {},
+            "exp_avg": {},
+            "exp_avg_sq": {}
+          },
+          "2": {
+            "step": {},
+            "exp_avg": {},
+            "exp_avg_sq": {}
+          },
+          "3": {
+            "step": {},
+            "exp_avg": {},
+            "exp_avg_sq": {}
+          },
+          "4": {
+            "step": {},
+            "exp_avg": {},
+            "exp_avg_sq": {}
+          },
+          "5": {
+            "step": {},
+            "exp_avg": {},
+            "exp_avg_sq": {}
+          }
+        },
+        "param_groups": [
+          {
+            "lr": 10.0,
+            "betas": [
+              0.9,
+              0.999
+            ],
+            "eps": 1e-08,
+            "weight_decay": 0.01,
+            "amsgrad": false,
+            "maximize": false,
+            "foreach": "None",
+            "capturable": false,
+            "differentiable": false,
+            "fused": "None",
+            "decoupled_weight_decay": true,
+            "params": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "severity": "medium",
+    "category": "learning_rate",
+    "message": "Sudden learning rate change detected: 9999900.00% > 30.00%",
+    "step": 151,
+    "value": 99999.0,
+    "threshold": 0.3,
+    "metadata": {
+      "recent_lrs": [
+        10.0,
+        0.0001,
+        10.0,
+        0.0001,
+        10.0
+      ],
+      "changes": [
+        0.99999,
+        99999.0,
+        0.99999,
+        99999.0
+      ]
+    }
+  }
+]

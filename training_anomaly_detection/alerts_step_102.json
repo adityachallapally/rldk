@@ -1,0 +1,19 @@
+[
+  {
+    "severity": "high",
+    "category": "convergence",
+    "message": "Loss increasing: convergence_rate=-0.4725",
+    "step": 102,
+    "value": -0.4724998780243449,
+    "threshold": -0.1,
+    "metadata": {
+      "metrics": {
+        "loss_trend": 0.010241212026268641,
+        "plateau_detected": false,
+        "convergence_rate": -0.4724998780243449,
+        "stability_score": 0.17851239663638876,
+        "improvement_rate": 0.001865781396380454
+      }
+    }
+  }
+]
