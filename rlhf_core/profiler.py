@@ -243,10 +243,24 @@ class ProfilerManager:
             return
         
         stage_times_path = self.output_dir / "stage_times.json"
+        stage_times = self.stage_timer.get_stage_times()
+        
+        # Derive total_steps from the recorded stage timing data
+        # Use the maximum number of recorded timings across all stages
+        total_steps = 0
+        if stage_times:
+            # Find the stage with the most recorded timings
+            max_timings = max(len(timings) for timings in stage_times.values())
+            total_steps = max_timings
+        
+        # Fall back to profiler_step if no stage times recorded
+        if total_steps == 0:
+            total_steps = self.profiler_step
+        
         stage_data = {
-            "stage_times": self.stage_timer.get_stage_times(),
+            "stage_times": stage_times,
             "average_times": self.stage_timer.get_average_times(),
-            "total_steps": self.profiler_step
+            "total_steps": total_steps
         }
         
         with open(stage_times_path, 'w') as f:
@@ -257,11 +271,25 @@ class ProfilerManager:
         if not self.enabled:
             return {"enabled": False}
         
+        stage_times = self.stage_timer.get_stage_times()
+        
+        # Derive total_steps from the recorded stage timing data
+        # Use the maximum number of recorded timings across all stages
+        total_steps = 0
+        if stage_times:
+            # Find the stage with the most recorded timings
+            max_timings = max(len(timings) for timings in stage_times.values())
+            total_steps = max_timings
+        
+        # Fall back to profiler_step if no stage times recorded
+        if total_steps == 0:
+            total_steps = self.profiler_step
+        
         return {
             "enabled": True,
             "output_dir": str(self.output_dir),
             "stage_times": self.stage_timer.get_average_times(),
-            "total_steps": self.profiler_step,
+            "total_steps": total_steps,
             "artifacts": {
                 "trace_json": (self.output_dir / "trace.json").exists(),
                 "op_stats_csv": (self.output_dir / "op_stats.csv").exists(),
