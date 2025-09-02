@@ -46,6 +46,8 @@ dependencies = [
     "jsonschema>=4.0.0",
     "streamlit>=1.28.0",
     "plotly>=5.0.0",
+    "trl>=0.7.0",
+    "accelerate>=0.20.0",
 ]
 
 [project.optional-dependencies]

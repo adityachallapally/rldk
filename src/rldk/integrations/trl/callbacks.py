@@ -1,0 +1,418 @@
+"""RLDK callbacks for TRL training loops."""
+
+import json
+import time
+import warnings
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+from dataclasses import dataclass, field
+
+import numpy as np
+import pandas as pd
+import torch
+from transformers import TrainerCallback, TrainerControl, TrainerState, TrainingArguments
+
+try:
+    from trl import PPOTrainer
+    from trl.trainer.ppo_trainer import PPOTrainer as PPOTrainerClass
+    TRL_AVAILABLE = True
+except ImportError:
+    TRL_AVAILABLE = False
+    PPOTrainer = None
+    PPOTrainerClass = None
+
+
+@dataclass
+class RLDKMetrics:
+    """Container for RLDK metrics collected during training."""
+    
+    # Training metrics
+    step: int = 0
+    epoch: float = 0.0
+    learning_rate: float = 0.0
+    loss: float = 0.0
+    grad_norm: float = 0.0
+    
+    # PPO-specific metrics
+    reward_mean: float = 0.0
+    reward_std: float = 0.0
+    kl_mean: float = 0.0
+    kl_std: float = 0.0
+    entropy_mean: float = 0.0
+    clip_frac: float = 0.0
+    value_loss: float = 0.0
+    policy_loss: float = 0.0
+    
+    # Resource metrics
+    gpu_memory_used: float = 0.0
+    gpu_memory_allocated: float = 0.0
+    cpu_memory_used: float = 0.0
+    
+    # Timing metrics
+    step_time: float = 0.0
+    wall_time: float = 0.0
+    
+    # Token metrics
+    tokens_in: int = 0
+    tokens_out: int = 0
+    
+    # Training health indicators
+    training_stability_score: float = 1.0
+    convergence_indicator: float = 0.0
+    
+    # Metadata
+    phase: str = "train"
+    run_id: str = ""
+    git_sha: str = ""
+    seed: int = 0
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert metrics to dictionary."""
+        return {
+            field.name: getattr(self, field.name) 
+            for field in self.__dataclass_fields__.values()
+        }
+
+
+class RLDKCallback(TrainerCallback):
+    """RLDK callback for real-time training monitoring and analysis."""
+    
+    def __init__(
+        self,
+        output_dir: Optional[Union[str, Path]] = None,
+        log_interval: int = 10,
+        alert_thresholds: Optional[Dict[str, float]] = None,
+        enable_checkpoint_analysis: bool = True,
+        enable_resource_monitoring: bool = True,
+        run_id: Optional[str] = None,
+    ):
+        """Initialize RLDK callback.
+        
+        Args:
+            output_dir: Directory to save RLDK logs and analysis
+            log_interval: Steps between detailed logging
+            alert_thresholds: Thresholds for triggering alerts
+            enable_checkpoint_analysis: Whether to analyze checkpoints
+            enable_resource_monitoring: Whether to monitor resource usage
+            run_id: Unique identifier for this training run
+        """
+        if not TRL_AVAILABLE:
+            raise ImportError(
+                "TRL is required for RLDKCallback. Install with: pip install trl"
+            )
+            
+        self.output_dir = Path(output_dir) if output_dir else Path("./rldk_logs")
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        
+        self.log_interval = log_interval
+        self.enable_checkpoint_analysis = enable_checkpoint_analysis
+        self.enable_resource_monitoring = enable_resource_monitoring
+        
+        # Default alert thresholds
+        self.alert_thresholds = {
+            "kl_divergence": 0.1,
+            "clip_fraction": 0.2,
+            "gradient_norm": 1.0,
+            "reward_std": 0.5,
+            "loss_spike": 2.0,
+            "memory_usage": 0.9,
+        }
+        if alert_thresholds:
+            self.alert_thresholds.update(alert_thresholds)
+        
+        # Metrics storage
+        self.metrics_history: List[RLDKMetrics] = []
+        self.current_metrics = RLDKMetrics()
+        self.step_start_time = time.time()
+        self.run_start_time = time.time()
+        
+        # Generate run ID if not provided
+        self.run_id = run_id or f"rldk_run_{int(time.time())}"
+        self.current_metrics.run_id = self.run_id
+        
+        # Alert system
+        self.alerts: List[Dict[str, Any]] = []
+        
+        print(f"🚀 RLDK Callback initialized - Run ID: {self.run_id}")
+        print(f"📊 Output directory: {self.output_dir}")
+        print(f"⚠️  Alert thresholds: {self.alert_thresholds}")
+    
+    def on_train_begin(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
+        """Called at the beginning of training."""
+        print("🎯 RLDK: Training started")
+        self.run_start_time = time.time()
+        self.current_metrics.run_id = self.run_id
+        
+        # Initialize metrics
+        self.current_metrics.learning_rate = args.learning_rate
+        self.current_metrics.seed = args.seed
+        
+        # Save training configuration
+        config_path = self.output_dir / f"{self.run_id}_config.json"
+        with open(config_path, "w") as f:
+            json.dump(args.to_dict(), f, indent=2)
+    
+    def on_step_begin(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
+        """Called at the beginning of each training step."""
+        self.step_start_time = time.time()
+        self.current_metrics.step = state.global_step
+        self.current_metrics.epoch = state.epoch
+    
+    def on_step_end(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
+        """Called at the end of each training step."""
+        # Calculate step timing
+        step_time = time.time() - self.step_start_time
+        self.current_metrics.step_time = step_time
+        self.current_metrics.wall_time = time.time() - self.run_start_time
+        
+        # Update learning rate
+        if hasattr(state, 'log_history') and state.log_history:
+            latest_log = state.log_history[-1]
+            self.current_metrics.learning_rate = latest_log.get('learning_rate', self.current_metrics.learning_rate)
+            self.current_metrics.loss = latest_log.get('train_loss', self.current_metrics.loss)
+            self.current_metrics.grad_norm = latest_log.get('grad_norm', self.current_metrics.grad_norm)
+        
+        # Monitor resources if enabled
+        if self.enable_resource_monitoring:
+            self._monitor_resources()
+        
+        # Collect PPO-specific metrics if available
+        self._collect_ppo_metrics(kwargs)
+        
+        # Note: We don't store metrics here because on_log is called after on_step_end
+        # and contains the actual logged values. We'll store metrics in on_log instead.
+        
+        # Log detailed metrics at intervals
+        if state.global_step % self.log_interval == 0:
+            self._log_detailed_metrics()
+    
+    def on_log(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, logs: Dict[str, float], **kwargs):
+        """Called when logs are generated."""
+        # Update current metrics with log data
+        if 'train_loss' in logs:
+            self.current_metrics.loss = logs['train_loss']
+        if 'learning_rate' in logs:
+            self.current_metrics.learning_rate = logs['learning_rate']
+        if 'grad_norm' in logs:
+            self.current_metrics.grad_norm = logs['grad_norm']
+        
+        # PPO-specific metrics from logs
+        if 'ppo/rewards/mean' in logs:
+            self.current_metrics.reward_mean = logs['ppo/rewards/mean']
+        if 'ppo/rewards/std' in logs:
+            self.current_metrics.reward_std = logs['ppo/rewards/std']
+        if 'ppo/policy/kl_mean' in logs:
+            self.current_metrics.kl_mean = logs['ppo/policy/kl_mean']
+        if 'ppo/policy/kl_std' in logs:
+            self.current_metrics.kl_std = logs['ppo/policy/kl_std']
+        if 'ppo/policy/entropy' in logs:
+            self.current_metrics.entropy_mean = logs['ppo/policy/entropy']
+        if 'ppo/policy/clipfrac' in logs:
+            self.current_metrics.clip_frac = logs['ppo/policy/clipfrac']
+        if 'ppo/val/value_loss' in logs:
+            self.current_metrics.value_loss = logs['ppo/val/value_loss']
+        if 'ppo/val/policy_loss' in logs:
+            self.current_metrics.policy_loss = logs['ppo/val/policy_loss']
+        
+        # Real-time analysis
+        self._analyze_logs(logs, state)
+        
+        # Store metrics AFTER log values are applied
+        self.metrics_history.append(RLDKMetrics(**self.current_metrics.to_dict()))
+        
+        # Check for alerts AFTER metrics are stored
+        self._check_alerts()
+    
+    def on_save(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
+        """Called when a checkpoint is saved."""
+        if self.enable_checkpoint_analysis:
+            self._analyze_checkpoint(kwargs.get('model'), state)
+        
+        # Save metrics history
+        self._save_metrics_history()
+    
+    def on_train_end(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
+        """Called at the end of training."""
+        print("🏁 RLDK: Training completed")
+        
+        # Final analysis
+        self._generate_final_report()
+        
+        # Save all data
+        self._save_metrics_history()
+        self._save_alerts()
+        
+        print(f"📁 RLDK data saved to: {self.output_dir}")
+    
+    def _monitor_resources(self):
+        """Monitor GPU and CPU resource usage."""
+        try:
+            if torch.cuda.is_available():
+                self.current_metrics.gpu_memory_used = torch.cuda.memory_allocated() / 1024**3  # GB
+                self.current_metrics.gpu_memory_allocated = torch.cuda.max_memory_allocated() / 1024**3  # GB
+            
+            # CPU memory monitoring (simplified)
+            import psutil
+            process = psutil.Process()
+            self.current_metrics.cpu_memory_used = process.memory_info().rss / 1024**3  # GB
+        except Exception as e:
+            warnings.warn(f"Resource monitoring failed: {e}")
+    
+    def _collect_ppo_metrics(self, kwargs: Dict[str, Any]):
+        """Collect PPO-specific metrics from trainer."""
+        # Try to extract PPO metrics from trainer if available
+        trainer = kwargs.get('trainer')
+        if trainer and hasattr(trainer, 'accelerator') and hasattr(trainer.accelerator, 'unwrap_model'):
+            try:
+                # This is a simplified extraction - in practice, you'd need to access
+                # the PPO trainer's internal state more carefully
+                pass
+            except Exception as e:
+                warnings.warn(f"Failed to collect PPO metrics: {e}")
+    
+    def _check_alerts(self):
+        """Check for training issues and generate alerts."""
+        current = self.current_metrics
+        
+        # KL divergence alert
+        if current.kl_mean > self.alert_thresholds["kl_divergence"]:
+            self._add_alert("high_kl_divergence", 
+                          f"KL divergence {current.kl_mean:.4f} exceeds threshold {self.alert_thresholds['kl_divergence']}")
+        
+        # Clip fraction alert
+        if current.clip_frac > self.alert_thresholds["clip_fraction"]:
+            self._add_alert("high_clip_fraction",
+                          f"Clip fraction {current.clip_frac:.4f} exceeds threshold {self.alert_thresholds['clip_fraction']}")
+        
+        # Gradient norm alert
+        if current.grad_norm > self.alert_thresholds["gradient_norm"]:
+            self._add_alert("high_gradient_norm",
+                          f"Gradient norm {current.grad_norm:.4f} exceeds threshold {self.alert_thresholds['gradient_norm']}")
+        
+        # Memory usage alert
+        if current.gpu_memory_used > self.alert_thresholds["memory_usage"] * 24:  # Assuming 24GB GPU
+            self._add_alert("high_memory_usage",
+                          f"GPU memory usage {current.gpu_memory_used:.2f}GB is high")
+    
+    def _add_alert(self, alert_type: str, message: str):
+        """Add an alert to the alert list."""
+        alert = {
+            "type": alert_type,
+            "message": message,
+            "step": self.current_metrics.step,
+            "timestamp": time.time(),
+            "severity": "warning"
+        }
+        self.alerts.append(alert)
+        print(f"⚠️  RLDK Alert: {message}")
+    
+    def _analyze_logs(self, logs: Dict[str, float], state: TrainerState):
+        """Analyze logs for training health indicators."""
+        # Calculate training stability score
+        if len(self.metrics_history) > 10:
+            recent_losses = [m.loss for m in self.metrics_history[-10:] if m.loss > 0]
+            if recent_losses:
+                loss_std = np.std(recent_losses)
+                self.current_metrics.training_stability_score = max(0, 1 - loss_std)
+        
+        # Convergence indicator (simplified)
+        if len(self.metrics_history) > 50:
+            recent_rewards = [m.reward_mean for m in self.metrics_history[-50:] if m.reward_mean != 0]
+            if recent_rewards:
+                reward_trend = np.polyfit(range(len(recent_rewards)), recent_rewards, 1)[0]
+                self.current_metrics.convergence_indicator = reward_trend
+    
+    def _analyze_checkpoint(self, model, state: TrainerState):
+        """Analyze model checkpoint for health indicators."""
+        if model is None:
+            return
+        
+        try:
+            # Basic checkpoint analysis
+            checkpoint_path = self.output_dir / f"{self.run_id}_checkpoint_{state.global_step}.json"
+            
+            checkpoint_info = {
+                "step": state.global_step,
+                "epoch": state.epoch,
+                "timestamp": time.time(),
+                "model_parameters": sum(p.numel() for p in model.parameters()),
+                "trainable_parameters": sum(p.numel() for p in model.parameters() if p.requires_grad),
+            }
+            
+            with open(checkpoint_path, "w") as f:
+                json.dump(checkpoint_info, f, indent=2)
+                
+        except Exception as e:
+            warnings.warn(f"Checkpoint analysis failed: {e}")
+    
+    def _log_detailed_metrics(self):
+        """Log detailed metrics at intervals."""
+        current = self.current_metrics
+        print(f"📊 RLDK Step {current.step}: "
+              f"Loss={current.loss:.4f}, "
+              f"Reward={current.reward_mean:.4f}, "
+              f"KL={current.kl_mean:.4f}, "
+              f"ClipFrac={current.clip_frac:.4f}, "
+              f"Stability={current.training_stability_score:.3f}")
+    
+    def _save_metrics_history(self):
+        """Save metrics history to file."""
+        if not self.metrics_history:
+            return
+        
+        # Convert to DataFrame
+        df = pd.DataFrame([m.to_dict() for m in self.metrics_history])
+        
+        # Save as CSV and JSON
+        csv_path = self.output_dir / f"{self.run_id}_metrics.csv"
+        json_path = self.output_dir / f"{self.run_id}_metrics.json"
+        
+        df.to_csv(csv_path, index=False)
+        df.to_json(json_path, orient='records', indent=2)
+    
+    def _save_alerts(self):
+        """Save alerts to file."""
+        if not self.alerts:
+            return
+        
+        alerts_path = self.output_dir / f"{self.run_id}_alerts.json"
+        with open(alerts_path, "w") as f:
+            json.dump(self.alerts, f, indent=2)
+    
+    def _generate_final_report(self):
+        """Generate final training report."""
+        if not self.metrics_history:
+            return
+        
+        # Calculate summary statistics
+        df = pd.DataFrame([m.to_dict() for m in self.metrics_history])
+        
+        report = {
+            "run_id": self.run_id,
+            "total_steps": len(self.metrics_history),
+            "total_time": self.metrics_history[-1].wall_time if self.metrics_history else 0,
+            "final_loss": self.metrics_history[-1].loss if self.metrics_history else 0,
+            "final_reward": self.metrics_history[-1].reward_mean if self.metrics_history else 0,
+            "total_alerts": len(self.alerts),
+            "training_stability": np.mean([m.training_stability_score for m in self.metrics_history]),
+            "convergence_indicator": self.metrics_history[-1].convergence_indicator if self.metrics_history else 0,
+        }
+        
+        report_path = self.output_dir / f"{self.run_id}_final_report.json"
+        with open(report_path, "w") as f:
+            json.dump(report, f, indent=2)
+        
+        print(f"📋 Final Report: {report}")
+
+
+class RLDKMonitor(RLDKCallback):
+    """Simplified RLDK monitor for easy integration."""
+    
+    def __init__(self, **kwargs):
+        """Initialize with sensible defaults."""
+        super().__init__(
+            log_interval=kwargs.get('log_interval', 10),
+            enable_checkpoint_analysis=kwargs.get('enable_checkpoint_analysis', True),
+            enable_resource_monitoring=kwargs.get('enable_resource_monitoring', True),
+            **kwargs
+        )
