@@ -199,7 +199,7 @@ class RLHFTrainer:
             self.step_profiler.end_step(
                 model=self.model,
                 optimizer=self.optimizer,
-                loss=loss,
+                loss=loss.item(),  # Convert tensor to float for JSON serialization
                 batch_size=inputs.size(0),
                 accuracy=accuracy
             )
