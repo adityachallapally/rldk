@@ -8,6 +8,9 @@ into training loops and other components.
 import time
 from typing import Dict, List, Callable, Any, Optional
 from functools import wraps
+import torch
+import torch.nn as nn
+import numpy as np
 
 
 class ProfilerHooks:
@@ -22,7 +25,9 @@ class ProfilerHooks:
             "before_backward": [],
             "after_backward": [],
             "before_optimizer_step": [],
-            "after_optimizer_step": []
+            "after_optimizer_step": [],
+            "anomaly_detection": [],
+            "function_timing": []
         }
     
     def register_hook(self, event: str, hook: Callable):
@@ -151,3 +156,54 @@ class StepProfiler:
             "total_time": sum(self.step_times),
             "step_times": self.step_times
         }
+
+
+class AnomalyDetectionHook:
+    """Hook for integrating anomaly detection into training loops."""
+    
+    def __init__(self, anomaly_detector=None):
+        """
+        Initialize anomaly detection hook.
+        
+        Args:
+            anomaly_detector: AdvancedAnomalyDetector instance
+        """
+        self.anomaly_detector = anomaly_detector
+        self.current_step_data = {}
+    
+    def before_step(self, step: int, **kwargs):
+        """Called before each training step."""
+        self.current_step_data = {
+            'step': step,
+            'start_time': time.time()
+        }
+    
+    def after_step(self, step: int, step_duration: float, **kwargs):
+        """Called after each training step."""
+        if self.anomaly_detector and hasattr(self, 'current_step_data'):
+            # Extract training data from kwargs or context
+            model = kwargs.get('model')
+            optimizer = kwargs.get('optimizer')
+            loss = kwargs.get('loss')
+            batch_size = kwargs.get('batch_size', 1)
+            rewards = kwargs.get('rewards')
+            predictions = kwargs.get('predictions')
+            
+            if model is not None and optimizer is not None and loss is not None:
+                alerts = self.anomaly_detector.analyze_training_step(
+                    model=model,
+                    optimizer=optimizer,
+                    loss=loss,
+                    batch_size=batch_size,
+                    rewards=rewards,
+                    predictions=predictions
+                )
+                
+                # Call anomaly detection hooks
+                if alerts:
+                    profiler_registry.call_hooks("anomaly_detection", alerts, step)
+    
+    def register_with_profiler(self):
+        """Register this hook with the profiler registry."""
+        profiler_registry.register_hook("before_step", self.before_step)
+        profiler_registry.register_hook("after_step", self.after_step)
