@@ -114,7 +114,12 @@ def diff_ckpt(
 
         # Print summary
         summary = report["summary"]
-        typer.echo(f"Parameters compared: {summary['num_params']}")
+        typer.echo(f"Total parameters: {summary['num_params']}")
+        typer.echo(f"Common parameters: {summary['num_common_params']}")
+        if summary['num_only_in_a'] > 0:
+            typer.echo(f"Only in checkpoint A: {summary['num_only_in_a']}")
+        if summary['num_only_in_b'] > 0:
+            typer.echo(f"Only in checkpoint B: {summary['num_only_in_b']}")
         typer.echo(f"Average cosine similarity: {summary['avg_cosine']:.4f}")
         typer.echo(
             f"L2 norm percentiles - 5%: {summary['l2_p05']:.6f}, 50%: {summary['l2_p50']:.6f}, 95%: {summary['l2_p95']:.6f}"
@@ -123,9 +128,15 @@ def diff_ckpt(
         if report["top_movers"]:
             typer.echo("\nTop parameter changes:")
             for i, mover in enumerate(report["top_movers"][:5]):
-                typer.echo(
-                    f"  {i+1}. {mover['name']}: L2={mover['l2']:.6f}, cosine={mover['cosine']:.4f}"
-                )
+                note = mover.get('note', '')
+                if note:
+                    typer.echo(
+                        f"  {i+1}. {mover['name']}: L2={mover['l2']:.6f}, cosine={mover['cosine']:.4f} ({note})"
+                    )
+                else:
+                    typer.echo(
+                        f"  {i+1}. {mover['name']}: L2={mover['l2']:.6f}, cosine={mover['cosine']:.4f}"
+                    )
 
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)

@@ -88,9 +88,12 @@ CkptDiffReportV1 = {
         "version": {"type": "string"},
         "summary": {
             "type": "object",
-            "required": ["num_params", "avg_cosine", "l2_p05", "l2_p50", "l2_p95"],
+            "required": ["num_params", "num_common_params", "num_only_in_a", "num_only_in_b", "avg_cosine", "l2_p05", "l2_p50", "l2_p95"],
             "properties": {
                 "num_params": {"type": "integer"},
+                "num_common_params": {"type": "integer"},
+                "num_only_in_a": {"type": "integer"},
+                "num_only_in_b": {"type": "integer"},
                 "avg_cosine": {"type": "number"},
                 "l2_p05": {"type": "number"},
                 "l2_p50": {"type": "number"},
@@ -106,6 +109,7 @@ CkptDiffReportV1 = {
                     "name": {"type": "string"},
                     "l2": {"type": "number"},
                     "cosine": {"type": "number"},
+                    "note": {"type": "string"},
                 },
             },
         },
