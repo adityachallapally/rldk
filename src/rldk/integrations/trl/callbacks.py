@@ -21,6 +21,15 @@ except ImportError:
     PPOTrainer = None
     PPOTrainerClass = None
 
+# Import Event schema for proper JSONL emission
+try:
+    from ...io.event_schema import Event, create_event_from_row
+    EVENT_SCHEMA_AVAILABLE = True
+except ImportError:
+    EVENT_SCHEMA_AVAILABLE = False
+    Event = None
+    create_event_from_row = None
+
 
 @dataclass
 class RLDKMetrics:
@@ -85,6 +94,8 @@ class RLDKCallback(TrainerCallback):
         enable_checkpoint_analysis: bool = True,
         enable_resource_monitoring: bool = True,
         run_id: Optional[str] = None,
+        enable_jsonl_logging: bool = True,
+        jsonl_log_interval: int = 1,
     ):
         """Initialize RLDK callback.
         
@@ -107,6 +118,8 @@ class RLDKCallback(TrainerCallback):
         self.log_interval = log_interval
         self.enable_checkpoint_analysis = enable_checkpoint_analysis
         self.enable_resource_monitoring = enable_resource_monitoring
+        self.enable_jsonl_logging = enable_jsonl_logging
+        self.jsonl_log_interval = jsonl_log_interval
         
         # Default alert thresholds
         self.alert_thresholds = {
@@ -126,6 +139,11 @@ class RLDKCallback(TrainerCallback):
         self.step_start_time = time.time()
         self.run_start_time = time.time()
         
+        # JSONL logging setup
+        self.jsonl_file = None
+        if self.enable_jsonl_logging:
+            self._setup_jsonl_logging()
+        
         # Generate run ID if not provided
         self.run_id = run_id or f"rldk_run_{int(time.time())}"
         self.current_metrics.run_id = self.run_id
@@ -136,6 +154,8 @@ class RLDKCallback(TrainerCallback):
         print(f"🚀 RLDK Callback initialized - Run ID: {self.run_id}")
         print(f"📊 Output directory: {self.output_dir}")
         print(f"⚠️  Alert thresholds: {self.alert_thresholds}")
+        if self.enable_jsonl_logging:
+            print(f"📝 JSONL logging enabled - interval: {self.jsonl_log_interval}")
     
     def on_train_begin(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
         """Called at the beginning of training."""
@@ -220,6 +240,10 @@ class RLDKCallback(TrainerCallback):
         # Store metrics AFTER log values are applied
         self.metrics_history.append(RLDKMetrics(**self.current_metrics.to_dict()))
         
+        # Emit JSONL event if enabled and at the right interval
+        if self.enable_jsonl_logging and state.global_step % self.jsonl_log_interval == 0:
+            self._emit_jsonl_event(state, logs)
+        
         # Check for alerts AFTER metrics are stored
         self._check_alerts()
     
@@ -234,6 +258,9 @@ class RLDKCallback(TrainerCallback):
     def on_train_end(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
         """Called at the end of training."""
         print("🏁 RLDK: Training completed")
+        
+        # Close JSONL file
+        self._close_jsonl_file()
         
         # Final analysis
         self._generate_final_report()
@@ -409,6 +436,70 @@ class RLDKCallback(TrainerCallback):
             json.dump(report, f, indent=2)
         
         print(f"📋 Final Report: {report}")
+    
+    def _setup_jsonl_logging(self):
+        """Setup JSONL logging file."""
+        if not EVENT_SCHEMA_AVAILABLE:
+            warnings.warn("Event schema not available, JSONL logging disabled")
+            self.enable_jsonl_logging = False
+            return
+        
+        jsonl_path = self.output_dir / f"{self.run_id}_events.jsonl"
+        self.jsonl_file = open(jsonl_path, "w")
+        print(f"📝 JSONL events will be written to: {jsonl_path}")
+    
+    def _emit_jsonl_event(self, state: TrainerState, logs: Dict[str, float]):
+        """Emit a standardized JSONL event compatible with Event schema and TRLAdapter."""
+        if not self.jsonl_file or not EVENT_SCHEMA_AVAILABLE:
+            return
+        
+        try:
+            # Create event data compatible with TRLAdapter expectations
+            event_data = {
+                "step": state.global_step,
+                "phase": "train",
+                "wall_time": self.current_metrics.wall_time,
+                "reward_mean": self.current_metrics.reward_mean,
+                "reward_std": self.current_metrics.reward_std,
+                "kl_mean": self.current_metrics.kl_mean,
+                "kl_std": self.current_metrics.kl_std,
+                "entropy_mean": self.current_metrics.entropy_mean,
+                "clip_frac": self.current_metrics.clip_frac,
+                "grad_norm": self.current_metrics.grad_norm,
+                "lr": self.current_metrics.learning_rate,
+                "loss": self.current_metrics.loss,
+                "value_loss": self.current_metrics.value_loss,
+                "policy_loss": self.current_metrics.policy_loss,
+                "tokens_in": self.current_metrics.tokens_in,
+                "tokens_out": self.current_metrics.tokens_out,
+                "seed": self.current_metrics.seed,
+                "run_id": self.current_metrics.run_id,
+                "git_sha": self.current_metrics.git_sha,
+                "epoch": self.current_metrics.epoch,
+                "step_time": self.current_metrics.step_time,
+                "gpu_memory_used": self.current_metrics.gpu_memory_used,
+                "gpu_memory_allocated": self.current_metrics.gpu_memory_allocated,
+                "cpu_memory_used": self.current_metrics.cpu_memory_used,
+                "training_stability_score": self.current_metrics.training_stability_score,
+                "convergence_indicator": self.current_metrics.convergence_indicator,
+            }
+            
+            # Create Event object using the schema
+            event = create_event_from_row(event_data, self.run_id, self.current_metrics.git_sha)
+            
+            # Write JSONL line
+            json_line = event.to_json()
+            self.jsonl_file.write(json_line + "\n")
+            self.jsonl_file.flush()  # Ensure immediate write
+            
+        except Exception as e:
+            warnings.warn(f"Failed to emit JSONL event: {e}")
+    
+    def _close_jsonl_file(self):
+        """Close the JSONL file."""
+        if self.jsonl_file:
+            self.jsonl_file.close()
+            self.jsonl_file = None
 
 
 class RLDKMonitor(RLDKCallback):
