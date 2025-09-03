@@ -1,6 +1,6 @@
 """Compatibility shim for exit_codes imports.
 
-This module provides backward compatibility for imports from rldk.reward.health.exit_codes.
+This module provides backward compatibility for imports from rldk.reward.health_utils.exit_codes.
 The actual implementation has been moved to rldk.reward.health_config.exit_codes.
 """
 

@@ -379,6 +379,12 @@ class RLDKCallback(TrainerCallback):
         with open(alerts_path, "w") as f:
             json.dump(self.alerts, f, indent=2)
     
+    def save_metrics_history(self):
+        """Public method to save metrics history."""
+        self._save_metrics_history()
+        self._save_alerts()
+        print(f"📊 Metrics history saved to {self.output_dir}")
+    
     def _generate_final_report(self):
         """Generate final training report."""
         if not self.metrics_history:
