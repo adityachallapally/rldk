@@ -1,7 +1,9 @@
 """JSON schemas for report validation."""
 
 import jsonschema
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
+from dataclasses import dataclass
+from datetime import datetime
 
 
 def validate(schema: Dict[str, Any], obj: Dict[str, Any]) -> None:
@@ -335,3 +337,53 @@ RewardCardV1 = {
         "recommendations": {"type": "array", "items": {"type": "string"}},
     },
 }
+
+# Dataclass definitions for the new ultimate features
+
+@dataclass
+class TrainingMetrics:
+    """Training metrics data structure"""
+    step: int
+    loss: Optional[float] = None
+    reward: Optional[float] = None
+    kl_divergence: Optional[float] = None
+    entropy: Optional[float] = None
+    value_loss: Optional[float] = None
+    policy_loss: Optional[float] = None
+    gradient_norm: Optional[float] = None
+    learning_rate: Optional[float] = None
+    timestamp: Optional[str] = None
+
+@dataclass
+class AnomalyReport:
+    """Anomaly detection report"""
+    anomalies_detected: bool
+    anomaly_count: int
+    anomaly_ratio: float
+    confidence: float
+    details: Dict[str, Any]
+    recommendations: List[str]
+    timestamp: str
+
+@dataclass
+class HealthScore:
+    """Training health score"""
+    overall_score: float
+    stability_score: float
+    convergence_score: float
+    efficiency_score: float
+    robustness_score: float
+    issues: List[str]
+    recommendations: List[str]
+
+@dataclass
+class DebugReport:
+    """Comprehensive debugging report"""
+    run_path: str
+    framework: str
+    timestamp: str
+    issues: List[str]
+    fixes: List[str]
+    recommendations: List[str]
+    health_score: Optional[HealthScore]
+    details: Dict[str, Any]
