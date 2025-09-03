@@ -325,3 +325,60 @@ class TestRLDKCallbackJSONL:
         jsonl_path = jsonl_files[0]
         assert callback.run_id in jsonl_path.name
         assert "None" not in jsonl_path.name
+    
+    def test_jsonl_log_interval_validation(self):
+        """Test that jsonl_log_interval validation works correctly."""
+        # Test valid intervals
+        callback = RLDKCallback(output_dir=self.output_dir, jsonl_log_interval=1)
+        assert callback.jsonl_log_interval == 1
+        
+        callback = RLDKCallback(output_dir=self.output_dir, jsonl_log_interval=5)
+        assert callback.jsonl_log_interval == 5
+        
+        # Test invalid intervals
+        with pytest.raises(ValueError, match="jsonl_log_interval must be positive"):
+            RLDKCallback(output_dir=self.output_dir, jsonl_log_interval=0)
+        
+        with pytest.raises(ValueError, match="jsonl_log_interval must be positive"):
+            RLDKCallback(output_dir=self.output_dir, jsonl_log_interval=-1)
+    
+    def test_log_interval_validation(self):
+        """Test that log_interval validation works correctly."""
+        # Test valid intervals
+        callback = RLDKCallback(output_dir=self.output_dir, log_interval=1)
+        assert callback.log_interval == 1
+        
+        callback = RLDKCallback(output_dir=self.output_dir, log_interval=10)
+        assert callback.log_interval == 10
+        
+        # Test invalid intervals
+        with pytest.raises(ValueError, match="log_interval must be positive"):
+            RLDKCallback(output_dir=self.output_dir, log_interval=0)
+        
+        with pytest.raises(ValueError, match="log_interval must be positive"):
+            RLDKCallback(output_dir=self.output_dir, log_interval=-1)
+    
+    def test_jsonl_emission_with_zero_interval(self):
+        """Test that JSONL emission handles zero interval gracefully."""
+        # This test verifies the defensive check in on_log method
+        # Even though the constructor should prevent this, we test the defensive check
+        
+        # Create a callback with a valid interval first
+        callback = RLDKCallback(output_dir=self.output_dir, jsonl_log_interval=1)
+        
+        # Manually set jsonl_log_interval to 0 to test defensive check
+        callback.jsonl_log_interval = 0
+        
+        # Mock training step
+        from unittest.mock import Mock
+        state = Mock()
+        state.global_step = 1
+        
+        logs = {'train_loss': 0.5}
+        
+        # This should not raise ZeroDivisionError due to defensive check
+        try:
+            callback.on_log(Mock(), state, Mock(), logs)
+            print("✅ JSONL emission with zero interval handled gracefully")
+        except ZeroDivisionError:
+            pytest.fail("ZeroDivisionError should not occur with defensive check")

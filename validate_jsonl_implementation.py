@@ -34,6 +34,52 @@ def validate_imports():
         print(f"❌ Import failed: {e}")
         return False
 
+def validate_parameter_validation():
+    """Validate that parameter validation works correctly."""
+    print("\n🔍 Validating parameter validation...")
+    
+    try:
+        from rldk.integrations.trl.callbacks import RLDKCallback
+        from unittest.mock import Mock
+        
+        # Test valid parameters
+        callback = RLDKCallback(
+            output_dir="./temp_test",
+            jsonl_log_interval=1,
+            log_interval=10
+        )
+        print("✅ Valid parameters accepted")
+        
+        # Test invalid jsonl_log_interval
+        try:
+            RLDKCallback(output_dir="./temp_test", jsonl_log_interval=0)
+            print("❌ Should have raised ValueError for jsonl_log_interval=0")
+            return False
+        except ValueError as e:
+            if "jsonl_log_interval must be positive" in str(e):
+                print("✅ jsonl_log_interval=0 correctly rejected")
+            else:
+                print(f"❌ Unexpected error message: {e}")
+                return False
+        
+        # Test invalid log_interval
+        try:
+            RLDKCallback(output_dir="./temp_test", log_interval=-1)
+            print("❌ Should have raised ValueError for log_interval=-1")
+            return False
+        except ValueError as e:
+            if "log_interval must be positive" in str(e):
+                print("✅ log_interval=-1 correctly rejected")
+            else:
+                print(f"❌ Unexpected error message: {e}")
+                return False
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ Parameter validation test failed: {e}")
+        return False
+
 def validate_jsonl_emission():
     """Validate JSONL event emission."""
     print("\n📝 Validating JSONL event emission...")
@@ -154,6 +200,11 @@ def main():
     # Validate imports
     if not validate_imports():
         print("\n❌ Import validation failed")
+        return False
+    
+    # Validate parameter validation
+    if not validate_parameter_validation():
+        print("\n❌ Parameter validation failed")
         return False
     
     # Validate JSONL emission

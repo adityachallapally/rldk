@@ -115,6 +115,12 @@ class RLDKCallback(TrainerCallback):
         self.output_dir = Path(output_dir) if output_dir else Path("./rldk_logs")
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
+        # Validate log intervals
+        if log_interval <= 0:
+            raise ValueError("log_interval must be positive")
+        if jsonl_log_interval <= 0:
+            raise ValueError("jsonl_log_interval must be positive")
+        
         self.log_interval = log_interval
         self.enable_checkpoint_analysis = enable_checkpoint_analysis
         self.enable_resource_monitoring = enable_resource_monitoring
@@ -241,7 +247,9 @@ class RLDKCallback(TrainerCallback):
         self.metrics_history.append(RLDKMetrics(**self.current_metrics.to_dict()))
         
         # Emit JSONL event if enabled and at the right interval
-        if self.enable_jsonl_logging and state.global_step % self.jsonl_log_interval == 0:
+        if (self.enable_jsonl_logging and 
+            self.jsonl_log_interval > 0 and 
+            state.global_step % self.jsonl_log_interval == 0):
             self._emit_jsonl_event(state, logs)
         
         # Check for alerts AFTER metrics are stored
