@@ -17,12 +17,11 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /workspace
 
-# Copy requirements and install Python dependencies
-COPY pyproject.toml ./
-RUN pip install --no-cache-dir -e .
-
-# Copy source code
+# Copy source code first (required for editable install)
 COPY . .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -e .
 
 # Create necessary directories
 RUN mkdir -p test_artifacts/logs_clean \

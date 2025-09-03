@@ -38,6 +38,7 @@ This document summarizes the successful implementation of a comprehensive one-co
 - Includes all dependencies from pyproject.toml
 - Sets up demo to run automatically when container starts
 - Optimized with .dockerignore for faster builds
+- Correct build order: copy source before editable install
 
 ### 4. Created Working Demo Scripts
 
@@ -52,6 +53,7 @@ This document summarizes the successful implementation of a comprehensive one-co
 - Same functionality as interactive demo
 - No user interaction required
 - Perfect for automated testing
+- Uses PATH-based command resolution for portability
 
 ### 5. Updated README Quickstart
 
@@ -119,6 +121,8 @@ The demo successfully generates:
 - Comprehensive error checking in demo scripts
 - Graceful fallbacks for missing dependencies
 - Informative error messages and warnings
+- Dynamic PATH resolution for RLDK command
+- Verification of command availability after installation
 
 ### Reproducibility
 - Deterministic test data generation

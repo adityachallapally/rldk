@@ -648,6 +648,18 @@ python3 generate_logs.py
 ls -la pyproject.toml tests/_make_fixtures.py generate_logs.py
 ```
 
+**RLDK Command Not Found**: If the demo can't find the `rldk` command:
+```bash
+# Check if RLDK is installed
+pip list | grep rldk
+
+# Reinstall if needed
+pip install -e . --break-system-packages
+
+# Check common installation locations
+which rldk || find /usr/local/bin /usr/bin ~/.local/bin -name rldk 2>/dev/null
+```
+
 ### Demo Troubleshooting
 
 **Demo Script Hangs**: The demo script waits for user input. Press Enter to continue.
