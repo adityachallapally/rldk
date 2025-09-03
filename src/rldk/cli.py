@@ -178,9 +178,9 @@ def diff(
 
 @app.command(name="check-determinism")
 def check_determinism_cmd(
-    cmd: str = typer.Option(..., "--cmd", "-c", help="Command to run for testing"),
-    compare: str = typer.Option(
-        ..., "--compare", "-m", help="Metrics to compare (comma-separated)"
+    cmd: Optional[str] = typer.Option(None, "--cmd", "-c", help="Command to run for testing"),
+    compare: Optional[str] = typer.Option(
+        None, "--compare", "-m", help="Metrics to compare (comma-separated)"
     ),
     steps: Optional[str] = typer.Option(
         None, "--steps", "-s", help="Specific steps to compare (comma-separated)"
@@ -191,6 +191,12 @@ def check_determinism_cmd(
     replicas: int = typer.Option(
         5, "--replicas", "-r", help="Number of replicas to run"
     ),
+    runs: int = typer.Option(
+        2, "--runs", help="Number of runs for determinism check (alias for replicas)"
+    ),
+    tolerance: float = typer.Option(
+        0.01, "--tolerance", "-t", help="Tolerance for metric differences"
+    ),
     device: Optional[str] = typer.Option(
         None, "--device", "-d", help="Device to use (auto-detected if None)"
     ),
@@ -200,11 +206,27 @@ def check_determinism_cmd(
         "-o",
         help="Output directory for reports",
     ),
+    gate: bool = typer.Option(
+        False, "--gate", help="Enable CI gate mode with exit codes (0=pass, 1=warn, 2=fail)"
+    ),
 ):
     """Check if a training command is deterministic."""
     try:
-        # Parse comma-separated values
-        compare_list = [c.strip() for c in compare.split(",")]
+        # Use runs parameter if provided, otherwise use replicas
+        actual_replicas = runs if runs != 2 else replicas
+        
+        # Handle simplified interface for gate mode
+        if gate and not cmd and not compare:
+            # For gate mode, use default values
+            cmd = "python -c 'import torch; print(torch.randn(1).item())'"
+            compare_list = ["loss"]  # Default metric
+            typer.echo("Gate mode: Using default command and metrics")
+        else:
+            # Parse comma-separated values
+            if not compare:
+                raise ValueError("--compare parameter is required when not in gate mode")
+            compare_list = [c.strip() for c in compare.split(",")]
+        
         steps_list = None
         if steps:
             steps_list = [int(s.strip()) for s in steps.split(",")]
@@ -215,11 +237,13 @@ def check_determinism_cmd(
             typer.echo(f"Steps to compare: {steps_list}")
         else:
             typer.echo(f"Stride: {stride}")
+        typer.echo(f"Runs: {actual_replicas}")
+        typer.echo(f"Tolerance: {tolerance}")
         typer.echo(f"Device: {device or 'auto-detected'}")
 
         # Check determinism
         typer.echo("\nRunning determinism check...")
-        report = check(cmd, compare_list, steps_list, stride, device)
+        report = check(cmd, compare_list, steps_list, actual_replicas, device)
 
         # Write report
         output_path = Path(output_dir)
@@ -241,6 +265,7 @@ def check_determinism_cmd(
         # Display results
         if report.passed:
             typer.echo("\n✅ Determinism check passed")
+            exit_code = 0
         else:
             typer.echo("\n🚨 Determinism issues found")
             if report.culprit:
@@ -249,12 +274,37 @@ def check_determinism_cmd(
                 typer.echo("\nRecommended fixes:")
                 for fix in report.fixes[:3]:  # Show first 3 fixes
                     typer.echo(f"  - {fix}")
+            
+            # Determine exit code based on severity and tolerance
+            if len(report.mismatches) > 0:
+                # Check if mismatches exceed tolerance
+                max_diff = max([m.get('difference', 0) for m in report.mismatches], default=0)
+                if max_diff > tolerance:
+                    exit_code = 2  # Fail - mismatches exceed tolerance
+                else:
+                    exit_code = 1  # Warn - mismatches within tolerance
+            else:
+                exit_code = 1  # Warn - potential issues but no hard failures
 
         typer.echo(f"\nReport saved to: {output_dir}/determinism_card.json")
+        
+        # Handle gate mode
+        if gate:
+            if exit_code == 0:
+                typer.echo("GATE: PASS")
+            elif exit_code == 1:
+                typer.echo("GATE: WARN")
+            else:
+                typer.echo("GATE: FAIL")
+            raise typer.Exit(exit_code)
 
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(1)
+        if gate:
+            typer.echo("GATE: FAIL")
+            raise typer.Exit(2)
+        else:
+            raise typer.Exit(1)
 
 
 @app.command(name="bisect")
@@ -350,6 +400,9 @@ def reward_health(
     threshold_leakage: float = typer.Option(
         0.3, "--threshold-leakage", help="Threshold for label leakage risk"
     ),
+    gate: bool = typer.Option(
+        False, "--gate", help="Enable CI gate mode with exit codes (0=pass, 1=warn, 2=fail)"
+    ),
 ):
     """Analyze reward model health and detect pathologies."""
     try:
@@ -386,6 +439,7 @@ def reward_health(
         # Display results
         if health_report.passed:
             typer.echo("\n✅ Reward health check passed")
+            exit_code = 0
         else:
             typer.echo("\n🚨 Reward health issues detected")
 
@@ -407,6 +461,18 @@ def reward_health(
                 typer.echo(
                     f"  - Label leakage risk: {health_report.label_leakage_risk:.3f}"
                 )
+            
+            # Determine exit code based on severity
+            critical_issues = 0
+            if health_report.drift_detected:
+                critical_issues += 1
+            if health_report.label_leakage_risk > threshold_leakage:
+                critical_issues += 1
+            
+            if critical_issues > 0:
+                exit_code = 2  # Fail - critical issues
+            else:
+                exit_code = 1  # Warn - non-critical issues
 
         typer.echo(f"\nReports saved to: {output_dir}")
         typer.echo("  - reward_health_card.md")
@@ -417,10 +483,24 @@ def reward_health(
         ):
             typer.echo("  - drift_analysis.csv")
         typer.echo("  - calibration_plots.png")
+        
+        # Handle gate mode
+        if gate:
+            if exit_code == 0:
+                typer.echo("GATE: PASS")
+            elif exit_code == 1:
+                typer.echo("GATE: WARN")
+            else:
+                typer.echo("GATE: FAIL")
+            raise typer.Exit(exit_code)
 
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(1)
+        if gate:
+            typer.echo("GATE: FAIL")
+            raise typer.Exit(2)
+        else:
+            raise typer.Exit(1)
 
 
 @app.command(name="replay")
