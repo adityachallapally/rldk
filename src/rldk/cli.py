@@ -635,12 +635,12 @@ def track(
     """Start tracking an experiment with W&B (default) or file logging."""
     try:
         typer.echo(f"Starting experiment tracking: {experiment_name}")
-        
+
         # Parse tags if provided
         tag_list = []
         if tags:
             tag_list = [tag.strip() for tag in tags.split(",")]
-        
+
         # Create tracking configuration
         config = TrackingConfig(
             experiment_name=experiment_name,
@@ -650,29 +650,157 @@ def track(
             tags=tag_list,
             notes=notes,
         )
-        
-        # Create tracker
+
+        # Create tracker and start experiment
         tracker = ExperimentTracker(config)
-        
+        start_info = tracker.start_experiment()
+
         typer.echo(f"✅ Experiment tracking started")
         typer.echo(f"  Experiment: {experiment_name}")
+        typer.echo(f"  Experiment ID: {start_info['experiment_id']}")
         typer.echo(f"  Output directory: {output_dir}")
         typer.echo(f"  W&B enabled: {not no_wandb}")
         if not no_wandb:
             typer.echo(f"  W&B project: {config.wandb_project}")
         if tag_list:
             typer.echo(f"  Tags: {', '.join(tag_list)}")
+
+        # Log initial metadata
+        tracker.add_metadata("cli_command", "rldk track")
+        tracker.add_metadata("cli_args", {
+            "experiment_name": experiment_name,
+            "output_dir": output_dir,
+            "no_wandb": no_wandb,
+            "wandb_project": wandb_project,
+            "tags": tag_list,
+            "notes": notes
+        })
+
+        # Finish the experiment immediately since this is a CLI command
+        # In practice, users would integrate this with their training loop
+        summary = tracker.finish_experiment()
         
-        # Keep the tracker running for the duration of the experiment
-        # This is a simple implementation - in practice, you might want to
-        # integrate this with the actual training loop
-        typer.echo("\nExperiment tracker is ready. Use the tracker object in your training code.")
-        typer.echo("Example:")
-        typer.echo("  tracker.log_metric('loss', 0.5)")
-        typer.echo("  tracker.log_metric('accuracy', 0.8)")
-        typer.echo("  tracker.finish_experiment()")
+        typer.echo(f"\n✅ Experiment tracking completed")
+        typer.echo(f"  Files created: {len(list(Path(output_dir).glob('*.json')))} JSON, {len(list(Path(output_dir).glob('*.yaml')))} YAML")
+        if not no_wandb:
+            typer.echo(f"  W&B run created: {config.wandb_project}/{experiment_name}")
         
-        return tracker
+        typer.echo(f"\n📝 Next steps:")
+        typer.echo(f"  - Use the ExperimentTracker in your training code:")
+        typer.echo(f"    from rldk.tracking import ExperimentTracker, TrackingConfig")
+        typer.echo(f"    config = TrackingConfig('{experiment_name}', save_to_wandb={not no_wandb})")
+        typer.echo(f"    tracker = ExperimentTracker(config)")
+        typer.echo(f"    tracker.start_experiment()")
+        typer.echo(f"    # ... your training loop ...")
+        typer.echo(f"    tracker.log_metric('loss', 0.5)")
+        typer.echo(f"    tracker.finish_experiment()")
+
+        return summary
+        
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+@app.command(name="track-run")
+def track_run(
+    command: str = typer.Argument(..., help="Training command to run with tracking"),
+    experiment_name: str = typer.Option(
+        None, "--name", "-n", help="Experiment name (auto-generated if not provided)"
+    ),
+    output_dir: str = typer.Option(
+        "./runs", "--output-dir", "-o", help="Output directory for tracking data"
+    ),
+    no_wandb: bool = typer.Option(
+        False, "--no-wandb", help="Disable W&B logging and use file logging only"
+    ),
+    wandb_project: Optional[str] = typer.Option(
+        None, "--wandb-project", help="W&B project name (default: rldk-experiments)"
+    ),
+    tags: Optional[str] = typer.Option(
+        None, "--tags", help="Comma-separated list of tags"
+    ),
+    notes: Optional[str] = typer.Option(
+        None, "--notes", help="Additional notes for the experiment"
+    ),
+):
+    """Run a training command with automatic experiment tracking."""
+    import subprocess
+    import time
+    
+    try:
+        # Generate experiment name if not provided
+        if not experiment_name:
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            experiment_name = f"tracked_run_{timestamp}"
+
+        typer.echo(f"Starting tracked training run: {experiment_name}")
+        typer.echo(f"Command: {command}")
+
+        # Parse tags if provided
+        tag_list = []
+        if tags:
+            tag_list = [tag.strip() for tag in tags.split(",")]
+
+        # Create tracking configuration
+        config = TrackingConfig(
+            experiment_name=experiment_name,
+            output_dir=Path(output_dir),
+            save_to_wandb=not no_wandb,
+            wandb_project=wandb_project,
+            tags=tag_list,
+            notes=notes,
+        )
+
+        # Create tracker and start experiment
+        tracker = ExperimentTracker(config)
+        start_info = tracker.start_experiment()
+
+        typer.echo(f"✅ Experiment tracking started")
+        typer.echo(f"  Experiment ID: {start_info['experiment_id']}")
+        typer.echo(f"  W&B enabled: {not no_wandb}")
+        if not no_wandb:
+            typer.echo(f"  W&B project: {config.wandb_project}")
+
+        # Log command metadata
+        tracker.add_metadata("command", command)
+        tracker.add_metadata("start_time", time.time())
+        tracker.add_metadata("cli_command", "rldk track-run")
+
+        # Run the training command
+        typer.echo(f"\n🚀 Running training command...")
+        start_time = time.time()
+        
+        try:
+            result = subprocess.run(command, shell=True, check=True)
+            exit_code = result.returncode
+            success = True
+        except subprocess.CalledProcessError as e:
+            exit_code = e.returncode
+            success = False
+            typer.echo(f"⚠️  Command failed with exit code {exit_code}")
+
+        end_time = time.time()
+        duration = end_time - start_time
+
+        # Log completion metadata
+        tracker.add_metadata("end_time", end_time)
+        tracker.add_metadata("duration_seconds", duration)
+        tracker.add_metadata("exit_code", exit_code)
+        tracker.add_metadata("success", success)
+
+        # Finish the experiment
+        summary = tracker.finish_experiment()
+        
+        typer.echo(f"\n✅ Training run completed")
+        typer.echo(f"  Duration: {duration:.2f} seconds")
+        typer.echo(f"  Exit code: {exit_code}")
+        typer.echo(f"  Success: {success}")
+        typer.echo(f"  Files created: {len(list(Path(output_dir).glob('*.json')))} JSON, {len(list(Path(output_dir).glob('*.yaml')))} YAML")
+        if not no_wandb:
+            typer.echo(f"  W&B run: {config.wandb_project}/{experiment_name}")
+
+        return summary if success else typer.Exit(exit_code)
         
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)

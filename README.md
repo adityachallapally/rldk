@@ -355,6 +355,18 @@ rldk track my_experiment --no-wandb
 
 # Custom output directory
 rldk track my_experiment --output-dir ./my_runs
+
+# Run a training command with automatic tracking
+rldk track-run "python train.py --config config.yml"
+
+# Run with custom experiment name
+rldk track-run "python train.py" --name my_experiment
+
+# Run with W&B disabled
+rldk track-run "python train.py" --no-wandb
+
+# Run with tags and custom project
+rldk track-run "python train.py" --tags "ppo,large-model" --wandb-project my-project
 ```
 
 ### Legacy Commands (Still Supported)
@@ -586,6 +598,9 @@ rldk track my_experiment --wandb-project my-custom-project
 
 # With tags and notes
 rldk track my_experiment --tags "ppo,large-model" --notes "Testing new architecture"
+
+# Run training commands with automatic tracking
+rldk track-run "python train.py --config config.yml"
 ```
 
 ### Disabling W&B
@@ -594,6 +609,9 @@ Use the `--no-wandb` flag to disable W&B logging and use file logging only:
 ```bash
 # Disable W&B, use file logging only
 rldk track my_experiment --no-wandb
+
+# Run training commands without W&B
+rldk track-run "python train.py" --no-wandb
 
 # Other commands also support --no-wandb
 rldk replay --run my_run --command "python train.py" --no-wandb
