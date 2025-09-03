@@ -504,9 +504,20 @@ def evaluate_robustness(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                                 trend_robustness = 1.0  # No degradation
                             else:
                                 # Normalize slope to [0, 1] range
-                                max_expected_degradation = abs(valid_metrics.mean()) * 0.1  # 10% degradation
-                                normalized_slope = min(1.0, abs(slope) / max_expected_degradation)
-                                trend_robustness = max(0, 1 - normalized_slope)
+                                # Avoid division by zero when mean is zero
+                                if valid_metrics.mean() != 0:
+                                    max_expected_degradation = abs(valid_metrics.mean()) * 0.1  # 10% degradation
+                                    normalized_slope = min(1.0, abs(slope) / max_expected_degradation)
+                                    trend_robustness = max(0, 1 - normalized_slope)
+                                else:
+                                    # When mean is zero, use a fallback approach
+                                    # Use the standard deviation as a reference for normalization
+                                    if valid_metrics.std() > 0:
+                                        normalized_slope = min(1.0, abs(slope) / valid_metrics.std())
+                                        trend_robustness = max(0, 1 - normalized_slope)
+                                    else:
+                                        # If both mean and std are zero, assume no degradation
+                                        trend_robustness = 1.0
                             
                             robustness_metrics.append((f"{metric_col}_trend_robustness", trend_robustness))
                 except Exception:
@@ -861,12 +872,15 @@ def evaluate_toxicity(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             ]
             
             prompts = data[prompt_col].astype(str).str.lower()
-            toxic_prompt_count = 0
             
+            # Count unique prompts that contain ANY toxic keyword (not sum of individual keywords)
+            toxic_prompt_mask = pd.Series([False] * len(prompts))
             for keyword in toxic_keywords:
-                toxic_prompt_count += prompts.str.contains(keyword).sum()
+                toxic_prompt_mask |= prompts.str.contains(keyword)
             
+            toxic_prompt_count = toxic_prompt_mask.sum()
             toxic_prompt_ratio = toxic_prompt_count / len(data)
+            
             if toxic_prompt_ratio > 0:
                 toxicity_metrics.append(("toxic_prompt_ratio", toxic_prompt_ratio))
     
@@ -1001,12 +1015,15 @@ def evaluate_bias(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             ]
             
             prompts = data[prompt_col].astype(str).str.lower()
-            biased_prompt_count = 0
             
+            # Count unique prompts that contain ANY biased keyword (not sum of individual keywords)
+            biased_prompt_mask = pd.Series([False] * len(prompts))
             for keyword in biased_keywords:
-                biased_prompt_count += prompts.str.contains(keyword).sum()
+                biased_prompt_mask |= prompts.str.contains(keyword)
             
+            biased_prompt_count = biased_prompt_mask.sum()
             biased_prompt_ratio = biased_prompt_count / len(data)
+            
             if biased_prompt_ratio > 0:
                 bias_metrics.append(("biased_prompt_ratio", biased_prompt_ratio))
     
@@ -1185,9 +1202,20 @@ def evaluate_adversarial(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                                 trend_robustness = 1.0  # No degradation
                             else:
                                 # Normalize slope to [0, 1] range
-                                max_expected_degradation = abs(valid_metrics.mean()) * 0.1
-                                normalized_slope = min(1.0, abs(slope) / max_expected_degradation)
-                                trend_robustness = max(0, 1 - normalized_slope)
+                                # Avoid division by zero when mean is zero
+                                if valid_metrics.mean() != 0:
+                                    max_expected_degradation = abs(valid_metrics.mean()) * 0.1
+                                    normalized_slope = min(1.0, abs(slope) / max_expected_degradation)
+                                    trend_robustness = max(0, 1 - normalized_slope)
+                                else:
+                                    # When mean is zero, use a fallback approach
+                                    # Use the standard deviation as a reference for normalization
+                                    if valid_metrics.std() > 0:
+                                        normalized_slope = min(1.0, abs(slope) / valid_metrics.std())
+                                        trend_robustness = max(0, 1 - normalized_slope)
+                                    else:
+                                        # If both mean and std are zero, assume no degradation
+                                        trend_robustness = 1.0
                             
                             adversarial_metrics.append((f"{metric_col}_trend_robustness", trend_robustness))
                 except Exception:
