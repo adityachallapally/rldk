@@ -5,8 +5,9 @@ from pathlib import Path
 from typing import Optional
 
 from rldk.reward.drift import compare_models
-from rldk.reward.health import health
-from rldk.reward.health.exit_codes import raise_on_failure
+from rldk.reward.health_analysis import health
+from rldk.reward.health_config.exit_codes import raise_on_failure
+from rldk.reward.health_config.config import load_config, get_legacy_thresholds
 from rldk.io.writers import write_json, write_png, mkdir_reports
 from rldk.io.schemas import validate, RewardDriftReportV1
 from rldk.io.reward_writers import generate_reward_health_report
@@ -122,6 +123,7 @@ def reward_health_run(
     scores: str = typer.Option(..., "--scores", help="Path to scores JSONL file"),
     config: Optional[str] = typer.Option(None, "--config", help="Path to health configuration YAML file"),
     out: str = typer.Option(..., "--out", help="Output directory for reports"),
+    adapter: Optional[str] = typer.Option(None, "--adapter", help="Adapter type for data ingestion (custom_jsonl, trl, openrlhf, wandb)"),
     gate: bool = typer.Option(False, "--gate", help="Enable CI gate mode with exit codes (0=pass, 1=warn, 2=fail). Use 'gate' subcommand for health.json-based gating."),
 ):
     """Run reward health analysis on scores data."""
@@ -130,21 +132,22 @@ def reward_health_run(
         
         # Ingest scores data
         typer.echo("Ingesting scores data...")
-        scores_data = ingest_runs(scores)
+        scores_data = ingest_runs(scores, adapter_hint=adapter)
         
-        # Load configuration if provided
-        config_data = {}
-        if config and Path(config).exists():
-            import yaml
-            with open(config, 'r') as f:
-                config_data = yaml.safe_load(f)
+        # Load configuration (default or user-provided)
+        if config:
+            typer.echo(f"Using user configuration: {config}")
+        else:
+            typer.echo("Using default configuration (recipes/health_default.yaml)")
+        config_data = load_config(config)
         
         # Extract thresholds from config
-        threshold_drift = config_data.get('threshold_drift', 0.1)
-        threshold_saturation = config_data.get('threshold_saturation', 0.8)
-        threshold_calibration = config_data.get('threshold_calibration', 0.7)
-        threshold_shortcut = config_data.get('threshold_shortcut', 0.6)
-        threshold_leakage = config_data.get('threshold_leakage', 0.3)
+        legacy_thresholds = get_legacy_thresholds(config_data)
+        threshold_drift = legacy_thresholds['threshold_drift']
+        threshold_saturation = legacy_thresholds['threshold_saturation']
+        threshold_calibration = legacy_thresholds['threshold_calibration']
+        threshold_shortcut = legacy_thresholds['threshold_shortcut']
+        threshold_leakage = legacy_thresholds['threshold_leakage']
         
         # Run reward health analysis
         typer.echo("Running reward health analysis...")
