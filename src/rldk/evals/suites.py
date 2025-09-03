@@ -662,8 +662,19 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 # Convert improvement to efficiency score
                 if improvement > 0:
                     # Normalize improvement
-                    max_expected_improvement = abs(rewards.mean()) * 0.5
-                    improvement_score = min(1.0, improvement / max_expected_improvement)
+                    # Avoid division by zero when mean is zero
+                    if rewards.mean() != 0:
+                        max_expected_improvement = abs(rewards.mean()) * 0.5
+                        improvement_score = min(1.0, improvement / max_expected_improvement)
+                    else:
+                        # When mean is zero, use a fallback approach
+                        # Use the standard deviation as a reference for normalization
+                        if rewards.std() > 0:
+                            max_expected_improvement = rewards.std() * 0.5
+                            improvement_score = min(1.0, improvement / max_expected_improvement)
+                        else:
+                            # If both mean and std are zero, assume good improvement
+                            improvement_score = 1.0
                 else:
                     improvement_score = 0.0
                 
@@ -1174,8 +1185,11 @@ def evaluate_adversarial(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             
             # Check for gradient explosion (indicates vulnerability)
             if max_grad_norm > 10.0:
+                # Calculate penalty and invert it so that higher penalty = lower robustness
                 grad_explosion_penalty = min(1.0, (max_grad_norm - 10.0) / 10.0)
-                adversarial_metrics.append(("gradient_explosion_penalty", grad_explosion_penalty))
+                # Invert the penalty: 1 - penalty so that higher penalty = lower score
+                grad_explosion_robustness = max(0, 1 - grad_explosion_penalty)
+                adversarial_metrics.append(("gradient_explosion_robustness", grad_explosion_robustness))
     
     # 6. Check for performance degradation under stress
     if "step" in data.columns:
