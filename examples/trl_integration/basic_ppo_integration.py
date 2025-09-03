@@ -167,9 +167,9 @@ def test_basic_ppo_integration():
         print("🎉 Training simulation completed successfully!")
         
         # Save final analysis
-        # rldk_callback.save_metrics_history()  # Method doesn't exist
-        # ppo_monitor.save_ppo_analysis()  # Method doesn't exist
-        # checkpoint_monitor.save_checkpoint_summary()  # Method doesn't exist
+        rldk_callback.save_metrics_history()
+        ppo_monitor.save_ppo_analysis()
+        checkpoint_monitor.save_checkpoint_summary()
         
         print("📁 Analysis saved to output directory")
         

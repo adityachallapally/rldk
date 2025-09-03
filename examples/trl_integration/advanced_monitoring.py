@@ -1,6 +1,7 @@
 """Advanced monitoring example with custom metrics and alerts."""
 
 import os
+import json
 import torch
 import numpy as np
 import pandas as pd
@@ -128,6 +129,18 @@ class CustomRLDKCallback(RLDKCallback):
             return "declining"
         else:
             return "stable"
+    
+    def save_metrics_history(self):
+        """Save custom metrics history and call parent method."""
+        # Save custom metrics
+        if self.custom_metrics_history:
+            custom_df = pd.DataFrame(self.custom_metrics_history)
+            custom_path = self.output_dir / f"{self.run_id}_custom_metrics.csv"
+            custom_df.to_csv(custom_path, index=False)
+            print(f"📊 Custom metrics saved to {custom_path}")
+        
+        # Call parent method to save standard metrics
+        super().save_metrics_history()
 
 
 class AdvancedPPOMonitor(PPOMonitor):
@@ -209,6 +222,17 @@ class AdvancedPPOMonitor(PPOMonitor):
             "all_converged": all(self.convergence_analysis.values()),
             "convergence_percentage": sum(self.convergence_analysis.values()) / len(self.convergence_analysis) * 100,
         }
+    
+    def save_ppo_analysis(self):
+        """Save advanced PPO analysis and call parent method."""
+        # Save convergence analysis
+        convergence_path = self.output_dir / f"{self.run_id}_convergence_analysis.json"
+        with open(convergence_path, "w") as f:
+            json.dump(self.convergence_analysis, f, indent=2)
+        print(f"📊 Convergence analysis saved to {convergence_path}")
+        
+        # Call parent method to save standard PPO analysis
+        super().save_ppo_analysis()
 
 
 def test_advanced_monitoring():
@@ -308,9 +332,9 @@ def test_advanced_monitoring():
     print(f"Convergence Report: {convergence_report}")
     
     # Save all data
-    # custom_callback.save_metrics_history()  # Method doesn't exist
-    # advanced_ppo_monitor.save_ppo_analysis()  # Method doesn't exist
-    # checkpoint_monitor.save_checkpoint_summary()  # Method doesn't exist
+    custom_callback.save_metrics_history()
+    advanced_ppo_monitor.save_ppo_analysis()
+    checkpoint_monitor.save_checkpoint_summary()
     
     print("✅ Advanced monitoring test completed")
     return True
