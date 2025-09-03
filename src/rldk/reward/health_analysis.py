@@ -193,41 +193,54 @@ def _detect_shortcut_signals(
 
     # Check for length bias
     if "tokens_out" in run_data.columns:
-        length_corr = np.corrcoef(run_data["tokens_out"], run_data[reward_col])[0, 1]
-        analysis["length_correlation"] = length_corr
-
-        if abs(length_corr) > threshold:
-            issues.append(f"Length bias detected: correlation {length_corr:.3f}")
+        try:
+            length_corr = np.corrcoef(run_data["tokens_out"], run_data[reward_col])[0, 1]
+            if not np.isnan(length_corr):
+                analysis["length_correlation"] = float(length_corr)
+                if abs(length_corr) > threshold:
+                    issues.append(f"Length bias detected: correlation {length_corr:.3f}")
+        except (ValueError, np.linalg.LinAlgError):
+            # Correlation cannot be computed (e.g., constant values)
+            pass
 
     # Check for repetition bias
     if "repetition_penalty" in run_data.columns:
-        rep_corr = np.corrcoef(run_data["repetition_penalty"], run_data[reward_col])[
-            0, 1
-        ]
-        analysis["repetition_correlation"] = rep_corr
-
-        if abs(rep_corr) > threshold:
-            issues.append(f"Repetition bias detected: correlation {rep_corr:.3f}")
+        try:
+            rep_corr = np.corrcoef(run_data["repetition_penalty"], run_data[reward_col])[
+                0, 1
+            ]
+            if not np.isnan(rep_corr):
+                analysis["repetition_correlation"] = float(rep_corr)
+                if abs(rep_corr) > threshold:
+                    issues.append(f"Repetition bias detected: correlation {rep_corr:.3f}")
+        except (ValueError, np.linalg.LinAlgError):
+            pass
 
     # Check for formatting bias (e.g., markdown, code blocks)
     if "has_markdown" in run_data.columns:
-        markdown_corr = np.corrcoef(run_data["has_markdown"], run_data[reward_col])[
-            0, 1
-        ]
-        analysis["markdown_correlation"] = markdown_corr
-
-        if abs(markdown_corr) > threshold:
-            issues.append(f"Markdown bias detected: correlation {markdown_corr:.3f}")
+        try:
+            markdown_corr = np.corrcoef(run_data["has_markdown"], run_data[reward_col])[
+                0, 1
+            ]
+            if not np.isnan(markdown_corr):
+                analysis["markdown_correlation"] = float(markdown_corr)
+                if abs(markdown_corr) > threshold:
+                    issues.append(f"Markdown bias detected: correlation {markdown_corr:.3f}")
+        except (ValueError, np.linalg.LinAlgError):
+            pass
 
     # Check for keyword bias
     if "keyword_count" in run_data.columns:
-        keyword_corr = np.corrcoef(run_data["keyword_count"], run_data[reward_col])[
-            0, 1
-        ]
-        analysis["keyword_correlation"] = keyword_corr
-
-        if abs(keyword_corr) > threshold:
-            issues.append(f"Keyword bias detected: correlation {keyword_corr:.3f}")
+        try:
+            keyword_corr = np.corrcoef(run_data["keyword_count"], run_data[reward_col])[
+                0, 1
+            ]
+            if not np.isnan(keyword_corr):
+                analysis["keyword_correlation"] = float(keyword_corr)
+                if abs(keyword_corr) > threshold:
+                    issues.append(f"Keyword bias detected: correlation {keyword_corr:.3f}")
+        except (ValueError, np.linalg.LinAlgError):
+            pass
 
     return issues, analysis
 

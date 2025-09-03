@@ -9,6 +9,18 @@ import numpy as np
 from ..reward.health_analysis import RewardHealthReport
 
 
+def _json_serialize(obj):
+    """Custom JSON serializer that converts NaN to null."""
+    if isinstance(obj, float) and np.isnan(obj):
+        return None
+    elif isinstance(obj, dict):
+        return {key: _json_serialize(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [_json_serialize(item) for item in obj]
+    else:
+        return obj
+
+
 def write_reward_health_card(report: RewardHealthReport, output_dir: Path) -> None:
     """Write reward health card to markdown file."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -188,8 +200,11 @@ def write_reward_health_summary(report: RewardHealthReport, output_dir: Path) ->
     if report.calibration_details:
         summary["calibration_details"] = report.calibration_details
 
+    # Serialize the summary to handle NaN values
+    serialized_summary = _json_serialize(summary)
+    
     with open(summary_path, "w") as f:
-        json.dump(summary, f, indent=2, default=str)
+        json.dump(serialized_summary, f, indent=2)
 
 
 def generate_reward_health_report(
