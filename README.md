@@ -1,5 +1,7 @@
 # RL Debug Kit (rldk)
 
+[![Reward Health Gate](https://github.com/your-org/rldk/workflows/Reward%20Health%20Gate/badge.svg)](https://github.com/your-org/rldk/actions/workflows/health-gate.yml)
+
 **The gold standard companion for LLM + RL** - a tiny, sharp kit that makes RL work reliable, explainable, and reproducible across any trainer or stack. No lock-in. Batteries included for determinism, drift, data, reward health, and evals.
 
 ## 🎯 North Star
@@ -629,6 +631,13 @@ rldk eval --run my_run --suite quick --no-wandb
 - Find which commit introduced a bug
 - Use metric-based or shell-based predicates
 - Automate regression testing in CI/CD
+
+### CI/CD Integration
+- **Reward Health Gate**: Automatically fail CI when reward health checks fail
+- Copy `.github/workflows/health-gate.yml` to your repository
+- Update the badge URL in README.md to point to your repository
+- The workflow tests both Python 3.10 and 3.11 with synthetic health data
+- Exit codes: 0 (passed), 3 (failed) - compatible with CI systems
 
 ### PPO Forensics
 - Detect KL spikes and controller failures
