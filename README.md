@@ -1,6 +1,7 @@
 # RL Debug Kit (rldk)
 
 [![Reward Health Gate](https://github.com/your-org/rldk/workflows/Reward%20Health%20Gate/badge.svg)](https://github.com/your-org/rldk/actions/workflows/health-gate.yml)
+<!-- Update the badge URL above to point to your repository -->
 
 **The gold standard companion for LLM + RL** - a tiny, sharp kit that makes RL work reliable, explainable, and reproducible across any trainer or stack. No lock-in. Batteries included for determinism, drift, data, reward health, and evals.
 
