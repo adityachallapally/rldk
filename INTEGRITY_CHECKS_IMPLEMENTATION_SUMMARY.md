@@ -8,6 +8,8 @@ This document summarizes the implementation of evaluation integrity checks for R
 
 ### 1. Core Integrity Module (`src/rldk/evals/integrity.py`)
 
+**Note**: The temporal ordering violation detection was fixed to correctly compare timestamp values instead of relying on pandas index alignment, which was causing false negatives.
+
 Created a comprehensive integrity checking module with four main evaluation functions:
 
 #### `evaluate_prompt_contamination()`
@@ -33,7 +35,7 @@ Created a comprehensive integrity checking module with four main evaluation func
 - **Checks**:
   - Proper split distribution (balanced splits)
   - Duplicate content across splits
-  - Temporal violations (if timestamps available)
+  - Temporal violations (if timestamps available) - **Fixed**: Now correctly detects out-of-order timestamps
 - **Score**: Higher score = better integrity
 
 #### `evaluate_evaluation_robustness()`
@@ -96,6 +98,31 @@ Comprehensive documentation including:
 - **Best practices**: When and how to use integrity checks
 - **Troubleshooting**: Common issues and debugging tips
 - **Performance considerations**: Runtime and memory usage
+
+## Bug Fixes
+
+### 1. Temporal Ordering Violation Detection Fix
+
+**Issue**: The original implementation had a critical bug where temporal ordering violations were never detected due to incorrect pandas Series comparison.
+
+**Problem**: The code was comparing `sorted_times == split_data[time_col]` where `sorted_times` was the result of `sort_values()`. Since `sort_values()` preserves the original indices, this comparison was always `True` because it was comparing sorted values with themselves at the same positions.
+
+**Solution**: Changed the comparison to use `np.array_equal(original_times.values, sorted_times.values)` to compare the actual timestamp values instead of relying on index alignment.
+
+**Before (buggy)**:
+```python
+sorted_times = split_data[time_col].sort_values()
+if not (sorted_times == split_data[time_col]).all():  # Always False
+    violations += 1
+```
+
+**After (fixed)**:
+```python
+original_times = split_data[time_col].values
+sorted_times = split_data[time_col].sort_values().values
+if not np.array_equal(original_times, sorted_times):  # Correctly detects violations
+    violations += 1
+```
 
 ## Key Features
 

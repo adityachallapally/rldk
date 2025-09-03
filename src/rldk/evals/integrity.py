@@ -393,8 +393,9 @@ def evaluate_data_split_integrity(
                     split_data = data_copy[data_copy[split_cols[0]] == split_name]
                     if len(split_data) > 1:
                         # Check if timestamps are ordered within split
-                        sorted_times = split_data[time_col].sort_values()
-                        if not (sorted_times == split_data[time_col]).all():
+                        original_times = split_data[time_col].values
+                        sorted_times = split_data[time_col].sort_values().values
+                        if not np.array_equal(original_times, sorted_times):
                             violations += 1
                 
                 violation_ratio = violations / len(data_copy[split_cols[0]].unique())
