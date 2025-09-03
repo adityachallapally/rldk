@@ -211,6 +211,9 @@ def reward_health_run(
                 typer.echo("GATE: FAIL")
             raise typer.Exit(exit_code)
     
+    except typer.Exit:
+        # Re-raise typer.Exit to preserve intended exit codes
+        raise
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
         if gate:

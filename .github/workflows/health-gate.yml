@@ -44,16 +44,9 @@ jobs:
     - name: Test gate with failing health (should fail)
       run: |
         # This should exit with code 3 and fail the job
-        rldk reward-health gate --from test_health_data/health.json || exit_code=$?
-        if [ $exit_code -ne 3 ]; then
-          echo "Expected exit code 3, got $exit_code"
-          exit 1
-        fi
-      continue-on-error: true
-    
-    - name: Verify job failed as expected
-      if: failure()
-      run: echo "✅ Job failed as expected for failing health data"
+        rldk reward-health gate --from test_health_data/health.json
+        echo "❌ Expected gate to fail with exit code 3, but it succeeded"
+        exit 1
     
     - name: Generate synthetic passing health data
       run: |
