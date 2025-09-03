@@ -6,6 +6,7 @@ from typing import Optional
 
 from rldk.reward.drift import compare_models
 from rldk.reward.health import health
+from rldk.reward.health.exit_codes import raise_on_failure
 from rldk.io.writers import write_json, write_png, mkdir_reports
 from rldk.io.schemas import validate, RewardDriftReportV1
 from rldk.io.reward_writers import generate_reward_health_report
@@ -121,7 +122,7 @@ def reward_health_run(
     scores: str = typer.Option(..., "--scores", help="Path to scores JSONL file"),
     config: Optional[str] = typer.Option(None, "--config", help="Path to health configuration YAML file"),
     out: str = typer.Option(..., "--out", help="Output directory for reports"),
-    gate: bool = typer.Option(False, "--gate", help="Enable CI gate mode with exit codes (0=pass, 1=warn, 2=fail)"),
+    gate: bool = typer.Option(False, "--gate", help="Enable CI gate mode with exit codes (0=pass, 1=warn, 2=fail). Use 'gate' subcommand for health.json-based gating."),
 ):
     """Run reward health analysis on scores data."""
     try:
@@ -210,6 +211,9 @@ def reward_health_run(
                 typer.echo("GATE: FAIL")
             raise typer.Exit(exit_code)
     
+    except typer.Exit:
+        # Re-raise typer.Exit to preserve intended exit codes
+        raise
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
         if gate:
@@ -217,3 +221,19 @@ def reward_health_run(
             raise typer.Exit(2)
         else:
             raise typer.Exit(1)
+
+
+@reward_health_app.command(name="gate")
+def reward_health_gate(
+    from_path: str = typer.Option(..., "--from", help="Path to health.json file"),
+):
+    """Gate CI based on health.json results (exit codes: 0=pass, 3=fail)."""
+    try:
+        typer.echo(f"Reading health data from: {from_path}")
+        raise_on_failure(from_path)
+    except SystemExit:
+        # Re-raise SystemExit to preserve exit codes from raise_on_failure
+        raise
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
