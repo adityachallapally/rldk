@@ -1,0 +1,10 @@
+{
+  "run_id": "test_run_123",
+  "total_steps": 1,
+  "total_time": 0.0,
+  "final_loss": 0.5,
+  "final_reward": 0.0,
+  "total_alerts": 0,
+  "training_stability": 1.0,
+  "convergence_indicator": 0.0
+}

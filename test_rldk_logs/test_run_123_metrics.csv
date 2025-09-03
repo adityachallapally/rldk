@@ -1,0 +1,2 @@
+step,epoch,learning_rate,loss,grad_norm,reward_mean,reward_std,kl_mean,kl_std,entropy_mean,clip_frac,value_loss,policy_loss,gpu_memory_used,gpu_memory_allocated,cpu_memory_used,step_time,wall_time,tokens_in,tokens_out,training_stability_score,convergence_indicator,phase,run_id,git_sha,seed
+1,0.0,1e-05,0.5,0.1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0,0,1.0,0.0,train,test_run_123,,42
