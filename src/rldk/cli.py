@@ -631,6 +631,9 @@ def track(
     notes: Optional[str] = typer.Option(
         None, "--notes", help="Additional notes for the experiment"
     ),
+    interactive: bool = typer.Option(
+        False, "--interactive", "-i", help="Keep tracker running in interactive mode"
+    ),
 ):
     """Start tracking an experiment with W&B (default) or file logging."""
     try:
@@ -654,8 +657,12 @@ def track(
         # Create tracker
         tracker = ExperimentTracker(config)
         
-        typer.echo(f"✅ Experiment tracking started")
+        # Actually start the experiment tracking
+        tracking_data = tracker.start_experiment()
+        
+        typer.echo(f"✅ Experiment tracking started successfully")
         typer.echo(f"  Experiment: {experiment_name}")
+        typer.echo(f"  Experiment ID: {tracking_data['experiment_id']}")
         typer.echo(f"  Output directory: {output_dir}")
         typer.echo(f"  W&B enabled: {not no_wandb}")
         if not no_wandb:
@@ -663,14 +670,33 @@ def track(
         if tag_list:
             typer.echo(f"  Tags: {', '.join(tag_list)}")
         
-        # Keep the tracker running for the duration of the experiment
-        # This is a simple implementation - in practice, you might want to
-        # integrate this with the actual training loop
-        typer.echo("\nExperiment tracker is ready. Use the tracker object in your training code.")
-        typer.echo("Example:")
-        typer.echo("  tracker.log_metric('loss', 0.5)")
-        typer.echo("  tracker.log_metric('accuracy', 0.8)")
-        typer.echo("  tracker.finish_experiment()")
+        if interactive:
+            typer.echo("\n🔄 Interactive mode enabled. Tracker is ready for use.")
+            typer.echo("Available commands:")
+            typer.echo("  tracker.log_metric('loss', 0.5)")
+            typer.echo("  tracker.log_metric('accuracy', 0.8)")
+            typer.echo("  tracker.track_dataset(dataset, 'my_dataset')")
+            typer.echo("  tracker.track_model(model, 'my_model')")
+            typer.echo("  tracker.finish_experiment()")
+            typer.echo("\nPress Ctrl+C to finish the experiment and exit.")
+            
+            try:
+                # Keep the process alive for interactive use
+                import time
+                while True:
+                    time.sleep(1)
+            except KeyboardInterrupt:
+                typer.echo("\n\nFinishing experiment...")
+                summary = tracker.finish_experiment()
+                typer.echo("✅ Experiment completed successfully!")
+        else:
+            # Non-interactive mode - finish immediately
+            typer.echo("\n📊 Experiment tracking completed.")
+            typer.echo("Environment, Git, and seed state have been captured.")
+            typer.echo("Use --interactive flag to keep tracker running for manual logging.")
+            
+            summary = tracker.finish_experiment()
+            typer.echo("✅ Experiment completed successfully!")
         
         return tracker
         
