@@ -1,0 +1,19 @@
+{
+  "passed": false,
+  "overall_status": "failed",
+  "drift_detected": false,
+  "saturation_issues_count": 1,
+  "calibration_score": 0.0,
+  "shortcut_signals_count": 0,
+  "label_leakage_risk": 0.0,
+  "fixes": [
+    "Adjust reward scaling or check for gradient issues"
+  ],
+  "saturation_analysis": {
+    "upper_saturation_ratio": 0.0,
+    "lower_saturation_ratio": 0.0,
+    "total_samples": 45,
+    "zero_ratio": 1.0
+  },
+  "shortcut_analysis": {}
+}

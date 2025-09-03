@@ -1,0 +1,27 @@
+{
+  "training_config": {
+    "learning_rate": 1e-05,
+    "batch_size": 2,
+    "max_steps": 20,
+    "seed": 123
+  },
+  "training_time_seconds": 300,
+  "total_steps": 20,
+  "final_metrics": {
+    "step": 19,
+    "kl": 0.1216589328662845,
+    "reward_mean": 0.4445231212837088,
+    "reward_std": 0.09399144901811665,
+    "loss": 0.3201557509580091,
+    "policy_loss": 0.22410902567060634,
+    "value_loss": 0.09604672528740273
+  },
+  "random_seed": 123,
+  "model_name": "gpt2",
+  "tokenizer_config": {
+    "vocab_size": 50257,
+    "model_max_length": 1024,
+    "padding_side": "right",
+    "pad_token_id": 50256
+  }
+}

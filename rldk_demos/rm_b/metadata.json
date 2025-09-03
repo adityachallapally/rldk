@@ -1,0 +1,16 @@
+{
+  "model_name": "distilbert-base-uncased",
+  "training_samples": 1000,
+  "validation_samples": 250,
+  "training_time_minutes": 30.0,
+  "random_seed": 42,
+  "evaluation_results": {
+    "accuracy": 0.85,
+    "precision": 0.82,
+    "recall": 0.88,
+    "f1": 0.85,
+    "chosen_reward_mean": 0.6,
+    "rejected_reward_mean": 0.3,
+    "preference_margin_mean": 0.3
+  }
+}
