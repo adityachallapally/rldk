@@ -62,6 +62,16 @@ def validate_jsonl_emission():
                 print(f"❌ Expected 1 JSONL file, found {len(jsonl_files)}")
                 return False
             
+            # Verify run_id is properly set in filename
+            jsonl_path = jsonl_files[0]
+            if "None" in jsonl_path.name:
+                print(f"❌ JSONL filename contains 'None': {jsonl_path.name}")
+                return False
+            
+            if callback.run_id not in jsonl_path.name:
+                print(f"❌ JSONL filename doesn't contain run_id: {jsonl_path.name}")
+                return False
+            
             print("✅ JSONL file creation successful")
             
             # Mock training step

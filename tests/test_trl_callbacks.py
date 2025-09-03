@@ -50,6 +50,7 @@ class TestRLDKCallbackJSONL:
         jsonl_path = jsonl_files[0]
         assert callback.run_id in jsonl_path.name
         assert jsonl_path.exists()
+        assert "None" not in jsonl_path.name  # Ensure run_id is properly set
 
     def test_jsonl_event_emission(self):
         """Test that JSONL events are emitted correctly."""
@@ -308,3 +309,19 @@ class TestRLDKCallbackJSONL:
         
         # Verify file is closed
         assert callback.jsonl_file is None
+    
+    def test_jsonl_initialization_order(self):
+        """Test that JSONL setup happens after run_id initialization."""
+        callback = RLDKCallback(output_dir=self.output_dir)
+        
+        # Verify run_id is set before JSONL file is created
+        assert callback.run_id is not None
+        assert callback.run_id != "None"
+        
+        # Verify JSONL file name contains the proper run_id
+        jsonl_files = list(self.output_dir.glob("*_events.jsonl"))
+        assert len(jsonl_files) == 1
+        
+        jsonl_path = jsonl_files[0]
+        assert callback.run_id in jsonl_path.name
+        assert "None" not in jsonl_path.name

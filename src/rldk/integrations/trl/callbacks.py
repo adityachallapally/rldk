@@ -139,14 +139,14 @@ class RLDKCallback(TrainerCallback):
         self.step_start_time = time.time()
         self.run_start_time = time.time()
         
-        # JSONL logging setup
-        self.jsonl_file = None
-        if self.enable_jsonl_logging:
-            self._setup_jsonl_logging()
-        
         # Generate run ID if not provided
         self.run_id = run_id or f"rldk_run_{int(time.time())}"
         self.current_metrics.run_id = self.run_id
+        
+        # JSONL logging setup (after run_id is initialized)
+        self.jsonl_file = None
+        if self.enable_jsonl_logging:
+            self._setup_jsonl_logging()
         
         # Alert system
         self.alerts: List[Dict[str, Any]] = []
@@ -441,6 +441,12 @@ class RLDKCallback(TrainerCallback):
         """Setup JSONL logging file."""
         if not EVENT_SCHEMA_AVAILABLE:
             warnings.warn("Event schema not available, JSONL logging disabled")
+            self.enable_jsonl_logging = False
+            return
+        
+        # Safety check: ensure run_id is available
+        if not hasattr(self, 'run_id') or self.run_id is None:
+            warnings.warn("run_id not available, JSONL logging disabled")
             self.enable_jsonl_logging = False
             return
         
