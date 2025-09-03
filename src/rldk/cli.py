@@ -191,8 +191,8 @@ def check_determinism_cmd(
     replicas: int = typer.Option(
         5, "--replicas", "-r", help="Number of replicas to run"
     ),
-    runs: int = typer.Option(
-        2, "--runs", help="Number of runs for determinism check (alias for replicas)"
+    runs: Optional[int] = typer.Option(
+        None, "--runs", help="Number of runs for determinism check (alias for replicas)"
     ),
     tolerance: float = typer.Option(
         0.01, "--tolerance", "-t", help="Tolerance for metric differences"
@@ -213,7 +213,7 @@ def check_determinism_cmd(
     """Check if a training command is deterministic."""
     try:
         # Use runs parameter if provided, otherwise use replicas
-        actual_replicas = runs if runs != 2 else replicas
+        actual_replicas = runs if runs is not None else replicas
         
         # Handle simplified interface for gate mode
         if gate and not cmd and not compare:
