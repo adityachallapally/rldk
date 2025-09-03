@@ -13,6 +13,6 @@
     "zero_ratio": 0.0
   },
   "shortcut_analysis": {
-    "length_correlation": NaN
+    "length_correlation": null
   }
 }
