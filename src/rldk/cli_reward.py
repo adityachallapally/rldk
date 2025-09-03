@@ -1,10 +1,15 @@
 """Reward CLI commands for RL Debug Kit."""
 
 import typer
+from pathlib import Path
+from typing import Optional
 
 from rldk.reward.drift import compare_models
+from rldk.reward.health import health
 from rldk.io.writers import write_json, write_png, mkdir_reports
 from rldk.io.schemas import validate, RewardDriftReportV1
+from rldk.io.reward_writers import generate_reward_health_report
+from rldk.ingest import ingest_runs
 
 app = typer.Typer(name="reward", help="Reward model analysis commands")
 
@@ -104,3 +109,111 @@ def reward_drift(
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(1)
+
+
+# Create a sub-app for reward-health commands
+reward_health_app = typer.Typer(name="reward-health", help="Reward health analysis commands")
+app.add_typer(reward_health_app, name="reward-health")
+
+
+@reward_health_app.command(name="run")
+def reward_health_run(
+    scores: str = typer.Option(..., "--scores", help="Path to scores JSONL file"),
+    config: Optional[str] = typer.Option(None, "--config", help="Path to health configuration YAML file"),
+    out: str = typer.Option(..., "--out", help="Output directory for reports"),
+    gate: bool = typer.Option(False, "--gate", help="Enable CI gate mode with exit codes (0=pass, 1=warn, 2=fail)"),
+):
+    """Run reward health analysis on scores data."""
+    try:
+        typer.echo(f"Running reward health analysis on scores: {scores}")
+        
+        # Ingest scores data
+        typer.echo("Ingesting scores data...")
+        scores_data = ingest_runs(scores)
+        
+        # Load configuration if provided
+        config_data = {}
+        if config and Path(config).exists():
+            import yaml
+            with open(config, 'r') as f:
+                config_data = yaml.safe_load(f)
+        
+        # Extract thresholds from config
+        threshold_drift = config_data.get('threshold_drift', 0.1)
+        threshold_saturation = config_data.get('threshold_saturation', 0.8)
+        threshold_calibration = config_data.get('threshold_calibration', 0.7)
+        threshold_shortcut = config_data.get('threshold_shortcut', 0.6)
+        threshold_leakage = config_data.get('threshold_leakage', 0.3)
+        
+        # Run reward health analysis
+        typer.echo("Running reward health analysis...")
+        health_report = health(
+            run_data=scores_data,
+            reference_data=None,  # No reference data for now
+            reward_col="reward_mean",
+            step_col="step",
+            threshold_drift=threshold_drift,
+            threshold_saturation=threshold_saturation,
+            threshold_calibration=threshold_calibration,
+            threshold_shortcut=threshold_shortcut,
+            threshold_leakage=threshold_leakage,
+        )
+        
+        # Generate reports
+        typer.echo("Generating reports...")
+        generate_reward_health_report(health_report, out)
+        
+        # Display results
+        if health_report.passed:
+            typer.echo("\n✅ Reward health check passed")
+            exit_code = 0
+        else:
+            typer.echo("\n🚨 Reward health issues detected")
+            
+            if health_report.drift_detected:
+                typer.echo("  - Reward drift detected")
+            if health_report.saturation_issues:
+                typer.echo(f"  - {len(health_report.saturation_issues)} saturation issues")
+            if health_report.calibration_score < threshold_calibration:
+                typer.echo(f"  - Poor calibration (score: {health_report.calibration_score:.3f})")
+            if health_report.shortcut_signals:
+                typer.echo(f"  - {len(health_report.shortcut_signals)} shortcut signals")
+            if health_report.label_leakage_risk > threshold_leakage:
+                typer.echo(f"  - Label leakage risk: {health_report.label_leakage_risk:.3f}")
+            
+            # Determine exit code based on severity
+            critical_issues = 0
+            if health_report.drift_detected:
+                critical_issues += 1
+            if health_report.label_leakage_risk > threshold_leakage:
+                critical_issues += 1
+            
+            if critical_issues > 0:
+                exit_code = 2  # Fail - critical issues
+            else:
+                exit_code = 1  # Warn - non-critical issues
+        
+        typer.echo(f"\nReports saved to: {out}")
+        typer.echo("  - reward_health_card.md")
+        typer.echo("  - reward_health_summary.json")
+        if health_report.drift_metrics is not None and not health_report.drift_metrics.empty:
+            typer.echo("  - drift_analysis.csv")
+        typer.echo("  - calibration_plots.png")
+        
+        # Handle gate mode
+        if gate:
+            if exit_code == 0:
+                typer.echo("GATE: PASS")
+            elif exit_code == 1:
+                typer.echo("GATE: WARN")
+            else:
+                typer.echo("GATE: FAIL")
+            raise typer.Exit(exit_code)
+    
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        if gate:
+            typer.echo("GATE: FAIL")
+            raise typer.Exit(2)
+        else:
+            raise typer.Exit(1)
