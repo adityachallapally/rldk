@@ -337,14 +337,31 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             group_consistencies = []
             for group_indices in prompt_groups.values():
                 if len(group_indices) > 1:
-                    group_rewards = data.iloc[group_indices]["reward_mean"].dropna()
-                    if len(group_rewards) > 1:
-                        group_std = group_rewards.std()
-                        group_mean = group_rewards.mean()
-                        if group_mean != 0:
-                            group_cv = group_std / abs(group_mean)
-                            group_consistency = max(0, 1 - group_cv)
-                            group_consistencies.append(group_consistency)
+                    # Guard against missing reward_mean column
+                    if "reward_mean" in data.columns:
+                        group_rewards = data.iloc[group_indices]["reward_mean"].dropna()
+                        if len(group_rewards) > 1:
+                            group_std = group_rewards.std()
+                            group_mean = group_rewards.mean()
+                            if group_mean != 0:
+                                group_cv = group_std / abs(group_mean)
+                                group_consistency = max(0, 1 - group_cv)
+                                group_consistencies.append(group_consistency)
+                    else:
+                        # Fallback: use other available metrics for consistency
+                        # Look for any numeric columns that might indicate consistency
+                        numeric_cols = [col for col in data.columns if data[col].dtype in ['float64', 'int64']]
+                        if numeric_cols:
+                            # Use the first numeric column as a proxy for consistency
+                            proxy_col = numeric_cols[0]
+                            group_values = data.iloc[group_indices][proxy_col].dropna()
+                            if len(group_values) > 1:
+                                group_std = group_values.std()
+                                group_mean = group_values.mean()
+                                if group_mean != 0:
+                                    group_cv = group_std / abs(group_mean)
+                                    group_consistency = max(0, 1 - group_cv)
+                                    group_consistencies.append(group_consistency)
             
             if group_consistencies:
                 avg_group_consistency = np.mean(group_consistencies)
