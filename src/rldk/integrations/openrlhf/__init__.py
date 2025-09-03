@@ -20,6 +20,14 @@ from .distributed import (
     GPUMemoryMonitor,
     NetworkMonitor,
 )
+from .network_monitor import (
+    RealNetworkMonitor,
+    NetworkMetrics,
+    NetworkInterfaceMonitor,
+    NetworkLatencyMonitor,
+    NetworkBandwidthMonitor,
+    DistributedNetworkMonitor,
+)
 
 __all__ = [
     # Main callbacks
@@ -34,6 +42,14 @@ __all__ = [
     "MultiNodeMonitor",
     "GPUMemoryMonitor",
     "NetworkMonitor",
+    
+    # Network monitoring
+    "RealNetworkMonitor",
+    "NetworkMetrics",
+    "NetworkInterfaceMonitor",
+    "NetworkLatencyMonitor",
+    "NetworkBandwidthMonitor",
+    "DistributedNetworkMonitor",
     
     # Specialized monitors
     "OpenRLHFTrainingMonitor",
