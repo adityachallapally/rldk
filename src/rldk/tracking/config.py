@@ -51,8 +51,8 @@ class TrackingConfig:
     # Output options
     save_to_json: bool = True
     save_to_yaml: bool = True
-    save_to_wandb: bool = False
-    wandb_project: Optional[str] = None
+    save_to_wandb: bool = True
+    wandb_project: Optional[str] = "rldk-experiments"
     
     # Additional metadata
     tags: List[str] = field(default_factory=list)

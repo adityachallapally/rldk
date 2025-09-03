@@ -288,6 +288,34 @@ print(f"Regression at commit: {result.culprit_sha}")
 print(f"Iterations: {result.iterations}")
 ```
 
+### Experiment Tracking
+
+```python
+from rldk.tracking import ExperimentTracker, TrackingConfig
+
+# W&B tracking (default)
+config = TrackingConfig(
+    experiment_name="my_experiment",
+    wandb_project="my-project",
+    tags=["ppo", "large-model"]
+)
+tracker = ExperimentTracker(config)
+
+# Log metrics during training
+tracker.log_metric("loss", 0.5)
+tracker.log_metric("accuracy", 0.8)
+
+# Finish experiment
+summary = tracker.finish_experiment()
+
+# File-only tracking (no W&B)
+config = TrackingConfig(
+    experiment_name="my_experiment",
+    save_to_wandb=False  # Disable W&B
+)
+tracker = ExperimentTracker(config)
+```
+
 ## 🖥️ CLI Cheatsheet
 
 ### Forensics Commands
@@ -309,6 +337,24 @@ rldk reward-drift <model_a> <model_b> --prompts <prompts.jsonl>
 
 # Comprehensive health check
 rldk doctor <run_or_export>
+```
+
+### Tracking Commands
+```bash
+# Start experiment tracking with W&B (default)
+rldk track my_experiment
+
+# Start tracking with custom W&B project
+rldk track my_experiment --wandb-project my-project
+
+# Start tracking with tags and notes
+rldk track my_experiment --tags "ppo,large-model" --notes "Testing new architecture"
+
+# Disable W&B and use file logging only
+rldk track my_experiment --no-wandb
+
+# Custom output directory
+rldk track my_experiment --output-dir ./my_runs
 ```
 
 ### Legacy Commands (Still Supported)
@@ -520,6 +566,50 @@ pytest tests/test_diff.py -v
 - **CSV**: Detailed divergence events for further analysis
 - **PNG**: Small plots for reports and cards
 - **JSON**: Structured reports for CI/CD integration
+
+## 🔗 Weights & Biases Integration
+
+RLDK integrates seamlessly with Weights & Biases (W&B) for experiment tracking and logging. W&B is enabled by default for all tracking operations.
+
+### Default W&B Configuration
+- **Project**: `rldk-experiments` (default)
+- **Logging**: Automatic experiment tracking with metadata
+- **Fallback**: File logging when W&B is unavailable
+
+### Using W&B (Default)
+```bash
+# W&B is enabled by default
+rldk track my_experiment
+
+# Custom W&B project
+rldk track my_experiment --wandb-project my-custom-project
+
+# With tags and notes
+rldk track my_experiment --tags "ppo,large-model" --notes "Testing new architecture"
+```
+
+### Disabling W&B
+Use the `--no-wandb` flag to disable W&B logging and use file logging only:
+
+```bash
+# Disable W&B, use file logging only
+rldk track my_experiment --no-wandb
+
+# Other commands also support --no-wandb
+rldk replay --run my_run --command "python train.py" --no-wandb
+rldk eval --run my_run --suite quick --no-wandb
+```
+
+### W&B Integration Features
+- **Automatic project creation**: Uses `rldk-experiments` by default
+- **Experiment metadata**: Tracks environment, git state, seeds, and datasets
+- **Graceful fallback**: Automatically falls back to file logging if W&B is not available
+- **No breaking changes**: Existing functionality continues to work
+
+### W&B Requirements
+- Install W&B: `pip install wandb`
+- Login: `wandb login` (first time only)
+- No additional configuration required
 
 ## 🎯 Use Cases
 

@@ -473,12 +473,21 @@ class TestExperimentTracker:
                 assert "git" in data
                 assert "seeds" in data
     
+    def test_default_wandb_configuration(self):
+        """Test that W&B is enabled by default."""
+        config = TrackingConfig(experiment_name="test_experiment")
+        
+        # Check that W&B is enabled by default
+        assert config.save_to_wandb == True
+        assert config.wandb_project == "rldk-experiments"
+    
     def test_tracking_summary(self):
         """Test tracking summary generation."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config = TrackingConfig(
                 experiment_name="test_experiment",
-                output_dir=Path(temp_dir)
+                output_dir=Path(temp_dir),
+                save_to_wandb=False  # Disable for testing
             )
             
             tracker = ExperimentTracker(config)
