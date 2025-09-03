@@ -166,8 +166,8 @@ def train_epoch(model, dataloader, optimizer, scheduler, criterion, device, prof
         total_predictions += labels.size(0)
         
         # Profiler step
-        if profiler_context:
-            profiler_context.step()
+        # if profiler_context:
+        #     profiler_context.step()  # ProfilerContext doesn't have a step() method
         
         if batch_idx % 10 == 0:
             print(f"Batch {batch_idx}, Loss: {loss.item():.4f}, "
