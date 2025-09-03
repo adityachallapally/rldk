@@ -1,0 +1,18 @@
+{
+  "run_id": "b",
+  "total_steps": 20,
+  "random_seed": 42,
+  "tokenizer_padding_side": "left",
+  "tokenizer_pad_token_id": 50256,
+  "final_metrics": {
+    "step": 19,
+    "kl": 0.1690454711963164,
+    "reward_mean": 0.5433167165186299,
+    "reward_std": 0.11498605238579351,
+    "loss": 0.2964869613149701,
+    "policy_loss": 0.20754087292047907,
+    "value_loss": 0.08894608839449103
+  },
+  "model_name": "gpt2",
+  "training_time_minutes": 5.0
+}
