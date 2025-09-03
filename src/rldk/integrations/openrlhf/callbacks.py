@@ -603,16 +603,24 @@ class DistributedTrainingMonitor(OpenRLHFCallback):
         """Collect network performance metrics."""
         try:
             from .network_monitor import RealNetworkMonitor
+            import threading
             
-            # Initialize real network monitor if not already done
-            if not hasattr(self, '_network_monitor'):
-                self._network_monitor = RealNetworkMonitor(enable_distributed_monitoring=True)
+            # Thread-safe initialization of network monitor
+            if not hasattr(self, '_network_monitor_lock'):
+                self._network_monitor_lock = threading.Lock()
+            
+            with self._network_monitor_lock:
+                if not hasattr(self, '_network_monitor'):
+                    self._network_monitor = RealNetworkMonitor(
+                        enable_distributed_monitoring=True,
+                        enable_distributed_measurements=False  # Safer default - doesn't interfere with training
+                    )
             
             # Get comprehensive network metrics
             network_metrics = self._network_monitor.get_comprehensive_metrics()
             
-            # Update current metrics
-            self.current_metrics.network_bandwidth = network_metrics.bandwidth_mbps / 1000.0  # Convert to GB/s
+            # Update current metrics with correct conversion (Mbps to GB/s = /8000.0)
+            self.current_metrics.network_bandwidth = network_metrics.bandwidth_mbps / 8000.0  # Convert to GB/s
             self.current_metrics.network_latency = network_metrics.latency_ms
             
             # Add additional network metrics if available
@@ -621,7 +629,7 @@ class DistributedTrainingMonitor(OpenRLHFCallback):
             if hasattr(self.current_metrics, 'packet_loss_percent'):
                 self.current_metrics.packet_loss_percent = network_metrics.packet_loss_percent
             if hasattr(self.current_metrics, 'allreduce_bandwidth'):
-                self.current_metrics.allreduce_bandwidth = network_metrics.allreduce_bandwidth / 1000.0  # Convert to GB/s
+                self.current_metrics.allreduce_bandwidth = network_metrics.allreduce_bandwidth / 8000.0  # Convert to GB/s
                 
         except Exception as e:
             print(f"Error collecting network metrics: {e}")

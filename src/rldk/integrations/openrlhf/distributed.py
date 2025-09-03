@@ -571,7 +571,10 @@ class NetworkMonitor:
     
     def __init__(self):
         """Initialize network monitor."""
-        self.real_monitor = RealNetworkMonitor(enable_distributed_monitoring=True)
+        self.real_monitor = RealNetworkMonitor(
+            enable_distributed_monitoring=True,
+            enable_distributed_measurements=False  # Safer default - doesn't interfere with training
+        )
     
     def get_current_metrics(self) -> Dict[str, float]:
         """Get current network metrics."""

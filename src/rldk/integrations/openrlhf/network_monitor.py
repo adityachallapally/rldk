@@ -400,15 +400,18 @@ class NetworkBandwidthMonitor:
 class DistributedNetworkMonitor:
     """Monitor network performance specifically for distributed training."""
     
-    def __init__(self, world_size: int = 1, rank: int = 0):
+    def __init__(self, world_size: int = 1, rank: int = 0, enable_distributed_measurements: bool = True):
         """Initialize distributed network monitor.
         
         Args:
             world_size: Total number of processes in distributed training
             rank: Rank of current process
+            enable_distributed_measurements: Whether to perform active distributed measurements
+                                          (can interfere with actual training if True)
         """
         self.world_size = world_size
         self.rank = rank
+        self.enable_distributed_measurements = enable_distributed_measurements
         
         # Initialize monitors
         self.interface_monitor = NetworkInterfaceMonitor()
@@ -463,11 +466,17 @@ class DistributedNetworkMonitor:
             metrics.packet_loss_percent = (metrics.dropped_packets / total_packets) * 100
         
         # Distributed training specific metrics
-        if DIST_AVAILABLE and dist.is_initialized():
+        if DIST_AVAILABLE and dist.is_initialized() and self.enable_distributed_measurements:
             metrics.allreduce_bandwidth = self._measure_allreduce_bandwidth()
             metrics.broadcast_bandwidth = self._measure_broadcast_bandwidth()
             metrics.gather_bandwidth = self._measure_gather_bandwidth()
             metrics.scatter_bandwidth = self._measure_scatter_bandwidth()
+        else:
+            # Set to 0 if distributed measurements are disabled or not available
+            metrics.allreduce_bandwidth = 0.0
+            metrics.broadcast_bandwidth = 0.0
+            metrics.gather_bandwidth = 0.0
+            metrics.scatter_bandwidth = 0.0
         
         # Update history
         self.performance_history.append(metrics)
@@ -482,6 +491,8 @@ class DistributedNetworkMonitor:
             return 0.0
         
         try:
+            import torch
+            
             # Create a test tensor
             test_tensor = torch.randn(1000, 1000, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
             
@@ -492,6 +503,11 @@ class DistributedNetworkMonitor:
             end_time = time.time()
             
             allreduce_time = end_time - start_time
+            
+            # Prevent division by zero and ensure minimum measurement time
+            if allreduce_time <= 0.001:  # Less than 1ms, likely measurement error
+                return 0.0
+            
             self.allreduce_times.append(allreduce_time)
             
             # Calculate bandwidth (tensor size / time)
@@ -510,6 +526,8 @@ class DistributedNetworkMonitor:
             return 0.0
         
         try:
+            import torch
+            
             test_tensor = torch.randn(1000, 1000, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
             
             start_time = time.time()
@@ -518,6 +536,11 @@ class DistributedNetworkMonitor:
             end_time = time.time()
             
             broadcast_time = end_time - start_time
+            
+            # Prevent division by zero and ensure minimum measurement time
+            if broadcast_time <= 0.001:  # Less than 1ms, likely measurement error
+                return 0.0
+            
             self.broadcast_times.append(broadcast_time)
             
             tensor_size_bytes = test_tensor.numel() * test_tensor.element_size()
@@ -535,6 +558,8 @@ class DistributedNetworkMonitor:
             return 0.0
         
         try:
+            import torch
+            
             test_tensor = torch.randn(100, 100, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
             gathered_tensors = [torch.zeros_like(test_tensor) for _ in range(self.world_size)]
             
@@ -544,6 +569,11 @@ class DistributedNetworkMonitor:
             end_time = time.time()
             
             gather_time = end_time - start_time
+            
+            # Prevent division by zero and ensure minimum measurement time
+            if gather_time <= 0.001:  # Less than 1ms, likely measurement error
+                return 0.0
+            
             self.gather_times.append(gather_time)
             
             total_size_bytes = sum(t.numel() * t.element_size() for t in gathered_tensors)
@@ -561,6 +591,8 @@ class DistributedNetworkMonitor:
             return 0.0
         
         try:
+            import torch
+            
             test_tensor = torch.randn(100, 100, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
             scattered_tensors = [torch.zeros_like(test_tensor) for _ in range(self.world_size)]
             
@@ -570,6 +602,11 @@ class DistributedNetworkMonitor:
             end_time = time.time()
             
             scatter_time = end_time - start_time
+            
+            # Prevent division by zero and ensure minimum measurement time
+            if scatter_time <= 0.001:  # Less than 1ms, likely measurement error
+                return 0.0
+            
             self.scatter_times.append(scatter_time)
             
             total_size_bytes = sum(t.numel() * t.element_size() for t in scattered_tensors)
@@ -630,13 +667,16 @@ class DistributedNetworkMonitor:
 class RealNetworkMonitor:
     """Enhanced network monitor with real measurements for OpenRLHF."""
     
-    def __init__(self, enable_distributed_monitoring: bool = True):
+    def __init__(self, enable_distributed_monitoring: bool = True, enable_distributed_measurements: bool = False):
         """Initialize real network monitor.
         
         Args:
             enable_distributed_monitoring: Whether to enable distributed training monitoring
+            enable_distributed_measurements: Whether to perform active distributed measurements
+                                          (can interfere with actual training if True)
         """
         self.enable_distributed_monitoring = enable_distributed_monitoring
+        self.enable_distributed_measurements = enable_distributed_measurements
         
         # Initialize monitors
         self.interface_monitor = NetworkInterfaceMonitor()
@@ -649,7 +689,10 @@ class RealNetworkMonitor:
             try:
                 world_size = dist.get_world_size() if dist.is_initialized() else 1
                 rank = dist.get_rank() if dist.is_initialized() else 0
-                self.distributed_monitor = DistributedNetworkMonitor(world_size, rank)
+                self.distributed_monitor = DistributedNetworkMonitor(
+                    world_size, rank, 
+                    enable_distributed_measurements=self.enable_distributed_measurements
+                )
             except Exception as e:
                 print(f"Failed to initialize distributed monitor: {e}")
         
