@@ -14,6 +14,7 @@ from rldk.reward import health
 from rldk.evals import run
 from rldk.io.reward_writers import generate_reward_health_report
 from rldk.replay import replay
+from rldk.tracking import ExperimentTracker, TrackingConfig
 
 # Import new forensics and reward CLI modules
 from rldk.cli_forensics import app as forensics_app
@@ -445,6 +446,9 @@ def replay_cmd(
     device: Optional[str] = typer.Option(
         None, "--device", "-d", help="Device to use (auto-detected if None)"
     ),
+    no_wandb: bool = typer.Option(
+        False, "--no-wandb", help="Disable W&B logging and use file logging only"
+    ),
 ):
     """Replay a training run with the original seed and verify reproducibility."""
     try:
@@ -513,6 +517,9 @@ def eval_cmd(
     seed: int = typer.Option(42, "--seed", help="Random seed for reproducibility"),
     sample_size: Optional[int] = typer.Option(
         None, "--sample-size", help="Number of samples to evaluate"
+    ),
+    no_wandb: bool = typer.Option(
+        False, "--no-wandb", help="Disable W&B logging and use file logging only"
     ),
 ):
     """Run evaluation suite with statistical analysis."""
@@ -604,6 +611,72 @@ def log_scan(
     from rldk.cli_forensics import log_scan as _log_scan
 
     _log_scan(run_or_export)
+
+
+@app.command(name="track")
+def track(
+    experiment_name: str = typer.Argument(..., help="Name of the experiment to track"),
+    output_dir: str = typer.Option(
+        "./runs", "--output-dir", "-o", help="Output directory for tracking data"
+    ),
+    no_wandb: bool = typer.Option(
+        False, "--no-wandb", help="Disable W&B logging and use file logging only"
+    ),
+    wandb_project: Optional[str] = typer.Option(
+        None, "--wandb-project", help="W&B project name (default: rldk-experiments)"
+    ),
+    tags: Optional[str] = typer.Option(
+        None, "--tags", help="Comma-separated list of tags"
+    ),
+    notes: Optional[str] = typer.Option(
+        None, "--notes", help="Additional notes for the experiment"
+    ),
+):
+    """Start tracking an experiment with W&B (default) or file logging."""
+    try:
+        typer.echo(f"Starting experiment tracking: {experiment_name}")
+        
+        # Parse tags if provided
+        tag_list = []
+        if tags:
+            tag_list = [tag.strip() for tag in tags.split(",")]
+        
+        # Create tracking configuration
+        config = TrackingConfig(
+            experiment_name=experiment_name,
+            output_dir=Path(output_dir),
+            save_to_wandb=not no_wandb,  # Disable W&B if --no-wandb flag is used
+            wandb_project=wandb_project,
+            tags=tag_list,
+            notes=notes,
+        )
+        
+        # Create tracker
+        tracker = ExperimentTracker(config)
+        
+        typer.echo(f"✅ Experiment tracking started")
+        typer.echo(f"  Experiment: {experiment_name}")
+        typer.echo(f"  Output directory: {output_dir}")
+        typer.echo(f"  W&B enabled: {not no_wandb}")
+        if not no_wandb:
+            typer.echo(f"  W&B project: {config.wandb_project}")
+        if tag_list:
+            typer.echo(f"  Tags: {', '.join(tag_list)}")
+        
+        # Keep the tracker running for the duration of the experiment
+        # This is a simple implementation - in practice, you might want to
+        # integrate this with the actual training loop
+        typer.echo("\nExperiment tracker is ready. Use the tracker object in your training code.")
+        typer.echo("Example:")
+        typer.echo("  tracker.log_metric('loss', 0.5)")
+        typer.echo("  tracker.log_metric('accuracy', 0.8)")
+        typer.echo("  tracker.finish_experiment()")
+        
+        return tracker
+        
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
 
 
 @app.command(name="reward-drift")
