@@ -8,6 +8,35 @@ A tiny, sharp kit that makes RL work reliable, explainable, and reproducible acr
 
 ## 🚀 Quick Start (60 seconds)
 
+### Option 1: One-Command Demo Experience
+
+Experience the complete RLDK debugging workflow with a single command:
+
+```bash
+# Run the complete demo experience
+./scripts/demo.sh
+```
+
+This interactive demo will:
+- Install RLDK and generate test artifacts
+- Run all RLDK commands with explanations
+- Show real debugging value with KL spikes and checkpoint analysis
+- Generate comprehensive reports and visualizations
+
+### Option 2: Docker Demo
+
+Run the demo in a containerized environment:
+
+```bash
+# Build and run the demo container
+docker build -t rldk-demo .
+docker run -it rldk-demo
+```
+
+### Option 3: Manual Step-by-Step
+
+If you prefer to run commands individually:
+
 ```bash
 # Install the package and all dependencies
 pip install -e .
@@ -15,8 +44,9 @@ pip install -e .
 # For systems with package conflicts, use:
 # pip install -e . --break-system-packages
 
-# Generate test fixtures
+# Generate test fixtures and training logs
 python3 tests/_make_fixtures.py
+python3 generate_logs.py
 
 # Compare runs to detect divergence
 rldk compare-runs test_artifacts/logs_clean test_artifacts/logs_doctored_kl_spike
@@ -34,7 +64,7 @@ rldk log-scan test_artifacts/logs_doctored_kl_spike
 rldk reward-drift test_artifacts/reward_drift_demo/rmA test_artifacts/reward_drift_demo/rmB --prompts test_artifacts/reward_drift_demo/prompts.jsonl
 
 # Run comprehensive diagnostics
-rldk doctor test_artifacts/logs_clean
+rldk doctor test_artifacts/logs_doctored_kl_spike
 ```
 
 ### Expected Outputs
@@ -587,6 +617,57 @@ pytest tests/test_diff.py -v
 4. Add tests for new functionality
 5. Ensure all tests pass
 6. Submit a pull request
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**PyTorch Import Error**: If you see `ImportError: No module named 'torch'`:
+```bash
+# Install PyTorch first
+pip install torch
+# Then install RLDK
+pip install -e .
+```
+
+**Permission Denied on Demo Script**: If `./scripts/demo.sh` fails:
+```bash
+chmod +x scripts/demo.sh
+```
+
+**Missing Test Artifacts**: If demo commands fail with missing files:
+```bash
+# Regenerate all test artifacts
+python3 tests/_make_fixtures.py
+python3 generate_logs.py
+```
+
+**Docker Build Fails**: If Docker build fails due to missing files:
+```bash
+# Ensure all required files exist
+ls -la pyproject.toml tests/_make_fixtures.py generate_logs.py
+```
+
+### Demo Troubleshooting
+
+**Demo Script Hangs**: The demo script waits for user input. Press Enter to continue.
+
+**No Reports Generated**: Check that RLDK CLI commands are working:
+```bash
+rldk --help
+```
+
+**KL Spike Not Detected**: Ensure the doctored logs contain the spike:
+```bash
+# Check the KL values around step 800
+tail -n 50 test_artifacts/logs_doctored_kl_spike/training.jsonl | grep -E '"step": 8[0-9][0-9]'
+```
+
+### Getting Help
+
+- Check the [Issues](https://github.com/your-org/rldk/issues) page for known problems
+- Review the [ANOMALY_DETECTION_GUIDE.md](ANOMALY_DETECTION_GUIDE.md) for detailed usage
+- Open a new issue with reproduction steps if you encounter bugs
 
 ## 📄 License
 
