@@ -66,6 +66,9 @@ rldk log-scan test_artifacts/logs_doctored_kl_spike
 # Detect reward model drift
 rldk reward-drift test_artifacts/reward_drift_demo/rmA test_artifacts/reward_drift_demo/rmB --prompts test_artifacts/reward_drift_demo/prompts.jsonl
 
+# Run reward health analysis (uses default thresholds)
+rldk reward-health run --scores test_artifacts/tiny_scores.jsonl --out artifacts/health
+
 # Run comprehensive diagnostics
 rldk doctor test_artifacts/logs_doctored_kl_spike
 ```
@@ -79,6 +82,7 @@ After running the quickstart commands, you should see:
 - **Environment Audit**: `rldk_reports/determinism_card.json` and `rldk.lock`
 - **Log Scan**: `rldk_reports/ppo_scan.json` with KL spike detection and gradient ratio analysis
 - **Reward Drift**: `rldk_reports/reward_drift.json` and `rldk_reports/reward_drift.png`
+- **Reward Health**: `artifacts/health/health.json` with pass/fail status and detector results
 - **Doctor**: Comprehensive diagnostics combining all analyses
 
 ### Forensic Snippets
@@ -651,6 +655,7 @@ rldk eval --run my_run --suite quick --no-wandb
 - Analyze correlation changes
 - Identify problematic slices
 - Validate reward model consistency
+- **Default thresholds**: Opinionated defaults for out-of-the-box pass/fail behavior - see [Health Thresholds Guide](docs/health_thresholds.md)
 
 ## 🔮 Roadmap
 

@@ -151,6 +151,7 @@ def write_reward_health_summary(report: RewardHealthReport, output_dir: Path) ->
     summary_path = output_dir / "reward_health_summary.json"
 
     summary = {
+        "passed": report.passed,
         "overall_status": "passed" if report.passed else "failed",
         "drift_detected": report.drift_detected,
         "saturation_issues_count": len(report.saturation_issues),
