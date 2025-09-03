@@ -306,14 +306,32 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             # Group similar prompts and check response consistency
             prompts = data[prompt_col].astype(str)
             
-            # Simple similarity grouping (prompts with similar lengths and starting words)
+            # Deterministic similarity grouping (prompts with similar lengths and starting words)
             prompt_groups = {}
             for idx, prompt in enumerate(prompts):
-                # Create a simple hash based on prompt characteristics
-                prompt_hash = hash(prompt[:50] + str(len(prompt))) % 1000
-                if prompt_hash not in prompt_groups:
-                    prompt_groups[prompt_hash] = []
-                prompt_groups[prompt_hash].append(idx)
+                # Create a deterministic hash based on prompt characteristics
+                # Use a combination of length and first few characters for grouping
+                prompt_length = len(prompt)
+                prompt_start = prompt[:20].lower()  # First 20 chars, lowercase
+                
+                # Create deterministic grouping key
+                # Group by length ranges and starting words
+                if prompt_length < 50:
+                    length_group = "short"
+                elif prompt_length < 150:
+                    length_group = "medium"
+                else:
+                    length_group = "long"
+                
+                # Extract first word for additional grouping
+                first_word = prompt_start.split()[0] if prompt_start.strip() else "empty"
+                
+                # Create deterministic group key
+                group_key = f"{length_group}_{first_word}_{prompt_length}"
+                
+                if group_key not in prompt_groups:
+                    prompt_groups[group_key] = []
+                prompt_groups[group_key].append(idx)
             
             # Check consistency within groups
             group_consistencies = []
