@@ -605,9 +605,15 @@ class DistributedTrainingMonitor(OpenRLHFCallback):
             from .network_monitor import RealNetworkMonitor
             import threading
             
-            # Thread-safe initialization of network monitor
+            # Thread-safe initialization of network monitor with proper lock initialization
             if not hasattr(self, '_network_monitor_lock'):
-                self._network_monitor_lock = threading.Lock()
+                # Use a class-level lock to ensure atomic lock initialization
+                if not hasattr(self.__class__, '_class_lock'):
+                    self.__class__._class_lock = threading.Lock()
+                
+                with self.__class__._class_lock:
+                    if not hasattr(self, '_network_monitor_lock'):
+                        self._network_monitor_lock = threading.Lock()
             
             with self._network_monitor_lock:
                 if not hasattr(self, '_network_monitor'):

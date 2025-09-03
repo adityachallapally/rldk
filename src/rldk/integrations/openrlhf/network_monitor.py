@@ -595,10 +595,18 @@ class DistributedNetworkMonitor:
             import torch
             
             test_tensor = torch.randn(100, 100, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
-            scattered_tensors = [torch.zeros_like(test_tensor) for _ in range(self.world_size)]
             
             start_time = time.time()
-            dist.scatter(test_tensor, scattered_tensors, src=0)
+            
+            # Handle scatter differently for source vs non-source ranks
+            if self.rank == 0:
+                # Source rank: create scatter_list and call scatter
+                scattered_tensors = [torch.zeros_like(test_tensor) for _ in range(self.world_size)]
+                dist.scatter(test_tensor, scattered_tensors, src=0)
+            else:
+                # Non-source ranks: call scatter without scatter_list
+                dist.scatter(test_tensor, src=0)
+            
             torch.cuda.synchronize() if torch.cuda.is_available() else None
             end_time = time.time()
             
@@ -610,7 +618,15 @@ class DistributedNetworkMonitor:
             
             self.scatter_times.append(scatter_time)
             
-            total_size_bytes = sum(t.numel() * t.element_size() for t in scattered_tensors)
+            # Calculate bandwidth based on rank
+            if self.rank == 0:
+                # Source rank: total size of all scattered tensors
+                scattered_tensors = [torch.zeros_like(test_tensor) for _ in range(self.world_size)]
+                total_size_bytes = sum(t.numel() * t.element_size() for t in scattered_tensors)
+            else:
+                # Non-source ranks: size of received tensor
+                total_size_bytes = test_tensor.numel() * test_tensor.element_size()
+            
             bandwidth_mbps = (total_size_bytes * 8) / (scatter_time * 1_000_000)
             
             return bandwidth_mbps
