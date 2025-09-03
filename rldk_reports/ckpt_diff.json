@@ -1,38 +1,54 @@
 {
   "version": "1",
   "summary": {
-    "num_params": 4,
-    "num_common_params": 4,
-    "num_only_in_a": 0,
-    "num_only_in_b": 0,
-    "avg_cosine": 1.0000000068707011,
+    "num_params": 6,
+    "num_common_params": 2,
+    "num_only_in_a": 2,
+    "num_only_in_b": 2,
+    "avg_cosine": 0.3333333468005992,
     "l2_p05": 0.0,
-    "l2_p50": 0.0,
-    "l2_p95": 0.0
+    "l2_p50": 0.5701562166213989,
+    "l2_p95": 2.3576339185237885
   },
   "top_movers": [
     {
-      "name": "layer2.bias",
-      "l2": 0.0,
-      "cosine": 1.0
+      "name": "value_head.weight",
+      "l2": 2.5719642639160156,
+      "cosine": 0.0,
+      "note": "Only in checkpoint B"
     },
     {
       "name": "layer2.weight",
-      "l2": 0.0,
-      "cosine": 0.9999999466792094
+      "l2": 1.714642882347107,
+      "cosine": 0.0,
+      "note": "Only in checkpoint A"
     },
     {
-      "name": "layer1.weight",
-      "l2": 0.0,
-      "cosine": 0.9999999674490221
+      "name": "value_head.bias",
+      "l2": 0.6403124332427979,
+      "cosine": 0.0,
+      "note": "Only in checkpoint B"
+    },
+    {
+      "name": "layer2.bias",
+      "l2": 0.5,
+      "cosine": 0.0,
+      "note": "Only in checkpoint A"
     },
     {
       "name": "layer1.bias",
       "l2": 0.0,
       "cosine": 1.0000001133545728
+    },
+    {
+      "name": "layer1.weight",
+      "l2": 0.0,
+      "cosine": 0.9999999674490221
     }
   ],
   "notes": [
-    "Both checkpoints share 4 parameters"
+    "Checkpoint A has 2 unique parameters: ['layer2.bias', 'layer2.weight']",
+    "Checkpoint B has 2 unique parameters: ['value_head.weight', 'value_head.bias']",
+    "Both checkpoints share 2 parameters"
   ]
 }

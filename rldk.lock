@@ -1,5 +1,5 @@
 # RL Debug Kit Environment Lock
-# Generated: 2025-09-03T00:43:40.000508
+# Generated: 2025-09-03T19:35:57.336442
 
 ## Environment
 Python: 3.13.3 (main, Apr  8 2025, 19:55:40) [GCC 14.2.0]
@@ -98,7 +98,7 @@ referencing==0.36.2
 regex==2025.9.1
 requests==2.32.5
 rich==14.1.0
--e git+https://github.com/adityachallapally/rldk@c0b21c5783c683443cb3de22ad5d7e9acc958e11#egg=rldk
+-e git+https://github.com/adityachallapally/rldk@71443df1df31e0c78a58cd90d367c0152bd15746#egg=rldk
 rpds-py==0.27.1
 safetensors==0.6.2
 scikit-learn==1.7.1
@@ -120,7 +120,7 @@ tornado==6.5.2
 tqdm==4.67.1
 transformers==4.56.0
 triton==3.4.0
-trl==0.22.1
+trl==0.22.2
 typer==0.17.3
 typing-inspection==0.4.1
 typing_extensions==4.15.0
