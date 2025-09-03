@@ -27,6 +27,11 @@ from rldk.cards import (
 )
 from rldk.ingest import ingest_runs, ingest_runs_to_events
 
+# Import ultimate post-training features
+from rldk.universal_monitor import UniversalMonitor, start_monitoring
+from rldk.anomaly_detector import AnomalyDetector, detect_anomalies, detect_training_anomalies
+from rldk.debug_training import TrainingDebugger, debug_training, quick_debug
+
 app = typer.Typer(
     name="rldk",
     help="RL Debug Kit - Library and CLI for debugging reinforcement learning training runs",
@@ -722,6 +727,211 @@ def card(
         typer.echo("  - card_name.json")
         typer.echo("  - card_name.png")
 
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+# Ultimate Post-Training Commands
+
+@app.command(name="monitor")
+def monitor(
+    run_path: str = typer.Argument(..., help="Path to training run to monitor"),
+    framework: Optional[str] = typer.Option(None, "--framework", "-f", help="Training framework (auto-detected if not specified)"),
+    real_time: bool = typer.Option(True, "--real-time", "-r", help="Enable real-time monitoring"),
+    dashboard: bool = typer.Option(False, "--dashboard", "-d", help="Show live dashboard"),
+):
+    """Start universal monitoring of any training framework."""
+    try:
+        typer.echo(f"🚀 Starting universal monitoring of: {run_path}")
+        
+        # Start monitoring
+        monitor_instance = start_monitoring(
+            run_path, 
+            auto_detect=framework is None,
+            real_time_alerts=real_time
+        )
+        
+        if framework:
+            typer.echo(f"Using framework: {framework}")
+        else:
+            typer.echo(f"Auto-detected framework: {monitor_instance.monitoring_data[Path(run_path)]['framework']}")
+        
+        if dashboard:
+            typer.echo("📊 Starting live dashboard...")
+            monitor_instance.show_dashboard()
+        else:
+            typer.echo("✅ Monitoring started. Use Ctrl+C to stop.")
+            try:
+                while True:
+                    import time
+                    time.sleep(5)
+            except KeyboardInterrupt:
+                typer.echo("\n🛑 Monitoring stopped.")
+        
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+@app.command(name="detect-anomalies")
+def detect_anomalies(
+    data_path: str = typer.Argument(..., help="Path to training data or logs"),
+    features: Optional[List[str]] = typer.Option(None, "--features", "-f", help="Features to analyze"),
+    models: List[str] = typer.Option(["isolation_forest", "autoencoder", "statistical"], "--models", "-m", help="ML models to use for detection"),
+    sensitivity: float = typer.Option(0.1, "--sensitivity", "-s", help="Detection sensitivity (0.01-0.5)"),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file for report"),
+):
+    """Detect anomalies in training data using ML models."""
+    try:
+        typer.echo(f"🔍 Detecting anomalies in: {data_path}")
+        
+        # Configure detector
+        from rldk.anomaly_detector import AnomalyConfig
+        config = AnomalyConfig(
+            models=models,
+            sensitivity=sensitivity,
+            adaptive_thresholds=True
+        )
+        
+        detector = AnomalyDetector(config)
+        
+        # Detect anomalies
+        report = detector.detect_training_anomalies(data_path)
+        
+        # Display results
+        typer.echo(f"✅ Anomaly detection complete!")
+        typer.echo(f"  Anomalies detected: {report.anomalies_detected}")
+        typer.echo(f"  Anomaly count: {report.anomaly_count}")
+        typer.echo(f"  Anomaly ratio: {report.anomaly_ratio:.3f}")
+        typer.echo(f"  Confidence: {report.confidence:.3f}")
+        
+        if report.recommendations:
+            typer.echo(f"\n📋 Recommendations:")
+            for rec in report.recommendations:
+                typer.echo(f"  • {rec}")
+        
+        # Save report
+        if output:
+            import json
+            with open(output, 'w') as f:
+                json.dump(report.__dict__, f, indent=2, default=str)
+            typer.echo(f"\n📄 Report saved to: {output}")
+        
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+@app.command(name="debug-training")
+def debug_training(
+    run_path: str = typer.Argument(..., help="Path to training run to debug"),
+    framework: Optional[str] = typer.Option(None, "--framework", "-f", help="Training framework (auto-detected if not specified)"),
+    auto_fix: bool = typer.Option(False, "--auto-fix", "-a", help="Automatically apply fixes"),
+    generate_report: bool = typer.Option(True, "--report", "-r", help="Generate comprehensive report"),
+    create_test_case: bool = typer.Option(True, "--test-case", "-t", help="Create reproducible test case"),
+    quick: bool = typer.Option(False, "--quick", "-q", help="Quick debug without comprehensive analysis"),
+):
+    """Comprehensive debugging of any training run."""
+    try:
+        typer.echo(f"🔧 Starting comprehensive debug of: {run_path}")
+        
+        if quick:
+            typer.echo("⚡ Running quick debug...")
+            result = quick_debug(run_path)
+            typer.echo("✅ Quick debug complete!")
+            typer.echo(f"  Framework: {result.get('framework', 'Unknown')}")
+            typer.echo(f"  Issues found: {len(result.get('issues', []))}")
+        else:
+            # Configure debugger
+            from rldk.debug_training import DebugConfig
+            config = DebugConfig(
+                auto_fix=auto_fix,
+                generate_report=generate_report,
+                create_test_case=create_test_case,
+                comprehensive=True
+            )
+            
+            debugger = TrainingDebugger(config)
+            report = debugger.debug_training(run_path, framework)
+            
+            # Display summary
+            typer.echo(f"✅ Debug complete!")
+            typer.echo(f"  Framework: {report.framework}")
+            typer.echo(f"  Health score: {report.health_score.overall_score:.1f}/100")
+            typer.echo(f"  Issues found: {len(report.issues)}")
+            typer.echo(f"  Fixes suggested: {len(report.fixes)}")
+            typer.echo(f"  Recommendations: {len(report.recommendations)}")
+            
+            if report.issues:
+                typer.echo(f"\n🚨 Issues detected:")
+                for issue in report.issues[:5]:  # Show first 5 issues
+                    typer.echo(f"  • {issue}")
+                if len(report.issues) > 5:
+                    typer.echo(f"  ... and {len(report.issues) - 5} more")
+            
+            if report.fixes:
+                typer.echo(f"\n🔧 Suggested fixes:")
+                for fix in report.fixes[:3]:  # Show first 3 fixes
+                    typer.echo(f"  • {fix}")
+                if len(report.fixes) > 3:
+                    typer.echo(f"  ... and {len(report.fixes) - 3} more")
+        
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+@app.command(name="health")
+def health(
+    run_path: str = typer.Argument(..., help="Path to training run"),
+    detailed: bool = typer.Option(False, "--detailed", "-d", help="Show detailed health analysis"),
+    suggestions: bool = typer.Option(True, "--suggestions", "-s", help="Show improvement suggestions"),
+):
+    """Calculate training health score and provide recommendations."""
+    try:
+        typer.echo(f"🏥 Analyzing training health: {run_path}")
+        
+        # Run comprehensive health analysis
+        from rldk.debug_training import DebugConfig
+        config = DebugConfig(comprehensive=True, create_test_case=False)
+        debugger = TrainingDebugger(config)
+        report = debugger.debug_training(run_path)
+        
+        # Display health score
+        health_score = report.health_score
+        typer.echo(f"✅ Health analysis complete!")
+        typer.echo(f"  Overall score: {health_score.overall_score:.1f}/100")
+        typer.echo(f"  Stability: {health_score.stability_score:.1f}/100")
+        typer.echo(f"  Convergence: {health_score.convergence_score:.1f}/100")
+        typer.echo(f"  Efficiency: {health_score.efficiency_score:.1f}/100")
+        typer.echo(f"  Robustness: {health_score.robustness_score:.1f}/100")
+        
+        # Determine health level
+        if health_score.overall_score >= 85:
+            level = "🟢 Excellent"
+        elif health_score.overall_score >= 70:
+            level = "🟡 Good"
+        elif health_score.overall_score >= 50:
+            level = "🟠 Fair"
+        else:
+            level = "🔴 Poor"
+        
+        typer.echo(f"  Health level: {level}")
+        
+        if detailed:
+            typer.echo(f"\n📊 Detailed Analysis:")
+            typer.echo(f"  Issues found: {len(report.issues)}")
+            typer.echo(f"  Anomalies detected: {report.details.get('anomaly_report', {}).get('anomaly_count', 0)}")
+            typer.echo(f"  PPO anomalies: {len(report.details.get('ppo_forensics', {}).get('anomalies', []))}")
+        
+        if suggestions and report.recommendations:
+            typer.echo(f"\n💡 Improvement suggestions:")
+            for rec in report.recommendations[:5]:  # Show first 5 recommendations
+                typer.echo(f"  • {rec}")
+            if len(report.recommendations) > 5:
+                typer.echo(f"  ... and {len(report.recommendations) - 5} more")
+        
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(1)
