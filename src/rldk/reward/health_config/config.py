@@ -11,7 +11,7 @@ def get_default_config_path() -> Path:
     # Try to find the default config in the package data
     try:
         # Look for the config in the package data
-        config_path = pkg_resources.resource_filename('rldk', 'recipes/health_default.yaml')
+        config_path = pkg_resources.resource_filename('rldk.reward.health_config', 'data/health_default.yaml')
         if Path(config_path).exists():
             return Path(config_path)
     except Exception:
@@ -19,15 +19,14 @@ def get_default_config_path() -> Path:
     
     # Fallback: look for it relative to the current file
     current_dir = Path(__file__).parent
-    # Go up: health_config -> reward -> rldk -> src -> workspace root
-    config_path = current_dir.parent.parent.parent.parent / 'recipes' / 'health_default.yaml'
+    config_path = current_dir / 'data' / 'health_default.yaml'
     if config_path.exists():
         return config_path
     
     # If not found, raise an error
     raise FileNotFoundError(
         "Default health configuration file not found. "
-        "Expected at: recipes/health_default.yaml"
+        "Expected at: rldk.reward.health_config.data.health_default.yaml"
     )
 
 

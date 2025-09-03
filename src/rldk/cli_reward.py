@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from rldk.reward.drift import compare_models
-from rldk.reward.health import health
+from rldk.reward.health_analysis import health
 from rldk.reward.health_config.exit_codes import raise_on_failure
 from rldk.reward.health_config.config import load_config, get_legacy_thresholds
 from rldk.io.writers import write_json, write_png, mkdir_reports

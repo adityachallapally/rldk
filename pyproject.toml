@@ -80,6 +80,12 @@ Issues = "https://github.com/your-org/rldk/issues"
 [tool.hatch.build.targets.wheel]
 packages = ["src/rldk"]
 
+[tool.hatch.build.targets.wheel.sources]
+"src" = ""
+
+[tool.hatch.build.targets.wheel.include]
+"src/rldk/reward/health_config/data/*" = "rldk/reward/health_config/data/"
+
 [tool.black]
 line-length = 88
 target-version = ['py38']

@@ -6,7 +6,7 @@ import pandas as pd
 import json
 import numpy as np
 
-from ..reward.health import RewardHealthReport
+from ..reward.health_analysis import RewardHealthReport
 
 
 def write_reward_health_card(report: RewardHealthReport, output_dir: Path) -> None:
