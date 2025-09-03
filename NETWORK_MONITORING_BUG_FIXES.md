@@ -102,9 +102,30 @@ def __init__(self, world_size: int = 1, rank: int = 0):
 **After (Safe Default)**:
 ```python
 def __init__(self, world_size: int = 1, rank: int = 0, enable_distributed_measurements: bool = False):
-    # Distributed measurements disabled by default
+    # Distributed measurements disabled by default for safety
     self.enable_distributed_measurements = enable_distributed_measurements
 ```
+
+### 4. Constructor Default Safety Conflict
+**Problem**: The `DistributedNetworkMonitor` constructor defaulted `enable_distributed_measurements` to `True`, conflicting with safety guidelines that indicate it should default to `False` to prevent interference with training.
+
+**Location**: `src/rldk/integrations/openrlhf/network_monitor.py`
+
+**Before (Unsafe Default)**:
+```python
+def __init__(self, world_size: int = 1, rank: int = 0, enable_distributed_measurements: bool = True):
+    # Defaulted to True - could interfere with training
+```
+
+**After (Safe Default)**:
+```python
+def __init__(self, world_size: int = 1, rank: int = 0, enable_distributed_measurements: bool = False):
+    # Defaults to False for safety - won't interfere with training
+```
+
+**Impact**: 
+- **Before**: Default behavior could interfere with training
+- **After**: Default behavior is safe and won't interfere with training
 
 ## Configuration Changes
 
@@ -170,6 +191,12 @@ monitor = RealNetworkMonitor(
    - Graceful degradation when torch not available
    - No NameError exceptions
 
+6. **Constructor Default Safety**: ✅ PASSED
+   - DistributedNetworkMonitor defaults to False for safety
+   - RealNetworkMonitor defaults to False for safety
+   - Explicit True/False settings work correctly
+   - No active distributed measurements with default settings
+
 ## Impact Summary
 
 ### Before Fixes:
@@ -178,6 +205,7 @@ monitor = RealNetworkMonitor(
 - ❌ NameError when torch not available
 - ❌ ZeroDivisionError for fast operations
 - ❌ Potential training interference
+- ❌ Constructor defaulted to unsafe behavior
 
 ### After Fixes:
 - ✅ Accurate network bandwidth reporting
@@ -185,6 +213,7 @@ monitor = RealNetworkMonitor(
 - ✅ Safe torch import handling
 - ✅ Zero division protection
 - ✅ Training-safe defaults
+- ✅ Constructor defaults to safe behavior
 
 ## Usage Guidelines
 
@@ -235,6 +264,7 @@ All critical bugs have been **successfully fixed**:
 - ✅ **Race condition**: Added thread-safe initialization
 - ✅ **Distributed measurement errors**: Added import safety and zero division protection
 - ✅ **Training interference**: Disabled distributed measurements by default
+- ✅ **Constructor default safety**: Fixed default to False for safety
 
 The network monitoring implementation is now **production-ready** with proper error handling, thread safety, and training-safe defaults.
 

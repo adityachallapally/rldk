@@ -400,7 +400,7 @@ class NetworkBandwidthMonitor:
 class DistributedNetworkMonitor:
     """Monitor network performance specifically for distributed training."""
     
-    def __init__(self, world_size: int = 1, rank: int = 0, enable_distributed_measurements: bool = True):
+    def __init__(self, world_size: int = 1, rank: int = 0, enable_distributed_measurements: bool = False):
         """Initialize distributed network monitor.
         
         Args:
@@ -408,6 +408,7 @@ class DistributedNetworkMonitor:
             rank: Rank of current process
             enable_distributed_measurements: Whether to perform active distributed measurements
                                           (can interfere with actual training if True)
+                                          Defaults to False for safety.
         """
         self.world_size = world_size
         self.rank = rank
@@ -674,6 +675,7 @@ class RealNetworkMonitor:
             enable_distributed_monitoring: Whether to enable distributed training monitoring
             enable_distributed_measurements: Whether to perform active distributed measurements
                                           (can interfere with actual training if True)
+                                          Defaults to False for safety.
         """
         self.enable_distributed_monitoring = enable_distributed_monitoring
         self.enable_distributed_measurements = enable_distributed_measurements
