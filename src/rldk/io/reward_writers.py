@@ -11,8 +11,15 @@ from ..reward.health_analysis import RewardHealthReport
 
 def _json_serialize(obj):
     """Custom JSON serializer that converts NaN to null."""
-    if isinstance(obj, float) and np.isnan(obj):
+    # Handle numpy floating point types and Python float
+    if (isinstance(obj, (float, np.floating)) and np.isnan(obj)):
         return None
+    # Handle numpy integers (convert to Python int for JSON compatibility)
+    elif isinstance(obj, np.integer):
+        return int(obj)
+    # Handle numpy floating point numbers (convert to Python float for JSON compatibility)
+    elif isinstance(obj, np.floating):
+        return float(obj)
     elif isinstance(obj, dict):
         return {key: _json_serialize(value) for key, value in obj.items()}
     elif isinstance(obj, list):
