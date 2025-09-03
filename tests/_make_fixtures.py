@@ -73,68 +73,82 @@ def make_doctored_kl_spike_logs():
 
 def make_identical_checkpoints():
     """Generate two identical checkpoints as PyTorch state dicts."""
-    import torch
+    try:
+        import torch
 
-    # Create simple checkpoint data as tensors
-    checkpoint_data = {
-        "layer1.weight": torch.tensor(
-            [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]], dtype=torch.float32
-        ),
-        "layer1.bias": torch.tensor([0.1, 0.2], dtype=torch.float32),
-        "layer2.weight": torch.tensor([[0.7, 0.8], [0.9, 1.0]], dtype=torch.float32),
-        "layer2.bias": torch.tensor([0.3, 0.4], dtype=torch.float32),
-    }
+        # Create simple checkpoint data as tensors
+        checkpoint_data = {
+            "layer1.weight": torch.tensor(
+                [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]], dtype=torch.float32
+            ),
+            "layer1.bias": torch.tensor([0.1, 0.2], dtype=torch.float32),
+            "layer2.weight": torch.tensor([[0.7, 0.8], [0.9, 1.0]], dtype=torch.float32),
+            "layer2.bias": torch.tensor([0.3, 0.4], dtype=torch.float32),
+        }
 
-    # Save identical checkpoints
-    for name in ["a", "b"]:
-        output_path = Path(f"test_artifacts/ckpt_identical/{name}.pt")
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        # Save identical checkpoints
+        for name in ["a", "b"]:
+            output_path = Path(f"test_artifacts/ckpt_identical/{name}.pt")
+            output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        torch.save(checkpoint_data, output_path)
+            torch.save(checkpoint_data, output_path)
+    except ImportError:
+        print("⚠️  PyTorch not available, skipping checkpoint generation")
+        # Create dummy files to prevent errors
+        for name in ["a", "b"]:
+            output_path = Path(f"test_artifacts/ckpt_identical/{name}.pt")
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text("dummy_checkpoint")
 
 
 def make_value_head_edit_checkpoints():
     """Generate checkpoints with edited value head."""
-    import torch
+    try:
+        import torch
 
-    # Create base checkpoint data as tensors
-    base_checkpoint = {
-        "layer1.weight": torch.tensor(
-            [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]], dtype=torch.float32
-        ),
-        "layer1.bias": torch.tensor([0.1, 0.2], dtype=torch.float32),
-        "value_head.weight": torch.tensor(
-            [[0.7, 0.8], [0.9, 1.0]], dtype=torch.float32
-        ),
-        "value_head.bias": torch.tensor([0.3, 0.4], dtype=torch.float32),
-    }
+        # Create base checkpoint data as tensors
+        base_checkpoint = {
+            "layer1.weight": torch.tensor(
+                [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]], dtype=torch.float32
+            ),
+            "layer1.bias": torch.tensor([0.1, 0.2], dtype=torch.float32),
+            "value_head.weight": torch.tensor(
+                [[0.7, 0.8], [0.9, 1.0]], dtype=torch.float32
+            ),
+            "value_head.bias": torch.tensor([0.3, 0.4], dtype=torch.float32),
+        }
 
-    # Save base checkpoint
-    base_path = Path("test_artifacts/ckpt_value_head_edit/a.pt")
-    base_path.parent.mkdir(parents=True, exist_ok=True)
+        # Save base checkpoint
+        base_path = Path("test_artifacts/ckpt_value_head_edit/a.pt")
+        base_path.parent.mkdir(parents=True, exist_ok=True)
 
-    torch.save(base_checkpoint, base_path)
+        torch.save(base_checkpoint, base_path)
 
-    # Create modified checkpoint with different value head
-    modified_checkpoint = base_checkpoint.copy()
-    modified_checkpoint["value_head.weight"] = torch.tensor(
-        [[1.05, 1.2], [1.35, 1.5]], dtype=torch.float32
-    )  # 1.5x original
-    modified_checkpoint["value_head.bias"] = torch.tensor(
-        [0.4, 0.5], dtype=torch.float32
-    )  # +0.1 to original
+        # Create modified checkpoint with different value head
+        modified_checkpoint = base_checkpoint.copy()
+        modified_checkpoint["value_head.weight"] = torch.tensor(
+            [[1.05, 1.2], [1.35, 1.5]], dtype=torch.float32
+        )  # 1.5x original
+        modified_checkpoint["value_head.bias"] = torch.tensor(
+            [0.4, 0.5], dtype=torch.float32
+        )  # +0.1 to original
 
-    # Save modified checkpoint
-    modified_path = Path("test_artifacts/ckpt_value_head_edit/b.pt")
+        # Save modified checkpoint
+        modified_path = Path("test_artifacts/ckpt_value_head_edit/b.pt")
 
-    torch.save(modified_checkpoint, modified_path)
+        torch.save(modified_checkpoint, modified_path)
+    except ImportError:
+        print("⚠️  PyTorch not available, skipping value head checkpoint generation")
+        # Create dummy files to prevent errors
+        for name in ["a", "b"]:
+            output_path = Path(f"test_artifacts/ckpt_value_head_edit/{name}.pt")
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text("dummy_checkpoint")
 
 
 def make_reward_drift_demo():
     """Generate reward drift demo with diverging behavior on code slice."""
-    import torch
-
-    # Create prompts
+    # Create prompts (this part doesn't need torch)
     prompts = [
         {"text": "What is 2 + 2?", "tags": ["math"]},
         {"text": "How to solve this equation: x + 5 = 10", "tags": ["math"]},
@@ -155,26 +169,35 @@ def make_reward_drift_demo():
             f.write(json.dumps(prompt) + "\n")
 
     # Create simple reward models as PyTorch files
-    for i, name in enumerate(["rmA", "rmB"]):
-        model_dir = Path(f"test_artifacts/reward_drift_demo/{name}")
-        model_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        import torch
+        
+        for i, name in enumerate(["rmA", "rmB"]):
+            model_dir = Path(f"test_artifacts/reward_drift_demo/{name}")
+            model_dir.mkdir(parents=True, exist_ok=True)
 
-        # Create different model data for each model to ensure drift detection
-        model_data = {
-            "weights": torch.tensor(
-                [
-                    0.1 + i * 0.1,
-                    0.2 + i * 0.1,
-                    0.3 + i * 0.1,
-                    0.4 + i * 0.1,
-                    0.5 + i * 0.1,
-                ],
-                dtype=torch.float32,
-            ),
-            "bias": torch.tensor(0.1 + i * 0.2, dtype=torch.float32),
-        }
+            # Create different model data for each model to ensure drift detection
+            model_data = {
+                "weights": torch.tensor(
+                    [
+                        0.1 + i * 0.1,
+                        0.2 + i * 0.1,
+                        0.3 + i * 0.1,
+                        0.4 + i * 0.1,
+                        0.5 + i * 0.1,
+                    ],
+                    dtype=torch.float32,
+                ),
+                "bias": torch.tensor(0.1 + i * 0.2, dtype=torch.float32),
+            }
 
-        torch.save(model_data, model_dir / "model.pt")
+            torch.save(model_data, model_dir / "model.pt")
+    except ImportError:
+        print("⚠️  PyTorch not available, creating dummy reward models")
+        for i, name in enumerate(["rmA", "rmB"]):
+            model_dir = Path(f"test_artifacts/reward_drift_demo/{name}")
+            model_dir.mkdir(parents=True, exist_ok=True)
+            (model_dir / "model.pt").write_text(f"dummy_model_{i}")
 
 
 def main():
