@@ -1,0 +1,23 @@
+{
+  "type": "object",
+  "required": ["command", "seeds", "git", "pip_freeze"],
+  "properties": {
+    "command": {
+      "type": "string",
+      "description": "The command that was executed"
+    },
+    "seeds": {
+      "type": "array",
+      "items": {"type": "integer"},
+      "description": "List of seeds used for reproduction"
+    },
+    "git": {
+      "type": "object",
+      "description": "Git commit information"
+    },
+    "pip_freeze": {
+      "type": "string",
+      "description": "Frozen pip requirements"
+    }
+  }
+}

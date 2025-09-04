@@ -1,0 +1,49 @@
+=== SYMBOLS DIFF ===
+ADDED (3):
+  + ExperimentTracker (class) - Track runs, models, datasets, seeds, environment
+  + TrackingConfig (class) - Config for ExperimentTracker
+  + scan_ppo_events (function) - Compute KL, entropy, clip fraction summaries
+REMOVED (8):
+  - EvalResult (class) - Result of an evaluation suite run.
+  - RewardHealthReport (class) - Comprehensive report of reward model health analysis.
+  - bisect_commits (function) - 
+  - check (function) - 
+  - first_divergence (function) - 
+  - health (function) - 
+  - ingest_runs (function) - 
+  - run (function) - 
+
+=== CLI DIFF ===
+ADDED (3):
+  + determinism: rldk determinism --run '<cmd>' --seeds N [--workdir PATH]
+  + repro: rldk repro --run '<cmd>' --seeds N [--json-out PATH]
+  + reward_health: rldk reward_health --logs PATH [--json-out PATH]
+REMOVED (18):
+  - bisect: rldk bisect [OPTIONS]
+  - card: rldk card [OPTIONS]
+  - check-determinism: rldk check-determinism [OPTIONS]
+  - compare-runs: rldk compare-runs [OPTIONS]
+  - diff: rldk diff [OPTIONS]
+  - diff-ckpt: rldk diff-ckpt [OPTIONS]
+  - doctor: rldk doctor [OPTIONS]
+  - env-audit: rldk env-audit [OPTIONS]
+  - eval: rldk eval [OPTIONS]
+  - forensics: rldk forensics [OPTIONS]
+  - ingest: rldk ingest [OPTIONS]
+  - log-scan: rldk log-scan [OPTIONS]
+  - replay: rldk replay [OPTIONS]
+  - reward: rldk reward [OPTIONS]
+  - reward-drift: rldk reward-drift [OPTIONS]
+  - reward-health: rldk reward-health [OPTIONS]
+  - track: rldk track [OPTIONS]
+  - version: rldk version [OPTIONS]
+
+=== ARTIFACTS DIFF ===
+ADDED (3):
+  + determinism_schema_min_required: schema definition
+  + repro_schema_min_required: schema definition
+  + reward_health_schema_min_required: schema definition
+REMOVED (3):
+  - check-determinism: rldk_reports/determinism/*.json
+  - replay: rldk_reports/repro/metadata.json
+  - reward-health: rldk_reports/reward_health/*.json

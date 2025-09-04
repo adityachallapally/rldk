@@ -1,0 +1,52 @@
+version: "v1-core"
+symbols:
+  - name: ExperimentTracker
+    kind: class
+    import_path: rldk.tracking.ExperimentTracker
+    doc: "Track runs, models, datasets, seeds, environment"
+  - name: TrackingConfig
+    kind: class
+    import_path: rldk.tracking.TrackingConfig
+    doc: "Config for ExperimentTracker"
+  - name: scan_ppo_events
+    kind: function
+    import_path: rldk.forensics.scan_ppo_events
+    doc: "Compute KL, entropy, clip fraction summaries"
+cli:
+  - cmd: determinism
+    synopsis: "rldk determinism --run '<cmd>' --seeds N [--workdir PATH]"
+    required_flags: ["--run", "--seeds"]
+    optional_flags: ["--workdir", "--timeout", "--json-out"]
+    oneline_regex: "^determinism: pass=(true|false), seeds=\\d+, artifact=.*\\.json$"
+    exit_codes: { success: 0, failure: 1 }
+    artifact:
+      path_pattern: "rldk_reports/determinism/*.json"
+      schema_ref: "schemas/determinism.schema.json"
+  - cmd: reward_health
+    synopsis: "rldk reward_health --logs PATH [--json-out PATH]"
+    required_flags: ["--logs"]
+    optional_flags: ["--json-out", "--threshold"]
+    oneline_regex: "^reward_health: pass=(true|false), drift=[0-9\\.]+, artifact=.*\\.json$"
+    exit_codes: { success: 0, failure: 1 }
+    artifact:
+      path_pattern: "rldk_reports/reward_health/*.json"
+      schema_ref: "schemas/reward_health.schema.json"
+  - cmd: repro
+    synopsis: "rldk repro --run '<cmd>' --seeds N [--json-out PATH]"
+    required_flags: ["--run", "--seeds"]
+    optional_flags: ["--json-out"]
+    oneline_regex: "^repro: snapshot=written, seeds=\\d+, artifact=.*metadata\\.json$"
+    exit_codes: { success: 0, failure: 1 }
+    artifact:
+      path_pattern: "rldk_reports/repro/metadata.json"
+      schema_ref: "schemas/repro.schema.json"
+artifacts:
+  determinism_schema_min_required:
+    type: object
+    required: ["pass", "seeds", "checksums"]
+  reward_health_schema_min_required:
+    type: object
+    required: ["pass", "drift", "signals"]
+  repro_schema_min_required:
+    type: object
+    required: ["command", "seeds", "git", "pip_freeze"]

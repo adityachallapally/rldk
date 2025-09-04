@@ -1,0 +1,208 @@
+artifacts:
+- artifact:
+    path_pattern: rldk_reports/determinism/*.json
+    schema:
+      required:
+      - pass
+      - seeds
+      - checksums
+      type: object
+  cmd: check-determinism
+- artifact:
+    path_pattern: rldk_reports/reward_health/*.json
+    schema:
+      required:
+      - pass
+      - drift
+      - signals
+      type: object
+  cmd: reward-health
+- artifact:
+    path_pattern: rldk_reports/repro/metadata.json
+    schema:
+      required:
+      - command
+      - seeds
+      - git
+      - pip_freeze
+      type: object
+  cmd: replay
+cli:
+- cmd: ingest
+  exit_codes:
+    failure: 1
+    success: 0
+  oneline_regex: .*
+  optional_flags: []
+  required_flags: []
+  synopsis: rldk ingest [OPTIONS]
+- cmd: diff
+  exit_codes:
+    failure: 1
+    success: 0
+  oneline_regex: .*
+  optional_flags: []
+  required_flags: []
+  synopsis: rldk diff [OPTIONS]
+- cmd: check-determinism
+  exit_codes:
+    failure: 1
+    success: 0
+  oneline_regex: .*
+  optional_flags: []
+  required_flags: []
+  synopsis: rldk check-determinism [OPTIONS]
+- cmd: bisect
+  exit_codes:
+    failure: 1
+    success: 0
+  oneline_regex: .*
+  optional_flags: []
+  required_flags: []
+  synopsis: rldk bisect [OPTIONS]
+- cmd: reward-health
+  exit_codes:
+    failure: 1
+    success: 0
+  oneline_regex: .*
+  optional_flags: []
+  required_flags: []
+  synopsis: rldk reward-health [OPTIONS]
+- cmd: replay
+  exit_codes:
+    failure: 1
+    success: 0
+  oneline_regex: .*
+  optional_flags: []
+  required_flags: []
+  synopsis: rldk replay [OPTIONS]
+- cmd: eval
+  exit_codes:
+    failure: 1
+    success: 0
+  oneline_regex: ^.*eval.*$
+  optional_flags: []
+  required_flags: []
+  synopsis: rldk eval [OPTIONS]
+- cmd: compare-runs
+  exit_codes:
+    failure: 1
+    success: 0
+  oneline_regex: .*
+  optional_flags: []
+  required_flags: []
+  synopsis: rldk compare-runs [OPTIONS]
+- cmd: diff-ckpt
+  exit_codes:
+    failure: 1
+    success: 0
+  oneline_regex: ^.*checkpoint.*comparison.*$
+  optional_flags: []
+  required_flags: []
+  synopsis: rldk diff-ckpt [OPTIONS]
+- cmd: env-audit
+  exit_codes:
+    failure: 1
+    success: 0
+  oneline_regex: .*
+  optional_flags: []
+  required_flags: []
+  synopsis: rldk env-audit [OPTIONS]
+- cmd: log-scan
+  exit_codes:
+    failure: 1
+    success: 0
+  oneline_regex: .*
+  optional_flags: []
+  required_flags: []
+  synopsis: rldk log-scan [OPTIONS]
+- cmd: track
+  exit_codes:
+    failure: 1
+    success: 0
+  oneline_regex: ^.*tracking.*started.*$
+  optional_flags: []
+  required_flags: []
+  synopsis: rldk track [OPTIONS]
+- cmd: reward-drift
+  exit_codes:
+    failure: 1
+    success: 0
+  oneline_regex: ^.*reward.*drift.*$
+  optional_flags: []
+  required_flags: []
+  synopsis: rldk reward-drift [OPTIONS]
+- cmd: doctor
+  exit_codes:
+    failure: 1
+    success: 0
+  oneline_regex: ^.*diagnostics.*$
+  optional_flags: []
+  required_flags: []
+  synopsis: rldk doctor [OPTIONS]
+- cmd: version
+  exit_codes:
+    failure: 1
+    success: 0
+  oneline_regex: ^.*version.*$
+  optional_flags: []
+  required_flags: []
+  synopsis: rldk version [OPTIONS]
+- cmd: card
+  exit_codes:
+    failure: 1
+    success: 0
+  oneline_regex: ^.*card.*generation.*$
+  optional_flags: []
+  required_flags: []
+  synopsis: rldk card [OPTIONS]
+- cmd: forensics
+  exit_codes:
+    failure: 1
+    success: 0
+  oneline_regex: .*
+  optional_flags: []
+  required_flags: []
+  synopsis: rldk forensics [OPTIONS]
+- cmd: reward
+  exit_codes:
+    failure: 1
+    success: 0
+  oneline_regex: .*
+  optional_flags: []
+  required_flags: []
+  synopsis: rldk reward [OPTIONS]
+symbols:
+- doc: ''
+  import_path: rldk.ingest_runs
+  kind: function
+  name: ingest_runs
+- doc: ''
+  import_path: rldk.first_divergence
+  kind: function
+  name: first_divergence
+- doc: ''
+  import_path: rldk.check
+  kind: function
+  name: check
+- doc: ''
+  import_path: rldk.bisect_commits
+  kind: function
+  name: bisect_commits
+- doc: ''
+  import_path: rldk.health
+  kind: function
+  name: health
+- doc: Comprehensive report of reward model health analysis.
+  import_path: rldk.RewardHealthReport
+  kind: class
+  name: RewardHealthReport
+- doc: ''
+  import_path: rldk.run
+  kind: function
+  name: run
+- doc: Result of an evaluation suite run.
+  import_path: rldk.EvalResult
+  kind: class
+  name: EvalResult
+version: baseline
