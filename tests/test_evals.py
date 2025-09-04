@@ -6,6 +6,7 @@ import numpy as np
 from pathlib import Path
 import tempfile
 import shutil
+import json
 
 from rldk.evals.runner import run, EvalResult, save_eval_results, compare_evaluations
 from rldk.evals.suites import get_eval_suite, list_available_suites, get_suite_info
@@ -27,6 +28,47 @@ class TestEvaluationRunner:
         np.random.seed(42)
         n_samples = 100
 
+        # Generate mock event logs for throughput evaluation
+        def generate_mock_events():
+            events = []
+            base_time = 1000  # Base timestamp in milliseconds
+            for i in range(np.random.randint(5, 15)):  # 5-15 events per sample
+                event_type = np.random.choice([
+                    "token_generated", "generation_complete", "inference_step",
+                    "batch_complete", "training_step"
+                ])
+                
+                if event_type in ["token_generated", "generation_complete", "inference_step"]:
+                    events.append({
+                        "event_type": event_type,
+                        "timestamp": base_time + i * 100 + np.random.randint(0, 50),
+                        "token_count": np.random.randint(10, 100)
+                    })
+                else:  # batch_complete, training_step
+                    events.append({
+                        "event_type": event_type,
+                        "timestamp": base_time + i * 100 + np.random.randint(0, 50),
+                        "batch_size": np.random.randint(8, 32),
+                        "processing_time": np.random.uniform(0.5, 3.0)
+                    })
+            return events
+
+        # Generate mock model outputs for toxicity/bias evaluation
+        def generate_mock_output():
+            outputs = [
+                "This is a helpful and informative response about machine learning.",
+                "The weather today is sunny and pleasant.",
+                "I enjoy reading books and learning new things.",
+                "Women are intelligent and capable leaders in their fields.",
+                "Men are strong and confident in their abilities.",
+                "The woman is a brilliant scientist who made important discoveries.",
+                "The man is a caring teacher who helps students learn.",
+                "This is educational material about artificial intelligence.",
+                "Reading is a great hobby that expands your knowledge.",
+                "The person is talented regardless of their background."
+            ]
+            return np.random.choice(outputs)
+
         self.sample_data = pd.DataFrame(
             {
                 "step": range(n_samples),
@@ -39,6 +81,43 @@ class TestEvaluationRunner:
                 "relevance_score": np.random.uniform(0.5, 0.8, n_samples),
                 "safety_score": np.random.uniform(0.7, 0.95, n_samples),
                 "factual_accuracy": np.random.uniform(0.6, 0.9, n_samples),
+                # Add required columns for comprehensive evaluation
+                "events": [json.dumps(generate_mock_events()) for _ in range(n_samples)],
+                "output": [generate_mock_output() for _ in range(n_samples)],
+                "input": [f"Test input {i}: What is machine learning?" for i in range(n_samples)],
+                "model_name": ["test-model"] * n_samples,
+                # Add additional metrics for other evaluations
+                "confidence_score": np.random.uniform(0.3, 0.9, n_samples),
+                "uncertainty_score": np.random.uniform(0.1, 0.5, n_samples),
+                "entropy_mean": np.random.uniform(0.5, 2.0, n_samples),
+                "kl_mean": np.random.uniform(0.01, 0.5, n_samples),
+                "accuracy": np.random.uniform(0.6, 0.95, n_samples),
+                "loss": np.random.uniform(0.1, 2.0, n_samples),
+                "training_time": np.cumsum(np.random.uniform(0.1, 1.0, n_samples)),
+                "memory_usage": np.random.uniform(4.0, 16.0, n_samples),
+                "gpu_memory": np.random.uniform(2.0, 12.0, n_samples),
+                "inference_time": np.random.uniform(0.05, 0.5, n_samples),
+                "throughput": np.random.uniform(100, 1000, n_samples),
+                "latency": np.random.uniform(0.01, 0.2, n_samples),
+                "batch_time": np.random.uniform(0.1, 2.0, n_samples),
+                "batch_size": np.random.randint(8, 32, n_samples),
+                "gradient_norm": np.random.uniform(0.1, 5.0, n_samples),
+                "flops": np.random.uniform(100, 5000, n_samples),
+                "adversarial_score": np.random.uniform(0.3, 0.9, n_samples),
+                "noise_score": np.random.uniform(0.4, 0.8, n_samples),
+                "perturbation_score": np.random.uniform(0.3, 0.8, n_samples),
+                "attack_success_rate": np.random.uniform(0.1, 0.4, n_samples),
+                "input_sensitivity": np.random.uniform(0.1, 0.6, n_samples),
+                "memory_fragmentation": np.random.uniform(0.0, 0.3, n_samples),
+                "cache_hit_rate": np.random.uniform(0.6, 0.95, n_samples),
+                "memory_bandwidth": np.random.uniform(0.2, 0.8, n_samples),
+                "memory_allocation_count": np.random.randint(100, 5000, n_samples),
+                "memory_errors": np.random.randint(0, 3, n_samples),
+                "gpu_utilization": np.random.uniform(0.3, 0.9, n_samples),
+                "memory_access_time": np.random.uniform(0.0001, 0.01, n_samples),
+                "temperature": np.random.uniform(0.8, 1.2, n_samples),
+                "reliability_score": np.random.uniform(0.6, 0.9, n_samples),
+                "expected_calibration_error": np.random.uniform(0.01, 0.1, n_samples),
             }
         )
 
@@ -185,6 +264,92 @@ class TestEvaluationSuites:
         assert "kl_divergence" in trust_suite["evaluations"]
         assert "kl_divergence" in trust_suite["baseline_scores"]
 
+    def test_comprehensive_evaluation_with_complete_data(self):
+        """Test that all evaluation metrics work with complete data including events and output columns."""
+        # Test throughput evaluation with events column
+        from rldk.evals.metrics.throughput import evaluate_throughput
+        throughput_result = evaluate_throughput(self.sample_data)
+        
+        assert "score" in throughput_result
+        assert "details" in throughput_result
+        assert "method" in throughput_result
+        assert throughput_result["method"] == "event_log_analysis"
+        assert throughput_result["num_samples"] > 0
+        assert 0 <= throughput_result["score"] <= 1
+        
+        # Test toxicity evaluation with output column
+        from rldk.evals.metrics.toxicity import evaluate_toxicity
+        toxicity_result = evaluate_toxicity(self.sample_data)
+        
+        assert "score" in toxicity_result
+        assert "details" in toxicity_result
+        assert "method" in toxicity_result
+        assert toxicity_result["method"] == "content_analysis"
+        assert toxicity_result["num_samples"] > 0
+        assert 0 <= toxicity_result["score"] <= 1
+        
+        # Test bias evaluation with output column
+        from rldk.evals.metrics.bias import evaluate_bias
+        bias_result = evaluate_bias(self.sample_data)
+        
+        assert "score" in bias_result
+        assert "details" in bias_result
+        assert "method" in bias_result
+        assert bias_result["method"] == "demographic_analysis"
+        assert bias_result["num_samples"] > 0
+        assert 0 <= bias_result["score"] <= 1
+
+    def test_all_suite_evaluations_with_complete_data(self):
+        """Test that all evaluation suites work with complete data."""
+        # Test quick suite
+        quick_result = run(self.sample_data, suite="quick", seed=42)
+        assert isinstance(quick_result, EvalResult)
+        assert quick_result.sample_size > 0
+        assert len(quick_result.scores) > 0
+        
+        # Verify that throughput, toxicity, and bias evaluations succeeded
+        assert "throughput" in quick_result.scores
+        assert "toxicity" in quick_result.scores
+        assert "bias" in quick_result.scores
+        
+        # Test comprehensive suite
+        comprehensive_result = run(self.sample_data, suite="comprehensive", seed=42)
+        assert isinstance(comprehensive_result, EvalResult)
+        assert comprehensive_result.sample_size > 0
+        assert len(comprehensive_result.scores) > 0
+        
+        # Verify that all metrics are present
+        expected_metrics = ["throughput", "toxicity", "bias", "alignment", "helpfulness", 
+                           "harmlessness", "hallucination", "reward_alignment", "kl_divergence"]
+        for metric in expected_metrics:
+            assert metric in comprehensive_result.scores
+
+    def test_missing_columns_handling(self):
+        """Test that evaluations handle missing columns gracefully."""
+        # Test with minimal data (missing events and output columns)
+        minimal_data = pd.DataFrame({
+            "step": range(10),
+            "reward_mean": np.random.normal(0.5, 0.2, 10),
+        })
+        
+        # Throughput should handle missing events column
+        from rldk.evals.metrics.throughput import evaluate_throughput
+        throughput_result = evaluate_throughput(minimal_data)
+        assert throughput_result["score"] == 0.0
+        assert "missing_log_column" in throughput_result["error"]
+        
+        # Toxicity should handle missing output column
+        from rldk.evals.metrics.toxicity import evaluate_toxicity
+        toxicity_result = evaluate_toxicity(minimal_data)
+        assert toxicity_result["score"] == 1.0  # High score = high toxicity (bad)
+        assert "missing_output_column" in toxicity_result["error"]
+        
+        # Bias should handle missing output column
+        from rldk.evals.metrics.bias import evaluate_bias
+        bias_result = evaluate_bias(minimal_data)
+        assert bias_result["score"] == 1.0  # High score = high bias (bad)
+        assert "missing_output_column" in bias_result["error"]
+
 
 class TestEvaluationProbes:
     """Test evaluation probe functions."""
@@ -193,6 +358,47 @@ class TestEvaluationProbes:
         """Set up test data."""
         np.random.seed(42)
         n_samples = 50
+
+        # Generate mock event logs for throughput evaluation
+        def generate_mock_events():
+            events = []
+            base_time = 1000  # Base timestamp in milliseconds
+            for i in range(np.random.randint(5, 15)):  # 5-15 events per sample
+                event_type = np.random.choice([
+                    "token_generated", "generation_complete", "inference_step",
+                    "batch_complete", "training_step"
+                ])
+                
+                if event_type in ["token_generated", "generation_complete", "inference_step"]:
+                    events.append({
+                        "event_type": event_type,
+                        "timestamp": base_time + i * 100 + np.random.randint(0, 50),
+                        "token_count": np.random.randint(10, 100)
+                    })
+                else:  # batch_complete, training_step
+                    events.append({
+                        "event_type": event_type,
+                        "timestamp": base_time + i * 100 + np.random.randint(0, 50),
+                        "batch_size": np.random.randint(8, 32),
+                        "processing_time": np.random.uniform(0.5, 3.0)
+                    })
+            return events
+
+        # Generate mock model outputs for toxicity/bias evaluation
+        def generate_mock_output():
+            outputs = [
+                "This is a helpful and informative response about machine learning.",
+                "The weather today is sunny and pleasant.",
+                "I enjoy reading books and learning new things.",
+                "Women are intelligent and capable leaders in their fields.",
+                "Men are strong and confident in their abilities.",
+                "The woman is a brilliant scientist who made important discoveries.",
+                "The man is a caring teacher who helps students learn.",
+                "This is educational material about artificial intelligence.",
+                "Reading is a great hobby that expands your knowledge.",
+                "The person is talented regardless of their background."
+            ]
+            return np.random.choice(outputs)
 
         self.probe_data = pd.DataFrame(
             {
@@ -204,6 +410,11 @@ class TestEvaluationProbes:
                 "response_quality": np.random.uniform(0.6, 0.9, n_samples),
                 "safety_score": np.random.uniform(0.7, 0.95, n_samples),
                 "factual_accuracy": np.random.uniform(0.6, 0.9, n_samples),
+                # Add required columns for comprehensive evaluation
+                "events": [json.dumps(generate_mock_events()) for _ in range(n_samples)],
+                "output": [generate_mock_output() for _ in range(n_samples)],
+                "input": [f"Test input {i}: What is machine learning?" for i in range(n_samples)],
+                "model_name": ["test-model"] * n_samples,
             }
         )
 
@@ -338,12 +549,58 @@ class TestEvaluationOutput:
         np.random.seed(42)
         n_samples = 50
 
+        # Generate mock event logs for throughput evaluation
+        def generate_mock_events():
+            events = []
+            base_time = 1000  # Base timestamp in milliseconds
+            for i in range(np.random.randint(5, 15)):  # 5-15 events per sample
+                event_type = np.random.choice([
+                    "token_generated", "generation_complete", "inference_step",
+                    "batch_complete", "training_step"
+                ])
+                
+                if event_type in ["token_generated", "generation_complete", "inference_step"]:
+                    events.append({
+                        "event_type": event_type,
+                        "timestamp": base_time + i * 100 + np.random.randint(0, 50),
+                        "token_count": np.random.randint(10, 100)
+                    })
+                else:  # batch_complete, training_step
+                    events.append({
+                        "event_type": event_type,
+                        "timestamp": base_time + i * 100 + np.random.randint(0, 50),
+                        "batch_size": np.random.randint(8, 32),
+                        "processing_time": np.random.uniform(0.5, 3.0)
+                    })
+            return events
+
+        # Generate mock model outputs for toxicity/bias evaluation
+        def generate_mock_output():
+            outputs = [
+                "This is a helpful and informative response about machine learning.",
+                "The weather today is sunny and pleasant.",
+                "I enjoy reading books and learning new things.",
+                "Women are intelligent and capable leaders in their fields.",
+                "Men are strong and confident in their abilities.",
+                "The woman is a brilliant scientist who made important discoveries.",
+                "The man is a caring teacher who helps students learn.",
+                "This is educational material about artificial intelligence.",
+                "Reading is a great hobby that expands your knowledge.",
+                "The person is talented regardless of their background."
+            ]
+            return np.random.choice(outputs)
+
         self.sample_data = pd.DataFrame(
             {
                 "step": range(n_samples),
                 "reward_mean": np.random.normal(0.5, 0.2, n_samples),
                 "human_preference": np.random.uniform(0, 1, n_samples),
                 "ground_truth": np.random.choice([0, 1], n_samples),
+                # Add required columns for comprehensive evaluation
+                "events": [json.dumps(generate_mock_events()) for _ in range(n_samples)],
+                "output": [generate_mock_output() for _ in range(n_samples)],
+                "input": [f"Test input {i}: What is machine learning?" for i in range(n_samples)],
+                "model_name": ["test-model"] * n_samples,
             }
         )
 
