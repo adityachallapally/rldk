@@ -385,8 +385,8 @@ class TestDistributedNetworkMonitor(unittest.TestCase):
             metrics = monitor.measure_distributed_metrics()
         
         self.assertIsInstance(metrics, NetworkMetrics)
-        self.assertEqual(metrics.world_size, 1)  # Default value, not set in constructor
-        self.assertEqual(metrics.rank, 0)
+        self.assertEqual(metrics.world_size, 2)  # Should match monitor's world_size
+        self.assertEqual(metrics.rank, 0)  # Should match monitor's rank
     
     def test_get_performance_summary(self):
         """Test getting performance summary."""

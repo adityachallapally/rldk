@@ -944,7 +944,11 @@ class DistributedNetworkMonitor:
     
     def measure_distributed_metrics(self) -> NetworkMetrics:
         """Measure comprehensive network metrics for distributed training."""
-        metrics = NetworkMetrics(timestamp=time.time())
+        metrics = NetworkMetrics(
+            timestamp=time.time(),
+            world_size=self.world_size,
+            rank=self.rank
+        )
         
         # Basic network metrics
         interface_stats = self.interface_monitor.get_interface_stats()
