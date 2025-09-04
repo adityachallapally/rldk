@@ -773,8 +773,8 @@ class ComprehensivePPOMonitor(TrainerCallback):
                 self.forensics.current_metrics.clip_frac = latest_log['ppo/policy/clipfrac']
             if 'ppo/val/value_loss' in latest_log:
                 self.forensics.current_metrics.value_loss = latest_log['ppo/val/value_loss']
-            if 'ppo/val/policy_loss' in latest_log:
-                self.forensics.current_metrics.policy_loss = latest_log['ppo/val/policy_loss']
+            if 'ppo/policy/policy_loss' in latest_log:
+                self.forensics.current_metrics.policy_loss = latest_log['ppo/policy/policy_loss']
             if 'ppo/policy/grad_norm' in latest_log:
                 self.forensics.current_metrics.policy_grad_norm = latest_log['ppo/policy/grad_norm']
             if 'ppo/val/grad_norm' in latest_log:
