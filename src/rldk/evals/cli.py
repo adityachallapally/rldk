@@ -133,10 +133,11 @@ def run_evaluation_suite(
                 "evaluation": eval_name,
                 "error": str(e)
             })
+            results["summary"]["failed_evaluations"] += 1
         
         results["summary"]["total_evaluations"] += 1
     
-    results["summary"]["failed_evaluations"] = len(results["summary"]["errors"])
+    # Note: failed_evaluations is now correctly maintained throughout the loop
     
     # Calculate overall score
     successful_scores = [
