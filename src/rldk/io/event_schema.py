@@ -78,6 +78,21 @@ def create_event_from_row(
         "grad_norm",
         "lr",
         "loss",
+        # Network metrics
+        "network_bandwidth",
+        "network_latency",
+        "bandwidth_mbps",
+        "latency_ms",
+        "bandwidth_upload_mbps",
+        "bandwidth_download_mbps",
+        "total_bandwidth_mbps",
+        "allreduce_bandwidth",
+        "broadcast_bandwidth",
+        "gather_bandwidth",
+        "scatter_bandwidth",
+        "packet_loss_percent",
+        "network_errors",
+        "dns_resolution_ms",
     ]
 
     for field in metric_fields:

@@ -3,6 +3,7 @@
 import time
 import threading
 import queue
+import os
 from typing import Dict, List, Optional, Any, Callable, Tuple
 from dataclasses import dataclass, field
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -51,7 +52,10 @@ class DistributedMetrics:
     avg_cpu_utilization: float = 0.0
     total_cpu_memory_used: float = 0.0
     network_bandwidth_total: float = 0.0
+    network_bandwidth_mean: float = 0.0
+    network_bandwidth_max: float = 0.0
     avg_network_latency: float = 0.0
+    max_network_latency: float = 0.0
     allreduce_time: float = 0.0
     broadcast_time: float = 0.0
     gather_time: float = 0.0
@@ -233,9 +237,12 @@ class DistributedMetricsCollector:
         
         network_bandwidths = [m.network_bandwidth for m in node_metrics_list]
         network_bandwidth_total = sum(network_bandwidths)
+        network_bandwidth_mean = np.mean(network_bandwidths) if network_bandwidths else 0.0
+        network_bandwidth_max = np.max(network_bandwidths) if network_bandwidths else 0.0
         
         network_latencies = [m.network_latency for m in node_metrics_list]
         avg_network_latency = np.mean(network_latencies) if network_latencies else 0.0
+        max_network_latency = np.max(network_latencies) if network_latencies else 0.0
         
         return DistributedMetrics(
             world_size=world_size,
@@ -246,7 +253,10 @@ class DistributedMetricsCollector:
             avg_cpu_utilization=avg_cpu_utilization,
             total_cpu_memory_used=total_cpu_memory_used,
             network_bandwidth_total=network_bandwidth_total,
+            network_bandwidth_mean=network_bandwidth_mean,
+            network_bandwidth_max=network_bandwidth_max,
             avg_network_latency=avg_network_latency,
+            max_network_latency=max_network_latency,
             timestamp=time.time()
         )
     
@@ -570,13 +580,17 @@ from .network_monitor import RealNetworkMonitor, NetworkMetrics
 class NetworkMonitor:
     """Monitor network performance for distributed training with real measurements."""
     
-    def __init__(self, sampling_frequency: int = 10, enable_icmp: bool = True):
+    def __init__(self, sampling_frequency: int = None, enable_icmp: bool = True):
         """Initialize network monitor.
         
         Args:
-            sampling_frequency: How often to sample metrics (every N steps)
+            sampling_frequency: How often to sample metrics (every N steps).
+                               If None, will use RLDK_NETWORK_SAMPLING_FREQUENCY env var or default to 10.
             enable_icmp: Whether to use ICMP ping (requires privileges)
         """
+        if sampling_frequency is None:
+            sampling_frequency = int(os.environ.get('RLDK_NETWORK_SAMPLING_FREQUENCY', '10'))
+        
         self.sampling_frequency = sampling_frequency
         self.enable_icmp = enable_icmp
         
@@ -779,6 +793,7 @@ class NetworkMonitor:
             'bandwidth_download_mbps': download_mbps,
             'latency_ms': latency_ms if latency_ms != float('inf') else 0.0,
             'total_bandwidth_mbps': upload_mbps + download_mbps,
+            'timestamp': time.time(),
         }
     
     def get_network_stats(self) -> Dict[str, float]:
