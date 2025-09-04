@@ -83,11 +83,11 @@ def compare_json_objects(current: Any, expected: Any, path: str = "") -> List[Tu
         # Check for missing keys
         for key in expected:
             if key not in current:
-                differences.append((f"{path}.{key}", None, expected[key])
+                differences.append((f"{path}.{key}", None, expected[key]))
         # Check for extra keys
         for key in current:
             if key not in expected:
-                differences.append((f"{path}.{key}", current[key], None)
+                differences.append((f"{path}.{key}", current[key], None))
         # Check common keys
         for key in current:
             if key in expected:
