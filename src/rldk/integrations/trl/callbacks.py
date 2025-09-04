@@ -320,8 +320,10 @@ class RLDKCallback(TrainerCallback):
         # Store metrics AFTER log values are applied
         self.metrics_history.append(RLDKMetrics(**self.current_metrics.to_dict()))
         
-        # Log JSONL event after each call to _log_metrics
-        if self.enable_jsonl_logging:
+        # Log JSONL event at specified intervals
+        if (self.enable_jsonl_logging and 
+            self.jsonl_log_interval > 0 and 
+            state.global_step % self.jsonl_log_interval == 0):
             self._log_jsonl_event(state, logs)
         
         # Check for alerts AFTER metrics are stored

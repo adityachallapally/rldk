@@ -148,6 +148,8 @@ class OpenRLHFCallback:
         run_id: Optional[str] = None,
         model_name: Optional[str] = None,
         dataset_name: Optional[str] = None,
+        enable_jsonl_logging: bool = True,
+        jsonl_log_interval: int = 1,
     ):
         """Initialize OpenRLHF callback.
         
@@ -160,6 +162,8 @@ class OpenRLHFCallback:
             run_id: Unique identifier for this training run
             model_name: Name of the model being trained
             dataset_name: Name of the dataset being used
+            enable_jsonl_logging: Whether to enable JSONL event logging
+            jsonl_log_interval: Steps between JSONL event logging
         """
         if not OPENRLHF_AVAILABLE:
             raise ImportError(
@@ -169,10 +173,18 @@ class OpenRLHFCallback:
         self.output_dir = Path(output_dir) if output_dir else Path("./rldk_logs")
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
+        # Validate log intervals
+        if log_interval <= 0:
+            raise ValueError("log_interval must be positive")
+        if jsonl_log_interval <= 0:
+            raise ValueError("jsonl_log_interval must be positive")
+        
         self.log_interval = log_interval
         self.alert_thresholds = alert_thresholds or {}
         self.enable_resource_monitoring = enable_resource_monitoring
         self.enable_distributed_monitoring = enable_distributed_monitoring
+        self.enable_jsonl_logging = enable_jsonl_logging
+        self.jsonl_log_interval = jsonl_log_interval
         
         self.run_id = run_id or f"openrlhf_run_{int(time.time())}"
         self.model_name = model_name or "unknown_model"
@@ -184,7 +196,6 @@ class OpenRLHFCallback:
         
         # JSONL logging setup
         self.jsonl_file = None
-        self.enable_jsonl_logging = True  # Enable by default
         if self.enable_jsonl_logging:
             self._setup_jsonl_logging()
         
@@ -199,6 +210,11 @@ class OpenRLHFCallback:
         # Performance tracking
         self.step_times = []
         self.last_step_time = time.time()
+        
+        print(f"🚀 OpenRLHF Callback initialized - Run ID: {self.run_id}")
+        print(f"📊 Output directory: {self.output_dir}")
+        if self.enable_jsonl_logging:
+            print(f"📝 JSONL logging enabled - interval: {self.jsonl_log_interval}")
         
         # Initialize distributed monitoring if enabled
         if self.enable_distributed_monitoring:
@@ -287,8 +303,10 @@ class OpenRLHFCallback:
         # Store metrics
         self.metrics_history.append(self.current_metrics)
         
-        # Log JSONL event after each step
-        if self.enable_jsonl_logging:
+        # Log JSONL event at specified intervals
+        if (self.enable_jsonl_logging and 
+            self.jsonl_log_interval > 0 and 
+            step % self.jsonl_log_interval == 0):
             self._log_jsonl_event(step, {})
         
         # Check for alerts
