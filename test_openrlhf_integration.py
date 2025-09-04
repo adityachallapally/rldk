@@ -21,15 +21,45 @@ def setup_openrlhf_environment():
     print("🚀 Setting up OpenRLHF environment with CUDA support...")
     
     try:
+        # Check platform compatibility
+        if platform.system() != "Linux":
+            print(f"   ⚠️  Unsupported platform: {platform.system()}")
+            print("   OpenRLHF setup is only supported on Linux systems")
+            return False
+        
         # Detect Python version
         python_version = platform.python_version()
         major, minor = python_version.split('.')[:2]
         python_version_short = f"{major}.{minor}"
         print(f"🐍 Detected Python version: {python_version}")
         
-        # Check if running as root (for package installation)
-        is_root = os.geteuid() == 0
-        sudo_cmd = [] if is_root else ["sudo"]
+        # Check if running as root (Unix-specific check)
+        try:
+            is_root = os.geteuid() == 0
+        except AttributeError:
+            # Windows or other non-Unix systems
+            print("   ⚠️  Cannot determine root status on this platform")
+            is_root = False
+        
+        # Check if we can run sudo non-interactively
+        sudo_cmd = []
+        if not is_root:
+            print("   Checking if passwordless sudo is available...")
+            try:
+                # Test if sudo can run without password
+                result = subprocess.run(["sudo", "-n", "true"], 
+                                      capture_output=True, text=True, check=True)
+                sudo_cmd = ["sudo"]
+                print("   ✅ Passwordless sudo available")
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                print("   ❌ Passwordless sudo not available")
+                print("   ⚠️  Cannot install system packages automatically")
+                print("   Please install the following packages manually:")
+                print("   - nvidia-cuda-toolkit")
+                print(f"   - python{python_version_short}-venv (or python3-venv)")
+                print("   Then set CUDA_HOME=/usr/lib/nvidia-cuda-toolkit")
+                print("   And add CUDA_HOME/bin to your PATH")
+                return False
         
         # Step 1: Update package lists
         print("📦 Updating package lists...")
