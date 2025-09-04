@@ -32,8 +32,23 @@ Run the automated installation script:
 # Update package lists
 sudo apt update
 
-# Install CUDA toolkit and Python venv
-sudo apt install -y nvidia-cuda-toolkit python3.13-venv
+# Detect Python version and install appropriate packages
+PYTHON_VERSION=$(python3 --version 2>&1 | grep -oP '\d+\.\d+' | head -1)
+echo "Detected Python version: $PYTHON_VERSION"
+
+# Install CUDA toolkit and appropriate venv package
+if [[ "$PYTHON_VERSION" == "3.13" ]]; then
+    sudo apt install -y nvidia-cuda-toolkit python3.13-venv
+elif [[ "$PYTHON_VERSION" == "3.12" ]]; then
+    sudo apt install -y nvidia-cuda-toolkit python3.12-venv
+elif [[ "$PYTHON_VERSION" == "3.11" ]]; then
+    sudo apt install -y nvidia-cuda-toolkit python3.11-venv
+elif [[ "$PYTHON_VERSION" == "3.10" ]]; then
+    sudo apt install -y nvidia-cuda-toolkit python3.10-venv
+else
+    echo "Installing generic python3-venv package..."
+    sudo apt install -y nvidia-cuda-toolkit python3-venv
+fi
 ```
 
 ### Step 2: Set Up CUDA Environment
@@ -108,6 +123,23 @@ python your_openrlhf_script.py
 ```
 
 ## Troubleshooting
+
+### Python Version Issues
+
+If virtual environment creation fails:
+```bash
+# Check available Python versions
+python3 --version
+python3.13 --version 2>/dev/null || echo "Python 3.13 not available"
+python3.12 --version 2>/dev/null || echo "Python 3.12 not available"
+python3.11 --version 2>/dev/null || echo "Python 3.11 not available"
+python3.10 --version 2>/dev/null || echo "Python 3.10 not available"
+
+# Install appropriate venv package for your Python version
+sudo apt install -y python3-venv  # Generic package
+# OR
+sudo apt install -y python3.13-venv  # Specific version
+```
 
 ### CUDA Compiler Not Found
 

@@ -17,9 +17,26 @@ fi
 echo "📦 Updating package lists..."
 $SUDO apt update
 
-# Step 2: Install CUDA development tools
-echo "🔧 Installing CUDA development tools..."
-$SUDO apt install -y nvidia-cuda-toolkit python3.13-venv
+# Step 2: Detect Python version and install appropriate packages
+echo "🐍 Detecting Python version..."
+PYTHON_VERSION=$(python3 --version 2>&1 | grep -oP '\d+\.\d+' | head -1)
+echo "   Detected Python version: $PYTHON_VERSION"
+
+# Install CUDA development tools and appropriate venv package
+echo "🔧 Installing CUDA development tools and Python venv..."
+if [[ "$PYTHON_VERSION" == "3.13" ]]; then
+    $SUDO apt install -y nvidia-cuda-toolkit python3.13-venv
+elif [[ "$PYTHON_VERSION" == "3.12" ]]; then
+    $SUDO apt install -y nvidia-cuda-toolkit python3.12-venv
+elif [[ "$PYTHON_VERSION" == "3.11" ]]; then
+    $SUDO apt install -y nvidia-cuda-toolkit python3.11-venv
+elif [[ "$PYTHON_VERSION" == "3.10" ]]; then
+    $SUDO apt install -y nvidia-cuda-toolkit python3.10-venv
+else
+    echo "   ⚠️  Unsupported Python version: $PYTHON_VERSION"
+    echo "   Installing generic python3-venv package..."
+    $SUDO apt install -y nvidia-cuda-toolkit python3-venv
+fi
 
 # Step 3: Set up CUDA environment
 echo "🌍 Setting up CUDA environment..."
@@ -42,7 +59,43 @@ if [ -d "openrlhf_env" ]; then
     rm -rf openrlhf_env
 fi
 
-python3 -m venv openrlhf_env
+# Try to create virtual environment with detected Python version
+echo "   Creating virtual environment with Python $PYTHON_VERSION..."
+if python3 -m venv openrlhf_env; then
+    echo "   ✅ Virtual environment created successfully"
+else
+    echo "   ❌ Failed to create virtual environment with python3 -m venv"
+    echo "   Trying alternative methods..."
+    
+    # Try with python3.13 if available
+    if command -v python3.13 &> /dev/null; then
+        echo "   Trying with python3.13..."
+        python3.13 -m venv openrlhf_env
+    # Try with python3.12 if available
+    elif command -v python3.12 &> /dev/null; then
+        echo "   Trying with python3.12..."
+        python3.12 -m venv openrlhf_env
+    # Try with python3.11 if available
+    elif command -v python3.11 &> /dev/null; then
+        echo "   Trying with python3.11..."
+        python3.11 -m venv openrlhf_env
+    # Try with python3.10 if available
+    elif command -v python3.10 &> /dev/null; then
+        echo "   Trying with python3.10..."
+        python3.10 -m venv openrlhf_env
+    else
+        echo "   ❌ No suitable Python version found for virtual environment creation"
+        echo "   Please ensure you have a supported Python version (3.10+) installed"
+        exit 1
+    fi
+fi
+
+# Verify virtual environment was created
+if [ ! -d "openrlhf_env" ]; then
+    echo "   ❌ Virtual environment creation failed"
+    exit 1
+fi
+
 source openrlhf_env/bin/activate
 
 # Step 5: Upgrade pip and install build dependencies
