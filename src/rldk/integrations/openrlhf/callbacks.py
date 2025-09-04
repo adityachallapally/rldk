@@ -601,10 +601,47 @@ class DistributedTrainingMonitor(OpenRLHFCallback):
     
     def _collect_network_metrics(self):
         """Collect network performance metrics."""
-        # This would need actual network monitoring implementation
-        # For now, we'll use placeholder values
-        self.current_metrics.network_bandwidth = 0.0  # GB/s
-        self.current_metrics.network_latency = 0.0  # ms
+        try:
+            from .network_monitor import RealNetworkMonitor
+            import threading
+            
+            # Thread-safe initialization of network monitor with proper lock initialization
+            if not hasattr(self, '_network_monitor_lock'):
+                # Use a class-level lock to ensure atomic lock initialization
+                if not hasattr(self.__class__, '_class_lock'):
+                    self.__class__._class_lock = threading.Lock()
+                
+                with self.__class__._class_lock:
+                    if not hasattr(self, '_network_monitor_lock'):
+                        self._network_monitor_lock = threading.Lock()
+            
+            with self._network_monitor_lock:
+                if not hasattr(self, '_network_monitor'):
+                    self._network_monitor = RealNetworkMonitor(
+                        enable_distributed_monitoring=True,
+                        enable_distributed_measurements=False  # Safer default - doesn't interfere with training
+                    )
+            
+            # Get comprehensive network metrics
+            network_metrics = self._network_monitor.get_comprehensive_metrics()
+            
+            # Update current metrics with correct conversion (Mbps to GB/s = /8000.0)
+            self.current_metrics.network_bandwidth = network_metrics.bandwidth_mbps / 8000.0  # Convert to GB/s
+            self.current_metrics.network_latency = network_metrics.latency_ms
+            
+            # Add additional network metrics if available
+            if hasattr(self.current_metrics, 'network_errors'):
+                self.current_metrics.network_errors = network_metrics.network_errors
+            if hasattr(self.current_metrics, 'packet_loss_percent'):
+                self.current_metrics.packet_loss_percent = network_metrics.packet_loss_percent
+            if hasattr(self.current_metrics, 'allreduce_bandwidth'):
+                self.current_metrics.allreduce_bandwidth = network_metrics.allreduce_bandwidth / 8000.0  # Convert to GB/s
+                
+        except Exception as e:
+            print(f"Error collecting network metrics: {e}")
+            # Fallback to placeholder values
+            self.current_metrics.network_bandwidth = 0.0  # GB/s
+            self.current_metrics.network_latency = 0.0  # ms
 
 
 class MultiGPUMonitor(OpenRLHFCallback):

@@ -563,98 +563,27 @@ class GPUMemoryMonitor:
         return stats
 
 
+# Import the new network monitoring implementation
+from .network_monitor import RealNetworkMonitor, NetworkMetrics
+
 class NetworkMonitor:
     """Monitor network performance for distributed training."""
     
     def __init__(self):
         """Initialize network monitor."""
-        self.bandwidth_history = []
-        self.latency_history = []
-        self.last_measurement = 0.0
-        self.measurement_interval = 5.0  # seconds
+        self.real_monitor = RealNetworkMonitor(
+            enable_distributed_monitoring=True,
+            enable_distributed_measurements=False  # Safer default - doesn't interfere with training
+        )
     
     def get_current_metrics(self) -> Dict[str, float]:
         """Get current network metrics."""
-        current_time = time.time()
-        
-        # Only measure if enough time has passed
-        if current_time - self.last_measurement < self.measurement_interval:
-            return {
-                'bandwidth': self.bandwidth_history[-1] if self.bandwidth_history else 0.0,
-                'latency': self.latency_history[-1] if self.latency_history else 0.0,
-            }
-        
-        # Measure bandwidth (simplified - would need actual network testing)
-        bandwidth = self._measure_bandwidth()
-        latency = self._measure_latency()
-        
-        # Update history
-        self.bandwidth_history.append(bandwidth)
-        self.latency_history.append(latency)
-        
-        # Keep only last 100 measurements
-        if len(self.bandwidth_history) > 100:
-            self.bandwidth_history.pop(0)
-        if len(self.latency_history) > 100:
-            self.latency_history.pop(0)
-        
-        self.last_measurement = current_time
-        
-        return {
-            'bandwidth': bandwidth,
-            'latency': latency,
-        }
-    
-    def _measure_bandwidth(self) -> float:
-        """Measure network bandwidth (simplified implementation)."""
-        # This is a placeholder - actual implementation would need
-        # to perform network tests or use system monitoring tools
-        try:
-            # Use a simple approach - measure time to resolve a hostname
-            start_time = time.time()
-            socket.gethostbyname('google.com')
-            end_time = time.time()
-            
-            # Convert to approximate bandwidth (very rough estimate)
-            response_time = end_time - start_time
-            if response_time > 0:
-                # This is not a real bandwidth measurement
-                # In practice, you'd use tools like iperf or netperf
-                return 1.0 / response_time  # Placeholder
-            else:
-                return 0.0
-        except Exception:
-            return 0.0
-    
-    def _measure_latency(self) -> float:
-        """Measure network latency (simplified implementation)."""
-        try:
-            # Simple ping-like measurement
-            start_time = time.time()
-            socket.gethostbyname('google.com')
-            end_time = time.time()
-            
-            return (end_time - start_time) * 1000  # Convert to milliseconds
-        except Exception:
-            return 0.0
+        return self.real_monitor.get_current_metrics()
     
     def get_network_stats(self) -> Dict[str, float]:
         """Get network performance statistics."""
-        if not self.bandwidth_history or not self.latency_history:
-            return {
-                'avg_bandwidth': 0.0,
-                'avg_latency': 0.0,
-                'max_bandwidth': 0.0,
-                'max_latency': 0.0,
-                'min_bandwidth': 0.0,
-                'min_latency': 0.0,
-            }
-        
-        return {
-            'avg_bandwidth': np.mean(self.bandwidth_history),
-            'avg_latency': np.mean(self.latency_history),
-            'max_bandwidth': np.max(self.bandwidth_history),
-            'max_latency': np.max(self.latency_history),
-            'min_bandwidth': np.min(self.bandwidth_history),
-            'min_latency': np.min(self.latency_history),
-        }
+        return self.real_monitor.get_network_stats()
+    
+    def get_comprehensive_metrics(self) -> NetworkMetrics:
+        """Get comprehensive network metrics."""
+        return self.real_monitor.get_comprehensive_metrics()
