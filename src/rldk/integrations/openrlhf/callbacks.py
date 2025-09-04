@@ -112,9 +112,21 @@ class OpenRLHFMetrics:
     node_id: str = ""
     
     # Network metrics (for multi-node)
-    network_bandwidth: float = 0.0
-    network_latency: float = 0.0
+    network_bandwidth: float = 0.0  # Legacy attribute for backward compatibility
+    network_latency: float = 0.0    # Legacy attribute for backward compatibility
+    bandwidth_mbps: float = 0.0
+    latency_ms: float = 0.0
+    bandwidth_upload_mbps: float = 0.0
+    bandwidth_download_mbps: float = 0.0
+    total_bandwidth_mbps: float = 0.0
     allreduce_time: float = 0.0
+    allreduce_bandwidth: float = 0.0
+    broadcast_bandwidth: float = 0.0
+    gather_bandwidth: float = 0.0
+    scatter_bandwidth: float = 0.0
+    packet_loss_percent: float = 0.0
+    network_errors: int = 0
+    dns_resolution_ms: float = 0.0
     
     # Metadata
     run_id: str = ""
@@ -714,7 +726,7 @@ class DistributedTrainingMonitor(OpenRLHFCallback):
             warnings.warn(f"Failed to collect enhanced distributed metrics: {e}")
     
     def _collect_network_metrics(self):
-        """Collect network performance metrics."""
+        """Collect network performance metrics using real measurements."""
         try:
             from .network_monitor import RealNetworkMonitor
             import threading
@@ -739,17 +751,25 @@ class DistributedTrainingMonitor(OpenRLHFCallback):
             # Get comprehensive network metrics
             network_metrics = self._network_monitor.get_comprehensive_metrics()
             
-            # Update current metrics with correct conversion (Mbps to GB/s = /8000.0)
-            self.current_metrics.network_bandwidth = network_metrics.bandwidth_mbps / 8000.0  # Convert to GB/s
+            # Update current metrics with real measurements
+            self.current_metrics.bandwidth_mbps = network_metrics.bandwidth_mbps
+            self.current_metrics.latency_ms = network_metrics.latency_ms
+            self.current_metrics.bandwidth_upload_mbps = network_metrics.bandwidth_out_mbps
+            self.current_metrics.bandwidth_download_mbps = network_metrics.bandwidth_in_mbps
+            self.current_metrics.total_bandwidth_mbps = network_metrics.bandwidth_in_mbps + network_metrics.bandwidth_out_mbps
+            
+            # Update legacy attributes for backward compatibility
+            self.current_metrics.network_bandwidth = network_metrics.bandwidth_mbps
             self.current_metrics.network_latency = network_metrics.latency_ms
             
-            # Add additional network metrics if available
-            if hasattr(self.current_metrics, 'network_errors'):
-                self.current_metrics.network_errors = network_metrics.network_errors
-            if hasattr(self.current_metrics, 'packet_loss_percent'):
-                self.current_metrics.packet_loss_percent = network_metrics.packet_loss_percent
-            if hasattr(self.current_metrics, 'allreduce_bandwidth'):
-                self.current_metrics.allreduce_bandwidth = network_metrics.allreduce_bandwidth / 8000.0  # Convert to GB/s
+            # Add additional network metrics
+            self.current_metrics.allreduce_bandwidth = network_metrics.allreduce_bandwidth
+            self.current_metrics.broadcast_bandwidth = network_metrics.broadcast_bandwidth
+            self.current_metrics.gather_bandwidth = network_metrics.gather_bandwidth
+            self.current_metrics.scatter_bandwidth = network_metrics.scatter_bandwidth
+            self.current_metrics.packet_loss_percent = network_metrics.packet_loss_percent
+            self.current_metrics.network_errors = network_metrics.network_errors
+            self.current_metrics.dns_resolution_ms = network_metrics.dns_resolution_ms
                 
         except Exception as e:
             print(f"Error collecting network metrics: {e}")
@@ -772,18 +792,30 @@ class DistributedTrainingMonitor(OpenRLHFCallback):
                                 if result.get('success', False)]
                 avg_dns_time = np.mean(successful_dns) if successful_dns else 0.0
                 
-                self.current_metrics.network_bandwidth = 0.0  # GB/s (no bandwidth measurement available)
-                self.current_metrics.network_latency = avg_latency  # ms
+                # Set fallback values
+                self.current_metrics.bandwidth_mbps = 0.0
+                self.current_metrics.latency_ms = avg_latency
+                self.current_metrics.bandwidth_upload_mbps = 0.0
+                self.current_metrics.bandwidth_download_mbps = 0.0
+                self.current_metrics.total_bandwidth_mbps = 0.0
+                self.current_metrics.dns_resolution_ms = avg_dns_time
                 
-                # Add DNS resolution time as additional metric
-                if hasattr(self.current_metrics, 'dns_resolution_ms'):
-                    self.current_metrics.dns_resolution_ms = avg_dns_time
+                # Update legacy attributes for backward compatibility
+                self.current_metrics.network_bandwidth = 0.0
+                self.current_metrics.network_latency = avg_latency
                     
             except Exception as fallback_error:
                 print(f"Fallback network diagnostics also failed: {fallback_error}")
                 # Final fallback to zero values
-                self.current_metrics.network_bandwidth = 0.0  # GB/s
-                self.current_metrics.network_latency = 0.0  # ms
+                self.current_metrics.bandwidth_mbps = 0.0
+                self.current_metrics.latency_ms = 0.0
+                self.current_metrics.bandwidth_upload_mbps = 0.0
+                self.current_metrics.bandwidth_download_mbps = 0.0
+                self.current_metrics.total_bandwidth_mbps = 0.0
+                
+                # Update legacy attributes for backward compatibility
+                self.current_metrics.network_bandwidth = 0.0
+                self.current_metrics.network_latency = 0.0
 
 
 class MultiGPUMonitor(OpenRLHFCallback):
