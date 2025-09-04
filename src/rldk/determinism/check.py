@@ -4,6 +4,7 @@ import os
 import subprocess
 import re
 import tempfile
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -11,6 +12,70 @@ import pandas as pd
 import numpy as np
 
 from ..io import read_metrics_jsonl
+
+
+def _log_determinism_warning(message: str) -> None:
+    """Log a determinism warning if not silenced."""
+    if os.getenv("RLDK_SILENCE_DETERMINISM_WARN", "0") != "1":
+        warnings.warn(message, UserWarning, stacklevel=3)
+
+
+def _check_pytorch_cuda_kernels() -> bool:
+    """Check if PyTorch CUDA kernels are available for determinism checks."""
+    try:
+        import torch
+        if torch.cuda.is_available():
+            # Try to create a simple tensor to verify CUDA kernels work
+            x = torch.tensor([1.0], device='cuda')
+            _ = torch.nn.functional.relu(x)
+            return True
+        return False
+    except ImportError:
+        _log_determinism_warning(
+            "Determinism: Skipped PyTorch CUDA kernels check. Install torch>=2.0.0 to enable. "
+            "Set RLDK_SILENCE_DETERMINISM_WARN=1 to suppress."
+        )
+        return False
+    except Exception:
+        # CUDA available but kernels not working properly
+        return False
+
+
+def _check_tensorflow_determinism() -> bool:
+    """Check if TensorFlow determinism features are available."""
+    try:
+        import tensorflow as tf
+        # Check if we can set deterministic operations
+        tf.config.experimental.enable_op_determinism()
+        return True
+    except ImportError:
+        _log_determinism_warning(
+            "Determinism: Skipped TensorFlow determinism check. Install tensorflow>=2.8.0 to enable. "
+            "Set RLDK_SILENCE_DETERMINISM_WARN=1 to suppress."
+        )
+        return False
+    except Exception:
+        # TensorFlow available but determinism not supported
+        return False
+
+
+def _check_jax_determinism() -> bool:
+    """Check if JAX determinism features are available."""
+    try:
+        import jax
+        import jax.numpy as jnp
+        # Check if we can set JAX to use deterministic algorithms
+        jax.config.update('jax_default_prng_impl', 'rbg')
+        return True
+    except ImportError:
+        _log_determinism_warning(
+            "Determinism: Skipped JAX determinism check. Install jax>=0.4.0 to enable. "
+            "Set RLDK_SILENCE_DETERMINISM_WARN=1 to suppress."
+        )
+        return False
+    except Exception:
+        # JAX available but determinism not supported
+        return False
 
 
 @dataclass
@@ -24,6 +89,7 @@ class DeterminismReport:
     rng_map: Dict[str, str]
     mismatches: List[Dict[str, Any]]
     dataloader_notes: List[str]
+    skipped_checks: List[str]
 
 
 def check(
@@ -49,6 +115,18 @@ def check(
     # Auto-detect device
     if device is None:
         device = _detect_device()
+
+    # Check for available determinism features and track skipped checks
+    skipped_checks = []
+    
+    if not _check_pytorch_cuda_kernels():
+        skipped_checks.append("pytorch_cuda_kernels")
+    
+    if not _check_tensorflow_determinism():
+        skipped_checks.append("tensorflow_determinism")
+    
+    if not _check_jax_determinism():
+        skipped_checks.append("jax_determinism")
 
     # Set deterministic environment
     env = _get_deterministic_env(device)
@@ -91,6 +169,7 @@ def check(
         rng_map=rng_map,
         mismatches=mismatches,
         dataloader_notes=dataloader_notes,
+        skipped_checks=skipped_checks,
     )
 
 
