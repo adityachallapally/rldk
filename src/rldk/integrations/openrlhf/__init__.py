@@ -13,6 +13,7 @@ from .monitors import (
     OpenRLHFResourceMonitor,
     OpenRLHFAnalytics,
 )
+from .performance_analyzer import PerformanceAnalyzer
 from .dashboard import OpenRLHFDashboard
 from .distributed import (
     DistributedMetricsCollector,
@@ -56,6 +57,7 @@ __all__ = [
     "OpenRLHFCheckpointMonitor", 
     "OpenRLHFResourceMonitor",
     "OpenRLHFAnalytics",
+    "PerformanceAnalyzer",
     
     # Dashboard
     "OpenRLHFDashboard",
