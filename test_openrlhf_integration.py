@@ -46,7 +46,17 @@ def test_imports():
             return True
         except ImportError as e:
             print(f"⚠️  OpenRLHF not available: {e}")
-            print("   Install with: pip install openrlhf")
+            print("   Install with CUDA support using:")
+            print("   ./install_openrlhf_with_cuda.sh")
+            print("   Or manually:")
+            print("   1. sudo apt install -y nvidia-cuda-toolkit python3.13-venv")
+            print("   2. export CUDA_HOME=/usr/lib/nvidia-cuda-toolkit")
+            print("   3. export PATH=$CUDA_HOME/bin:$PATH")
+            print("   4. python3 -m venv openrlhf_env")
+            print("   5. source openrlhf_env/bin/activate")
+            print("   6. pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121")
+            print("   7. git clone https://github.com/OpenRLHF/OpenRLHF.git")
+            print("   8. cd OpenRLHF && pip install -e . --no-deps")
             print("   Note: Integration works without OpenRLHF for testing purposes")
             return False
             
