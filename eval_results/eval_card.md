@@ -1,20 +1,24 @@
 # Evaluation Results Card
 
 **Suite:** quick
-**Sample Size:** 50
+**Sample Size:** 5
 **Seed:** 42
-**Timestamp:** 2025-09-01 04:32:37
+**Timestamp:** 2025-09-04 07:05:20
 
 ## 📊 Overall Scores
 
 | Metric | Score | Confidence Interval | Effect Size |
 |--------|-------|-------------------|-------------|
-| alignment | 0.500 | [0.417, 0.583] | -0.667 |
-| helpfulness | 0.500 | [0.417, 0.583] | -0.333 |
-| harmlessness | 0.500 | [0.417, 0.583] | -1.000 |
-| hallucination | 0.500 | [0.417, 0.583] | 0.667 |
-| reward_alignment | 1.000 | [0.917, 1.000] | 1.000 |
-| kl_divergence | 1.000 | [0.917, 1.000] | 0.667 |
+| alignment | 0.908 | [0.645, 1.000] | 0.695 |
+| helpfulness | 0.725 | [0.462, 0.988] | 0.417 |
+| harmlessness | 0.773 | [0.510, 1.000] | -0.092 |
+| hallucination | 0.092 | [0.000, 0.355] | -0.695 |
+| reward_alignment | 0.500 | [0.237, 0.763] | -0.667 |
+| prompt_contamination | 0.500 | [0.237, 0.763] | -1.000 |
+| answer_leakage | 0.500 | [0.237, 0.763] | -1.000 |
+| throughput | 0.000 | [0.000, 0.263] | -2.000 |
+| toxicity | 1.000 | [0.737, 1.000] | 2.667 |
+| bias | 1.000 | [0.737, 1.000] | 2.333 |
 
 ## 🔍 Detailed Results
 
@@ -23,48 +27,75 @@
 - **details:** Alignment evaluation based on 0 metrics
 - **method:** correlation_and_consistency
 - **metrics:** []
-- **sample_size:** 50
+- **sample_size:** 5
 
 ### helpfulness
 
 - **details:** Helpfulness evaluation based on 0 metrics
 - **method:** quality_metrics_and_rewards
 - **metrics:** []
-- **sample_size:** 50
+- **sample_size:** 5
 
 ### harmlessness
 
 - **details:** Harmlessness evaluation based on 0 metrics
 - **method:** safety_metrics_and_stability
 - **metrics:** []
-- **sample_size:** 50
+- **sample_size:** 5
 
 ### hallucination
 
 - **details:** Hallucination evaluation based on 0 metrics
 - **method:** accuracy_metrics_and_consistency
 - **metrics:** []
-- **sample_size:** 50
+- **sample_size:** 5
 - **note:** Lower scores indicate better performance (less hallucination)
 
 ### reward_alignment
 
-- **details:** Reward alignment evaluation based on 1 metrics
+- **details:** Reward alignment evaluation based on 0 metrics
 - **method:** correlation_and_stability
-- **metrics:** [('reward_stability', np.float64(1.0))]
-- **sample_size:** 50
+- **metrics:** []
+- **sample_size:** 5
 
 ### kl_divergence
 
-- **kl_divergence_mean:** 0.0
-- **details:** KL divergence evaluation across 3 metrics
-- **method:** distribution_comparison
-- **reference_source:** synthetic_baseline
-- **metrics_evaluated:** ['reward_mean', 'kl_mean', 'entropy_mean']
-- **kl_results:** {'reward_mean': {'kl_divergence': 0.0, 'score': np.float64(1.0), 'details': {'kl_divergence': 0.0, 'jensen_shannon_divergence': 0.0, 'mean_difference': 0.0, 'std_difference': 0.0, 'data1_size': 50, 'data2_size': 50, 'data1_mean': 0.0, 'data2_mean': 0.0, 'data1_std': 0.0, 'data2_std': 0.0, 'bins': 20, 'metric': 'reward_mean'}}, 'kl_mean': {'kl_divergence': 0.0, 'score': np.float64(1.0), 'details': {'kl_divergence': 0.0, 'jensen_shannon_divergence': 0.0, 'mean_difference': 0.0, 'std_difference': 0.0, 'data1_size': 50, 'data2_size': 50, 'data1_mean': 0.0, 'data2_mean': 0.0, 'data1_std': 0.0, 'data2_std': 0.0, 'bins': 20, 'metric': 'kl_mean'}}, 'entropy_mean': {'kl_divergence': 0.0, 'score': np.float64(1.0), 'details': {'kl_divergence': 0.0, 'jensen_shannon_divergence': 0.0, 'mean_difference': 0.0, 'std_difference': 0.0, 'data1_size': 50, 'data2_size': 50, 'data1_mean': 0.0, 'data2_mean': 0.0, 'data1_std': 0.0, 'data2_std': 0.0, 'bins': 20, 'metric': 'entropy_mean'}}}
-- **confidence_intervals:** {'reward_mean': (0.0, 0.0), 'kl_mean': (0.0, 0.0), 'entropy_mean': (0.0, 0.0)}
-- **sample_size:** 50
-- **reference_size:** 50
+❌ **Error:** cannot import name 'calculate_kl_divergence_between_runs' from 'rldk.evals.metrics' (/workspace/src/rldk/evals/metrics/__init__.py)
+
+### prompt_contamination
+
+- **details:** No prompt data available for contamination analysis
+- **method:** no_prompt_data
+- **metrics:** []
+- **sample_size:** 5
+
+### answer_leakage
+
+- **details:** No response/prompt data available for leakage analysis
+- **method:** no_response_data
+- **metrics:** []
+- **sample_size:** 5
+
+### throughput
+
+- **details:** No event logs found in column 'events'
+- **method:** event_log_analysis
+- **num_samples:** 0
+- **error:** missing_log_column
+
+### toxicity
+
+- **details:** No output data found in column 'output'
+- **method:** content_analysis
+- **num_samples:** 0
+- **error:** missing_output_column
+
+### bias
+
+- **details:** No output data found in column 'output'
+- **method:** demographic_analysis
+- **num_samples:** 0
+- **error:** missing_output_column
 
 ## 📁 Files Generated
 

@@ -8,10 +8,11 @@ from pathlib import Path
 from typing import Dict, Any
 
 # Import the network monitoring components
-from src.rldk.integrations.openrlhf.network_monitor import (
-    NetworkMonitor, NetworkDiagnostics, RealNetworkMonitor, NetworkMetrics
+from rldk.integrations.openrlhf.network_monitor import (
+    NetworkInterfaceMonitor, NetworkLatencyMonitor, NetworkBandwidthMonitor, 
+    DistributedNetworkMonitor, RealNetworkMonitor
 )
-from src.rldk.integrations.openrlhf.dashboard import OpenRLHFDashboard
+from rldk.integrations.openrlhf.dashboard import OpenRLHFDashboard
 
 
 def run_network_diagnostics():
