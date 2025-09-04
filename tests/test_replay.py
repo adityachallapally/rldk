@@ -3,9 +3,12 @@
 import pytest
 import pandas as pd
 import tempfile
-from unittest.mock import patch
+import os
+import logging
+from unittest.mock import patch, mock_open
+from pathlib import Path
 
-from rldk.replay import replay, ReplayReport, _compare_metrics, _prepare_replay_command
+from rldk.replay import replay, ReplayReport, _compare_metrics, _prepare_replay_command, _cleanup_temp_file, ReplayResult
 
 
 class TestReplayCommandPreparation:
@@ -307,6 +310,281 @@ class TestReplayReport:
         assert len(report.mismatches) == 0
         assert report.replay_command == "python train.py"
         assert report.replay_duration == 10.5
+
+
+class TestCleanupFunctionality:
+    """Test cleanup functionality with explicit error handling."""
+
+    def test_cleanup_success(self, caplog):
+        """Test successful cleanup of temp file."""
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            temp_file = f.name
+
+        # Ensure file exists
+        assert os.path.exists(temp_file)
+
+        # Clean up
+        _cleanup_temp_file(temp_file)
+
+        # Verify file is deleted
+        assert not os.path.exists(temp_file)
+
+        # Check for debug log
+        assert any("Successfully cleaned up temp file" in record.message for record in caplog.records)
+
+    def test_cleanup_file_not_found(self, caplog):
+        """Test cleanup when file doesn't exist (FileNotFoundError)."""
+        non_existent_file = "/tmp/non_existent_file_12345"
+
+        # Clean up non-existent file
+        _cleanup_temp_file(non_existent_file)
+
+        # Check for debug log about file not found
+        assert any("Temp file not found during cleanup" in record.message for record in caplog.records)
+
+    def test_cleanup_permission_error(self, caplog):
+        """Test cleanup with permission error."""
+        # Create a file and make it read-only
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            temp_file = f.name
+
+        try:
+            # Make file read-only
+            os.chmod(temp_file, 0o444)
+
+            # Clean up (should fail with PermissionError)
+            _cleanup_temp_file(temp_file)
+
+            # Check for warning log with actionable message
+            warning_logs = [record for record in caplog.records if record.levelno == logging.WARNING]
+            assert len(warning_logs) > 0
+            assert any("Permission denied cleaning up temp file" in record.message for record in warning_logs)
+            assert any("Please check file permissions" in record.message for record in warning_logs)
+
+        finally:
+            # Clean up manually
+            try:
+                os.chmod(temp_file, 0o644)
+                os.unlink(temp_file)
+            except OSError:
+                pass
+
+    def test_cleanup_other_os_error(self, caplog):
+        """Test cleanup with other OS error."""
+        # Mock os.unlink to raise OSError
+        with patch('os.unlink', side_effect=OSError("Mock OS error")):
+            _cleanup_temp_file("/tmp/test_file")
+
+            # Check for warning log with actionable message
+            warning_logs = [record for record in caplog.records if record.levelno == logging.WARNING]
+            assert len(warning_logs) > 0
+            assert any("Failed to clean up temp file" in record.message for record in warning_logs)
+            assert any("File may need manual cleanup" in record.message for record in warning_logs)
+
+
+class TestReplayResult:
+    """Test the ReplayResult dataclass."""
+
+    def test_replay_result_success(self):
+        """Test creating a successful ReplayResult."""
+        df = pd.DataFrame({"step": [1, 2], "reward": [0.5, 0.6]})
+        result = ReplayResult(
+            success=True,
+            return_code=0,
+            stdout="Success output",
+            stderr="",
+            metrics_data=df
+        )
+
+        assert result.success is True
+        assert result.return_code == 0
+        assert result.stdout == "Success output"
+        assert result.stderr == ""
+        assert result.error_message is None
+        assert len(result.metrics_data) == 2
+
+    def test_replay_result_failure(self):
+        """Test creating a failed ReplayResult."""
+        result = ReplayResult(
+            success=False,
+            return_code=1,
+            stdout="",
+            stderr="Error occurred",
+            metrics_data=pd.DataFrame(),
+            error_message="Test error"
+        )
+
+        assert result.success is False
+        assert result.return_code == 1
+        assert result.stdout == ""
+        assert result.stderr == "Error occurred"
+        assert result.error_message == "Test error"
+        assert len(result.metrics_data) == 0
+
+
+class TestTempFileCleanup:
+    """Test that temporary files are cleaned up in all code paths."""
+
+    @patch("rldk.replay.replay._cleanup_temp_file")
+    @patch("rldk.replay.replay._detect_device")
+    @patch("rldk.replay.replay._get_deterministic_env")
+    def test_temp_file_cleanup_on_command_parse_error(self, mock_env, mock_device, mock_cleanup):
+        """Test that temp file is cleaned up when command parsing fails."""
+        from rldk.replay.replay import _run_replay
+        
+        mock_device.return_value = "cpu"
+        mock_env.return_value = {}
+        
+        # Test with invalid command that will fail parsing
+        invalid_command = "python train.py --invalid-quote \""
+        
+        result = _run_replay(invalid_command, Path("/tmp"), "cpu")
+        
+        # Verify cleanup was called
+        mock_cleanup.assert_called_once()
+        
+        # Verify result indicates failure
+        assert result.success is False
+        assert "Failed to parse command" in result.error_message
+
+    @patch("rldk.replay.replay._cleanup_temp_file")
+    @patch("rldk.replay.replay._detect_device")
+    @patch("rldk.replay.replay._get_deterministic_env")
+    @patch("subprocess.run")
+    def test_temp_file_cleanup_on_subprocess_timeout(self, mock_run, mock_env, mock_device, mock_cleanup):
+        """Test that temp file is cleaned up when subprocess times out."""
+        from rldk.replay.replay import _run_replay
+        import subprocess
+        
+        mock_device.return_value = "cpu"
+        mock_env.return_value = {}
+        mock_run.side_effect = subprocess.TimeoutExpired("python", 30)
+        
+        result = _run_replay("python train.py", Path("/tmp"), "cpu")
+        
+        # Verify cleanup was called
+        mock_cleanup.assert_called_once()
+        
+        # Verify result indicates timeout
+        assert result.success is False
+        assert "timed out" in result.error_message
+
+    @patch("rldk.replay.replay._cleanup_temp_file")
+    @patch("rldk.replay.replay._detect_device")
+    @patch("rldk.replay.replay._get_deterministic_env")
+    @patch("subprocess.run")
+    def test_temp_file_cleanup_on_subprocess_error(self, mock_run, mock_env, mock_device, mock_cleanup):
+        """Test that temp file is cleaned up when subprocess raises exception."""
+        from rldk.replay.replay import _run_replay
+        
+        mock_device.return_value = "cpu"
+        mock_env.return_value = {}
+        mock_run.side_effect = OSError("Command not found")
+        
+        result = _run_replay("python train.py", Path("/tmp"), "cpu")
+        
+        # Verify cleanup was called
+        mock_cleanup.assert_called_once()
+        
+        # Verify result indicates execution error
+        assert result.success is False
+        assert "Failed to execute replay command" in result.error_message
+
+    @patch("rldk.replay.replay._cleanup_temp_file")
+    @patch("rldk.replay.replay._detect_device")
+    @patch("rldk.replay.replay._get_deterministic_env")
+    @patch("subprocess.run")
+    def test_temp_file_cleanup_on_command_failure(self, mock_run, mock_env, mock_device, mock_cleanup):
+        """Test that temp file is cleaned up when command returns non-zero exit code."""
+        from rldk.replay.replay import _run_replay
+        from unittest.mock import MagicMock
+        
+        mock_device.return_value = "cpu"
+        mock_env.return_value = {}
+        
+        # Mock subprocess result with failure
+        mock_result = MagicMock()
+        mock_result.returncode = 1
+        mock_result.stdout = "Error output"
+        mock_result.stderr = "Error occurred"
+        mock_run.return_value = mock_result
+        
+        result = _run_replay("python train.py", Path("/tmp"), "cpu")
+        
+        # Verify cleanup was called
+        mock_cleanup.assert_called_once()
+        
+        # Verify result indicates command failure
+        assert result.success is False
+        assert "failed with return code 1" in result.error_message
+
+    @patch("rldk.replay.replay._cleanup_temp_file")
+    @patch("rldk.replay.replay._detect_device")
+    @patch("rldk.replay.replay._get_deterministic_env")
+    @patch("subprocess.run")
+    @patch("os.path.exists")
+    def test_temp_file_cleanup_on_no_metrics_file(self, mock_exists, mock_run, mock_env, mock_device, mock_cleanup):
+        """Test that temp file is cleaned up when no metrics file is found."""
+        from rldk.replay.replay import _run_replay
+        from unittest.mock import MagicMock
+        
+        mock_device.return_value = "cpu"
+        mock_env.return_value = {}
+        
+        # Mock subprocess result with success
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "Success"
+        mock_result.stderr = ""
+        mock_run.return_value = mock_result
+        
+        # Mock that metrics file doesn't exist
+        mock_exists.return_value = False
+        
+        result = _run_replay("python train.py", Path("/tmp"), "cpu")
+        
+        # Verify cleanup was called
+        mock_cleanup.assert_called_once()
+        
+        # Verify result indicates no metrics file found
+        assert result.success is False
+        assert "No metrics file found after replay" in result.error_message
+
+    @patch("rldk.replay.replay._cleanup_temp_file")
+    @patch("rldk.replay.replay._detect_device")
+    @patch("rldk.replay.replay._get_deterministic_env")
+    @patch("subprocess.run")
+    @patch("os.path.exists")
+    @patch("pandas.read_json")
+    def test_temp_file_cleanup_on_metrics_parse_error(self, mock_read_json, mock_exists, mock_run, mock_env, mock_device, mock_cleanup):
+        """Test that temp file is cleaned up when metrics parsing fails."""
+        from rldk.replay.replay import _run_replay
+        from unittest.mock import MagicMock
+        
+        mock_device.return_value = "cpu"
+        mock_env.return_value = {}
+        
+        # Mock subprocess result with success
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = ""
+        mock_result.stderr = ""
+        mock_run.return_value = mock_result
+        
+        # Mock that metrics file exists
+        mock_exists.return_value = True
+        
+        # Mock pandas.read_json to raise exception
+        mock_read_json.side_effect = Exception("Invalid JSON")
+        
+        result = _run_replay("python train.py", Path("/tmp"), "cpu")
+        
+        # Verify cleanup was called
+        mock_cleanup.assert_called_once()
+        
+        # Verify result indicates parsing error
+        assert result.success is False
+        assert "Could not load replay metrics" in result.error_message
 
 
 if __name__ == "__main__":
