@@ -282,13 +282,14 @@ class RLDKCallback(TrainerCallback):
             self.current_metrics.entropy_mean = logs['ppo/policy/entropy']
         if 'ppo/policy/clipfrac' in logs:
             self.current_metrics.clip_frac = logs['ppo/policy/clipfrac']
-        # Policy loss - check both key variants for backward compatibility
+        # Policy loss - handle both keys independently
         if 'ppo/policy/policy_loss' in logs:
             self.current_metrics.policy_loss = logs['ppo/policy/policy_loss']
-        elif 'ppo/val/policy_loss' in logs:
-            # For backward compatibility, assign to both policy_loss and value_policy_loss
-            self.current_metrics.policy_loss = logs['ppo/val/policy_loss']
+        if 'ppo/val/policy_loss' in logs:
             self.current_metrics.value_policy_loss = logs['ppo/val/policy_loss']
+            # For backward compatibility, also set policy_loss if not already set
+            if 'ppo/policy/policy_loss' not in logs:
+                self.current_metrics.policy_loss = logs['ppo/val/policy_loss']
         if 'ppo/policy/grad_norm' in logs:
             self.current_metrics.policy_grad_norm = logs['ppo/policy/grad_norm']
             
