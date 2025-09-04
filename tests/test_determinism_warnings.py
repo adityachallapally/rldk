@@ -51,7 +51,12 @@ class TestDeterminismWarnings:
     def test_tensorflow_warning_when_missing(self):
         """Test that TensorFlow warning is shown when tensorflow is missing."""
         with patch.dict(os.environ, {"RLDK_SILENCE_DETERMINISM_WARN": "0"}):
-            with patch("builtins.__import__", side_effect=ImportError("No module named 'tensorflow'")):
+            def mock_import(name, *args, **kwargs):
+                if name == "tensorflow":
+                    raise ImportError("No module named 'tensorflow'")
+                return __import__(name, *args, **kwargs)
+            
+            with patch("builtins.__import__", side_effect=mock_import):
                 with warnings.catch_warnings(record=True) as w:
                     warnings.simplefilter("always")
                     
@@ -87,7 +92,12 @@ class TestDeterminismWarnings:
     def test_jax_warning_when_missing(self):
         """Test that JAX warning is shown when jax is missing."""
         with patch.dict(os.environ, {"RLDK_SILENCE_DETERMINISM_WARN": "0"}):
-            with patch("builtins.__import__", side_effect=ImportError("No module named 'jax'")):
+            def mock_import(name, *args, **kwargs):
+                if name == "jax":
+                    raise ImportError("No module named 'jax'")
+                return __import__(name, *args, **kwargs)
+            
+            with patch("builtins.__import__", side_effect=mock_import):
                 with warnings.catch_warnings(record=True) as w:
                     warnings.simplefilter("always")
                     

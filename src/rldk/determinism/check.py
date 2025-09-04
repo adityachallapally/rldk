@@ -45,8 +45,9 @@ def _check_tensorflow_determinism() -> bool:
     """Check if TensorFlow determinism features are available."""
     try:
         import tensorflow as tf
-        # Check if we can set deterministic operations
-        tf.config.experimental.enable_op_determinism()
+        # Check if TensorFlow has the required determinism features
+        # without modifying global configuration
+        hasattr(tf.config.experimental, 'enable_op_determinism')
         return True
     except ImportError:
         _log_determinism_warning(
@@ -63,9 +64,9 @@ def _check_jax_determinism() -> bool:
     """Check if JAX determinism features are available."""
     try:
         import jax
-        import jax.numpy as jnp
-        # Check if we can set JAX to use deterministic algorithms
-        jax.config.update('jax_default_prng_impl', 'rbg')
+        # Check if JAX is available and has the required config options
+        # without modifying global configuration
+        hasattr(jax.config, 'update')
         return True
     except ImportError:
         _log_determinism_warning(

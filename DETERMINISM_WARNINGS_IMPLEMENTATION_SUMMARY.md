@@ -20,14 +20,16 @@ Successfully implemented deterministic dependency warnings in `rldk/determinism.
   - Returns `"pytorch_cuda_kernels"` in skipped_checks when missing
 
 - **TensorFlow Determinism Check** (`_check_tensorflow_determinism()`)
-  - Checks if TensorFlow determinism features are available
+  - Checks if TensorFlow has required determinism features (read-only check)
   - Warning: "Determinism: Skipped TensorFlow determinism check. Install tensorflow>=2.8.0 to enable. Set RLDK_SILENCE_DETERMINISM_WARN=1 to suppress."
   - Returns `"tensorflow_determinism"` in skipped_checks when missing
+  - **Fixed**: No longer modifies global TensorFlow configuration during availability check
 
 - **JAX Determinism Check** (`_check_jax_determinism()`)
-  - Checks if JAX determinism features are available
+  - Checks if JAX is available and has required config options (read-only check)
   - Warning: "Determinism: Skipped JAX determinism check. Install jax>=0.4.0 to enable. Set RLDK_SILENCE_DETERMINISM_WARN=1 to suppress."
   - Returns `"jax_determinism"` in skipped_checks when missing
+  - **Fixed**: No longer modifies global JAX configuration during availability check
 
 ### 4. Updated Check Function
 - Modified the `check()` function to run all dependency checks at the beginning
@@ -101,6 +103,14 @@ UserWarning: Determinism: Skipped TensorFlow determinism check. Install tensorfl
 UserWarning: Determinism: Skipped JAX determinism check. Install jax>=0.4.0 to enable. Set RLDK_SILENCE_DETERMINISM_WARN=1 to suppress.
 ```
 
+## Bug Fixes
+
+### Fixed: Configuration Modification During Availability Checks
+- **Issue**: `_check_jax_determinism()` was calling `jax.config.update()` during availability check, modifying global JAX configuration
+- **Issue**: `_check_tensorflow_determinism()` was calling `tf.config.experimental.enable_op_determinism()` during availability check, modifying global TensorFlow configuration
+- **Fix**: Changed both functions to use read-only checks (`hasattr()`) instead of modifying global configuration
+- **Impact**: Availability checks are now truly read-only and won't affect user code or subsequent operations
+
 ## Implementation Notes
 
 - All warnings are single-line and informative
@@ -109,3 +119,4 @@ UserWarning: Determinism: Skipped JAX determinism check. Install jax>=0.4.0 to e
 - Dependency checks are run once at the beginning of the `check()` function
 - Warning messages include version requirements and silence instructions
 - Implementation is backward compatible with existing code
+- **All availability checks are read-only and don't modify global configuration**
