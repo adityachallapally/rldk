@@ -33,13 +33,16 @@ class CustomJSONLAdapter(BaseAdapter):
                     first_line = f.readline().strip()
                     if first_line:
                         data = json.loads(first_line)
-                        # Check for our custom schema
+                        # Check for our custom schema - be more flexible
                         # Only check for required keys if data is a dict
                         if isinstance(data, dict):
-                            return all(
-                                key in data
-                                for key in ["global_step", "reward_scalar", "loss"]
-                            )
+                            # Check for custom format indicators (either old or new format)
+                            custom_indicators = [
+                                "global_step", "reward_scalar", "kl_to_ref",  # Old format
+                                "step", "reward_mean", "kl_mean", "loss"      # Standard format
+                            ]
+                            # If it has any of these indicators, it's likely our format
+                            return any(key in data for key in custom_indicators)
                         else:
                             # For non-dict data, it's not our custom format
                             return False
@@ -128,23 +131,49 @@ class CustomJSONLAdapter(BaseAdapter):
         """Extract metric from our custom JSONL format."""
         try:
             # Map our custom schema to the expected format
+            # Handle various possible field names for better compatibility
+            step = data.get("global_step") or data.get("step", line_num)
+            reward_scalar = data.get("reward_scalar") or data.get("reward_mean", 0.0)
+            kl_value = data.get("kl_to_ref") or data.get("kl_mean", 0.0)
+            loss_value = data.get("loss", 0.0)
+            
+            # Extract RNG seed from various possible locations
+            seed = (data.get("rng.python") or 
+                   data.get("seed") or 
+                   data.get("rng", {}).get("python") if isinstance(data.get("rng"), dict) else None or 
+                   42)
+            
+            # Extract additional metrics if available
+            entropy_value = data.get("entropy") or data.get("entropy_mean", 0.0)
+            clip_frac_value = data.get("clip_frac", 0.0)
+            grad_norm_value = data.get("grad_norm", 0.0)
+            lr_value = data.get("lr") or data.get("learning_rate", 0.0)
+            reward_std_value = data.get("reward_std", 0.0)
+            
+            # Extract data slice information if available
+            tokens_in = data.get("tokens_in", 0)
+            tokens_out = data.get("tokens_out", 0)
+            
+            # Extract wall time if available
+            wall_time = data.get("wall_time") or data.get("timestamp", 0.0)
+            
             metric = {
-                "step": data.get("global_step", line_num),
-                "phase": "train",  # Default phase
-                "reward_mean": data.get("reward_scalar", 0.0),
-                "reward_std": 0.0,  # We don't have this, use 0.0 instead of None
-                "kl_mean": data.get("kl_to_ref", 0.0),
-                "entropy_mean": 0.0,  # We don't have this, use 0.0 instead of None
-                "clip_frac": 0.0,  # We don't have this, use 0.0 instead of None
-                "grad_norm": 0.0,  # We don't have this, use 0.0 instead of None
-                "lr": 0.0,  # We don't have this, use 0.0 instead of None
-                "loss": data.get("loss", 0.0),
-                "tokens_in": 0,  # We don't have this, use 0 instead of None
-                "tokens_out": 0,  # We don't have this, use 0 instead of None
-                "wall_time": 0.0,  # We don't have this, use 0.0 instead of None
-                "seed": data.get("rng.python", 42),
-                "run_id": f"custom_{line_num}",
-                "git_sha": "unknown",  # We don't have this, use string instead of None
+                "step": int(step),
+                "phase": data.get("phase", "train"),
+                "reward_mean": float(reward_scalar),
+                "reward_std": float(reward_std_value),
+                "kl_mean": float(kl_value),
+                "entropy_mean": float(entropy_value),
+                "clip_frac": float(clip_frac_value),
+                "grad_norm": float(grad_norm_value),
+                "lr": float(lr_value),
+                "loss": float(loss_value),
+                "tokens_in": int(tokens_in),
+                "tokens_out": int(tokens_out),
+                "wall_time": float(wall_time),
+                "seed": int(seed),
+                "run_id": data.get("run_id", f"custom_{line_num}"),
+                "git_sha": data.get("git_sha", "unknown"),
             }
 
             return metric

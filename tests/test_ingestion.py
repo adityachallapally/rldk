@@ -102,7 +102,7 @@ class TestJSONLIngestion:
     def test_custom_jsonl_adapter_handles_malformed_json(self):
         """Test that CustomJSONL adapter properly handles malformed JSON."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
-            # Write valid JSON line
+            # Write valid JSON line with custom format
             json.dump({
                 "global_step": 0,
                 "reward_scalar": 0.5,
@@ -134,6 +134,116 @@ class TestJSONLIngestion:
             assert len(df) == 2
             assert df["step"].iloc[0] == 0
             assert df["step"].iloc[1] == 2
+            
+            # Verify that the adapter properly maps custom fields to Event schema fields
+            assert "reward_mean" in df.columns
+            assert "kl_mean" in df.columns
+            assert "entropy_mean" in df.columns
+            assert "clip_frac" in df.columns
+            assert "grad_norm" in df.columns
+            assert "lr" in df.columns
+            
+            # Verify the mapped values
+            assert df["reward_mean"].iloc[0] == 0.5
+            assert df["kl_mean"].iloc[0] == 0.1
+            assert df["loss"].iloc[0] == 0.4
+            
+        finally:
+            os.unlink(f.name)
+
+    def test_custom_jsonl_adapter_schema_validation(self):
+        """Test that CustomJSONL adapter produces Event schema compatible data."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write custom JSONL data
+            json.dump({
+                "global_step": 0,
+                "reward_scalar": 0.5,
+                "kl_to_ref": 0.1,
+                "loss": 0.4,
+                "rng.python": 42,
+                "entropy": 0.8,
+                "clip_frac": 0.2,
+                "grad_norm": 1.0,
+                "lr": 0.001,
+                "tokens_in": 1000,
+                "tokens_out": 500,
+                "wall_time": 10.0,
+                "run_id": "test_run",
+                "git_sha": "abc123"
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            df = adapter.load()
+            
+            # Test that we can create Event objects from the adapter output
+            for _, row in df.iterrows():
+                event = create_event_from_row(row.to_dict(), "test_run", "abc123")
+                
+                # Verify Event object has all required fields
+                assert hasattr(event, 'step')
+                assert hasattr(event, 'wall_time')
+                assert hasattr(event, 'metrics')
+                assert hasattr(event, 'rng')
+                assert hasattr(event, 'data_slice')
+                assert hasattr(event, 'model_info')
+                assert hasattr(event, 'notes')
+                
+                # Verify metrics contain expected fields
+                assert 'reward_mean' in event.metrics
+                assert 'kl_mean' in event.metrics
+                assert 'entropy_mean' in event.metrics
+                assert 'clip_frac' in event.metrics
+                assert 'grad_norm' in event.metrics
+                assert 'lr' in event.metrics
+                assert 'loss' in event.metrics
+                
+                # Verify data types are correct
+                assert isinstance(event.step, int)
+                assert isinstance(event.wall_time, float)
+                assert isinstance(event.metrics, dict)
+                assert isinstance(event.rng, dict)
+                assert isinstance(event.data_slice, dict)
+                assert isinstance(event.model_info, dict)
+                assert isinstance(event.notes, list)
+                
+        finally:
+            os.unlink(f.name)
+
+    def test_custom_jsonl_validation_with_adapter(self):
+        """Test that custom JSONL validation works with the adapter."""
+        from rldk.io.validator import validate_custom_jsonl_with_adapter
+        
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write custom JSONL data
+            json.dump({
+                "global_step": 0,
+                "reward_scalar": 0.5,
+                "kl_to_ref": 0.1,
+                "loss": 0.4,
+                "rng.python": 42,
+                "entropy": 0.8,
+                "clip_frac": 0.2,
+                "grad_norm": 1.0,
+                "lr": 0.001,
+                "tokens_in": 1000,
+                "tokens_out": 500,
+                "wall_time": 10.0,
+                "run_id": "test_run",
+                "git_sha": "abc123"
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            # Test validation with adapter
+            is_valid, issues = validate_custom_jsonl_with_adapter(f.name)
+            
+            # Should be valid
+            assert is_valid
+            assert len(issues) == 0
             
         finally:
             os.unlink(f.name)
