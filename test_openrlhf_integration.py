@@ -7,23 +7,43 @@ import time
 import json
 import tempfile
 import shutil
+import subprocess
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
+
+def _setup_openrlhf_environment():
+    """Install CUDA toolkit and Python venv package, then set environment variables."""
+    python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+    venv_pkg = f"python{python_version}-venv"
+
+    # Install required system packages
+    subprocess.run(["apt-get", "update"], check=False)
+    subprocess.run(["apt-get", "install", "-y", "nvidia-cuda-toolkit", venv_pkg], check=False)
+
+    # Set up CUDA environment variables
+    os.environ["CUDA_HOME"] = "/usr/lib/nvidia-cuda-toolkit"
+    os.environ["PATH"] = f"{os.environ['CUDA_HOME']}/bin:" + os.environ.get("PATH", "")
+
+
 def test_imports():
     """Test that all required packages can be imported."""
     print("🔍 Testing imports...")
-    
+
+    # Ensure environment and OpenRLHF are installed
+    _setup_openrlhf_environment()
+    subprocess.run(["bash", "install_openrlhf_with_cuda.sh"], check=False)
+
     try:
         # Test basic imports
         import torch
         import pandas as pd
         import numpy as np
         print("✅ Basic dependencies imported")
-        
+
         # Test RLDK imports
         from rldk.integrations.openrlhf import (
             OpenRLHFCallback,
@@ -38,7 +58,7 @@ def test_imports():
             OpenRLHFDashboard,
         )
         print("✅ RLDK OpenRLHF integration imported")
-        
+
         # Test OpenRLHF imports (mock if not available)
         try:
             import openrlhf
@@ -46,22 +66,8 @@ def test_imports():
             return True
         except ImportError as e:
             print(f"⚠️  OpenRLHF not available: {e}")
-            print("   Install with CUDA support using:")
-            print("   ./install_openrlhf_with_cuda.sh")
-            print("   Or manually:")
-            print("   1. sudo apt install -y nvidia-cuda-toolkit python3-venv")
-            print("   2. export CUDA_HOME=/usr/lib/nvidia-cuda-toolkit")
-            print("   3. export PATH=$CUDA_HOME/bin:$PATH")
-            print("   4. python3 -m venv openrlhf_env")
-            print("   5. source openrlhf_env/bin/activate")
-            print("   6. pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121")
-            print("   7. git clone https://github.com/OpenRLHF/OpenRLHF.git")
-            print("   8. cd OpenRLHF && pip install -e . --no-deps")
-            print("   For detailed instructions with Python version detection:")
-            print("   See OPENRLHF_CUDA_INSTALLATION_GUIDE.md")
-            print("   Note: Integration works without OpenRLHF for testing purposes")
             return False
-            
+
     except ImportError as e:
         print(f"❌ Import failed: {e}")
         return False
