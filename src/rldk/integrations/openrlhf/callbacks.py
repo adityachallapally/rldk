@@ -26,6 +26,15 @@ except ImportError:
     DDPOTrainer = None
     CPOTrainer = None
 
+# Import Event schema for proper JSONL emission
+try:
+    from ...io.event_schema import Event, create_event_from_row
+    EVENT_SCHEMA_AVAILABLE = True
+except ImportError:
+    EVENT_SCHEMA_AVAILABLE = False
+    Event = None
+    create_event_from_row = None
+
 
 @dataclass
 class OpenRLHFMetrics:
@@ -173,6 +182,12 @@ class OpenRLHFCallback:
         self.metrics_history: List[OpenRLHFMetrics] = []
         self.current_metrics = OpenRLHFMetrics()
         
+        # JSONL logging setup
+        self.jsonl_file = None
+        self.enable_jsonl_logging = True  # Enable by default
+        if self.enable_jsonl_logging:
+            self._setup_jsonl_logging()
+        
         # Real-time monitoring
         self.monitoring_active = False
         self.monitor_thread = None
@@ -226,6 +241,9 @@ class OpenRLHFCallback:
         if self.monitor_thread:
             self.monitor_thread.join(timeout=5.0)
         
+        # Close JSONL file
+        self._close_jsonl_file()
+        
         # Save final metrics
         self._save_metrics()
         
@@ -268,6 +286,10 @@ class OpenRLHFCallback:
         
         # Store metrics
         self.metrics_history.append(self.current_metrics)
+        
+        # Log JSONL event after each step
+        if self.enable_jsonl_logging:
+            self._log_jsonl_event(step, {})
         
         # Check for alerts
         self._check_alerts()
@@ -508,7 +530,7 @@ class OpenRLHFCallback:
         metrics_data = [m.to_dict() for m in self.metrics_history]
         df = pd.DataFrame(metrics_data)
         
-        # Save as CSV
+        # Save as CSV (aggregates only)
         csv_file = self.output_dir / f"metrics_{self.run_id}.csv"
         df.to_csv(csv_file, index=False)
         
@@ -521,6 +543,9 @@ class OpenRLHFCallback:
             # Fallback to JSON for better performance than CSV for large datasets
             json_file = self.output_dir / f"metrics_{self.run_id}.json"
             df.to_json(json_file, orient='records', indent=2)
+        
+        # Note: JSONL file is handled separately and should not be modified here
+        # The JSONL file contains per-step events and is written in real-time
         
         # Save summary statistics
         summary = {
@@ -553,6 +578,77 @@ class OpenRLHFCallback:
     def get_latest_metrics(self) -> OpenRLHFMetrics:
         """Get the latest collected metrics."""
         return self.current_metrics
+    
+    def _setup_jsonl_logging(self):
+        """Setup JSONL logging file."""
+        if not EVENT_SCHEMA_AVAILABLE:
+            warnings.warn("Event schema not available, JSONL logging disabled")
+            self.enable_jsonl_logging = False
+            return
+        
+        # Safety check: ensure run_id is available
+        if not hasattr(self, 'run_id') or self.run_id is None:
+            warnings.warn("run_id not available, JSONL logging disabled")
+            self.enable_jsonl_logging = False
+            return
+        
+        jsonl_path = self.output_dir / f"{self.run_id}_events.jsonl"
+        self.jsonl_file = open(jsonl_path, "w")
+        print(f"📝 JSONL events will be written to: {jsonl_path}")
+    
+    def _log_jsonl_event(self, step: int, logs: Dict[str, float]):
+        """Log a standardized JSONL event with Event schema structure."""
+        if not self.jsonl_file or not EVENT_SCHEMA_AVAILABLE:
+            return
+        
+        try:
+            # Create event data with required fields for Event schema
+            event_data = {
+                "step": step,
+                "timestamp": time.time(),
+                "phase": "train",
+                "wall_time": self.current_metrics.wall_time,
+                "reward_mean": self.current_metrics.reward_mean,
+                "reward_std": self.current_metrics.reward_std,
+                "kl_mean": self.current_metrics.kl_mean,
+                "kl_std": self.current_metrics.kl_std,
+                "entropy_mean": self.current_metrics.entropy_mean,
+                "entropy_std": self.current_metrics.entropy_std,
+                "clip_frac": self.current_metrics.clip_frac,
+                "grad_norm": self.current_metrics.grad_norm,
+                "lr": self.current_metrics.learning_rate,
+                "loss": self.current_metrics.loss,
+                "policy_loss": self.current_metrics.policy_loss,
+                "value_loss": self.current_metrics.value_loss,
+                "tokens_in": self.current_metrics.tokens_in,
+                "tokens_out": self.current_metrics.tokens_out,
+                "seed": self.current_metrics.seed,
+                "run_id": self.current_metrics.run_id,
+                "git_sha": self.current_metrics.git_sha,
+                "step_time": self.current_metrics.step_time,
+                "gpu_memory_used": self.current_metrics.gpu_memory_used,
+                "gpu_memory_allocated": self.current_metrics.gpu_memory_allocated,
+                "cpu_memory_used": self.current_metrics.cpu_memory_used,
+                "training_stability_score": self.current_metrics.training_stability_score,
+                "convergence_indicator": self.current_metrics.convergence_indicator,
+            }
+            
+            # Create Event object using the schema
+            event = create_event_from_row(event_data, self.run_id, self.current_metrics.git_sha)
+            
+            # Write JSONL line with proper formatting
+            json_line = event.to_json()
+            self.jsonl_file.write(json_line + "\n")
+            self.jsonl_file.flush()  # Ensure immediate write
+            
+        except Exception as e:
+            warnings.warn(f"Failed to log JSONL event: {e}")
+    
+    def _close_jsonl_file(self):
+        """Close the JSONL file."""
+        if self.jsonl_file:
+            self.jsonl_file.close()
+            self.jsonl_file = None
 
 
 class OpenRLHFMonitor(OpenRLHFCallback):

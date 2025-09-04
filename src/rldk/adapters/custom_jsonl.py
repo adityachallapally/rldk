@@ -46,7 +46,7 @@ class CustomJSONLAdapter(BaseAdapter):
         except (OSError, IOError, json.JSONDecodeError, UnicodeDecodeError, TypeError) as e:
             # Log the specific error for debugging but don't fail the check
             print(f"Warning: Error checking if file {file_path} is custom JSONL format: {e}")
-            pass
+            return False
         return False
 
     def load(self) -> pd.DataFrame:
@@ -112,10 +112,13 @@ class CustomJSONLAdapter(BaseAdapter):
                             metric = self._extract_custom_metric(data, line_num)
                             if metric:
                                 metrics.append(metric)
-                        except json.JSONDecodeError:
+                        except json.JSONDecodeError as e:
+                            print(f"Warning: JSON decode error in {file_path} at line {line_num + 1}: {e}")
                             continue
-        except Exception as e:
+        except (OSError, IOError, UnicodeDecodeError) as e:
             print(f"Error parsing {file_path}: {e}")
+            # Re-raise the exception with context
+            raise RuntimeError(f"Failed to parse custom JSONL file {file_path}: {e}") from e
 
         return metrics
 

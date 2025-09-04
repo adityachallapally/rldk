@@ -202,7 +202,6 @@ def _run_replay(command: str, output_path: Path, device: Optional[str]) -> pd.Da
     except OSError as e:
         # Log the error but don't fail the replay
         print(f"Warning: Could not clean up temp file {metrics_file}: {e}")
-        pass
 
     return replay_df
 

@@ -61,7 +61,7 @@ class OpenRLHFAdapter(BaseAdapter):
         except (OSError, IOError, json.JSONDecodeError, UnicodeDecodeError, TypeError) as e:
             # Log the specific error for debugging but don't fail the check
             print(f"Warning: Error checking if file {file_path} is OpenRLHF format: {e}")
-            pass
+            return False
         return False
 
     def load(self) -> pd.DataFrame:
@@ -129,7 +129,8 @@ class OpenRLHFAdapter(BaseAdapter):
                             metric = self._extract_openrlhf_metric(data, line_num)
                             if metric:
                                 metrics.append(metric)
-                        except json.JSONDecodeError:
+                        except json.JSONDecodeError as e:
+                            print(f"Warning: JSON decode error in {file_path} at line {line_num + 1}: {e}")
                             continue
 
             elif file_path.suffix == ".log":
@@ -139,8 +140,10 @@ class OpenRLHFAdapter(BaseAdapter):
                         if metric:
                             metrics.append(metric)
 
-        except Exception as e:
+        except (OSError, IOError, UnicodeDecodeError) as e:
             print(f"Warning: Error parsing {file_path}: {e}")
+            # Re-raise the exception with context
+            raise RuntimeError(f"Failed to parse OpenRLHF file {file_path}: {e}") from e
 
         return metrics
 

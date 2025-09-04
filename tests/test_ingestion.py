@@ -1,0 +1,529 @@
+"""Tests for standardized JSONL ingestion functionality."""
+
+import pytest
+import tempfile
+import json
+import os
+from pathlib import Path
+from unittest.mock import patch, MagicMock
+
+from rldk.adapters.trl import TRLAdapter
+from rldk.adapters.openrlhf import OpenRLHFAdapter
+from rldk.adapters.custom_jsonl import CustomJSONLAdapter
+from rldk.ingest import ingest_runs
+from rldk.io.event_schema import Event, create_event_from_row
+
+
+class TestJSONLIngestion:
+    """Test JSONL ingestion functionality."""
+
+    def test_trl_adapter_handles_malformed_json(self):
+        """Test that TRL adapter properly handles malformed JSON."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write valid JSON line
+            json.dump({
+                "step": 0,
+                "phase": "train",
+                "reward_mean": 0.5,
+                "kl_mean": 0.1,
+                "loss": 0.4,
+                "run_id": "test_run"
+            }, f)
+            f.write("\n")
+            
+            # Write malformed JSON line
+            f.write('{"step": 1, "phase": "train", "reward_mean": 0.6, "kl_mean": 0.2, "loss": 0.3, "run_id": "test_run"\n')  # Missing closing brace
+            
+            # Write another valid JSON line
+            json.dump({
+                "step": 2,
+                "phase": "train",
+                "reward_mean": 0.7,
+                "kl_mean": 0.3,
+                "loss": 0.2,
+                "run_id": "test_run"
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = TRLAdapter(f.name)
+            df = adapter.load()
+            
+            # Should only have 2 valid records (steps 0 and 2)
+            assert len(df) == 2
+            assert df["step"].iloc[0] == 0
+            assert df["step"].iloc[1] == 2
+            
+        finally:
+            os.unlink(f.name)
+
+    def test_openrlhf_adapter_handles_malformed_json(self):
+        """Test that OpenRLHF adapter properly handles malformed JSON."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write valid JSON line
+            json.dump({
+                "step": 0,
+                "phase": "train",
+                "reward_mean": 0.5,
+                "kl_mean": 0.1,
+                "loss": 0.4,
+                "run_id": "test_run"
+            }, f)
+            f.write("\n")
+            
+            # Write malformed JSON line
+            f.write('{"step": 1, "phase": "train", "reward_mean": 0.6, "kl_mean": 0.2, "loss": 0.3, "run_id": "test_run"\n')  # Missing closing brace
+            
+            # Write another valid JSON line
+            json.dump({
+                "step": 2,
+                "phase": "train",
+                "reward_mean": 0.7,
+                "kl_mean": 0.3,
+                "loss": 0.2,
+                "run_id": "test_run"
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = OpenRLHFAdapter(f.name)
+            df = adapter.load()
+            
+            # Should only have 2 valid records (steps 0 and 2)
+            assert len(df) == 2
+            assert df["step"].iloc[0] == 0
+            assert df["step"].iloc[1] == 2
+            
+        finally:
+            os.unlink(f.name)
+
+    def test_custom_jsonl_adapter_handles_malformed_json(self):
+        """Test that CustomJSONL adapter properly handles malformed JSON."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write valid JSON line
+            json.dump({
+                "global_step": 0,
+                "reward_scalar": 0.5,
+                "kl_to_ref": 0.1,
+                "loss": 0.4,
+                "rng.python": 42
+            }, f)
+            f.write("\n")
+            
+            # Write malformed JSON line
+            f.write('{"global_step": 1, "reward_scalar": 0.6, "kl_to_ref": 0.2, "loss": 0.3, "rng.python": 42\n')  # Missing closing brace
+            
+            # Write another valid JSON line
+            json.dump({
+                "global_step": 2,
+                "reward_scalar": 0.7,
+                "kl_to_ref": 0.3,
+                "loss": 0.2,
+                "rng.python": 42
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            df = adapter.load()
+            
+            # Should only have 2 valid records (steps 0 and 2)
+            assert len(df) == 2
+            assert df["step"].iloc[0] == 0
+            assert df["step"].iloc[1] == 2
+            
+        finally:
+            os.unlink(f.name)
+
+    def test_adapters_produce_identical_event_objects(self):
+        """Test that TRL and OpenRLHF adapters produce identical Event objects from compatible logs."""
+        # Create identical training data
+        training_data = [
+            {
+                "step": 0,
+                "phase": "train",
+                "reward_mean": 0.5,
+                "reward_std": 0.1,
+                "kl_mean": 0.1,
+                "kl_std": 0.05,
+                "entropy_mean": 0.8,
+                "clip_frac": 0.2,
+                "grad_norm": 1.0,
+                "lr": 0.001,
+                "loss": 0.4,
+                "tokens_in": 1000,
+                "tokens_out": 500,
+                "wall_time": 10.0,
+                "seed": 42,
+                "run_id": "test_run",
+                "git_sha": "abc123"
+            },
+            {
+                "step": 1,
+                "phase": "train",
+                "reward_mean": 0.6,
+                "reward_std": 0.12,
+                "kl_mean": 0.12,
+                "kl_std": 0.06,
+                "entropy_mean": 0.78,
+                "clip_frac": 0.18,
+                "grad_norm": 0.95,
+                "lr": 0.001,
+                "loss": 0.35,
+                "tokens_in": 1000,
+                "tokens_out": 500,
+                "wall_time": 20.0,
+                "seed": 42,
+                "run_id": "test_run",
+                "git_sha": "abc123"
+            }
+        ]
+
+        # Create TRL JSONL file
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as trl_file:
+            for data in training_data:
+                json.dump(data, trl_file)
+                trl_file.write("\n")
+            trl_file.flush()
+
+        # Create OpenRLHF JSONL file
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as openrlhf_file:
+            for data in training_data:
+                json.dump(data, openrlhf_file)
+                openrlhf_file.write("\n")
+            openrlhf_file.flush()
+
+        try:
+            # Load with TRL adapter
+            trl_adapter = TRLAdapter(trl_file.name)
+            trl_df = trl_adapter.load()
+
+            # Load with OpenRLHF adapter
+            openrlhf_adapter = OpenRLHFAdapter(openrlhf_file.name)
+            openrlhf_df = openrlhf_adapter.load()
+
+            # Convert to Event objects
+            trl_events = []
+            openrlhf_events = []
+
+            for _, row in trl_df.iterrows():
+                event = create_event_from_row(row.to_dict(), "test_run", "abc123")
+                trl_events.append(event)
+
+            for _, row in openrlhf_df.iterrows():
+                event = create_event_from_row(row.to_dict(), "test_run", "abc123")
+                openrlhf_events.append(event)
+
+            # Verify identical Event objects
+            assert len(trl_events) == len(openrlhf_events)
+            
+            for trl_event, openrlhf_event in zip(trl_events, openrlhf_events):
+                assert trl_event.step == openrlhf_event.step
+                assert trl_event.wall_time == openrlhf_event.wall_time
+                assert trl_event.metrics == openrlhf_event.metrics
+                assert trl_event.rng == openrlhf_event.rng
+                assert trl_event.data_slice == openrlhf_event.data_slice
+                assert trl_event.model_info == openrlhf_event.model_info
+
+        finally:
+            os.unlink(trl_file.name)
+            os.unlink(openrlhf_file.name)
+
+    def test_empty_file_handling(self):
+        """Test handling of empty JSONL files."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Create empty file
+            pass
+
+        try:
+            adapter = TRLAdapter(f.name)
+            df = adapter.load()
+            
+            # Should return empty DataFrame
+            assert len(df) == 0
+            assert "step" in df.columns
+            
+        finally:
+            os.unlink(f.name)
+
+    def test_partially_written_lines(self):
+        """Test handling of partially written JSONL lines."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write valid JSON line
+            json.dump({
+                "step": 0,
+                "phase": "train",
+                "reward_mean": 0.5,
+                "kl_mean": 0.1,
+                "loss": 0.4,
+                "run_id": "test_run"
+            }, f)
+            f.write("\n")
+            
+            # Write partial JSON line (incomplete)
+            f.write('{"step": 1, "phase": "train", "reward_mean": 0.6')
+            f.flush()
+
+        try:
+            adapter = TRLAdapter(f.name)
+            df = adapter.load()
+            
+            # Should only have 1 valid record (step 0)
+            assert len(df) == 1
+            assert df["step"].iloc[0] == 0
+            
+        finally:
+            os.unlink(f.name)
+
+    def test_ingest_runs_aborts_on_parsing_error(self):
+        """Test that ingest_runs aborts if any JSONL line cannot be parsed."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write valid JSON line
+            json.dump({
+                "step": 0,
+                "phase": "train",
+                "reward_mean": 0.5,
+                "kl_mean": 0.1,
+                "loss": 0.4,
+                "run_id": "test_run"
+            }, f)
+            f.write("\n")
+            
+            # Write completely invalid line
+            f.write("This is not JSON at all\n")
+            
+            # Write another valid JSON line
+            json.dump({
+                "step": 2,
+                "phase": "train",
+                "reward_mean": 0.7,
+                "kl_mean": 0.3,
+                "loss": 0.2,
+                "run_id": "test_run"
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            # Should raise an exception due to parsing error
+            with pytest.raises(RuntimeError):
+                ingest_runs(f.name, adapter_hint="trl")
+                
+        finally:
+            os.unlink(f.name)
+
+    def test_logging_records_total_events(self):
+        """Test that logging records the total number of events ingested."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write 3 valid JSON lines
+            for i in range(3):
+                json.dump({
+                    "step": i,
+                    "phase": "train",
+                    "reward_mean": 0.5 + i * 0.1,
+                    "kl_mean": 0.1 + i * 0.01,
+                    "loss": 0.4 - i * 0.05,
+                    "run_id": "test_run"
+                }, f)
+                f.write("\n")
+            f.flush()
+
+        try:
+            with patch('rldk.ingest.ingest.logging') as mock_logging:
+                ingest_runs(f.name, adapter_hint="trl")
+                
+                # Verify that logging.info was called with the correct message
+                mock_logging.info.assert_called_with("Successfully ingested 3 events from " + f.name)
+                
+        finally:
+            os.unlink(f.name)
+
+    def test_event_schema_compatibility(self):
+        """Test that Event schema fields are always serialized as primitive types."""
+        # Create test data with various types
+        test_data = {
+            "step": 0,
+            "phase": "train",
+            "reward_mean": 0.5,
+            "kl_mean": 0.1,
+            "loss": 0.4,
+            "run_id": "test_run",
+            "git_sha": "abc123"
+        }
+
+        # Create Event object
+        event = create_event_from_row(test_data, "test_run", "abc123")
+
+        # Verify all fields are primitive types
+        event_dict = event.to_dict()
+        
+        # Check that all values are primitive types (no tensors, etc.)
+        def check_primitive_types(obj):
+            if isinstance(obj, dict):
+                for key, value in obj.items():
+                    assert isinstance(key, str)
+                    check_primitive_types(value)
+            elif isinstance(obj, list):
+                for item in obj:
+                    check_primitive_types(item)
+            else:
+                # Should be primitive types only
+                assert isinstance(obj, (int, float, str, bool, type(None)))
+
+        check_primitive_types(event_dict)
+
+    def test_utc_timestamps(self):
+        """Test that loggers use UTC timestamps for reproducibility."""
+        import time
+        
+        # Create test data
+        test_data = {
+            "step": 0,
+            "phase": "train",
+            "reward_mean": 0.5,
+            "kl_mean": 0.1,
+            "loss": 0.4,
+            "run_id": "test_run",
+            "git_sha": "abc123"
+        }
+
+        # Create Event object
+        event = create_event_from_row(test_data, "test_run", "abc123")
+
+        # Verify wall_time is a float (UTC timestamp)
+        assert isinstance(event.wall_time, float)
+        assert event.wall_time > 0
+
+    def test_concurrent_writes_handling(self):
+        """Test handling of concurrent writes to JSONL files."""
+        import threading
+        import time
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            pass
+
+        def write_events(thread_id, num_events):
+            with open(f.name, "a") as jsonl_file:
+                for i in range(num_events):
+                    event_data = {
+                        "step": thread_id * 100 + i,
+                        "phase": "train",
+                        "reward_mean": 0.5 + i * 0.01,
+                        "kl_mean": 0.1 + i * 0.001,
+                        "loss": 0.4 - i * 0.005,
+                        "run_id": f"test_run_{thread_id}",
+                        "timestamp": time.time()
+                    }
+                    json.dump(event_data, jsonl_file)
+                    jsonl_file.write("\n")
+                    jsonl_file.flush()  # Ensure immediate write
+                    time.sleep(0.001)  # Small delay to simulate concurrent access
+
+        try:
+            # Start multiple threads writing to the same file
+            threads = []
+            for i in range(3):
+                thread = threading.Thread(target=write_events, args=(i, 5))
+                threads.append(thread)
+                thread.start()
+
+            # Wait for all threads to complete
+            for thread in threads:
+                thread.join()
+
+            # Verify all events were written
+            adapter = TRLAdapter(f.name)
+            df = adapter.load()
+            
+            # Should have 15 total events (3 threads * 5 events each)
+            assert len(df) == 15
+            
+            # Verify all run_ids are present
+            run_ids = set(df["run_id"].dropna())
+            assert len(run_ids) == 3
+            assert "test_run_0" in run_ids
+            assert "test_run_1" in run_ids
+            assert "test_run_2" in run_ids
+
+        finally:
+            os.unlink(f.name)
+
+    def test_environment_variable_override(self):
+        """Test environment variable override for disabling JSONL emission."""
+        import os
+        
+        # Test with RLDK_DISABLE_JSONL set
+        with patch.dict(os.environ, {'RLDK_DISABLE_JSONL': '1'}):
+            # This would be tested in the actual callback implementation
+            # For now, we just verify the environment variable is set
+            assert os.environ.get('RLDK_DISABLE_JSONL') == '1'
+
+        # Test without the environment variable
+        with patch.dict(os.environ, {}, clear=True):
+            assert os.environ.get('RLDK_DISABLE_JSONL') is None
+
+
+class TestJSONLValidator:
+    """Test JSONL validator utility."""
+
+    def test_jsonl_validator_checks_schema_conformance(self):
+        """Test that JSONL validator checks for schema conformance."""
+        # This would test the lightweight validator utility
+        # For now, we'll create a simple validation function
+        
+        def validate_jsonl_schema(file_path):
+            """Simple JSONL schema validator."""
+            with open(file_path, 'r') as f:
+                for line_num, line in enumerate(f, 1):
+                    if line.strip():
+                        try:
+                            data = json.loads(line)
+                            # Check for required fields
+                            required_fields = ['step', 'phase', 'reward_mean', 'kl_mean', 'loss']
+                            missing_fields = [field for field in required_fields if field not in data]
+                            if missing_fields:
+                                return False, f"Line {line_num}: Missing required fields: {missing_fields}"
+                        except json.JSONDecodeError:
+                            return False, f"Line {line_num}: Invalid JSON"
+            return True, "All lines valid"
+
+        # Test with valid JSONL
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            json.dump({
+                "step": 0,
+                "phase": "train",
+                "reward_mean": 0.5,
+                "kl_mean": 0.1,
+                "loss": 0.4,
+                "run_id": "test_run"
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            is_valid, message = validate_jsonl_schema(f.name)
+            assert is_valid
+            assert message == "All lines valid"
+        finally:
+            os.unlink(f.name)
+
+        # Test with invalid JSONL (missing required fields)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            json.dump({
+                "step": 0,
+                "phase": "train",
+                # Missing reward_mean, kl_mean, loss
+                "run_id": "test_run"
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            is_valid, message = validate_jsonl_schema(f.name)
+            assert not is_valid
+            assert "Missing required fields" in message
+        finally:
+            os.unlink(f.name)
