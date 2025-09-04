@@ -317,6 +317,101 @@ class TestJSONLIngestion:
         finally:
             os.unlink(f.name)
 
+    def test_custom_jsonl_detection_avoids_trl_misclassification(self):
+        """Test that custom JSONL detection doesn't misclassify TRL/OpenRLHF data."""
+        # Test 1: TRL format with nested metrics - should NOT be detected as custom
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            json.dump({
+                "step": 1,
+                "reward": {"mean": 0.5, "std": 0.1},
+                "kl": {"mean": 0.1, "std": 0.05},
+                "loss": 0.4
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            # Should NOT be able to handle TRL format
+            assert not adapter.can_handle(), "Custom adapter should NOT handle TRL nested format"
+        finally:
+            os.unlink(f.name)
+
+        # Test 2: TRL format with metrics object - should NOT be detected as custom
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            json.dump({
+                "step": 1,
+                "metrics": {
+                    "reward_mean": 0.5,
+                    "kl_mean": 0.1,
+                    "loss": 0.4
+                }
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            # Should NOT be able to handle TRL format
+            assert not adapter.can_handle(), "Custom adapter should NOT handle TRL metrics format"
+        finally:
+            os.unlink(f.name)
+
+        # Test 3: Full standard schema - should NOT be detected as custom
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            json.dump({
+                "step": 1,
+                "reward_mean": 0.5,
+                "kl_mean": 0.1,
+                "entropy_mean": 0.8,
+                "clip_frac": 0.2,
+                "grad_norm": 1.0,
+                "loss": 0.4
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            # Should NOT be able to handle standard format
+            assert not adapter.can_handle(), "Custom adapter should NOT handle full standard schema"
+        finally:
+            os.unlink(f.name)
+
+        # Test 4: Partial standard schema (just step and reward_mean) - should NOT be detected as custom
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            json.dump({
+                "step": 1,
+                "reward_mean": 0.5
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            # Should NOT be able to handle partial standard format
+            assert not adapter.can_handle(), "Custom adapter should NOT handle partial standard schema"
+        finally:
+            os.unlink(f.name)
+
+        # Test 5: Actual custom format - should be detected as custom
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            json.dump({
+                "global_step": 0,
+                "reward_scalar": 0.5,
+                "kl_to_ref": 0.1,
+                "loss": 0.4
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            # Should be able to handle custom format
+            assert adapter.can_handle(), "Custom adapter should handle actual custom format"
+        finally:
+            os.unlink(f.name)
+
     def test_adapters_produce_identical_event_objects(self):
         """Test that TRL and OpenRLHF adapters produce identical Event objects from compatible logs."""
         # Create identical training data

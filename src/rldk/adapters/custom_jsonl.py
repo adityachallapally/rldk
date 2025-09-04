@@ -33,16 +33,29 @@ class CustomJSONLAdapter(BaseAdapter):
                     first_line = f.readline().strip()
                     if first_line:
                         data = json.loads(first_line)
-                        # Check for our custom schema - be more flexible
+                        # Check for our custom schema - be very specific to avoid misclassifying TRL/OpenRLHF
                         # Only check for required keys if data is a dict
                         if isinstance(data, dict):
-                            # Check for custom format indicators (either old or new format)
+                            # Check for explicit custom format indicators (not standard format)
+                            # These are the unique identifiers of our custom format
                             custom_indicators = [
-                                "global_step", "reward_scalar", "kl_to_ref",  # Old format
-                                "step", "reward_mean", "kl_mean", "loss"      # Standard format
+                                "global_step", "reward_scalar", "kl_to_ref"  # Unique to custom format
                             ]
-                            # If it has any of these indicators, it's likely our format
-                            return any(key in data for key in custom_indicators)
+                            
+                            # Must have at least one of the unique custom indicators
+                            has_custom_indicators = any(key in data for key in custom_indicators)
+                            
+                            # Also check that it doesn't look like standard TRL/OpenRLHF format
+                            # Standard formats typically have nested metrics or different structure
+                            is_standard_format = (
+                                "reward" in data and isinstance(data["reward"], dict) or  # Nested metrics
+                                "metrics" in data and isinstance(data["metrics"], dict) or  # Nested metrics
+                                ("step" in data and "reward_mean" in data and "kl_mean" in data and 
+                                 "entropy_mean" in data and "clip_frac" in data and "grad_norm" in data)  # Full standard schema
+                            )
+                            
+                            # Only classify as custom if it has custom indicators AND doesn't look like standard format
+                            return has_custom_indicators and not is_standard_format
                         else:
                             # For non-dict data, it's not our custom format
                             return False
