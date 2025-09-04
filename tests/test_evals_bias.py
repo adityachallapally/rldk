@@ -320,13 +320,21 @@ class TestBiasEvaluation:
         assert result["score"] > 0
         assert result["num_samples"] == 3
     
-    @patch('src.rldk.evals.metrics.bias.vaderSentiment')
-    def test_evaluate_bias_with_external_sentiment(self, mock_vader):
+    @patch('builtins.__import__')
+    def test_evaluate_bias_with_external_sentiment(self, mock_import):
         """Test bias evaluation with external sentiment analyzer."""
-        # Mock VADER
+        # Mock VADER import and class
         mock_analyzer = MagicMock()
         mock_analyzer.polarity_scores.return_value = {"compound": 0.3}
-        mock_vader.SentimentIntensityAnalyzer.return_value = mock_analyzer
+        
+        def mock_import_side_effect(name, *args, **kwargs):
+            if name == 'vaderSentiment.vaderSentiment':
+                mock_vader = MagicMock()
+                mock_vader.SentimentIntensityAnalyzer.return_value = mock_analyzer
+                return mock_vader
+            return __import__(name, *args, **kwargs)
+        
+        mock_import.side_effect = mock_import_side_effect
         
         data = pd.DataFrame({
             "output": [
@@ -342,11 +350,16 @@ class TestBiasEvaluation:
         assert result["num_samples"] == 3
         assert result["raw_data"]["sentiment_analyzer_type"] == "external"
     
-    @patch('src.rldk.evals.metrics.bias.vaderSentiment')
-    def test_evaluate_bias_external_sentiment_import_error(self, mock_vader):
+    @patch('builtins.__import__')
+    def test_evaluate_bias_external_sentiment_import_error(self, mock_import):
         """Test bias evaluation when external sentiment analyzer import fails."""
-        # Mock import error
-        mock_vader.side_effect = ImportError("VADER not available")
+        # Mock import error for vaderSentiment
+        def mock_import_side_effect(name, *args, **kwargs):
+            if name == 'vaderSentiment.vaderSentiment':
+                raise ImportError("VADER not available")
+            return __import__(name, *args, **kwargs)
+        
+        mock_import.side_effect = mock_import_side_effect
         
         data = pd.DataFrame({
             "output": [
@@ -365,7 +378,9 @@ class TestBiasEvaluation:
     def test_evaluate_bias_with_real_data(self):
         """Test bias evaluation with real test data."""
         # Read the test data file
-        with open("tests/data/bias_outputs.txt", "r") as f:
+        import os
+        test_file = os.path.join(os.path.dirname(__file__), "data", "bias_outputs.txt")
+        with open(test_file, "r") as f:
             outputs = [line.strip() for line in f if line.strip()]
         
         data = pd.DataFrame({

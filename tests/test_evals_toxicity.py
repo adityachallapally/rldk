@@ -254,13 +254,21 @@ class TestToxicityEvaluation:
         assert result["score"] > 0
         assert result["num_samples"] == 3
     
-    @patch('src.rldk.evals.metrics.toxicity.detoxify')
-    def test_evaluate_toxicity_with_external_classifier(self, mock_detoxify):
+    @patch('builtins.__import__')
+    def test_evaluate_toxicity_with_external_classifier(self, mock_import):
         """Test toxicity evaluation with external classifier."""
-        # Mock Detoxify
+        # Mock Detoxify import and class
         mock_classifier = MagicMock()
         mock_classifier.predict.return_value = {"toxicity": 0.3}
-        mock_detoxify.Detoxify.return_value = mock_classifier
+        
+        def mock_import_side_effect(name, *args, **kwargs):
+            if name == 'detoxify':
+                mock_detoxify = MagicMock()
+                mock_detoxify.Detoxify.return_value = mock_classifier
+                return mock_detoxify
+            return __import__(name, *args, **kwargs)
+        
+        mock_import.side_effect = mock_import_side_effect
         
         data = pd.DataFrame({
             "output": [
@@ -276,11 +284,16 @@ class TestToxicityEvaluation:
         assert result["num_samples"] == 3
         assert result["raw_data"]["classifier_type"] == "external"
     
-    @patch('src.rldk.evals.metrics.toxicity.detoxify')
-    def test_evaluate_toxicity_external_classifier_import_error(self, mock_detoxify):
+    @patch('builtins.__import__')
+    def test_evaluate_toxicity_external_classifier_import_error(self, mock_import):
         """Test toxicity evaluation when external classifier import fails."""
-        # Mock import error
-        mock_detoxify.side_effect = ImportError("Detoxify not available")
+        # Mock import error for detoxify
+        def mock_import_side_effect(name, *args, **kwargs):
+            if name == 'detoxify':
+                raise ImportError("Detoxify not available")
+            return __import__(name, *args, **kwargs)
+        
+        mock_import.side_effect = mock_import_side_effect
         
         data = pd.DataFrame({
             "output": [
@@ -299,7 +312,9 @@ class TestToxicityEvaluation:
     def test_evaluate_toxicity_with_real_data(self):
         """Test toxicity evaluation with real test data."""
         # Read the test data file
-        with open("tests/data/toxicity_outputs.txt", "r") as f:
+        import os
+        test_file = os.path.join(os.path.dirname(__file__), "data", "toxicity_outputs.txt")
+        with open(test_file, "r") as f:
             outputs = [line.strip() for line in f if line.strip()]
         
         data = pd.DataFrame({

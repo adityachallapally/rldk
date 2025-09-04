@@ -329,8 +329,10 @@ class TestThroughputEvaluation:
     
     def test_evaluate_throughput_with_real_log_file(self):
         """Test throughput evaluation with real log file data."""
-        # Read the test log file
-        with open("tests/data/throughput_log.jsonl", "r") as f:
+        import os
+        # Read the test log file using absolute path
+        test_file = os.path.join(os.path.dirname(__file__), "data", "throughput_log.jsonl")
+        with open(test_file, "r") as f:
             log_entries = [json.loads(line) for line in f]
         
         data = pd.DataFrame({
