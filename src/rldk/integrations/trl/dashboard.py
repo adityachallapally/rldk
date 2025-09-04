@@ -82,10 +82,14 @@ class RLDKDashboard:
             original_add_alert(alert_type, message)
             
             # Also add to dashboard
+            step = 0
+            if hasattr(callback, 'current_metrics') and callback.current_metrics is not None:
+                step = getattr(callback.current_metrics, 'step', 0)
+            
             alert = {
                 "type": alert_type,
                 "message": message,
-                "step": callback.current_metrics.step if hasattr(callback, 'current_metrics') else 0,
+                "step": step,
                 "timestamp": time.time(),
                 "severity": "warning"
             }
@@ -101,8 +105,11 @@ class RLDKDashboard:
             original_log_metrics()
             
             # Also add to dashboard
-            if hasattr(callback, 'current_metrics'):
-                self.add_metrics(callback.current_metrics)
+            if hasattr(callback, 'current_metrics') and callback.current_metrics is not None:
+                try:
+                    self.add_metrics(callback.current_metrics)
+                except Exception as e:
+                    print(f"Warning: Failed to add metrics to dashboard: {e}")
         
         callback._log_detailed_metrics = enhanced_log_metrics
         
@@ -597,9 +604,18 @@ with tab4:
     
     def add_metrics(self, metrics: RLDKMetrics):
         """Add new metrics to the dashboard."""
-        # Convert metrics to dictionary and add to local storage
-        metrics_dict = metrics.to_dict()
-        self.metrics_data.append(metrics_dict)
+        # Validate metrics object
+        if metrics is None:
+            print("Warning: Cannot add None metrics to dashboard")
+            return
+        
+        try:
+            # Convert metrics to dictionary and add to local storage
+            metrics_dict = metrics.to_dict()
+            self.metrics_data.append(metrics_dict)
+        except Exception as e:
+            print(f"Error converting metrics to dictionary: {e}")
+            return
         
         # Save to file immediately for persistence
         if self.run_id:
@@ -626,6 +642,11 @@ with tab4:
     
     def add_alert(self, alert: Dict[str, Any]):
         """Add new alert to the dashboard."""
+        # Validate alert object
+        if alert is None:
+            print("Warning: Cannot add None alert to dashboard")
+            return
+        
         # Add timestamp if not present
         if 'timestamp' not in alert:
             alert['timestamp'] = time.time()

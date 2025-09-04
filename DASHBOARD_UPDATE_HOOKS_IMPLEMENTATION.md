@@ -232,6 +232,7 @@ Comprehensive tests verify:
 4. **Integration**: All methods work together correctly
 5. **Callback integration**: Connects dashboard to TRL callback
 6. **Auto-refresh**: Enables automatic data refresh
+7. **Input validation**: Properly handles None values and invalid objects
 
 Test results:
 ```
@@ -242,6 +243,7 @@ Test results:
 ✅ add_metrics() - Adds metrics to dashboard and saves to file
 ✅ add_alert() - Adds alerts to dashboard and saves to file
 ✅ Integration - All methods work together correctly
+✅ Input validation - Properly handles None values and invalid objects
 ```
 
 ## Benefits
@@ -252,6 +254,7 @@ Test results:
 4. **Auto-refresh**: Configurable automatic data refresh
 5. **Error Handling**: Robust error handling for file operations
 6. **Backward Compatibility**: Works with existing file formats and structures
+7. **Input Validation**: Proper validation of None values and invalid objects to prevent crashes
 
 ## Demo
 
@@ -273,5 +276,20 @@ The TRL dashboard update hooks are now fully functional, enabling:
 - Automatic integration with TRL callbacks
 - Configurable auto-refresh functionality
 - Robust error handling and logging
+- Input validation to prevent crashes from None values or invalid objects
 
 This implementation transforms the dashboard from a static file viewer into a dynamic, real-time monitoring tool that can be updated programmatically during training runs.
+
+## Bug Fixes
+
+### Fixed: Callback Metrics Validation Error
+
+**Problem**: The `hasattr(callback, 'current_metrics')` check didn't ensure `callback.current_metrics` was a valid object. If `current_metrics` was `None`, it led to an `AttributeError` when accessing its `.step` attribute or when `add_metrics()` tried to call `.to_dict()` on the `None` value.
+
+**Solution**: Added proper validation:
+- Check for `None` values before accessing attributes
+- Use `getattr()` with default values for safe attribute access
+- Add try-catch blocks around metric conversion
+- Validate input parameters in `add_metrics()` and `add_alert()` methods
+
+**Result**: The dashboard now gracefully handles `None` values and invalid objects without crashing.
