@@ -26,6 +26,18 @@ import difflib
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+# Set deterministic execution
+import random
+import numpy as np
+import torch
+
+random.seed(0)
+np.random.seed(0)
+torch.manual_seed(0)
+torch.use_deterministic_algorithms(True)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
 from capture_golden_master import (
     create_synthetic_data,
     run_cli_command,
@@ -35,6 +47,10 @@ from capture_golden_master import (
     CommandResult,
 )
 from artifact_schemas import validate_artifact, get_schema_for_artifact
+
+# Add utils to path
+sys.path.insert(0, str(Path(__file__).parent / "utils"))
+from normalize import normalize_json, normalize_text, get_normalized_checksum
 
 
 @dataclass
@@ -146,12 +162,12 @@ def compare_command_results(
     if not exit_code_match:
         errors.append(f"Exit code mismatch: current={current.exit_code}, expected={expected['exit_code']}")
     
-    # Compare stdout
+    # Compare stdout (both should already be normalized)
     stdout_match = current.stdout == expected["stdout"]
     if not stdout_match:
         errors.append(f"STDOUT mismatch")
     
-    # Compare stderr
+    # Compare stderr (both should already be normalized)
     stderr_match = current.stderr == expected["stderr"]
     if not stderr_match:
         errors.append(f"STDERR mismatch")

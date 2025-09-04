@@ -22,8 +22,24 @@ from dataclasses import dataclass, asdict
 import jsonschema
 from jsonschema import Draft7Validator
 
+# Add utils to path
+sys.path.insert(0, str(Path(__file__).parent / "utils"))
+from normalize import normalize_json, normalize_text, get_normalized_checksum
+
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+# Set deterministic execution
+import random
+import numpy as np
+import torch
+
+random.seed(0)
+np.random.seed(0)
+torch.manual_seed(0)
+torch.use_deterministic_algorithms(True)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 from rldk import (
     ingest_runs,
@@ -143,8 +159,8 @@ def run_cli_command(cmd: List[str], cwd: Optional[Path] = None) -> CommandResult
         return CommandResult(
             command=" ".join(cmd),
             exit_code=result.returncode,
-            stdout=result.stdout.strip(),
-            stderr=result.stderr.strip(),
+            stdout=normalize_text(result.stdout.strip()),
+            stderr=normalize_text(result.stderr.strip()),
             artifacts=[],
             artifact_checksums={},
             artifact_schemas={},
@@ -156,7 +172,7 @@ def run_cli_command(cmd: List[str], cwd: Optional[Path] = None) -> CommandResult
             command=" ".join(cmd),
             exit_code=-1,
             stdout="",
-            stderr="Command timed out after 30 seconds",
+            stderr=normalize_text("Command timed out after 30 seconds"),
             artifacts=[],
             artifact_checksums={},
             artifact_schemas={},
@@ -168,7 +184,7 @@ def run_cli_command(cmd: List[str], cwd: Optional[Path] = None) -> CommandResult
             command=" ".join(cmd),
             exit_code=-1,
             stdout="",
-            stderr=str(e),
+            stderr=normalize_text(str(e)),
             artifacts=[],
             artifact_checksums={},
             artifact_schemas={},
@@ -177,15 +193,20 @@ def run_cli_command(cmd: List[str], cwd: Optional[Path] = None) -> CommandResult
 
 
 def calculate_file_checksum(file_path: Path) -> str:
-    """Calculate SHA256 checksum of a file."""
+    """Calculate SHA256 checksum of a file using normalized content."""
     if not file_path.exists():
         return ""
     
-    sha256_hash = hashlib.sha256()
     with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            sha256_hash.update(chunk)
-    return sha256_hash.hexdigest()
+        content = f.read()
+    
+    # Try to parse as JSON first, then fall back to text normalization
+    try:
+        data = json.loads(content.decode('utf-8'))
+        return get_normalized_checksum(data)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        # Not JSON, normalize as text
+        return get_normalized_checksum(content.decode('utf-8', errors='ignore'))
 
 
 def infer_json_schema(data: Any) -> Dict[str, Any]:
@@ -229,7 +250,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
         results.append(CommandResult(
             command="ingest_runs(run_a)",
             exit_code=0,
-            stdout=f"Successfully ingested {len(df)} records",
+            stdout=normalize_text(f"Successfully ingested {len(df)} records"),
             stderr="",
             artifacts=[str(temp_file)],
             artifact_checksums={str(temp_file): calculate_file_checksum(temp_file)},
@@ -241,7 +262,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
             command="ingest_runs(run_a)",
             exit_code=1,
             stdout="",
-            stderr=str(e),
+            stderr=normalize_text(str(e)),
             artifacts=[],
             artifact_checksums={},
             artifact_schemas={},
@@ -268,7 +289,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
         results.append(CommandResult(
             command="first_divergence(run_a, run_b)",
             exit_code=0,
-            stdout=f"Divergence analysis complete, diverged: {report.diverged}",
+            stdout=normalize_text(f"Divergence analysis complete, diverged: {report.diverged}"),
             stderr="",
             artifacts=[str(temp_file)],
             artifact_checksums={str(temp_file): calculate_file_checksum(temp_file)},
@@ -280,7 +301,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
             command="first_divergence(run_a, run_b)",
             exit_code=1,
             stdout="",
-            stderr=str(e),
+            stderr=normalize_text(str(e)),
             artifacts=[],
             artifact_checksums={},
             artifact_schemas={},
@@ -311,7 +332,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
         results.append(CommandResult(
             command="check_determinism",
             exit_code=0,
-            stdout=f"Determinism check complete, passed: {report.passed}",
+            stdout=normalize_text(f"Determinism check complete, passed: {report.passed}"),
             stderr="",
             artifacts=[str(temp_file)],
             artifact_checksums={str(temp_file): calculate_file_checksum(temp_file)},
@@ -323,7 +344,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
             command="check_determinism",
             exit_code=1,
             stdout="",
-            stderr=str(e),
+            stderr=normalize_text(str(e)),
             artifacts=[],
             artifact_checksums={},
             artifact_schemas={},
@@ -354,7 +375,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
         results.append(CommandResult(
             command="reward_health(run_a)",
             exit_code=0,
-            stdout=f"Reward health analysis complete, passed: {health_report.passed}",
+            stdout=normalize_text(f"Reward health analysis complete, passed: {health_report.passed}"),
             stderr="",
             artifacts=[str(temp_file)],
             artifact_checksums={str(temp_file): calculate_file_checksum(temp_file)},
@@ -366,7 +387,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
             command="reward_health(run_a)",
             exit_code=1,
             stdout="",
-            stderr=str(e),
+            stderr=normalize_text(str(e)),
             artifacts=[],
             artifact_checksums={},
             artifact_schemas={},
@@ -398,7 +419,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
         results.append(CommandResult(
             command="eval_quick(run_a)",
             exit_code=0,
-            stdout=f"Evaluation complete, sample_size: {eval_result.sample_size}",
+            stdout=normalize_text(f"Evaluation complete, sample_size: {eval_result.sample_size}"),
             stderr="",
             artifacts=[str(temp_file)],
             artifact_checksums={str(temp_file): calculate_file_checksum(temp_file)},
@@ -410,7 +431,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
             command="eval_quick(run_a)",
             exit_code=1,
             stdout="",
-            stderr=str(e),
+            stderr=normalize_text(str(e)),
             artifacts=[],
             artifact_checksums={},
             artifact_schemas={},

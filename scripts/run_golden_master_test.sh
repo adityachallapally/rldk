@@ -8,6 +8,15 @@
 # 4. Replays and compares with golden master
 # 5. Reports results
 
+# Set deterministic environment variables
+export PYTHONHASHSEED=0
+export TZ=UTC
+export LC_ALL=C
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export CUBLAS_WORKSPACE_CONFIG=:16:8
+export SOURCE_DATE_EPOCH=315532800
+
 set -e  # Exit on any error
 
 # Colors for output
