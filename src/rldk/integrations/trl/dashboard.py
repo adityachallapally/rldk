@@ -65,6 +65,82 @@ class RLDKDashboard:
         print(f"📊 RLDK Dashboard initialized - Port: {self.port}")
         print(f"📁 Monitoring directory: {self.output_dir}")
     
+    def connect_callback(self, callback: 'RLDKCallback'):
+        """Connect dashboard to a callback for real-time updates.
+        
+        Args:
+            callback: RLDKCallback instance to connect to
+        """
+        # Store reference to callback
+        self._connected_callback = callback
+        
+        # Override callback's add_alert method to also update dashboard
+        original_add_alert = callback._add_alert
+        
+        def enhanced_add_alert(alert_type: str, message: str):
+            # Call original method
+            original_add_alert(alert_type, message)
+            
+            # Also add to dashboard
+            alert = {
+                "type": alert_type,
+                "message": message,
+                "step": callback.current_metrics.step if hasattr(callback, 'current_metrics') else 0,
+                "timestamp": time.time(),
+                "severity": "warning"
+            }
+            self.add_alert(alert)
+        
+        callback._add_alert = enhanced_add_alert
+        
+        # Override callback's _log_detailed_metrics to also update dashboard
+        original_log_metrics = callback._log_detailed_metrics
+        
+        def enhanced_log_metrics():
+            # Call original method
+            original_log_metrics()
+            
+            # Also add to dashboard
+            if hasattr(callback, 'current_metrics'):
+                self.add_metrics(callback.current_metrics)
+        
+        callback._log_detailed_metrics = enhanced_log_metrics
+        
+        print(f"🔗 Dashboard connected to callback {callback.run_id}")
+    
+    def enable_auto_refresh(self, interval: int = 5):
+        """Enable automatic data refresh.
+        
+        Args:
+            interval: Refresh interval in seconds
+        """
+        self.auto_refresh = True
+        self.refresh_interval = interval
+        
+        if self.is_running:
+            # Start auto-refresh thread
+            self._start_auto_refresh()
+        
+        print(f"🔄 Auto-refresh enabled with {interval}s interval")
+    
+    def _start_auto_refresh(self):
+        """Start auto-refresh thread."""
+        if hasattr(self, '_refresh_thread') and self._refresh_thread.is_alive():
+            return
+        
+        def refresh_loop():
+            while self.is_running and self.auto_refresh:
+                try:
+                    self.update_data()
+                    time.sleep(self.refresh_interval)
+                except Exception as e:
+                    print(f"Auto-refresh error: {e}")
+                    time.sleep(self.refresh_interval)
+        
+        self._refresh_thread = threading.Thread(target=refresh_loop)
+        self._refresh_thread.daemon = True
+        self._refresh_thread.start()
+    
     def start_dashboard(self, blocking: bool = False):
         """Start the dashboard server."""
         if self.is_running:
@@ -72,6 +148,10 @@ class RLDKDashboard:
             return
         
         self.is_running = True
+        
+        # Start auto-refresh if enabled
+        if self.auto_refresh:
+            self._start_auto_refresh()
         
         if blocking:
             self._run_dashboard()
@@ -84,6 +164,11 @@ class RLDKDashboard:
     def stop_dashboard(self):
         """Stop the dashboard server."""
         self.is_running = False
+        
+        # Stop auto-refresh thread
+        if hasattr(self, '_refresh_thread') and self._refresh_thread.is_alive():
+            self._refresh_thread.join(timeout=5)
+        
         if self.dashboard_thread:
             self.dashboard_thread.join(timeout=5)
         print("🛑 Dashboard stopped")
@@ -450,16 +535,123 @@ with tab4:
     
     def update_data(self):
         """Update dashboard data from files."""
-        # This would be called by the callback to update data
-        # For now, the dashboard reads directly from files
-        pass
+        # Load metrics data
+        if self.run_id:
+            metrics_files = list(self.output_dir.glob(f"{self.run_id}_metrics.json"))
+            alerts_files = list(self.output_dir.glob(f"{self.run_id}_alerts.json"))
+            ppo_files = list(self.output_dir.glob(f"{self.run_id}_ppo_metrics.csv"))
+            checkpoint_files = list(self.output_dir.glob(f"{self.run_id}_checkpoint_summary.csv"))
+        else:
+            metrics_files = list(self.output_dir.glob("*_metrics.json"))
+            alerts_files = list(self.output_dir.glob("*_alerts.json"))
+            ppo_files = list(self.output_dir.glob("*_ppo_metrics.csv"))
+            checkpoint_files = list(self.output_dir.glob("*_checkpoint_summary.csv"))
+        
+        # Load metrics
+        self.metrics_data = []
+        for file in metrics_files:
+            try:
+                with open(file, 'r') as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        self.metrics_data.extend(data)
+                    else:
+                        self.metrics_data.append(data)
+            except Exception as e:
+                print(f"Error loading {file}: {e}")
+        
+        # Load alerts
+        self.alerts_data = []
+        for file in alerts_files:
+            try:
+                with open(file, 'r') as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        self.alerts_data.extend(data)
+                    else:
+                        self.alerts_data.append(data)
+            except Exception as e:
+                print(f"Error loading {file}: {e}")
+        
+        # Load PPO data
+        self.ppo_data = []
+        for file in ppo_files:
+            try:
+                import pandas as pd
+                df = pd.read_csv(file)
+                self.ppo_data.extend(df.to_dict('records'))
+            except Exception as e:
+                print(f"Error loading {file}: {e}")
+        
+        # Load checkpoint data
+        self.checkpoint_data = []
+        for file in checkpoint_files:
+            try:
+                import pandas as pd
+                df = pd.read_csv(file)
+                self.checkpoint_data.extend(df.to_dict('records'))
+            except Exception as e:
+                print(f"Error loading {file}: {e}")
+        
+        print(f"📊 Dashboard data updated: {len(self.metrics_data)} metrics, {len(self.alerts_data)} alerts")
     
     def add_metrics(self, metrics: RLDKMetrics):
         """Add new metrics to the dashboard."""
-        # This could be used for real-time updates
-        pass
+        # Convert metrics to dictionary and add to local storage
+        metrics_dict = metrics.to_dict()
+        self.metrics_data.append(metrics_dict)
+        
+        # Save to file immediately for persistence
+        if self.run_id:
+            metrics_file = self.output_dir / f"{self.run_id}_metrics.json"
+            try:
+                # Load existing data
+                existing_data = []
+                if metrics_file.exists():
+                    with open(metrics_file, 'r') as f:
+                        existing_data = json.load(f)
+                        if not isinstance(existing_data, list):
+                            existing_data = [existing_data]
+                
+                # Add new metrics
+                existing_data.append(metrics_dict)
+                
+                # Save back to file
+                with open(metrics_file, 'w') as f:
+                    json.dump(existing_data, f, indent=2)
+                
+                print(f"📊 Added metrics for step {metrics.step} to dashboard")
+            except Exception as e:
+                print(f"Error saving metrics to file: {e}")
     
     def add_alert(self, alert: Dict[str, Any]):
         """Add new alert to the dashboard."""
-        # This could be used for real-time alerts
-        pass
+        # Add timestamp if not present
+        if 'timestamp' not in alert:
+            alert['timestamp'] = time.time()
+        
+        # Add to local storage
+        self.alerts_data.append(alert)
+        
+        # Save to file immediately for persistence
+        if self.run_id:
+            alerts_file = self.output_dir / f"{self.run_id}_alerts.json"
+            try:
+                # Load existing alerts
+                existing_alerts = []
+                if alerts_file.exists():
+                    with open(alerts_file, 'r') as f:
+                        existing_alerts = json.load(f)
+                        if not isinstance(existing_alerts, list):
+                            existing_alerts = [existing_alerts]
+                
+                # Add new alert
+                existing_alerts.append(alert)
+                
+                # Save back to file
+                with open(alerts_file, 'w') as f:
+                    json.dump(existing_alerts, f, indent=2)
+                
+                print(f"⚠️  Added alert '{alert.get('type', 'Unknown')}' to dashboard")
+            except Exception as e:
+                print(f"Error saving alert to file: {e}")
