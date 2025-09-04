@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "required": ["pass", "seeds", "checksums"],
+  "properties": {
+    "pass": {
+      "type": "boolean",
+      "description": "Whether the determinism check passed"
+    },
+    "seeds": {
+      "type": "array",
+      "items": {"type": "integer"},
+      "description": "List of seeds used for testing"
+    },
+    "checksums": {
+      "type": "object",
+      "description": "Checksums of outputs for each seed"
+    }
+  }
+}
