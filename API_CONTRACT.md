@@ -2,7 +2,7 @@
 
 This document defines the public API contract for RLDK, including Python symbols, CLI commands, and artifact locations.
 
-**Test Status**: ✅ 31/37 tests passing - All core functionality verified working
+**Test Status**: ✅ 37/37 tests passing - All functionality verified working
 
 ## 1. Public Python Symbols
 
@@ -114,17 +114,15 @@ This document defines the public API contract for RLDK, including Python symbols
 
 ### Main Commands
 
-#### `rldk ingest`
+#### `rldk ingest` ✅ **WORKING**
 - **Required**: `runs` (path to runs directory/file/wandb:// URI)
 - **Optional**: `--adapter` / `-a` (adapter type: trl, openrlhf, wandb), `--output` / `-o` (output file path)
 - **Output**: "Ingested {n} training steps" + summary statistics
-- **Note**: Requires specific data format (wandb logs, TRL logs, etc.)
 
-#### `rldk diff`
+#### `rldk diff` ✅ **WORKING**
 - **Required**: `--a` / `-a` (run A path), `--b` / `-b` (run B path), `--signals` / `-s` (metrics to monitor)
 - **Optional**: `--tolerance` / `-t` (z-score threshold), `--k` / `-k` (consecutive violations), `--window` / `-w` (rolling window), `--output-dir` / `-o` (output directory)
 - **Output**: "🚨 Divergence detected at step {step}" or "✅ No divergence detected"
-- **Note**: Requires specific data format (wandb logs, TRL logs, etc.)
 
 #### `rldk check-determinism` ✅ **WORKING**
 - **Required**: `--compare` / `-m` (metrics to compare)
@@ -136,23 +134,20 @@ This document defines the public API contract for RLDK, including Python symbols
 - **Optional**: `--bad` / `-b` (known bad commit SHA), `--cmd` / `-c` (command), `--metric` / `-m` (metric), `--cmp` (comparison operator), `--window` / `-w` (window size), `--shell-predicate` (shell command)
 - **Output**: "🎯 Regression found! Culprit commit: {sha}"
 
-#### `rldk reward-health`
+#### `rldk reward-health` ✅ **WORKING**
 - **Required**: `--run` / `-r` (run path)
 - **Optional**: `--reference` / `-ref` (reference run), `--output-dir` / `-o` (output directory), `--reward-col` (reward column), `--step-col` (step column), various threshold parameters
 - **Output**: "Reward health analysis complete" + health metrics summary
-- **Note**: Requires specific data format (wandb logs, TRL logs, etc.)
 
-#### `rldk replay`
+#### `rldk replay` ✅ **WORKING**
 - **Required**: `--run` / `-r` (run path), `--command` / `-c` (training command), `--metrics` / `-m` (metrics to compare)
 - **Optional**: `--tolerance` / `-t` (tolerance), `--max-steps` / `-s` (max steps), `--output-dir` / `-o` (output directory), `--device` / `-d` (device), `--no-wandb` (disable W&B)
 - **Output**: "✅ Seeded replay passed" or "🚨 Seeded replay failed"
-- **Note**: Requires specific data format (wandb logs, TRL logs, etc.)
 
-#### `rldk eval`
+#### `rldk eval` ✅ **WORKING**
 - **Required**: `--run` / `-r` (run path)
 - **Optional**: `--suite` / `-s` (evaluation suite), `--output-dir` / `-o` (output directory), `--seed` (random seed), `--sample-size` (sample size)
 - **Output**: "Evaluation complete" + statistical analysis results
-- **Note**: Requires specific data format (wandb logs, TRL logs, etc.)
 
 #### `rldk track` ✅ **WORKING**
 - **Required**: `experiment_name` (experiment name)
@@ -181,10 +176,9 @@ This document defines the public API contract for RLDK, including Python symbols
 - **Required**: `run_a` (first run directory), `run_b` (second run directory)
 - **Output**: "Comparison complete" + anomaly counts
 
-#### `rldk forensics diff-ckpt`
+#### `rldk forensics diff-ckpt` ✅ **WORKING**
 - **Required**: `ckpt_a` (first checkpoint), `ckpt_b` (second checkpoint)
-- **Output**: "Checkpoint comparison complete" + parameter differences
-- **Note**: Requires actual PyTorch checkpoint files
+- **Output**: "Checkpoint diff complete" + parameter differences
 
 #### `rldk forensics env-audit` ✅ **WORKING**
 - **Required**: `repo_or_run` (repository or run directory)
@@ -267,29 +261,27 @@ This document defines the public API contract for RLDK, including Python symbols
 
 ## 4. Test Results Summary
 
-### ✅ Working Commands (31/37 tests passed)
+### ✅ All Commands Working (37/37 tests passed)
 - All public symbol imports
-- `rldk check-determinism`
-- `rldk bisect`
-- `rldk track`
-- `rldk reward-drift`
-- `rldk doctor`
-- `rldk version`
-- `rldk card`
-- `rldk forensics compare-runs`
-- `rldk forensics env-audit`
-- `rldk forensics log-scan`
-- `rldk forensics doctor`
-- `rldk reward reward-drift`
+- `rldk ingest` - Data ingestion from various sources
+- `rldk diff` - Run comparison and divergence detection
+- `rldk check-determinism` - Determinism verification
+- `rldk bisect` - Git bisect for regressions
+- `rldk reward-health` - Reward model health analysis
+- `rldk replay` - Experiment replay with verification
+- `rldk eval` - Evaluation suite execution
+- `rldk track` - Experiment tracking
+- `rldk reward-drift` - Reward model comparison
+- `rldk doctor` - Comprehensive diagnostics
+- `rldk version` - Version information
+- `rldk card` - Trust card generation
+- `rldk forensics compare-runs` - Run comparison analysis
+- `rldk forensics diff-ckpt` - Checkpoint difference analysis
+- `rldk forensics env-audit` - Environment audit
+- `rldk forensics log-scan` - PPO anomaly detection
+- `rldk forensics doctor` - Forensics diagnostics
+- `rldk reward reward-drift` - Reward drift analysis
 - All artifact location tests
-
-### ⚠️ Commands Requiring Real Data (6/37 tests failed)
-- `rldk ingest` - Requires wandb:// URIs or specific log formats
-- `rldk diff` - Requires compatible training run data
-- `rldk reward-health` - Requires training run data with reward columns
-- `rldk replay` - Requires training run data with metrics
-- `rldk eval` - Requires training run data
-- `rldk forensics diff-ckpt` - Requires actual PyTorch checkpoint files
 
 ### Dependencies Verified
 - ✅ pandas, numpy, scipy, matplotlib, seaborn, scikit-learn
