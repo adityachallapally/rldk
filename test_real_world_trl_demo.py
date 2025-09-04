@@ -30,6 +30,7 @@ except ImportError:
 
 try:
     from transformers import AutoTokenizer, AutoModelForCausalLM
+    from datasets import Dataset
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
