@@ -47,8 +47,7 @@ def _check_tensorflow_determinism() -> bool:
         import tensorflow as tf
         # Check if TensorFlow has the required determinism features
         # without modifying global configuration
-        hasattr(tf.config.experimental, 'enable_op_determinism')
-        return True
+        return hasattr(tf.config.experimental, 'enable_op_determinism')
     except ImportError:
         _log_determinism_warning(
             "Determinism: Skipped TensorFlow determinism check. Install tensorflow>=2.8.0 to enable. "
@@ -66,8 +65,7 @@ def _check_jax_determinism() -> bool:
         import jax
         # Check if JAX is available and has the required config options
         # without modifying global configuration
-        hasattr(jax.config, 'update')
-        return True
+        return hasattr(jax.config, 'update')
     except ImportError:
         _log_determinism_warning(
             "Determinism: Skipped JAX determinism check. Install jax>=0.4.0 to enable. "

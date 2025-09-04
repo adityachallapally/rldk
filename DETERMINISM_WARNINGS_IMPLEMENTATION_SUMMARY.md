@@ -111,6 +111,12 @@ UserWarning: Determinism: Skipped JAX determinism check. Install jax>=0.4.0 to e
 - **Fix**: Changed both functions to use read-only checks (`hasattr()`) instead of modifying global configuration
 - **Impact**: Availability checks are now truly read-only and won't affect user code or subsequent operations
 
+### Fixed: Determinism Checks Always Return True
+- **Issue**: `_check_tensorflow_determinism()` and `_check_jax_determinism()` were calling `hasattr()` but ignoring the result, always returning `True`
+- **Impact**: Functions incorrectly reported determinism support even when features were missing, leading to inaccurate `skipped_checks` in `DeterminismReport`
+- **Fix**: Changed both functions to `return hasattr(...)` instead of just calling `hasattr(...)` and returning `True`
+- **Result**: Functions now correctly return `False` when determinism features are missing and `True` when they exist
+
 ## Implementation Notes
 
 - All warnings are single-line and informative
