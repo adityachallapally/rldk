@@ -15,6 +15,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import numpy as np
 
 try:
+    import torch
     import torch.distributed as dist
     DIST_AVAILABLE = True
 except ImportError:

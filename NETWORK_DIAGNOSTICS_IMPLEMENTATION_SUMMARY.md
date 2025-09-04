@@ -138,6 +138,7 @@ distributed = network_monitor.test_distributed_network()
    - Enhanced `NetworkMetrics` dataclass
    - Updated `RealNetworkMonitor` class
    - Replaced placeholder ping method
+   - Fixed torch import for distributed diagnostics (P1 fix)
 
 2. **`src/rldk/integrations/openrlhf/distributed.py`**
    - Enhanced `NetworkMonitor` class with new test methods
@@ -168,6 +169,33 @@ distributed = network_monitor.test_distributed_network()
 3. **Historical Analysis**: Trend analysis and anomaly detection
 4. **Integration**: Web dashboard integration for real-time monitoring
 5. **Customization**: Configurable test hosts and thresholds
+
+## P1 Fix: Torch Import for Distributed Diagnostics
+
+**Issue**: The `_run_distributed_diagnostics` method used `torch.cuda.is_available()` and `torch.randn()` but the module never imported `torch`. When distributed training was initialized (`dist.is_initialized()` is true), calling this path raised `NameError: name 'torch' is not defined`.
+
+**Solution**: Added `import torch` at the module level alongside the existing `import torch.distributed as dist` import.
+
+**Before**:
+```python
+try:
+    import torch.distributed as dist
+    DIST_AVAILABLE = True
+except ImportError:
+    DIST_AVAILABLE = False
+```
+
+**After**:
+```python
+try:
+    import torch
+    import torch.distributed as dist
+    DIST_AVAILABLE = True
+except ImportError:
+    DIST_AVAILABLE = False
+```
+
+**Verification**: The fix ensures that distributed diagnostics work correctly when PyTorch distributed is active, while maintaining graceful handling when PyTorch is not available.
 
 ## Conclusion
 
