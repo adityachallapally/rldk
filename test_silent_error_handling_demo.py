@@ -277,6 +277,14 @@ def demonstrate_rldk_improvements():
         print("❌ RLDK not available, skipping RLDK demonstration")
         return
     
+    # Check if transformers is available for the callback simulation
+    try:
+        from transformers import TrainerState, TrainerControl, TrainingArguments
+        TRANSFORMERS_AVAILABLE = True
+    except ImportError:
+        print("❌ Transformers not available, skipping RLDK demonstration")
+        return
+    
     print("\n3️⃣ Testing RLDK's Improved Error Handling")
     print("-" * 60)
     
@@ -296,8 +304,6 @@ def demonstrate_rldk_improvements():
         logs = trainer.get_metrics()
         
         # Simulate the callback calls
-        from transformers import TrainerState, TrainerControl, TrainingArguments
-        
         args = TrainingArguments(output_dir="./test_rldk_output")
         state = TrainerState()
         state.global_step = step
