@@ -696,29 +696,216 @@ class ConvergenceAnalyzer:
 class PerformanceAnalyzer:
     """Analyze training performance."""
     
-    def __init__(self):
-        """Initialize performance analyzer."""
-        pass
+    def __init__(
+        self,
+        min_steps_for_analysis: int = 5,
+        speed_threshold: float = 0.1,
+        memory_efficiency_threshold: float = 0.8,
+        gpu_utilization_threshold: float = 0.7,
+        enable_detailed_analysis: bool = True,
+        performance_window: int = 50
+    ):
+        """Initialize performance analyzer.
+        
+        Args:
+            min_steps_for_analysis: Minimum number of steps required for analysis
+            speed_threshold: Threshold for considering training speed acceptable (steps/sec)
+            memory_efficiency_threshold: Threshold for memory efficiency (0-1)
+            gpu_utilization_threshold: Threshold for GPU utilization (0-1)
+            enable_detailed_analysis: Whether to perform detailed performance analysis
+            performance_window: Number of recent steps to analyze for performance trends
+        """
+        self.min_steps_for_analysis = min_steps_for_analysis
+        self.speed_threshold = speed_threshold
+        self.memory_efficiency_threshold = memory_efficiency_threshold
+        self.gpu_utilization_threshold = gpu_utilization_threshold
+        self.enable_detailed_analysis = enable_detailed_analysis
+        self.performance_window = performance_window
+        
+        # Internal state for tracking performance trends
+        self.performance_history: List[Dict[str, float]] = []
+        self.baseline_metrics: Optional[Dict[str, float]] = None
+        self.performance_degradation_count = 0
+        self.last_analysis_step = 0
     
     def analyze_performance(self, metrics: List[OpenRLHFMetrics]) -> Dict[str, float]:
         """Analyze training performance."""
-        if len(metrics) < 5:
-            return {'training_speed': 0.0, 'memory_efficiency': 1.0}
+        if len(metrics) < self.min_steps_for_analysis:
+            return {
+                'training_speed': 0.0, 
+                'memory_efficiency': 1.0,
+                'gpu_utilization': 0.0,
+                'performance_score': 0.0,
+                'performance_status': 'insufficient_data'
+            }
         
-        # Calculate training speed
-        step_times = [m.step_time for m in metrics if m.step_time > 0]
-        training_speed = 1.0 / np.mean(step_times) if step_times else 0.0
+        # Get recent metrics for analysis
+        recent_metrics = metrics[-self.performance_window:] if len(metrics) > self.performance_window else metrics
         
-        # Calculate memory efficiency
-        memory_usage = [m.gpu_memory_used for m in metrics if m.gpu_memory_used > 0]
-        memory_efficiency = 1.0
-        if memory_usage:
-            memory_variance = np.var(memory_usage)
-            memory_mean = np.mean(memory_usage)
-            if memory_mean > 0:
-                memory_efficiency = max(0, 1 - (memory_variance / memory_mean))
+        # Calculate basic performance metrics
+        training_speed = self._calculate_training_speed(recent_metrics)
+        memory_efficiency = self._calculate_memory_efficiency(recent_metrics)
+        gpu_utilization = self._calculate_gpu_utilization(recent_metrics)
+        
+        # Calculate detailed performance metrics if enabled
+        detailed_metrics = {}
+        if self.enable_detailed_analysis:
+            detailed_metrics = self._calculate_detailed_metrics(recent_metrics)
+        
+        # Update performance history
+        current_metrics = {
+            'training_speed': training_speed,
+            'memory_efficiency': memory_efficiency,
+            'gpu_utilization': gpu_utilization,
+            **detailed_metrics
+        }
+        self.performance_history.append(current_metrics)
+        
+        # Keep only recent history
+        if len(self.performance_history) > self.performance_window:
+            self.performance_history = self.performance_history[-self.performance_window:]
+        
+        # Calculate overall performance score
+        performance_score = self._calculate_performance_score(current_metrics)
+        
+        # Determine performance status
+        performance_status = self._determine_performance_status(current_metrics)
+        
+        # Update baseline if not set
+        if self.baseline_metrics is None and len(self.performance_history) >= 10:
+            self.baseline_metrics = self._calculate_baseline_metrics()
         
         return {
             'training_speed': training_speed,
             'memory_efficiency': memory_efficiency,
+            'gpu_utilization': gpu_utilization,
+            'performance_score': performance_score,
+            'performance_status': performance_status,
+            **detailed_metrics
         }
+    
+    def _calculate_training_speed(self, metrics: List[OpenRLHFMetrics]) -> float:
+        """Calculate training speed in steps per second."""
+        step_times = [m.step_time for m in metrics if m.step_time > 0]
+        if not step_times:
+            return 0.0
+        return 1.0 / np.mean(step_times)
+    
+    def _calculate_memory_efficiency(self, metrics: List[OpenRLHFMetrics]) -> float:
+        """Calculate memory efficiency based on variance in memory usage."""
+        memory_usage = [m.gpu_memory_used for m in metrics if m.gpu_memory_used > 0]
+        if not memory_usage:
+            return 1.0
+        
+        memory_variance = np.var(memory_usage)
+        memory_mean = np.mean(memory_usage)
+        if memory_mean == 0:
+            return 1.0
+        
+        # Efficiency decreases with higher variance relative to mean
+        return max(0, 1 - (memory_variance / memory_mean))
+    
+    def _calculate_gpu_utilization(self, metrics: List[OpenRLHFMetrics]) -> float:
+        """Calculate average GPU utilization."""
+        gpu_utils = [m.gpu_utilization for m in metrics if m.gpu_utilization > 0]
+        return np.mean(gpu_utils) if gpu_utils else 0.0
+    
+    def _calculate_detailed_metrics(self, metrics: List[OpenRLHFMetrics]) -> Dict[str, float]:
+        """Calculate detailed performance metrics."""
+        detailed = {}
+        
+        # Forward/backward time ratio
+        forward_times = [m.forward_time for m in metrics if m.forward_time > 0]
+        backward_times = [m.backward_time for m in metrics if m.backward_time > 0]
+        
+        if forward_times and backward_times:
+            avg_forward = np.mean(forward_times)
+            avg_backward = np.mean(backward_times)
+            detailed['forward_backward_ratio'] = avg_forward / avg_backward if avg_backward > 0 else 0.0
+        
+        # Memory allocation efficiency
+        memory_allocated = [m.gpu_memory_allocated for m in metrics if m.gpu_memory_allocated > 0]
+        memory_used = [m.gpu_memory_used for m in metrics if m.gpu_memory_used > 0]
+        
+        if memory_allocated and memory_used:
+            avg_allocated = np.mean(memory_allocated)
+            avg_used = np.mean(memory_used)
+            detailed['memory_allocation_efficiency'] = avg_used / avg_allocated if avg_allocated > 0 else 0.0
+        
+        # CPU utilization
+        cpu_utils = [m.cpu_utilization for m in metrics if m.cpu_utilization > 0]
+        detailed['cpu_utilization'] = np.mean(cpu_utils) if cpu_utils else 0.0
+        
+        # Network performance (for distributed training)
+        if any(m.allreduce_time > 0 for m in metrics):
+            allreduce_times = [m.allreduce_time for m in metrics if m.allreduce_time > 0]
+            detailed['avg_allreduce_time'] = np.mean(allreduce_times)
+        
+        return detailed
+    
+    def _calculate_performance_score(self, metrics: Dict[str, float]) -> float:
+        """Calculate overall performance score (0-1)."""
+        # Weighted combination of key metrics
+        speed_score = min(1.0, metrics['training_speed'] / self.speed_threshold) if self.speed_threshold > 0 else 0.0
+        memory_score = metrics['memory_efficiency']
+        gpu_score = metrics['gpu_utilization']
+        
+        # Weighted average (can be adjusted based on priorities)
+        weights = {'speed': 0.4, 'memory': 0.3, 'gpu': 0.3}
+        performance_score = (
+            weights['speed'] * speed_score +
+            weights['memory'] * memory_score +
+            weights['gpu'] * gpu_score
+        )
+        
+        return max(0, min(1, performance_score))
+    
+    def _determine_performance_status(self, metrics: Dict[str, float]) -> str:
+        """Determine performance status based on thresholds."""
+        if metrics['training_speed'] < self.speed_threshold:
+            return 'slow_training'
+        elif metrics['memory_efficiency'] < self.memory_efficiency_threshold:
+            return 'memory_inefficient'
+        elif metrics['gpu_utilization'] < self.gpu_utilization_threshold:
+            return 'low_gpu_utilization'
+        elif metrics['performance_score'] >= 0.8:
+            return 'excellent'
+        elif metrics['performance_score'] >= 0.6:
+            return 'good'
+        else:
+            return 'poor'
+    
+    def _calculate_baseline_metrics(self) -> Dict[str, float]:
+        """Calculate baseline metrics from performance history."""
+        if not self.performance_history:
+            return {}
+        
+        baseline = {}
+        for key in self.performance_history[0].keys():
+            if key != 'performance_status':  # Skip non-numeric fields
+                values = [h[key] for h in self.performance_history if key in h]
+                if values:
+                    baseline[key] = np.mean(values)
+        
+        return baseline
+    
+    def get_performance_trends(self) -> Dict[str, float]:
+        """Get performance trends over time."""
+        if len(self.performance_history) < 5:
+            return {}
+        
+        trends = {}
+        for key in self.performance_history[0].keys():
+            if key != 'performance_status':  # Skip non-numeric fields
+                values = [h[key] for h in self.performance_history if key in h]
+                if len(values) >= 5:
+                    # Calculate trend (positive = improving, negative = degrading)
+                    early_values = values[:len(values)//3]
+                    late_values = values[-len(values)//3:]
+                    if early_values and late_values:
+                        early_mean = np.mean(early_values)
+                        late_mean = np.mean(late_values)
+                        if early_mean != 0:
+                            trends[key] = (late_mean - early_mean) / abs(early_mean)
+        
+        return trends
