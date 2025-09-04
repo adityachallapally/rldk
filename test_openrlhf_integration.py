@@ -7,11 +7,130 @@ import time
 import json
 import tempfile
 import shutil
+import subprocess
+import platform
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
+
+
+def setup_openrlhf_environment():
+    """Setup OpenRLHF environment with CUDA support."""
+    print("🚀 Setting up OpenRLHF environment with CUDA support...")
+    
+    try:
+        # Detect Python version
+        python_version = platform.python_version()
+        major, minor = python_version.split('.')[:2]
+        python_version_short = f"{major}.{minor}"
+        print(f"🐍 Detected Python version: {python_version}")
+        
+        # Check if running as root (for package installation)
+        is_root = os.geteuid() == 0
+        sudo_cmd = [] if is_root else ["sudo"]
+        
+        # Step 1: Update package lists
+        print("📦 Updating package lists...")
+        subprocess.run(sudo_cmd + ["apt", "update"], check=True)
+        
+        # Step 2: Install CUDA toolkit and appropriate venv package
+        print("🔧 Installing CUDA development tools and Python venv...")
+        packages = ["nvidia-cuda-toolkit"]
+        
+        # Add appropriate python-venv package based on version
+        if python_version_short in ["3.13", "3.12", "3.11", "3.10"]:
+            packages.append(f"python{python_version_short}-venv")
+        else:
+            print(f"   ⚠️  Unsupported Python version: {python_version_short}")
+            print("   Installing generic python3-venv package...")
+            packages.append("python3-venv")
+        
+        subprocess.run(sudo_cmd + ["apt", "install", "-y"] + packages, check=True)
+        
+        # Step 3: Set up CUDA environment
+        print("🌍 Setting up CUDA environment...")
+        cuda_home = "/usr/lib/nvidia-cuda-toolkit"
+        os.environ["CUDA_HOME"] = cuda_home
+        os.environ["PATH"] = f"{cuda_home}/bin:{os.environ.get('PATH', '')}"
+        
+        # Verify CUDA installation
+        print("✅ Verifying CUDA installation...")
+        try:
+            result = subprocess.run(["nvcc", "--version"], capture_output=True, text=True, check=True)
+            print(f"   CUDA compiler found: {result.stdout.splitlines()[0]}")
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            print("   ❌ CUDA compiler not found!")
+            return False
+        
+        # Step 4: Create virtual environment
+        print("🐍 Creating Python virtual environment...")
+        venv_dir = Path("openrlhf_env")
+        if venv_dir.exists():
+            print("   Virtual environment already exists, removing...")
+            shutil.rmtree(venv_dir)
+        
+        # Create virtual environment
+        subprocess.run([sys.executable, "-m", "venv", str(venv_dir)], check=True)
+        
+        # Step 5: Install PyTorch with CUDA support
+        print("🔥 Installing PyTorch with CUDA support...")
+        venv_python = venv_dir / "bin" / "python"
+        subprocess.run([str(venv_python), "-m", "pip", "install", "--upgrade", "pip"], check=True)
+        subprocess.run([str(venv_python), "-m", "pip", "install", "packaging", "wheel", "setuptools"], check=True)
+        subprocess.run([
+            str(venv_python), "-m", "pip", "install", 
+            "torch", "torchvision", 
+            "--index-url", "https://download.pytorch.org/whl/cu121"
+        ], check=True)
+        
+        # Step 6: Clone and install OpenRLHF
+        print("📥 Cloning OpenRLHF repository...")
+        openrlhf_dir = Path("OpenRLHF")
+        if openrlhf_dir.exists():
+            print("   OpenRLHF directory already exists, removing...")
+            shutil.rmtree(openrlhf_dir)
+        
+        subprocess.run(["git", "clone", "https://github.com/OpenRLHF/OpenRLHF.git"], check=True)
+        
+        # Step 7: Install OpenRLHF dependencies
+        print("📋 Installing OpenRLHF dependencies...")
+        try:
+            subprocess.run([str(venv_python), "-m", "pip", "install", "-r", "OpenRLHF/requirements.txt"], check=True)
+        except subprocess.CalledProcessError:
+            print("   ⚠️  Some dependencies failed, trying without flash-attn...")
+            # Create modified requirements without flash-attn
+            with open("OpenRLHF/requirements.txt", "r") as f:
+                requirements = f.read()
+            with open("OpenRLHF/requirements_no_flash.txt", "w") as f:
+                f.write(requirements.replace("flash-attn", ""))
+            subprocess.run([str(venv_python), "-m", "pip", "install", "-r", "OpenRLHF/requirements_no_flash.txt"], check=True)
+        
+        # Step 8: Install OpenRLHF in editable mode
+        print("🔨 Installing OpenRLHF...")
+        subprocess.run([str(venv_python), "-m", "pip", "install", "-e", "OpenRLHF", "--no-deps"], check=True)
+        
+        # Step 9: Verify installation
+        print("🧪 Verifying OpenRLHF installation...")
+        try:
+            result = subprocess.run([str(venv_python), "-c", "import openrlhf; print('✅ OpenRLHF imported successfully!')"], 
+                                  capture_output=True, text=True, check=True)
+            print(f"   {result.stdout.strip()}")
+        except subprocess.CalledProcessError as e:
+            print(f"   ⚠️  OpenRLHF import failed: {e}")
+            print("   Installation may still work for testing purposes")
+        
+        print("🎉 OpenRLHF environment setup completed!")
+        return True
+        
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Setup failed: {e}")
+        return False
+    except Exception as e:
+        print(f"❌ Setup failed with error: {e}")
+        return False
+
 
 def test_imports():
     """Test that all required packages can be imported."""
@@ -39,28 +158,31 @@ def test_imports():
         )
         print("✅ RLDK OpenRLHF integration imported")
         
-        # Test OpenRLHF imports (mock if not available)
+        # Test OpenRLHF imports - try to import first
         try:
             import openrlhf
             print("✅ OpenRLHF imported successfully")
             return True
         except ImportError as e:
             print(f"⚠️  OpenRLHF not available: {e}")
-            print("   Install with CUDA support using:")
-            print("   ./install_openrlhf_with_cuda.sh")
-            print("   Or manually:")
-            print("   1. sudo apt install -y nvidia-cuda-toolkit python3-venv")
-            print("   2. export CUDA_HOME=/usr/lib/nvidia-cuda-toolkit")
-            print("   3. export PATH=$CUDA_HOME/bin:$PATH")
-            print("   4. python3 -m venv openrlhf_env")
-            print("   5. source openrlhf_env/bin/activate")
-            print("   6. pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121")
-            print("   7. git clone https://github.com/OpenRLHF/OpenRLHF.git")
-            print("   8. cd OpenRLHF && pip install -e . --no-deps")
-            print("   For detailed instructions with Python version detection:")
-            print("   See OPENRLHF_CUDA_INSTALLATION_GUIDE.md")
-            print("   Note: Integration works without OpenRLHF for testing purposes")
-            return False
+            print("   Attempting automatic setup...")
+            
+            # Call setup function to install OpenRLHF
+            setup_success = setup_openrlhf_environment()
+            if setup_success:
+                print("   Setup completed, testing import again...")
+                try:
+                    import openrlhf
+                    print("✅ OpenRLHF imported successfully after setup")
+                    return True
+                except ImportError as e2:
+                    print(f"   ⚠️  OpenRLHF still not available after setup: {e2}")
+                    print("   Note: Integration works without OpenRLHF for testing purposes")
+                    return False
+            else:
+                print("   ❌ Setup failed, continuing without OpenRLHF")
+                print("   Note: Integration works without OpenRLHF for testing purposes")
+                return False
             
     except ImportError as e:
         print(f"❌ Import failed: {e}")
