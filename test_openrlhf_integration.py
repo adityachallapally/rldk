@@ -64,23 +64,15 @@ def setup_openrlhf_environment():
             print("   ❌ CUDA compiler not found!")
             return False
         
-        # Step 4: Create virtual environment
-        print("🐍 Creating Python virtual environment...")
-        venv_dir = Path("openrlhf_env")
-        if venv_dir.exists():
-            print("   Virtual environment already exists, removing...")
-            shutil.rmtree(venv_dir)
-        
-        # Create virtual environment
-        subprocess.run([sys.executable, "-m", "venv", str(venv_dir)], check=True)
+        # Step 4: Upgrade pip and install build dependencies
+        print("📚 Installing build dependencies...")
+        subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], check=True)
+        subprocess.run([sys.executable, "-m", "pip", "install", "packaging", "wheel", "setuptools"], check=True)
         
         # Step 5: Install PyTorch with CUDA support
         print("🔥 Installing PyTorch with CUDA support...")
-        venv_python = venv_dir / "bin" / "python"
-        subprocess.run([str(venv_python), "-m", "pip", "install", "--upgrade", "pip"], check=True)
-        subprocess.run([str(venv_python), "-m", "pip", "install", "packaging", "wheel", "setuptools"], check=True)
         subprocess.run([
-            str(venv_python), "-m", "pip", "install", 
+            sys.executable, "-m", "pip", "install", 
             "torch", "torchvision", 
             "--index-url", "https://download.pytorch.org/whl/cu121"
         ], check=True)
@@ -97,24 +89,39 @@ def setup_openrlhf_environment():
         # Step 7: Install OpenRLHF dependencies
         print("📋 Installing OpenRLHF dependencies...")
         try:
-            subprocess.run([str(venv_python), "-m", "pip", "install", "-r", "OpenRLHF/requirements.txt"], check=True)
+            subprocess.run([sys.executable, "-m", "pip", "install", "-r", "OpenRLHF/requirements.txt"], check=True)
         except subprocess.CalledProcessError:
             print("   ⚠️  Some dependencies failed, trying without flash-attn...")
-            # Create modified requirements without flash-attn
+            # Create modified requirements without flash-attn using proper line filtering
             with open("OpenRLHF/requirements.txt", "r") as f:
-                requirements = f.read()
+                requirements_lines = f.readlines()
+            
+            # Filter out lines that contain flash-attn (exact package name)
+            filtered_lines = []
+            for line in requirements_lines:
+                line = line.strip()
+                # Skip empty lines and comments
+                if not line or line.startswith('#'):
+                    filtered_lines.append(line)
+                    continue
+                # Check if line contains flash-attn as a package name (not as substring)
+                parts = line.split()
+                if parts and not any(part.startswith('flash-attn') for part in parts):
+                    filtered_lines.append(line)
+            
             with open("OpenRLHF/requirements_no_flash.txt", "w") as f:
-                f.write(requirements.replace("flash-attn", ""))
-            subprocess.run([str(venv_python), "-m", "pip", "install", "-r", "OpenRLHF/requirements_no_flash.txt"], check=True)
+                f.write('\n'.join(filtered_lines) + '\n')
+            
+            subprocess.run([sys.executable, "-m", "pip", "install", "-r", "OpenRLHF/requirements_no_flash.txt"], check=True)
         
         # Step 8: Install OpenRLHF in editable mode
         print("🔨 Installing OpenRLHF...")
-        subprocess.run([str(venv_python), "-m", "pip", "install", "-e", "OpenRLHF", "--no-deps"], check=True)
+        subprocess.run([sys.executable, "-m", "pip", "install", "-e", "OpenRLHF", "--no-deps"], check=True)
         
         # Step 9: Verify installation
         print("🧪 Verifying OpenRLHF installation...")
         try:
-            result = subprocess.run([str(venv_python), "-c", "import openrlhf; print('✅ OpenRLHF imported successfully!')"], 
+            result = subprocess.run([sys.executable, "-c", "import openrlhf; print('✅ OpenRLHF imported successfully!')"], 
                                   capture_output=True, text=True, check=True)
             print(f"   {result.stdout.strip()}")
         except subprocess.CalledProcessError as e:
