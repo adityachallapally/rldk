@@ -639,9 +639,37 @@ class DistributedTrainingMonitor(OpenRLHFCallback):
                 
         except Exception as e:
             print(f"Error collecting network metrics: {e}")
-            # Fallback to placeholder values
-            self.current_metrics.network_bandwidth = 0.0  # GB/s
-            self.current_metrics.network_latency = 0.0  # ms
+            # Try to get basic network diagnostics as fallback
+            try:
+                from .network_monitor import NetworkDiagnostics
+                diagnostics = NetworkDiagnostics()
+                
+                # Get basic ping and DNS diagnostics
+                ping_tests = diagnostics._run_ping_diagnostics()
+                dns_tests = diagnostics._run_dns_diagnostics()
+                
+                # Calculate average latency from successful ping tests
+                successful_pings = [result['latency'] for result in ping_tests.values() 
+                                 if result.get('success', False) and result['latency'] != float('inf')]
+                avg_latency = np.mean(successful_pings) if successful_pings else 0.0
+                
+                # Get DNS resolution time
+                successful_dns = [result['resolution_time_ms'] for result in dns_tests.values() 
+                                if result.get('success', False)]
+                avg_dns_time = np.mean(successful_dns) if successful_dns else 0.0
+                
+                self.current_metrics.network_bandwidth = 0.0  # GB/s (no bandwidth measurement available)
+                self.current_metrics.network_latency = avg_latency  # ms
+                
+                # Add DNS resolution time as additional metric
+                if hasattr(self.current_metrics, 'dns_resolution_ms'):
+                    self.current_metrics.dns_resolution_ms = avg_dns_time
+                    
+            except Exception as fallback_error:
+                print(f"Fallback network diagnostics also failed: {fallback_error}")
+                # Final fallback to zero values
+                self.current_metrics.network_bandwidth = 0.0  # GB/s
+                self.current_metrics.network_latency = 0.0  # ms
 
 
 class MultiGPUMonitor(OpenRLHFCallback):

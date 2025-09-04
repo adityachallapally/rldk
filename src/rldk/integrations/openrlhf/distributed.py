@@ -587,3 +587,33 @@ class NetworkMonitor:
     def get_comprehensive_metrics(self) -> NetworkMetrics:
         """Get comprehensive network metrics."""
         return self.real_monitor.get_comprehensive_metrics()
+    
+    def run_network_diagnostics(self) -> Dict[str, Any]:
+        """Run comprehensive network diagnostics."""
+        return self.real_monitor.run_network_diagnostics()
+    
+    def get_network_health_report(self) -> Dict[str, Any]:
+        """Get comprehensive network health report."""
+        return self.real_monitor.get_network_health_report()
+    
+    def test_network_connectivity(self) -> Dict[str, Any]:
+        """Test network connectivity to common hosts."""
+        diagnostics = self.real_monitor.network_diagnostics
+        return {
+            'ping_tests': diagnostics._run_ping_diagnostics(),
+            'dns_tests': diagnostics._run_dns_diagnostics(),
+            'connectivity_tests': diagnostics._run_connectivity_diagnostics(),
+        }
+    
+    def test_bandwidth(self) -> Dict[str, Any]:
+        """Test network bandwidth using multiple methods."""
+        diagnostics = self.real_monitor.network_diagnostics
+        return diagnostics._run_bandwidth_diagnostics()
+    
+    def test_distributed_network(self) -> Dict[str, Any]:
+        """Test distributed training network performance."""
+        if DIST_AVAILABLE and dist.is_initialized():
+            diagnostics = self.real_monitor.network_diagnostics
+            return diagnostics._run_distributed_diagnostics()
+        else:
+            return {'error': 'PyTorch distributed not available or initialized'}
