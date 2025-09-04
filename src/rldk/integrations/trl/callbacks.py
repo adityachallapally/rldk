@@ -237,8 +237,11 @@ class RLDKCallback(TrainerCallback):
             self.current_metrics.clip_frac = logs['ppo/policy/clipfrac']
         if 'ppo/val/value_loss' in logs:
             self.current_metrics.value_loss = logs['ppo/val/value_loss']
+        # Check both policy loss key variants for backward compatibility
         if 'ppo/policy/policy_loss' in logs:
             self.current_metrics.policy_loss = logs['ppo/policy/policy_loss']
+        elif 'ppo/val/policy_loss' in logs:
+            self.current_metrics.policy_loss = logs['ppo/val/policy_loss']
         
         # Real-time analysis
         self._analyze_logs(logs, state)

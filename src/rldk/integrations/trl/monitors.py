@@ -171,8 +171,11 @@ class PPOMonitor(TrainerCallback):
             self.policy_entropy_history.append(logs['ppo/policy/entropy'])
         if 'ppo/policy/clipfrac' in logs:
             self.current_ppo_metrics.policy_clip_frac = logs['ppo/policy/clipfrac']
+        # Check both policy loss key variants for backward compatibility
         if 'ppo/policy/policy_loss' in logs:
             self.current_ppo_metrics.policy_loss = logs['ppo/policy/policy_loss']
+        elif 'ppo/val/policy_loss' in logs:
+            self.current_ppo_metrics.policy_loss = logs['ppo/val/policy_loss']
         
         # PPO value function metrics
         if 'ppo/val/value_loss' in logs:
@@ -773,8 +776,11 @@ class ComprehensivePPOMonitor(TrainerCallback):
                 self.forensics.current_metrics.clip_frac = latest_log['ppo/policy/clipfrac']
             if 'ppo/val/value_loss' in latest_log:
                 self.forensics.current_metrics.value_loss = latest_log['ppo/val/value_loss']
+            # Check both policy loss key variants for backward compatibility
             if 'ppo/policy/policy_loss' in latest_log:
                 self.forensics.current_metrics.policy_loss = latest_log['ppo/policy/policy_loss']
+            elif 'ppo/val/policy_loss' in latest_log:
+                self.forensics.current_metrics.policy_loss = latest_log['ppo/val/policy_loss']
             if 'ppo/policy/grad_norm' in latest_log:
                 self.forensics.current_metrics.policy_grad_norm = latest_log['ppo/policy/grad_norm']
             if 'ppo/val/grad_norm' in latest_log:
