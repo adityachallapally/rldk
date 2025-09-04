@@ -253,10 +253,10 @@ class TestPPOTrainerMocked:
             trainer = PPOTrainer(
                 args=config,
                 model=model,
-                processing_class=tokenizer,
                 ref_model=ref_model,
                 reward_model=reward_model,
                 value_model=value_model,
+                processing_class=tokenizer,
                 train_dataset=dataset,
             )
             assert trainer is not None

@@ -203,11 +203,14 @@ rldk_callback = RLDKCallback(
     run_id="my_ppo_run"
 )
 
-# Create PPO trainer with callback
+# Create PPO trainer with callback (TRL v0.22.2+ API)
 trainer = PPOTrainer(
     args=ppo_config,
     model=model,
-    tokenizer=tokenizer,
+    ref_model=ref_model,
+    reward_model=reward_model,
+    value_model=value_model,
+    processing_class=tokenizer,
     train_dataset=dataset,
     callbacks=[rldk_callback]
 )

@@ -386,7 +386,14 @@ def main():
         print("   from trl import PPOTrainer")
         print("   ")
         print("   monitor = RLDKCallback()")
-        print("   trainer = PPOTrainer(..., callbacks=[monitor])")
+        print("   trainer = PPOTrainer(")
+        print("       args=config,")
+        print("       model=model,")
+        print("       ref_model=ref_model,")
+        print("       reward_model=reward_model,")
+        print("       value_model=value_model,")
+        print("       callbacks=[monitor]")
+        print("   )")
     else:
         print(f"\n❌ {total - passed} tests failed. Please check the output above.")
     

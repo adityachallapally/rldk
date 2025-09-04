@@ -107,10 +107,22 @@ def test_basic_ppo_integration():
         fp16=False,  # Disable fp16 for compatibility
     )
     
-    # Create PPO trainer
+    # Create reference model (required in TRL v0.22.2+)
+    ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    
+    # Create reward model (required in TRL v0.22.2+)
+    reward_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    
+    # Create value model (required in TRL v0.22.2+)
+    value_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    
+    # Create PPO trainer with new API
     trainer = PPOTrainer(
         args=ppo_config,
         model=model,
+        ref_model=ref_model,
+        reward_model=reward_model,
+        value_model=value_model,
         processing_class=tokenizer,
         train_dataset=dataset,
         callbacks=[rldk_callback, ppo_monitor, checkpoint_monitor],
