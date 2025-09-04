@@ -176,7 +176,10 @@ class OpenRLHFTrainingMonitor:
                 training_speed = 1.0 / avg_step_time
         
         # Calculate memory efficiency (based on GPU memory usage)
-        memory_usage = [m.gpu_memory_used for m in metrics if m.gpu_memory_used > 0]
+        memory_usage = []
+        for m in metrics:
+            if hasattr(m, 'gpu_memory_used') and m.gpu_memory_used > 0:
+                memory_usage.append(m.gpu_memory_used)
         memory_efficiency = 1.0
         if memory_usage:
             # Efficiency based on memory usage stability
@@ -789,14 +792,20 @@ class PerformanceAnalyzer:
     
     def _calculate_training_speed(self, metrics: List[OpenRLHFMetrics]) -> float:
         """Calculate training speed in steps per second."""
-        step_times = [m.step_time for m in metrics if m.step_time > 0]
+        step_times = []
+        for m in metrics:
+            if hasattr(m, 'step_time') and m.step_time > 0:
+                step_times.append(m.step_time)
         if not step_times:
             return 0.0
         return 1.0 / np.mean(step_times)
     
     def _calculate_memory_efficiency(self, metrics: List[OpenRLHFMetrics]) -> float:
         """Calculate memory efficiency based on variance in memory usage."""
-        memory_usage = [m.gpu_memory_used for m in metrics if m.gpu_memory_used > 0]
+        memory_usage = []
+        for m in metrics:
+            if hasattr(m, 'gpu_memory_used') and m.gpu_memory_used > 0:
+                memory_usage.append(m.gpu_memory_used)
         if not memory_usage:
             return 1.0
         
@@ -810,7 +819,11 @@ class PerformanceAnalyzer:
     
     def _calculate_gpu_utilization(self, metrics: List[OpenRLHFMetrics]) -> float:
         """Calculate average GPU utilization."""
-        gpu_utils = [m.gpu_utilization for m in metrics if m.gpu_utilization > 0]
+        gpu_utils = []
+        for m in metrics:
+            if hasattr(m, 'gpu_utilization'):
+                # Include all values, not just > 0, since 0 might be valid
+                gpu_utils.append(m.gpu_utilization)
         return np.mean(gpu_utils) if gpu_utils else 0.0
     
     def _calculate_detailed_metrics(self, metrics: List[OpenRLHFMetrics]) -> Dict[str, float]:
@@ -818,8 +831,13 @@ class PerformanceAnalyzer:
         detailed = {}
         
         # Forward/backward time ratio
-        forward_times = [m.forward_time for m in metrics if m.forward_time > 0]
-        backward_times = [m.backward_time for m in metrics if m.backward_time > 0]
+        forward_times = []
+        backward_times = []
+        for m in metrics:
+            if hasattr(m, 'forward_time'):
+                forward_times.append(m.forward_time)
+            if hasattr(m, 'backward_time'):
+                backward_times.append(m.backward_time)
         
         if forward_times and backward_times:
             avg_forward = np.mean(forward_times)
@@ -827,8 +845,13 @@ class PerformanceAnalyzer:
             detailed['forward_backward_ratio'] = avg_forward / avg_backward if avg_backward > 0 else 0.0
         
         # Memory allocation efficiency
-        memory_allocated = [m.gpu_memory_allocated for m in metrics if m.gpu_memory_allocated > 0]
-        memory_used = [m.gpu_memory_used for m in metrics if m.gpu_memory_used > 0]
+        memory_allocated = []
+        memory_used = []
+        for m in metrics:
+            if hasattr(m, 'gpu_memory_allocated'):
+                memory_allocated.append(m.gpu_memory_allocated)
+            if hasattr(m, 'gpu_memory_used'):
+                memory_used.append(m.gpu_memory_used)
         
         if memory_allocated and memory_used:
             avg_allocated = np.mean(memory_allocated)
@@ -836,12 +859,19 @@ class PerformanceAnalyzer:
             detailed['memory_allocation_efficiency'] = avg_used / avg_allocated if avg_allocated > 0 else 0.0
         
         # CPU utilization
-        cpu_utils = [m.cpu_utilization for m in metrics if m.cpu_utilization > 0]
+        cpu_utils = []
+        for m in metrics:
+            if hasattr(m, 'cpu_utilization'):
+                cpu_utils.append(m.cpu_utilization)
         detailed['cpu_utilization'] = np.mean(cpu_utils) if cpu_utils else 0.0
         
         # Network performance (for distributed training)
-        if any(m.allreduce_time > 0 for m in metrics):
-            allreduce_times = [m.allreduce_time for m in metrics if m.allreduce_time > 0]
+        allreduce_times = []
+        for m in metrics:
+            if hasattr(m, 'allreduce_time'):
+                allreduce_times.append(m.allreduce_time)
+        
+        if allreduce_times:
             detailed['avg_allreduce_time'] = np.mean(allreduce_times)
         
         return detailed
