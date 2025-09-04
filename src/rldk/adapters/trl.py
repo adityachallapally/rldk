@@ -38,19 +38,27 @@ class TRLAdapter(BaseAdapter):
                     if first_line:
                         data = json.loads(first_line)
                         # Check for TRL-specific keywords or our test fixture format
-                        return (
-                            "trl" in str(data).lower()
-                            or "trainer" in str(data).lower()
-                            or all(
-                                key in data
-                                for key in ["step", "phase", "reward_mean", "kl_mean"]
+                        # First check if data is a dict and has the required keys
+                        if isinstance(data, dict):
+                            return (
+                                "trl" in str(data).lower()
+                                or "trainer" in str(data).lower()
+                                or all(
+                                    key in data
+                                    for key in ["step", "phase", "reward_mean", "kl_mean"]
+                                )
                             )
-                        )
+                        else:
+                            # For non-dict data, only check string content
+                            return (
+                                "trl" in str(data).lower()
+                                or "trainer" in str(data).lower()
+                            )
             elif file_path.suffix == ".log":
                 with open(file_path, "r") as f:
                     content = f.read()
                     return "trl" in content.lower() or "trainer" in content.lower()
-        except (OSError, IOError, json.JSONDecodeError, UnicodeDecodeError) as e:
+        except (OSError, IOError, json.JSONDecodeError, UnicodeDecodeError, TypeError) as e:
             # Log the specific error for debugging but don't fail the check
             print(f"Warning: Error checking if file {file_path} is TRL format: {e}")
             pass

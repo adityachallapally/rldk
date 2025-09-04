@@ -34,11 +34,16 @@ class CustomJSONLAdapter(BaseAdapter):
                     if first_line:
                         data = json.loads(first_line)
                         # Check for our custom schema
-                        return all(
-                            key in data
-                            for key in ["global_step", "reward_scalar", "loss"]
-                        )
-        except (OSError, IOError, json.JSONDecodeError, UnicodeDecodeError) as e:
+                        # Only check for required keys if data is a dict
+                        if isinstance(data, dict):
+                            return all(
+                                key in data
+                                for key in ["global_step", "reward_scalar", "loss"]
+                            )
+                        else:
+                            # For non-dict data, it's not our custom format
+                            return False
+        except (OSError, IOError, json.JSONDecodeError, UnicodeDecodeError, TypeError) as e:
             # Log the specific error for debugging but don't fail the check
             print(f"Warning: Error checking if file {file_path} is custom JSONL format: {e}")
             pass

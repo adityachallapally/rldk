@@ -6,24 +6,35 @@ This document summarizes the fixes made to replace bare `except:` statements wit
 
 Bare `except:` statements were found throughout the codebase that were swallowing all exceptions, making it difficult to debug issues. These have been replaced with specific exception types and appropriate error logging.
 
+### Critical Bug Fix: Non-Iterable JSON Data Handling
+
+A critical bug was identified in the adapter `can_handle` methods where `json.loads()` could return non-iterable types (integers, booleans, strings, etc.), causing `TypeError` when the code tried to use the `in` operator with `all(key in data for key in [...])`. This has been fixed by:
+
+1. Adding `isinstance(data, dict)` checks before using dict operations
+2. Adding `TypeError` to exception handling
+3. Providing graceful fallback behavior for non-dict JSON data
+
 ## Files Fixed
 
 ### 1. Adapter Files (`src/rldk/adapters/`)
 
 #### `trl.py`
 - **Line 52**: Fixed bare except in `_is_trl_file()` method
-- **Change**: `except:` → `except (OSError, IOError, json.JSONDecodeError, UnicodeDecodeError) as e:`
+- **Change**: `except:` → `except (OSError, IOError, json.JSONDecodeError, UnicodeDecodeError, TypeError) as e:`
 - **Added**: Warning message with specific error details
+- **Added**: `isinstance(data, dict)` check to handle non-iterable JSON data
 
 #### `custom_jsonl.py`
 - **Line 40**: Fixed bare except in `_is_custom_jsonl_file()` method
-- **Change**: `except:` → `except (OSError, IOError, json.JSONDecodeError, UnicodeDecodeError) as e:`
+- **Change**: `except:` → `except (OSError, IOError, json.JSONDecodeError, UnicodeDecodeError, TypeError) as e:`
 - **Added**: Warning message with specific error details
+- **Added**: `isinstance(data, dict)` check to handle non-iterable JSON data
 
 #### `openrlhf.py`
 - **Line 52**: Fixed bare except in `_is_openrlhf_file()` method
-- **Change**: `except:` → `except (OSError, IOError, json.JSONDecodeError, UnicodeDecodeError) as e:`
+- **Change**: `except:` → `except (OSError, IOError, json.JSONDecodeError, UnicodeDecodeError, TypeError) as e:`
 - **Added**: Warning message with specific error details
+- **Added**: `isinstance(data, dict)` check to handle non-iterable JSON data
 
 ### 2. Replay Module (`src/rldk/replay/`)
 
@@ -117,6 +128,7 @@ Bare `except:` statements were found throughout the codebase that were swallowin
 3. **Graceful Degradation**: Code continues to work even when non-critical operations fail
 4. **Maintainability**: Easier to understand and fix issues when they occur
 5. **Logging**: All errors are now logged with context, making troubleshooting easier
+6. **Robust JSON Handling**: Properly handles non-iterable JSON data (integers, booleans, strings, etc.) without raising TypeError
 
 ## Exception Types Used
 
@@ -138,3 +150,4 @@ Bare `except:` statements were found throughout the codebase that were swallowin
 3. **Graceful Degradation**: Continue operation when possible, even if some features fail
 4. **Clear Messages**: Provide informative error messages that help with troubleshooting
 5. **Documentation**: Added comments explaining the error handling behavior
+6. **Type Safety**: Check data types before using operations that require specific types (e.g., `in` operator on dicts)
