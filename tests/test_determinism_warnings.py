@@ -15,7 +15,12 @@ class TestDeterminismWarnings:
     def test_pytorch_cuda_kernels_warning_when_missing(self):
         """Test that PyTorch CUDA kernels warning is shown when torch is missing."""
         with patch.dict(os.environ, {"RLDK_SILENCE_DETERMINISM_WARN": "0"}):
-            with patch("builtins.__import__", side_effect=ImportError("No module named 'torch'")):
+            def mock_import(name, *args, **kwargs):
+                if name == "torch":
+                    raise ImportError("No module named 'torch'")
+                return __import__(name, *args, **kwargs)
+            
+            with patch("builtins.__import__", side_effect=mock_import):
                 with warnings.catch_warnings(record=True) as w:
                     warnings.simplefilter("always")
                     
@@ -133,7 +138,12 @@ class TestDeterminismWarnings:
     def test_silence_flag_prevents_warnings(self):
         """Test that RLDK_SILENCE_DETERMINISM_WARN=1 prevents warnings."""
         with patch.dict(os.environ, {"RLDK_SILENCE_DETERMINISM_WARN": "1"}):
-            with patch("builtins.__import__", side_effect=ImportError("No module named 'torch'")):
+            def mock_import(name, *args, **kwargs):
+                if name == "torch":
+                    raise ImportError("No module named 'torch'")
+                return __import__(name, *args, **kwargs)
+            
+            with patch("builtins.__import__", side_effect=mock_import):
                 with warnings.catch_warnings(record=True) as w:
                     warnings.simplefilter("always")
                     

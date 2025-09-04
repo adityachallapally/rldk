@@ -117,6 +117,12 @@ UserWarning: Determinism: Skipped JAX determinism check. Install jax>=0.4.0 to e
 - **Fix**: Changed both functions to `return hasattr(...)` instead of just calling `hasattr(...)` and returning `True`
 - **Result**: Functions now correctly return `False` when determinism features are missing and `True` when they exist
 
+### Fixed: Import Mocking in Tests
+- **Issue**: Tests were using global import patches that made ALL imports fail, not just the targeted module
+- **Impact**: Tests incorrectly showed multiple warnings when only one dependency was supposed to be missing
+- **Fix**: Changed tests to use conditional import mocking that only fails for specific module names
+- **Result**: Tests now correctly verify individual dependency warnings without affecting other imports
+
 ## Implementation Notes
 
 - All warnings are single-line and informative
