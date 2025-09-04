@@ -112,6 +112,8 @@ class OpenRLHFMetrics:
     node_id: str = ""
     
     # Network metrics (for multi-node)
+    network_bandwidth: float = 0.0  # Legacy attribute for backward compatibility
+    network_latency: float = 0.0    # Legacy attribute for backward compatibility
     bandwidth_mbps: float = 0.0
     latency_ms: float = 0.0
     bandwidth_upload_mbps: float = 0.0
@@ -756,6 +758,10 @@ class DistributedTrainingMonitor(OpenRLHFCallback):
             self.current_metrics.bandwidth_download_mbps = network_metrics.bandwidth_in_mbps
             self.current_metrics.total_bandwidth_mbps = network_metrics.bandwidth_in_mbps + network_metrics.bandwidth_out_mbps
             
+            # Update legacy attributes for backward compatibility
+            self.current_metrics.network_bandwidth = network_metrics.bandwidth_mbps
+            self.current_metrics.network_latency = network_metrics.latency_ms
+            
             # Add additional network metrics
             self.current_metrics.allreduce_bandwidth = network_metrics.allreduce_bandwidth
             self.current_metrics.broadcast_bandwidth = network_metrics.broadcast_bandwidth
@@ -793,6 +799,10 @@ class DistributedTrainingMonitor(OpenRLHFCallback):
                 self.current_metrics.bandwidth_download_mbps = 0.0
                 self.current_metrics.total_bandwidth_mbps = 0.0
                 self.current_metrics.dns_resolution_ms = avg_dns_time
+                
+                # Update legacy attributes for backward compatibility
+                self.current_metrics.network_bandwidth = 0.0
+                self.current_metrics.network_latency = avg_latency
                     
             except Exception as fallback_error:
                 print(f"Fallback network diagnostics also failed: {fallback_error}")
@@ -802,6 +812,10 @@ class DistributedTrainingMonitor(OpenRLHFCallback):
                 self.current_metrics.bandwidth_upload_mbps = 0.0
                 self.current_metrics.bandwidth_download_mbps = 0.0
                 self.current_metrics.total_bandwidth_mbps = 0.0
+                
+                # Update legacy attributes for backward compatibility
+                self.current_metrics.network_bandwidth = 0.0
+                self.current_metrics.network_latency = 0.0
 
 
 class MultiGPUMonitor(OpenRLHFCallback):

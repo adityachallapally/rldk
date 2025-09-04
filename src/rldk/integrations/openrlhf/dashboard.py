@@ -652,27 +652,33 @@ class OpenRLHFDashboard:
         except Exception as e:
             print(f"Error updating dashboard data: {e}")
     
-    def add_metrics(self, metrics: Dict[str, Any]):
+    def add_metrics(self, metrics: Union[Dict[str, Any], 'OpenRLHFMetrics']):
         """Append new metrics entry and trigger refresh."""
         try:
+            # Convert dataclass to dictionary if needed
+            if hasattr(metrics, 'to_dict'):
+                metrics_dict = metrics.to_dict()
+            else:
+                metrics_dict = metrics
+            
             # Add timestamp if not present
-            if 'timestamp' not in metrics:
-                metrics['timestamp'] = time.time()
+            if 'timestamp' not in metrics_dict:
+                metrics_dict['timestamp'] = time.time()
             
             # Append to appropriate data list
-            if 'bandwidth_mbps' in metrics or 'latency_ms' in metrics:
-                self.network_data.append(metrics)
+            if 'bandwidth_mbps' in metrics_dict or 'latency_ms' in metrics_dict:
+                self.network_data.append(metrics_dict)
                 # Keep only last 1000 entries
                 if len(self.network_data) > 1000:
                     self.network_data = self.network_data[-1000:]
             else:
-                self.metrics_data.append(metrics)
+                self.metrics_data.append(metrics_dict)
                 # Keep only last 1000 entries
                 if len(self.metrics_data) > 1000:
                     self.metrics_data = self.metrics_data[-1000:]
             
             # Write to JSONL file
-            self._write_metrics_to_file(metrics)
+            self._write_metrics_to_file(metrics_dict)
             
             # Trigger refresh if using Streamlit
             try:
@@ -743,10 +749,16 @@ class OpenRLHFDashboard:
         except Exception as e:
             print(f"Failed to initialize network monitoring: {e}")
     
-    def check_network_thresholds(self, metrics: Dict[str, Any]):
+    def check_network_thresholds(self, metrics: Union[Dict[str, Any], 'OpenRLHFMetrics']):
         """Check network metrics against thresholds and generate alerts."""
         if not self.network_monitor:
             return
+        
+        # Convert dataclass to dictionary if needed
+        if hasattr(metrics, 'to_dict'):
+            metrics_dict = metrics.to_dict()
+        else:
+            metrics_dict = metrics
         
         # Define thresholds
         thresholds = {
@@ -756,8 +768,8 @@ class OpenRLHFDashboard:
         }
         
         # Check latency
-        if 'latency_ms' in metrics:
-            latency = metrics['latency_ms']
+        if 'latency_ms' in metrics_dict:
+            latency = metrics_dict['latency_ms']
             if latency > thresholds['latency_ms']:
                 self.add_alert(
                     'network', 
@@ -768,8 +780,8 @@ class OpenRLHFDashboard:
                 )
         
         # Check bandwidth
-        if 'bandwidth_mbps' in metrics:
-            bandwidth = metrics['bandwidth_mbps']
+        if 'bandwidth_mbps' in metrics_dict:
+            bandwidth = metrics_dict['bandwidth_mbps']
             if bandwidth < thresholds['bandwidth_mbps']:
                 self.add_alert(
                     'network',
@@ -780,8 +792,8 @@ class OpenRLHFDashboard:
                 )
         
         # Check packet loss
-        if 'packet_loss_percent' in metrics:
-            packet_loss = metrics['packet_loss_percent']
+        if 'packet_loss_percent' in metrics_dict:
+            packet_loss = metrics_dict['packet_loss_percent']
             if packet_loss > thresholds['packet_loss_percent']:
                 self.add_alert(
                     'network',
