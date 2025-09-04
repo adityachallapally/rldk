@@ -132,22 +132,28 @@ class CustomJSONLAdapter(BaseAdapter):
         try:
             # Map our custom schema to the expected format
             # Handle various possible field names for better compatibility
-            step = data.get("global_step") or data.get("step", line_num)
-            reward_scalar = data.get("reward_scalar") or data.get("reward_mean", 0.0)
-            kl_value = data.get("kl_to_ref") or data.get("kl_mean", 0.0)
+            # Use 'in' checks to avoid skipping valid zeros
+            step = data.get("global_step") if "global_step" in data else data.get("step", line_num)
+            reward_scalar = data.get("reward_scalar") if "reward_scalar" in data else data.get("reward_mean", 0.0)
+            kl_value = data.get("kl_to_ref") if "kl_to_ref" in data else data.get("kl_mean", 0.0)
             loss_value = data.get("loss", 0.0)
             
             # Extract RNG seed from various possible locations
-            seed = (data.get("rng.python") or 
-                   data.get("seed") or 
-                   data.get("rng", {}).get("python") if isinstance(data.get("rng"), dict) else None or 
-                   42)
+            # Fix operator precedence by using proper conditional logic
+            seed = 42  # Default fallback
+            if "rng.python" in data:
+                seed = data["rng.python"]
+            elif "seed" in data:
+                seed = data["seed"]
+            elif "rng" in data and isinstance(data["rng"], dict) and "python" in data["rng"]:
+                seed = data["rng"]["python"]
             
             # Extract additional metrics if available
-            entropy_value = data.get("entropy") or data.get("entropy_mean", 0.0)
+            # Use 'in' checks to avoid skipping valid zeros
+            entropy_value = data.get("entropy") if "entropy" in data else data.get("entropy_mean", 0.0)
             clip_frac_value = data.get("clip_frac", 0.0)
             grad_norm_value = data.get("grad_norm", 0.0)
-            lr_value = data.get("lr") or data.get("learning_rate", 0.0)
+            lr_value = data.get("lr") if "lr" in data else data.get("learning_rate", 0.0)
             reward_std_value = data.get("reward_std", 0.0)
             
             # Extract data slice information if available
@@ -155,7 +161,8 @@ class CustomJSONLAdapter(BaseAdapter):
             tokens_out = data.get("tokens_out", 0)
             
             # Extract wall time if available
-            wall_time = data.get("wall_time") or data.get("timestamp", 0.0)
+            # Use 'in' check to avoid skipping valid zeros
+            wall_time = data.get("wall_time") if "wall_time" in data else data.get("timestamp", 0.0)
             
             metric = {
                 "step": int(step),

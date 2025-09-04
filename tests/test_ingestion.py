@@ -248,6 +248,75 @@ class TestJSONLIngestion:
         finally:
             os.unlink(f.name)
 
+    def test_custom_jsonl_adapter_preserves_valid_zeros(self):
+        """Test that CustomJSONL adapter preserves valid zero values."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write custom JSONL data with valid zeros
+            json.dump({
+                "global_step": 0,        # Valid zero
+                "reward_scalar": 0.0,    # Valid zero
+                "kl_to_ref": 0.0,        # Valid zero
+                "loss": 0.0,             # Valid zero
+                "rng.python": 0,         # Valid zero
+                "entropy": 0.0,          # Valid zero
+                "lr": 0.0,               # Valid zero
+                "wall_time": 0.0,        # Valid zero
+                "tokens_in": 0,          # Valid zero
+                "tokens_out": 0,         # Valid zero
+                "run_id": "test_run",
+                "git_sha": "abc123"
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            df = adapter.load()
+            
+            # Verify that zeros are preserved
+            assert df["step"].iloc[0] == 0, f"Expected step=0, got {df['step'].iloc[0]}"
+            assert df["reward_mean"].iloc[0] == 0.0, f"Expected reward_mean=0.0, got {df['reward_mean'].iloc[0]}"
+            assert df["kl_mean"].iloc[0] == 0.0, f"Expected kl_mean=0.0, got {df['kl_mean'].iloc[0]}"
+            assert df["loss"].iloc[0] == 0.0, f"Expected loss=0.0, got {df['loss'].iloc[0]}"
+            assert df["entropy_mean"].iloc[0] == 0.0, f"Expected entropy_mean=0.0, got {df['entropy_mean'].iloc[0]}"
+            assert df["lr"].iloc[0] == 0.0, f"Expected lr=0.0, got {df['lr'].iloc[0]}"
+            assert df["wall_time"].iloc[0] == 0.0, f"Expected wall_time=0.0, got {df['wall_time'].iloc[0]}"
+            assert df["seed"].iloc[0] == 0, f"Expected seed=0, got {df['seed'].iloc[0]}"
+            assert df["tokens_in"].iloc[0] == 0, f"Expected tokens_in=0, got {df['tokens_in'].iloc[0]}"
+            assert df["tokens_out"].iloc[0] == 0, f"Expected tokens_out=0, got {df['tokens_out'].iloc[0]}"
+            
+        finally:
+            os.unlink(f.name)
+
+    def test_custom_jsonl_adapter_handles_missing_fields(self):
+        """Test that CustomJSONL adapter uses defaults for missing fields."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write custom JSONL data with only some fields
+            json.dump({
+                "global_step": 5,
+                "reward_scalar": 0.5,
+                "run_id": "test_run"
+                # Missing most fields
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            df = adapter.load()
+            
+            # Verify that present fields are preserved
+            assert df["step"].iloc[0] == 5, f"Expected step=5, got {df['step'].iloc[0]}"
+            assert df["reward_mean"].iloc[0] == 0.5, f"Expected reward_mean=0.5, got {df['reward_mean'].iloc[0]}"
+            
+            # Verify that missing fields use defaults
+            assert df["kl_mean"].iloc[0] == 0.0, f"Expected kl_mean=0.0 (default), got {df['kl_mean'].iloc[0]}"
+            assert df["loss"].iloc[0] == 0.0, f"Expected loss=0.0 (default), got {df['loss'].iloc[0]}"
+            assert df["seed"].iloc[0] == 42, f"Expected seed=42 (default), got {df['seed'].iloc[0]}"
+            
+        finally:
+            os.unlink(f.name)
+
     def test_adapters_produce_identical_event_objects(self):
         """Test that TRL and OpenRLHF adapters produce identical Event objects from compatible logs."""
         # Create identical training data
