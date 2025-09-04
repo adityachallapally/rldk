@@ -723,11 +723,8 @@ class RLDKCallback(TrainerCallback):
     
     def _emit_jsonl_event(self, state: TrainerState, logs: Dict[str, float]):
         """Emit a standardized JSONL event compatible with Event schema and TRLAdapter."""
-        # Check if we should log at this interval
-        if (self.enable_jsonl_logging and 
-            self.jsonl_log_interval > 0 and 
-            state.global_step % self.jsonl_log_interval == 0):
-            self._log_jsonl_event(state, logs)
+        # Always emit when called directly - interval checking is handled in on_log
+        self._log_jsonl_event(state, logs)
     
     def _close_jsonl_file(self):
         """Close the JSONL file."""

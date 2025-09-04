@@ -21,10 +21,10 @@ class TRLAdapter(BaseAdapter):
         if self.source.is_file():
             return self._is_trl_file(self.source)
         elif self.source.is_dir():
-            # Check for common TRL log files
-            trl_files = list(self.source.glob("*.log")) + list(
-                self.source.glob("trainer_log.jsonl")
-            )
+            # Check for common TRL log files including new RLDK JSONL events
+            trl_files = (list(self.source.glob("*.log")) + 
+                        list(self.source.glob("trainer_log.jsonl")) +
+                        list(self.source.glob("*_events.jsonl")))
             return len(trl_files) > 0
 
         return False
