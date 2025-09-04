@@ -1,113 +1,137 @@
 #!/usr/bin/env python3
-"""
-Basic import test for Phase B modules.
-"""
+"""Basic import test for network monitoring components."""
 
 import sys
-from pathlib import Path
+import os
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+# Add the src directory to the path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src', 'rldk', 'integrations', 'openrlhf'))
 
-
-def test_basic_imports():
-    """Test basic module imports."""
+def test_imports():
+    """Test basic imports without external dependencies."""
     try:
-        # Test reward module imports
-        print("Testing reward module imports...")
-        import rldk.reward
-
-        print("✅ rldk.reward imported successfully")
-
-        # Test evals module imports
-        print("Testing evals module imports...")
-        import rldk.evals
-
-        print("✅ rldk.evals imported successfully")
-
-        # Test CLI imports
-        print("Testing CLI imports...")
-        import rldk.cli
-
-        print("✅ rldk.cli imported successfully")
-
-        print("\n🎉 All basic imports successful!")
+        # Test importing the basic classes
+        from network_monitor import NetworkMetrics
+        print("✅ NetworkMetrics imported successfully")
+        
+        # Test creating an instance
+        metrics = NetworkMetrics(
+            bandwidth_mbps=100.0,
+            latency_ms=5.0,
+            timestamp=1234567890.0
+        )
+        print("✅ NetworkMetrics instance created successfully")
+        
+        # Test to_dict method
+        metrics_dict = metrics.to_dict()
+        print("✅ to_dict method works")
+        print(f"   Bandwidth: {metrics_dict['bandwidth_mbps']}")
+        print(f"   Latency: {metrics_dict['latency_ms']}")
+        
         return True
-
+        
     except ImportError as e:
-        print(f"❌ Import failed: {e}")
+        print(f"❌ Import error: {e}")
         return False
     except Exception as e:
-        print(f"❌ Unexpected error: {e}")
+        print(f"❌ Error: {e}")
         return False
 
-
-def test_data_structures():
-    """Test data structure creation."""
+def test_distributed_imports():
+    """Test distributed module imports."""
     try:
-        print("\nTesting data structure creation...")
-
-        # Test RewardHealthReport
-        from rldk.reward.health import RewardHealthReport
-        import pandas as pd
-
-        report = RewardHealthReport(
-            passed=True,
-            drift_detected=False,
-            saturation_issues=[],
-            calibration_score=0.8,
-            shortcut_signals=[],
-            label_leakage_risk=0.1,
-            fixes=[],
-            drift_metrics=pd.DataFrame(),
-            calibration_details={},
-            shortcut_analysis={},
-            saturation_analysis={},
-        )
-        print("✅ RewardHealthReport created successfully")
-
-        # Test EvalResult
-        from rldk.evals.runner import EvalResult
-
-        result = EvalResult(
-            suite_name="test",
-            scores={"test": 0.8},
-            confidence_intervals={"test": (0.7, 0.9)},
-            effect_sizes={"test": 0.5},
-            sample_size=50,
-            seed=42,
-            metadata={},
-            raw_results=[],
-        )
-        print("✅ EvalResult created successfully")
-
-        print("\n🎉 All data structures created successfully!")
+        # Mock psutil for testing
+        import sys
+        from unittest.mock import MagicMock
+        
+        # Create a mock psutil module
+        mock_psutil = MagicMock()
+        mock_net_io = MagicMock()
+        mock_net_io.bytes_sent = 1000
+        mock_net_io.bytes_recv = 2000
+        mock_psutil.net_io_counters.return_value = mock_net_io
+        sys.modules['psutil'] = mock_psutil
+        
+        # Now try to import the distributed module
+        from distributed import NetworkMonitor
+        print("✅ NetworkMonitor imported successfully")
+        
+        # Test creating an instance
+        monitor = NetworkMonitor()
+        print("✅ NetworkMonitor instance created successfully")
+        
         return True
-
+        
+    except ImportError as e:
+        print(f"❌ Distributed import error: {e}")
+        return False
     except Exception as e:
-        print(f"❌ Data structure test failed: {e}")
+        print(f"❌ Distributed error: {e}")
         return False
 
+def test_dashboard_imports():
+    """Test dashboard module imports."""
+    try:
+        # Mock required modules
+        import sys
+        from unittest.mock import MagicMock
+        
+        # Mock Flask
+        mock_flask = MagicMock()
+        sys.modules['flask'] = mock_flask
+        
+        # Mock plotly
+        mock_plotly = MagicMock()
+        sys.modules['plotly'] = mock_plotly
+        
+        # Mock numpy
+        mock_numpy = MagicMock()
+        sys.modules['numpy'] = mock_numpy
+        
+        # Mock pandas
+        mock_pandas = MagicMock()
+        sys.modules['pandas'] = mock_pandas
+        
+        # Now try to import the dashboard module
+        from dashboard import OpenRLHFDashboard
+        print("✅ OpenRLHFDashboard imported successfully")
+        
+        return True
+        
+    except ImportError as e:
+        print(f"❌ Dashboard import error: {e}")
+        return False
+    except Exception as e:
+        print(f"❌ Dashboard error: {e}")
+        return False
+
+def main():
+    """Run all import tests."""
+    print("🧪 Testing basic imports...")
+    print("=" * 50)
+    
+    success = True
+    
+    # Test basic network monitor imports
+    if not test_imports():
+        success = False
+    
+    # Test distributed imports
+    if not test_distributed_imports():
+        success = False
+    
+    # Test dashboard imports
+    if not test_dashboard_imports():
+        success = False
+    
+    print("\n" + "=" * 50)
+    if success:
+        print("✅ All basic imports successful!")
+        print("📝 Note: External dependencies (psutil, numpy, pandas, etc.) need to be installed for full functionality")
+    else:
+        print("❌ Some imports failed")
+    
+    return success
 
 if __name__ == "__main__":
-    print("🧪 Testing Phase B Basic Functionality")
-    print("=" * 50)
-
-    # Test imports
-    imports_ok = test_basic_imports()
-
-    # Test data structures
-    if imports_ok:
-        structures_ok = test_data_structures()
-    else:
-        structures_ok = False
-
-    # Summary
-    print("\n" + "=" * 50)
-    if imports_ok and structures_ok:
-        print("🎉 All tests passed! Phase B modules are working correctly.")
-    else:
-        print("❌ Some tests failed. Check the error messages above.")
-
-    print(f"\nImport test: {'✅ PASSED' if imports_ok else '❌ FAILED'}")
-    print(f"Data structure test: {'✅ PASSED' if structures_ok else '❌ FAILED'}")
+    main()

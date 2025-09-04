@@ -3,13 +3,14 @@
 import time
 import threading
 import queue
-from typing import Dict, List, Optional, Any, Callable
+from typing import Dict, List, Optional, Any, Callable, Tuple
 from dataclasses import dataclass, field
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import socket
 import subprocess
 import psutil
+import platform
 
 import torch
 import numpy as np
@@ -185,8 +186,8 @@ class DistributedMetricsCollector:
         # Collect network metrics
         if self.enable_network_monitoring and self.network_monitor:
             network_metrics = self.network_monitor.get_current_metrics()
-            metrics.network_bandwidth = network_metrics.get('bandwidth', 0.0)
-            metrics.network_latency = network_metrics.get('latency', 0.0)
+            metrics.network_bandwidth = network_metrics.get('bandwidth_mbps', 0.0) # Changed to bandwidth_mbps
+            metrics.network_latency = network_metrics.get('latency_ms', 0.0) # Changed to latency_ms
         
         return metrics
     
@@ -567,18 +568,218 @@ class GPUMemoryMonitor:
 from .network_monitor import RealNetworkMonitor, NetworkMetrics
 
 class NetworkMonitor:
-    """Monitor network performance for distributed training."""
+    """Monitor network performance for distributed training with real measurements."""
     
-    def __init__(self):
-        """Initialize network monitor."""
+    def __init__(self, sampling_frequency: int = 10, enable_icmp: bool = True):
+        """Initialize network monitor.
+        
+        Args:
+            sampling_frequency: How often to sample metrics (every N steps)
+            enable_icmp: Whether to use ICMP ping (requires privileges)
+        """
+        self.sampling_frequency = sampling_frequency
+        self.enable_icmp = enable_icmp
+        
+        # Network I/O counters for bandwidth measurement
+        self.last_net_io = None
+        self.last_net_time = None
+        
+        # Latency measurement targets
+        self.latency_targets = [
+            '8.8.8.8',      # Google DNS
+            '1.1.1.1',      # Cloudflare DNS
+            '208.67.222.222', # OpenDNS
+        ]
+        
+        # TCP fallback ports for latency measurement
+        self.tcp_ports = [80, 443, 22]  # HTTP, HTTPS, SSH
+        
+        # Thread safety
+        self._lock = threading.Lock()
+        
+        # Error tracking
+        self.last_errors = {
+            'bandwidth': None,
+            'latency': None
+        }
+        
+        # Initialize real monitor for comprehensive metrics
         self.real_monitor = RealNetworkMonitor(
             enable_distributed_monitoring=True,
             enable_distributed_measurements=False  # Safer default - doesn't interfere with training
         )
     
+    def _measure_bandwidth(self) -> Tuple[float, float]:
+        """Measure real bandwidth using psutil.net_io_counters.
+        
+        Returns:
+            Tuple of (upload_mbps, download_mbps)
+        """
+        try:
+            with self._lock:
+                current_net_io = psutil.net_io_counters()
+                current_time = time.perf_counter()
+                
+                if self.last_net_io is None:
+                    # First measurement
+                    self.last_net_io = current_net_io
+                    self.last_net_time = current_time
+                    self.last_errors['bandwidth'] = None
+                    return 0.0, 0.0
+                
+                # Calculate time delta
+                time_delta = current_time - self.last_net_time
+                if time_delta <= 0:
+                    return 0.0, 0.0
+                
+                # Calculate byte deltas
+                bytes_sent_delta = current_net_io.bytes_sent - self.last_net_io.bytes_sent
+                bytes_recv_delta = current_net_io.bytes_recv - self.last_net_io.bytes_recv
+                
+                # Calculate bandwidth in Mbps (bytes * 8 bits / 1,000,000)
+                upload_mbps = (bytes_sent_delta * 8) / (time_delta * 1_000_000)
+                download_mbps = (bytes_recv_delta * 8) / (time_delta * 1_000_000)
+                
+                # Update last values
+                self.last_net_io = current_net_io
+                self.last_net_time = current_time
+                
+                self.last_errors['bandwidth'] = None
+                return upload_mbps, download_mbps
+                
+        except psutil.Error as e:
+            self.last_errors['bandwidth'] = f"psutil error: {e}"
+            return 0.0, 0.0
+        except OSError as e:
+            self.last_errors['bandwidth'] = f"OS error: {e}"
+            return 0.0, 0.0
+        except Exception as e:
+            self.last_errors['bandwidth'] = f"Unexpected error: {e}"
+            return 0.0, 0.0
+    
+    def _measure_latency(self) -> float:
+        """Measure real latency using ICMP ping or TCP handshake.
+        
+        Returns:
+            Average latency in milliseconds
+        """
+        latencies = []
+        
+        for target in self.latency_targets:
+            try:
+                if self.enable_icmp:
+                    # Try ICMP ping first
+                    latency = self._icmp_ping(target)
+                    if latency is not None and latency != float('inf'):
+                        latencies.append(latency)
+                        continue
+                
+                # Fallback to TCP handshake
+                latency = self._tcp_handshake(target)
+                if latency is not None and latency != float('inf'):
+                    latencies.append(latency)
+                    
+            except Exception as e:
+                # Log error but continue with other targets
+                print(f"Error measuring latency to {target}: {e}")
+                continue
+        
+        if latencies:
+            avg_latency = sum(latencies) / len(latencies)
+            self.last_errors['latency'] = None
+            return avg_latency
+        else:
+            self.last_errors['latency'] = "All latency measurements failed"
+            return float('inf')
+    
+    def _icmp_ping(self, target: str) -> Optional[float]:
+        """Perform ICMP ping to measure latency.
+        
+        Args:
+            target: Target host to ping
+            
+        Returns:
+            Latency in milliseconds or None if failed
+        """
+        try:
+            # Use system ping command
+            if platform.system().lower() == 'windows':
+                cmd = ['ping', '-n', '1', '-w', '1000', target]
+            else:
+                cmd = ['ping', '-c', '1', '-W', '1', target]
+            
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=2.0
+            )
+            
+            if result.returncode == 0:
+                # Parse ping output for latency
+                output = result.stdout
+                if 'time=' in output:
+                    # Extract time value
+                    time_part = output.split('time=')[1].split()[0]
+                    latency = float(time_part)
+                    return latency
+                elif 'time<' in output:
+                    # Very fast response
+                    return 0.1
+                    
+        except (subprocess.TimeoutExpired, subprocess.CalledProcessError, ValueError):
+            pass
+        except Exception as e:
+            print(f"ICMP ping error for {target}: {e}")
+        
+        return None
+    
+    def _tcp_handshake(self, target: str) -> Optional[float]:
+        """Perform TCP handshake to measure latency.
+        
+        Args:
+            target: Target host to connect to
+            
+        Returns:
+            Latency in milliseconds or None if failed
+        """
+        for port in self.tcp_ports:
+            try:
+                start_time = time.perf_counter()
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(1.0)
+                result = sock.connect_ex((target, port))
+                end_time = time.perf_counter()
+                sock.close()
+                
+                if result == 0:
+                    latency = (end_time - start_time) * 1000  # Convert to milliseconds
+                    return latency
+                    
+            except (socket.timeout, socket.error, OSError):
+                continue
+            except Exception as e:
+                print(f"TCP handshake error for {target}:{port}: {e}")
+                continue
+        
+        return None
+    
     def get_current_metrics(self) -> Dict[str, float]:
-        """Get current network metrics."""
-        return self.real_monitor.get_current_metrics()
+        """Get current network metrics with real measurements.
+        
+        Returns:
+            Dictionary with bandwidth_mbps and latency_ms
+        """
+        upload_mbps, download_mbps = self._measure_bandwidth()
+        latency_ms = self._measure_latency()
+        
+        return {
+            'bandwidth_mbps': download_mbps,  # Use download as primary bandwidth
+            'bandwidth_upload_mbps': upload_mbps,
+            'bandwidth_download_mbps': download_mbps,
+            'latency_ms': latency_ms if latency_ms != float('inf') else 0.0,
+            'total_bandwidth_mbps': upload_mbps + download_mbps,
+        }
     
     def get_network_stats(self) -> Dict[str, float]:
         """Get network performance statistics."""
@@ -595,6 +796,16 @@ class NetworkMonitor:
     def get_network_health_report(self) -> Dict[str, Any]:
         """Get comprehensive network health report."""
         return self.real_monitor.get_network_health_report()
+    
+    def get_error_status(self) -> Dict[str, Optional[str]]:
+        """Get status of any measurement errors."""
+        return self.last_errors.copy()
+    
+    def reset_counters(self):
+        """Reset network counters for fresh measurement."""
+        with self._lock:
+            self.last_net_io = None
+            self.last_net_time = None
     
     def test_network_connectivity(self) -> Dict[str, Any]:
         """Test network connectivity to common hosts."""

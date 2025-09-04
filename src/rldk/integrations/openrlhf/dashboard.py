@@ -55,6 +55,7 @@ class OpenRLHFDashboard:
         self.health_data: List[Dict[str, Any]] = []
         self.resource_data: List[Dict[str, Any]] = []
         self.distributed_data: List[Dict[str, Any]] = []
+        self.network_data: List[Dict[str, Any]] = []  # New network metrics data
         
         # Monitoring components
         self.training_monitor = OpenRLHFTrainingMonitor(output_dir=self.output_dir)
@@ -64,6 +65,10 @@ class OpenRLHFDashboard:
         # Dashboard refresh thread
         self.refresh_thread = None
         self.dashboard_active = False
+        
+        # Network monitoring
+        self.network_monitor = None
+        self.network_alerts: List[Dict[str, Any]] = []
         
         # Setup routes
         self._setup_routes()
@@ -98,6 +103,24 @@ class OpenRLHFDashboard:
         def get_resources():
             """Get resource usage data."""
             return jsonify(self.resource_data)
+        
+        @self.app.route('/api/network')
+        def get_network():
+            """Get network metrics data."""
+            return jsonify(self.network_data)
+        
+        @self.app.route('/api/network/alerts')
+        def get_network_alerts():
+            """Get network alerts."""
+            return jsonify(self.network_alerts)
+        
+        @self.app.route('/api/network/health')
+        def get_network_health():
+            """Get network health report."""
+            if self.network_monitor:
+                return jsonify(self.network_monitor.get_network_health_report())
+            else:
+                return jsonify({'error': 'Network monitor not initialized'})
         
         @self.app.route('/api/distributed')
         def get_distributed():
@@ -588,9 +611,185 @@ class OpenRLHFDashboard:
         else:
             return jsonify({'error': f'Unknown data type: {data_type}'})
     
-    def add_metrics(self, metrics: OpenRLHFMetrics):
-        """Add new metrics to the dashboard."""
-        self.training_monitor.add_metrics(metrics)
+    def update_data(self):
+        """Reload metrics from disk or in-memory buffer."""
+        try:
+            # Load metrics from JSONL files
+            metrics_file = self.output_dir / "metrics.jsonl"
+            if metrics_file.exists():
+                with open(metrics_file, 'r') as f:
+                    lines = f.readlines()
+                    self.metrics_data = [json.loads(line.strip()) for line in lines if line.strip()]
+            
+            # Load network metrics
+            network_file = self.output_dir / "network_metrics.jsonl"
+            if network_file.exists():
+                with open(network_file, 'r') as f:
+                    lines = f.readlines()
+                    self.network_data = [json.loads(line.strip()) for line in lines if line.strip()]
+            
+            # Load health data
+            health_file = self.output_dir / "health.jsonl"
+            if health_file.exists():
+                with open(health_file, 'r') as f:
+                    lines = f.readlines()
+                    self.health_data = [json.loads(line.strip()) for line in lines if line.strip()]
+            
+            # Load resource data
+            resource_file = self.output_dir / "resources.jsonl"
+            if resource_file.exists():
+                with open(resource_file, 'r') as f:
+                    lines = f.readlines()
+                    self.resource_data = [json.loads(line.strip()) for line in lines if line.strip()]
+            
+            # Load distributed data
+            distributed_file = self.output_dir / "distributed.jsonl"
+            if distributed_file.exists():
+                with open(distributed_file, 'r') as f:
+                    lines = f.readlines()
+                    self.distributed_data = [json.loads(line.strip()) for line in lines if line.strip()]
+                    
+        except Exception as e:
+            print(f"Error updating dashboard data: {e}")
+    
+    def add_metrics(self, metrics: Dict[str, Any]):
+        """Append new metrics entry and trigger refresh."""
+        try:
+            # Add timestamp if not present
+            if 'timestamp' not in metrics:
+                metrics['timestamp'] = time.time()
+            
+            # Append to appropriate data list
+            if 'bandwidth_mbps' in metrics or 'latency_ms' in metrics:
+                self.network_data.append(metrics)
+                # Keep only last 1000 entries
+                if len(self.network_data) > 1000:
+                    self.network_data = self.network_data[-1000:]
+            else:
+                self.metrics_data.append(metrics)
+                # Keep only last 1000 entries
+                if len(self.metrics_data) > 1000:
+                    self.metrics_data = self.metrics_data[-1000:]
+            
+            # Write to JSONL file
+            self._write_metrics_to_file(metrics)
+            
+            # Trigger refresh if using Streamlit
+            try:
+                import streamlit as st
+                st.experimental_rerun()
+            except ImportError:
+                pass  # Not using Streamlit
+                
+        except Exception as e:
+            print(f"Error adding metrics: {e}")
+    
+    def add_alert(self, alert_type: str, message: str, severity: str = "warning", 
+                  threshold: Optional[float] = None, current_value: Optional[float] = None):
+        """Record network alerts and surface them in the UI."""
+        try:
+            alert = {
+                'timestamp': time.time(),
+                'type': alert_type,
+                'message': message,
+                'severity': severity,
+                'threshold': threshold,
+                'current_value': current_value
+            }
+            
+            if alert_type == 'network':
+                self.network_alerts.append(alert)
+                # Keep only last 100 alerts
+                if len(self.network_alerts) > 100:
+                    self.network_alerts = self.network_alerts[-100:]
+            
+            # Write alert to file
+            alert_file = self.output_dir / "alerts.jsonl"
+            with open(alert_file, 'a') as f:
+                f.write(json.dumps(alert) + '\n')
+                
+        except Exception as e:
+            print(f"Error adding alert: {e}")
+    
+    def _write_metrics_to_file(self, metrics: Dict[str, Any]):
+        """Write metrics to appropriate JSONL file."""
+        try:
+            # Determine file based on metrics type
+            if 'bandwidth_mbps' in metrics or 'latency_ms' in metrics:
+                filename = "network_metrics.jsonl"
+            elif 'gpu_memory_used' in metrics or 'cpu_utilization' in metrics:
+                filename = "resources.jsonl"
+            elif 'world_size' in metrics and metrics['world_size'] > 1:
+                filename = "distributed.jsonl"
+            else:
+                filename = "metrics.jsonl"
+            
+            filepath = self.output_dir / filename
+            with open(filepath, 'a') as f:
+                f.write(json.dumps(metrics) + '\n')
+                
+        except Exception as e:
+            print(f"Error writing metrics to file: {e}")
+    
+    def initialize_network_monitoring(self):
+        """Initialize network monitoring component."""
+        try:
+            from .network_monitor import RealNetworkMonitor
+            self.network_monitor = RealNetworkMonitor(
+                enable_distributed_monitoring=True,
+                enable_distributed_measurements=False
+            )
+            print("Network monitoring initialized successfully")
+        except Exception as e:
+            print(f"Failed to initialize network monitoring: {e}")
+    
+    def check_network_thresholds(self, metrics: Dict[str, Any]):
+        """Check network metrics against thresholds and generate alerts."""
+        if not self.network_monitor:
+            return
+        
+        # Define thresholds
+        thresholds = {
+            'latency_ms': 100.0,  # High latency threshold
+            'bandwidth_mbps': 10.0,  # Low bandwidth threshold
+            'packet_loss_percent': 5.0,  # High packet loss threshold
+        }
+        
+        # Check latency
+        if 'latency_ms' in metrics:
+            latency = metrics['latency_ms']
+            if latency > thresholds['latency_ms']:
+                self.add_alert(
+                    'network', 
+                    f"High latency detected: {latency:.2f}ms", 
+                    'warning',
+                    thresholds['latency_ms'],
+                    latency
+                )
+        
+        # Check bandwidth
+        if 'bandwidth_mbps' in metrics:
+            bandwidth = metrics['bandwidth_mbps']
+            if bandwidth < thresholds['bandwidth_mbps']:
+                self.add_alert(
+                    'network',
+                    f"Low bandwidth detected: {bandwidth:.2f} Mbps",
+                    'warning',
+                    thresholds['bandwidth_mbps'],
+                    bandwidth
+                )
+        
+        # Check packet loss
+        if 'packet_loss_percent' in metrics:
+            packet_loss = metrics['packet_loss_percent']
+            if packet_loss > thresholds['packet_loss_percent']:
+                self.add_alert(
+                    'network',
+                    f"High packet loss detected: {packet_loss:.2f}%",
+                    'error',
+                    thresholds['packet_loss_percent'],
+                    packet_loss
+                )
     
     def get_dashboard_url(self) -> str:
         """Get the dashboard URL."""
