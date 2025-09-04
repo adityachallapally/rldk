@@ -1,0 +1,12 @@
+{
+  "diverged": false,
+  "first_step": null,
+  "tripped_signals": [],
+  "notes": [],
+  "report_path": "",
+  "events_csv_path": "",
+  "details": "Empty DataFrame\nColumns: []\nIndex: []",
+  "suspected_causes": [
+    "No obvious cause identified - may be due to numerical instability"
+  ]
+}

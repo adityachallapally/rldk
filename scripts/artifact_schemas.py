@@ -7,14 +7,19 @@ with only required fields included.
 
 ARTIFACT_SCHEMAS = {
     "ingest_result": {
-        "type": "object",
-        "properties": {
-            "step": {"type": "array", "items": {"type": "number"}},
-            "loss": {"type": "array", "items": {"type": "number"}},
-            "reward_scalar": {"type": "array", "items": {"type": "number"}},
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "step": {"type": "number"},
+                "loss": {"type": "number"},
+                "reward_mean": {"type": "number"},
+                "phase": {"type": "string"},
+                "run_id": {"type": "string"},
+            },
+            "required": ["step", "loss", "reward_mean"],
+            "additionalProperties": True,
         },
-        "required": ["step", "loss", "reward_scalar"],
-        "additionalProperties": True,
     },
     
     "diff_result": {
