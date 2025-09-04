@@ -7,12 +7,15 @@ import subprocess
 import psutil
 import json
 import os
+import platform
+import struct
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, field
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import numpy as np
 
 try:
+    import torch
     import torch.distributed as dist
     DIST_AVAILABLE = True
 except ImportError:
@@ -50,6 +53,13 @@ class NetworkMetrics:
     gather_bandwidth: float = 0.0
     scatter_bandwidth: float = 0.0
     
+    # Network diagnostics
+    dns_resolution_ms: float = 0.0
+    tcp_connectivity_ms: float = 0.0
+    udp_connectivity_ms: float = 0.0
+    network_path_hops: int = 0
+    network_path_latency: float = 0.0
+    
     # Timestamp
     timestamp: float = 0.0
     
@@ -59,6 +69,509 @@ class NetworkMetrics:
             field.name: getattr(self, field.name)
             for field in self.__dataclass_fields__.values()
         }
+
+
+class NetworkDiagnostics:
+    """Comprehensive network diagnostics for distributed training environments."""
+    
+    def __init__(self):
+        """Initialize network diagnostics."""
+        self.test_hosts = [
+            '8.8.8.8',      # Google DNS
+            '1.1.1.1',      # Cloudflare DNS
+            '208.67.222.222', # OpenDNS
+            'google.com',   # Google
+            'github.com',   # GitHub
+            'pytorch.org',  # PyTorch
+        ]
+        
+        self.dns_servers = [
+            '8.8.8.8',
+            '1.1.1.1',
+            '208.67.222.222',
+        ]
+        
+        self.port_tests = [80, 443, 22, 53]  # HTTP, HTTPS, SSH, DNS
+        
+    def run_comprehensive_diagnostics(self) -> Dict[str, Any]:
+        """Run comprehensive network diagnostics."""
+        diagnostics = {
+            'timestamp': time.time(),
+            'ping_tests': {},
+            'dns_tests': {},
+            'connectivity_tests': {},
+            'bandwidth_tests': {},
+            'interface_analysis': {},
+            'path_analysis': {},
+            'distributed_tests': {},
+        }
+        
+        # Run ping tests
+        print("Running ping diagnostics...")
+        diagnostics['ping_tests'] = self._run_ping_diagnostics()
+        
+        # Run DNS tests
+        print("Running DNS diagnostics...")
+        diagnostics['dns_tests'] = self._run_dns_diagnostics()
+        
+        # Run connectivity tests
+        print("Running connectivity diagnostics...")
+        diagnostics['connectivity_tests'] = self._run_connectivity_diagnostics()
+        
+        # Run bandwidth tests
+        print("Running bandwidth diagnostics...")
+        diagnostics['bandwidth_tests'] = self._run_bandwidth_diagnostics()
+        
+        # Run interface analysis
+        print("Running interface diagnostics...")
+        diagnostics['interface_analysis'] = self._run_interface_diagnostics()
+        
+        # Run path analysis
+        print("Running network path diagnostics...")
+        diagnostics['path_analysis'] = self._run_path_diagnostics()
+        
+        # Run distributed tests if available
+        if DIST_AVAILABLE:
+            print("Running distributed network diagnostics...")
+            diagnostics['distributed_tests'] = self._run_distributed_diagnostics()
+        
+        return diagnostics
+    
+    def _run_ping_diagnostics(self) -> Dict[str, Any]:
+        """Run comprehensive ping diagnostics."""
+        results = {}
+        
+        for host in self.test_hosts:
+            try:
+                ping_result = self._ping_host_advanced(host)
+                results[host] = ping_result
+            except Exception as e:
+                results[host] = {'error': str(e), 'latency': float('inf')}
+        
+        return results
+    
+    def _ping_host_advanced(self, host: str) -> Dict[str, Any]:
+        """Advanced ping test using system ping command."""
+        try:
+            # Determine ping command based on platform
+            if platform.system().lower() == 'windows':
+                cmd = ['ping', '-n', '4', host]
+            else:
+                cmd = ['ping', '-c', '4', host]
+            
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0:
+                # Parse ping output
+                output_lines = result.stdout.split('\n')
+                latencies = []
+                
+                for line in output_lines:
+                    if 'time=' in line or 'time<' in line:
+                        # Extract latency value
+                        try:
+                            if 'time=' in line:
+                                time_part = line.split('time=')[1].split()[0]
+                                latency = float(time_part)
+                                latencies.append(latency)
+                            elif 'time<' in line:
+                                latencies.append(0.1)  # Very fast response
+                        except (ValueError, IndexError):
+                            continue
+                
+                if latencies:
+                    return {
+                        'latency': np.mean(latencies),
+                        'min_latency': np.min(latencies),
+                        'max_latency': np.max(latencies),
+                        'std_latency': np.std(latencies),
+                        'packet_loss': 0.0,
+                        'success': True
+                    }
+                else:
+                    return {'error': 'Could not parse ping output', 'latency': float('inf')}
+            else:
+                return {'error': f'Ping failed: {result.stderr}', 'latency': float('inf')}
+                
+        except subprocess.TimeoutExpired:
+            return {'error': 'Ping timeout', 'latency': float('inf')}
+        except Exception as e:
+            return {'error': str(e), 'latency': float('inf')}
+    
+    def _run_dns_diagnostics(self) -> Dict[str, Any]:
+        """Run DNS resolution diagnostics."""
+        results = {}
+        
+        for host in self.test_hosts:
+            if not self._is_ip_address(host):
+                try:
+                    start_time = time.time()
+                    resolved_ip = socket.gethostbyname(host)
+                    end_time = time.time()
+                    
+                    results[host] = {
+                        'resolved_ip': resolved_ip,
+                        'resolution_time_ms': (end_time - start_time) * 1000,
+                        'success': True
+                    }
+                except Exception as e:
+                    results[host] = {
+                        'error': str(e),
+                        'resolution_time_ms': float('inf'),
+                        'success': False
+                    }
+        
+        return results
+    
+    def _run_connectivity_diagnostics(self) -> Dict[str, Any]:
+        """Run TCP/UDP connectivity diagnostics."""
+        results = {
+            'tcp_tests': {},
+            'udp_tests': {},
+            'socket_tests': {}
+        }
+        
+        # TCP connectivity tests
+        for host in self.test_hosts[:3]:  # Test first 3 hosts
+            for port in self.port_tests:
+                try:
+                    start_time = time.time()
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(5.0)
+                    result = sock.connect_ex((host, port))
+                    end_time = time.time()
+                    sock.close()
+                    
+                    key = f"{host}:{port}"
+                    results['tcp_tests'][key] = {
+                        'connected': result == 0,
+                        'connect_time_ms': (end_time - start_time) * 1000,
+                        'success': result == 0
+                    }
+                except Exception as e:
+                    key = f"{host}:{port}"
+                    results['tcp_tests'][key] = {
+                        'error': str(e),
+                        'connected': False,
+                        'success': False
+                    }
+        
+        # UDP connectivity tests (DNS)
+        for dns_server in self.dns_servers:
+            try:
+                start_time = time.time()
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.settimeout(5.0)
+                sock.sendto(b'\x00', (dns_server, 53))
+                sock.close()
+                end_time = time.time()
+                
+                results['udp_tests'][dns_server] = {
+                    'connect_time_ms': (end_time - start_time) * 1000,
+                    'success': True
+                }
+            except Exception as e:
+                results['udp_tests'][dns_server] = {
+                    'error': str(e),
+                    'success': False
+                }
+        
+        return results
+    
+    def _run_bandwidth_diagnostics(self) -> Dict[str, Any]:
+        """Run bandwidth measurement diagnostics."""
+        results = {}
+        
+        # Test with speedtest-cli
+        try:
+            speedtest_result = self._test_speedtest_cli()
+            results['speedtest'] = speedtest_result
+        except Exception as e:
+            results['speedtest'] = {'error': str(e)}
+        
+        # Test with iperf
+        try:
+            iperf_result = self._test_iperf()
+            results['iperf'] = iperf_result
+        except Exception as e:
+            results['iperf'] = {'error': str(e)}
+        
+        # Test with curl (download speed)
+        try:
+            curl_result = self._test_curl_download()
+            results['curl'] = curl_result
+        except Exception as e:
+            results['curl'] = {'error': str(e)}
+        
+        return results
+    
+    def _test_speedtest_cli(self) -> Dict[str, Any]:
+        """Test bandwidth using speedtest-cli."""
+        try:
+            result = subprocess.run(
+                ['speedtest-cli', '--simple', '--json'],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            if result.returncode == 0:
+                data = json.loads(result.stdout)
+                return {
+                    'download_mbps': data.get('download', 0.0) / 1_000_000,
+                    'upload_mbps': data.get('upload', 0.0) / 1_000_000,
+                    'ping_ms': data.get('ping', 0.0),
+                    'success': True
+                }
+            else:
+                return {'error': f'Speedtest failed: {result.stderr}', 'success': False}
+                
+        except subprocess.TimeoutExpired:
+            return {'error': 'Speedtest timeout', 'success': False}
+        except Exception as e:
+            return {'error': str(e), 'success': False}
+    
+    def _test_iperf(self) -> Dict[str, Any]:
+        """Test bandwidth using iperf3."""
+        try:
+            result = subprocess.run(
+                ['iperf3', '-c', 'speedtest.tele2.net', '-p', '5202', '-J', '-t', '10'],
+                capture_output=True,
+                text=True,
+                timeout=20
+            )
+            
+            if result.returncode == 0:
+                data = json.loads(result.stdout)
+                return {
+                    'bandwidth_mbps': data.get('end', {}).get('streams', [{}])[0].get('receiver', {}).get('bits_per_second', 0) / 1_000_000,
+                    'success': True
+                }
+            else:
+                return {'error': f'Iperf failed: {result.stderr}', 'success': False}
+                
+        except subprocess.TimeoutExpired:
+            return {'error': 'Iperf timeout', 'success': False}
+        except Exception as e:
+            return {'error': str(e), 'success': False}
+    
+    def _test_curl_download(self) -> Dict[str, Any]:
+        """Test download speed using curl."""
+        try:
+            # Download a small file to test speed
+            result = subprocess.run(
+                ['curl', '-o', '/dev/null', '-s', '-w', '%{speed_download}', 'https://speed.hetzner.de/100MB.bin'],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0:
+                speed_bps = float(result.stdout)
+                return {
+                    'download_mbps': speed_bps / 1_000_000,
+                    'success': True
+                }
+            else:
+                return {'error': f'Curl failed: {result.stderr}', 'success': False}
+                
+        except subprocess.TimeoutExpired:
+            return {'error': 'Curl timeout', 'success': False}
+        except Exception as e:
+            return {'error': str(e), 'success': False}
+    
+    def _run_interface_diagnostics(self) -> Dict[str, Any]:
+        """Run network interface diagnostics."""
+        results = {}
+        
+        try:
+            interfaces = psutil.net_if_stats()
+            addresses = psutil.net_if_addrs()
+            
+            for interface_name, stats in interfaces.items():
+                if stats.isup:
+                    interface_info = {
+                        'is_up': stats.isup,
+                        'speed_mbps': stats.speed if stats.speed > 0 else None,
+                        'mtu': stats.mtu,
+                        'duplex': stats.duplex,
+                    }
+                    
+                    # Get IP addresses
+                    if interface_name in addresses:
+                        ip_addresses = []
+                        for addr in addresses[interface_name]:
+                            if addr.family == socket.AF_INET:
+                                ip_addresses.append(addr.address)
+                        interface_info['ip_addresses'] = ip_addresses
+                    
+                    # Get interface statistics
+                    try:
+                        interface_stats = psutil.net_io_counters(pernic=True).get(interface_name)
+                        if interface_stats:
+                            interface_info.update({
+                                'bytes_sent': interface_stats.bytes_sent,
+                                'bytes_recv': interface_stats.bytes_recv,
+                                'packets_sent': interface_stats.packets_sent,
+                                'packets_recv': interface_stats.packets_recv,
+                                'errin': interface_stats.errin,
+                                'errout': interface_stats.errout,
+                                'dropin': interface_stats.dropin,
+                                'dropout': interface_stats.dropout,
+                            })
+                    except Exception:
+                        pass
+                    
+                    results[interface_name] = interface_info
+                    
+        except Exception as e:
+            results['error'] = str(e)
+        
+        return results
+    
+    def _run_path_diagnostics(self) -> Dict[str, Any]:
+        """Run network path diagnostics (traceroute)."""
+        results = {}
+        
+        for host in self.test_hosts[:3]:  # Test first 3 hosts
+            try:
+                path_result = self._traceroute_host(host)
+                results[host] = path_result
+            except Exception as e:
+                results[host] = {'error': str(e)}
+        
+        return results
+    
+    def _traceroute_host(self, host: str) -> Dict[str, Any]:
+        """Perform traceroute to a host."""
+        try:
+            if platform.system().lower() == 'windows':
+                cmd = ['tracert', host]
+            else:
+                cmd = ['traceroute', '-n', '-w', '1', host]
+            
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0:
+                # Parse traceroute output
+                lines = result.stdout.split('\n')
+                hops = []
+                
+                for line in lines:
+                    if '*' not in line and 'ms' in line:
+                        try:
+                            # Extract hop information
+                            parts = line.split()
+                            if len(parts) >= 3:
+                                hop_num = int(parts[0])
+                                hop_ip = parts[1]
+                                hop_time = float(parts[2].replace('ms', ''))
+                                hops.append({
+                                    'hop': hop_num,
+                                    'ip': hop_ip,
+                                    'latency_ms': hop_time
+                                })
+                        except (ValueError, IndexError):
+                            continue
+                
+                return {
+                    'hops': hops,
+                    'total_hops': len(hops),
+                    'final_latency_ms': hops[-1]['latency_ms'] if hops else 0.0,
+                    'success': True
+                }
+            else:
+                return {'error': f'Traceroute failed: {result.stderr}', 'success': False}
+                
+        except subprocess.TimeoutExpired:
+            return {'error': 'Traceroute timeout', 'success': False}
+        except Exception as e:
+            return {'error': str(e), 'success': False}
+    
+    def _run_distributed_diagnostics(self) -> Dict[str, Any]:
+        """Run distributed training network diagnostics."""
+        results = {}
+        
+        if not DIST_AVAILABLE or not dist.is_initialized():
+            return {'error': 'PyTorch distributed not available or initialized'}
+        
+        try:
+            world_size = dist.get_world_size()
+            rank = dist.get_rank()
+            
+            results['world_size'] = world_size
+            results['rank'] = rank
+            
+            # Test basic distributed operations
+            if torch.cuda.is_available():
+                test_tensor = torch.randn(100, 100, device='cuda')
+            else:
+                test_tensor = torch.randn(100, 100)
+            
+            # Test allreduce
+            start_time = time.time()
+            dist.all_reduce(test_tensor)
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+            allreduce_time = time.time() - start_time
+            
+            # Prevent division by zero and ensure minimum measurement time
+            if allreduce_time <= 0.001:  # Less than 1ms, likely measurement error
+                results['allreduce_test'] = {
+                    'time_ms': allreduce_time * 1000,
+                    'tensor_size_mb': test_tensor.numel() * test_tensor.element_size() / (1024 * 1024),
+                    'bandwidth_mbps': 0.0
+                }
+            else:
+                results['allreduce_test'] = {
+                    'time_ms': allreduce_time * 1000,
+                    'tensor_size_mb': test_tensor.numel() * test_tensor.element_size() / (1024 * 1024),
+                    'bandwidth_mbps': (test_tensor.numel() * test_tensor.element_size() * 8) / (allreduce_time * 1_000_000)
+                }
+            
+            # Test broadcast
+            start_time = time.time()
+            dist.broadcast(test_tensor, src=0)
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+            broadcast_time = time.time() - start_time
+            
+            # Prevent division by zero and ensure minimum measurement time
+            if broadcast_time <= 0.001:  # Less than 1ms, likely measurement error
+                results['broadcast_test'] = {
+                    'time_ms': broadcast_time * 1000,
+                    'tensor_size_mb': test_tensor.numel() * test_tensor.element_size() / (1024 * 1024),
+                    'bandwidth_mbps': 0.0
+                }
+            else:
+                results['broadcast_test'] = {
+                    'time_ms': broadcast_time * 1000,
+                    'tensor_size_mb': test_tensor.numel() * test_tensor.element_size() / (1024 * 1024),
+                    'bandwidth_mbps': (test_tensor.numel() * test_tensor.element_size() * 8) / (broadcast_time * 1_000_000)
+                }
+            
+        except Exception as e:
+            results['error'] = str(e)
+        
+        return results
+    
+    def _is_ip_address(self, host: str) -> bool:
+        """Check if a string is an IP address."""
+        try:
+            socket.inet_aton(host)
+            return True
+        except socket.error:
+            return False
 
 
 class NetworkInterfaceMonitor:
@@ -224,16 +737,12 @@ class NetworkLatencyMonitor:
     def _ping_host(self, host: str) -> float:
         """Ping a specific host and return latency in milliseconds."""
         try:
-            # Use socket for basic connectivity test
-            start_time = time.time()
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(2.0)
-            result = sock.connect_ex((host, 80))
-            sock.close()
-            end_time = time.time()
+            # Use advanced ping diagnostics
+            diagnostics = NetworkDiagnostics()
+            ping_result = diagnostics._ping_host_advanced(host)
             
-            if result == 0:
-                return (end_time - start_time) * 1000  # Convert to milliseconds
+            if ping_result.get('success', False):
+                return ping_result['latency']
             else:
                 return float('inf')
                 
@@ -701,6 +1210,9 @@ class RealNetworkMonitor:
         self.latency_monitor = NetworkLatencyMonitor()
         self.bandwidth_monitor = NetworkBandwidthMonitor()
         
+        # Initialize comprehensive diagnostics
+        self.network_diagnostics = NetworkDiagnostics()
+        
         # Distributed monitor
         self.distributed_monitor = None
         if self.enable_distributed_monitoring and DIST_AVAILABLE:
@@ -791,3 +1303,111 @@ class RealNetworkMonitor:
                 latency_ms=basic_metrics['latency'],
                 timestamp=time.time()
             )
+    
+    def run_network_diagnostics(self) -> Dict[str, Any]:
+        """Run comprehensive network diagnostics."""
+        return self.network_diagnostics.run_comprehensive_diagnostics()
+    
+    def get_network_health_report(self) -> Dict[str, Any]:
+        """Get a comprehensive network health report."""
+        diagnostics = self.run_network_diagnostics()
+        
+        # Analyze diagnostics and create health report
+        health_report = {
+            'timestamp': time.time(),
+            'overall_health': 'unknown',
+            'issues': [],
+            'recommendations': [],
+            'metrics_summary': {},
+        }
+        
+        # Analyze ping tests
+        ping_issues = []
+        avg_ping_latency = 0.0
+        ping_count = 0
+        
+        for host, result in diagnostics['ping_tests'].items():
+            if result.get('success', False):
+                latency = result.get('latency', 0.0)
+                avg_ping_latency += latency
+                ping_count += 1
+                
+                if latency > 100:  # High latency threshold
+                    ping_issues.append(f"High latency to {host}: {latency:.2f}ms")
+                elif latency == float('inf'):
+                    ping_issues.append(f"Unreachable: {host}")
+            else:
+                ping_issues.append(f"Ping failed to {host}: {result.get('error', 'Unknown error')}")
+        
+        if ping_count > 0:
+            avg_ping_latency /= ping_count
+            health_report['metrics_summary']['avg_ping_latency_ms'] = avg_ping_latency
+        
+        # Analyze DNS tests
+        dns_issues = []
+        avg_dns_resolution = 0.0
+        dns_count = 0
+        
+        for host, result in diagnostics['dns_tests'].items():
+            if result.get('success', False):
+                resolution_time = result.get('resolution_time_ms', 0.0)
+                avg_dns_resolution += resolution_time
+                dns_count += 1
+                
+                if resolution_time > 1000:  # Slow DNS resolution
+                    dns_issues.append(f"Slow DNS resolution for {host}: {resolution_time:.2f}ms")
+            else:
+                dns_issues.append(f"DNS resolution failed for {host}: {result.get('error', 'Unknown error')}")
+        
+        if dns_count > 0:
+            avg_dns_resolution /= dns_count
+            health_report['metrics_summary']['avg_dns_resolution_ms'] = avg_dns_resolution
+        
+        # Analyze bandwidth tests
+        bandwidth_issues = []
+        best_bandwidth = 0.0
+        
+        for test_name, result in diagnostics['bandwidth_tests'].items():
+            if result.get('success', False):
+                if 'download_mbps' in result:
+                    bandwidth = result['download_mbps']
+                    best_bandwidth = max(best_bandwidth, bandwidth)
+                    
+                    if bandwidth < 10:  # Low bandwidth threshold
+                        bandwidth_issues.append(f"Low bandwidth in {test_name}: {bandwidth:.2f} Mbps")
+                elif 'bandwidth_mbps' in result:
+                    bandwidth = result['bandwidth_mbps']
+                    best_bandwidth = max(best_bandwidth, bandwidth)
+                    
+                    if bandwidth < 10:  # Low bandwidth threshold
+                        bandwidth_issues.append(f"Low bandwidth in {test_name}: {bandwidth:.2f} Mbps")
+            else:
+                bandwidth_issues.append(f"Bandwidth test failed {test_name}: {result.get('error', 'Unknown error')}")
+        
+        health_report['metrics_summary']['best_bandwidth_mbps'] = best_bandwidth
+        
+        # Determine overall health
+        all_issues = ping_issues + dns_issues + bandwidth_issues
+        
+        if len(all_issues) == 0:
+            health_report['overall_health'] = 'excellent'
+        elif len(all_issues) <= 2:
+            health_report['overall_health'] = 'good'
+        elif len(all_issues) <= 5:
+            health_report['overall_health'] = 'fair'
+        else:
+            health_report['overall_health'] = 'poor'
+        
+        health_report['issues'] = all_issues
+        
+        # Generate recommendations
+        if ping_issues:
+            health_report['recommendations'].append("Check network connectivity and firewall settings")
+        if dns_issues:
+            health_report['recommendations'].append("Consider using different DNS servers")
+        if bandwidth_issues:
+            health_report['recommendations'].append("Check network bandwidth and consider upgrading connection")
+        if len(all_issues) > 5:
+            health_report['recommendations'].append("Consider running network diagnostics during off-peak hours")
+        
+        return health_report
