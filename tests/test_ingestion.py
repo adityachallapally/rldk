@@ -818,6 +818,173 @@ class TestJSONLIngestion:
             assert os.environ.get('RLDK_DISABLE_JSONL') is None
 
 
+class TestTRLAdapter:
+    """Test TRL adapter with new JSONL format."""
+
+    def test_trl_adapter_handles_new_jsonl_format(self):
+        """Test that TRL adapter can handle the new Event schema JSONL format."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write new Event schema format
+            json.dump({
+                "step": 0,
+                "wall_time": 10.0,
+                "metrics": {
+                    "reward_mean": 0.5,
+                    "kl_mean": 0.1,
+                    "entropy_mean": 0.8,
+                    "clip_frac": 0.2,
+                    "grad_norm": 1.0,
+                    "lr": 0.001,
+                    "loss": 0.4
+                },
+                "rng": {
+                    "seed": 42
+                },
+                "data_slice": {
+                    "tokens_in": 1000,
+                    "tokens_out": 500
+                },
+                "model_info": {
+                    "run_id": "test_run",
+                    "git_sha": "abc123",
+                    "phase": "train"
+                },
+                "notes": []
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = TRLAdapter(f.name)
+            assert adapter.can_handle()
+            
+            df = adapter.load()
+            assert len(df) == 1
+            assert df["step"].iloc[0] == 0
+            assert df["reward_mean"].iloc[0] == 0.5
+            assert df["kl_mean"].iloc[0] == 0.1
+            assert df["wall_time"].iloc[0] == 10.0
+            assert df["run_id"].iloc[0] == "test_run"
+            
+        finally:
+            os.unlink(f.name)
+
+    def test_trl_adapter_handles_old_jsonl_format(self):
+        """Test that TRL adapter maintains backward compatibility with old format."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write old format
+            json.dump({
+                "step": 0,
+                "phase": "train",
+                "reward_mean": 0.5,
+                "kl_mean": 0.1,
+                "entropy_mean": 0.8,
+                "loss": 0.4,
+                "wall_time": 10.0,
+                "run_id": "test_run",
+                "git_sha": "abc123"
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = TRLAdapter(f.name)
+            assert adapter.can_handle()
+            
+            df = adapter.load()
+            assert len(df) == 1
+            assert df["step"].iloc[0] == 0
+            assert df["reward_mean"].iloc[0] == 0.5
+            assert df["kl_mean"].iloc[0] == 0.1
+            assert df["wall_time"].iloc[0] == 10.0
+            assert df["run_id"].iloc[0] == "test_run"
+            
+        finally:
+            os.unlink(f.name)
+
+    def test_trl_adapter_ingest_runs_integration(self):
+        """Test that TRL adapter works with ingest_runs for new JSONL format."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write multiple events in new format
+            for i in range(3):
+                json.dump({
+                    "step": i,
+                    "wall_time": i * 10.0,
+                    "metrics": {
+                        "reward_mean": 0.5 + i * 0.1,
+                        "kl_mean": 0.1 + i * 0.01,
+                        "entropy_mean": 0.8 - i * 0.02,
+                        "loss": 0.4 - i * 0.05
+                    },
+                    "rng": {
+                        "seed": 42
+                    },
+                    "data_slice": {
+                        "tokens_in": 1000,
+                        "tokens_out": 500
+                    },
+                    "model_info": {
+                        "run_id": "test_run",
+                        "git_sha": "abc123",
+                        "phase": "train"
+                    },
+                    "notes": []
+                }, f)
+                f.write("\n")
+            f.flush()
+
+        try:
+            # Test with ingest_runs
+            df = ingest_runs(f.name, adapter_hint="trl")
+            
+            assert len(df) == 3
+            assert "step" in df.columns
+            assert "reward_mean" in df.columns
+            assert "kl_mean" in df.columns
+            assert "wall_time" in df.columns
+            assert df["step"].iloc[0] == 0
+            assert df["step"].iloc[2] == 2
+            assert df["reward_mean"].iloc[0] == 0.5
+            assert df["reward_mean"].iloc[2] == 0.7
+            
+        finally:
+            os.unlink(f.name)
+
+    def test_trl_adapter_event_count_matches_steps(self):
+        """Test that Event count matches the number of training steps."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write 5 training steps
+            for i in range(5):
+                json.dump({
+                    "step": i,
+                    "wall_time": i * 10.0,
+                    "metrics": {
+                        "reward_mean": 0.5 + i * 0.1,
+                        "kl_mean": 0.1 + i * 0.01,
+                        "loss": 0.4 - i * 0.05
+                    },
+                    "rng": {"seed": 42},
+                    "data_slice": {"tokens_in": 1000, "tokens_out": 500},
+                    "model_info": {"run_id": "test_run", "phase": "train"},
+                    "notes": []
+                }, f)
+                f.write("\n")
+            f.flush()
+
+        try:
+            # Test with ingest_runs
+            df = ingest_runs(f.name, adapter_hint="trl")
+            
+            # Should have exactly 5 events (one per step)
+            assert len(df) == 5
+            
+            # Steps should be 0, 1, 2, 3, 4
+            assert list(df["step"]) == [0, 1, 2, 3, 4]
+            
+        finally:
+            os.unlink(f.name)
+
+
 class TestJSONLValidator:
     """Test JSONL validator utility."""
 

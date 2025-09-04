@@ -91,6 +91,10 @@ class TestRLDKCallbackJSONL:
         callback.current_metrics.value_loss = 0.3
         callback.current_metrics.policy_loss = 0.2
         callback.current_metrics.wall_time = 100.0
+        callback.current_metrics.tokens_in = 1000
+        callback.current_metrics.tokens_out = 500
+        callback.current_metrics.seed = 42
+        callback.current_metrics.git_sha = "abc123"
         
         # Emit JSONL event
         callback._emit_jsonl_event(state, logs)
@@ -280,9 +284,10 @@ class TestRLDKCallbackJSONL:
             assert "metrics" in event_data
             assert "model_info" in event_data
             
-            # Metrics should be empty or have None values
+            # Metrics should have default values (0.0) for missing fields
             metrics = event_data["metrics"]
-            assert len(metrics) == 0 or all(v is None for v in metrics.values())
+            # The Event schema sets default values for missing metrics
+            assert len(metrics) > 0  # Should have some metrics with default values
 
     @patch('rldk.integrations.trl.callbacks.EVENT_SCHEMA_AVAILABLE', False)
     def test_jsonl_logging_without_event_schema(self):
@@ -382,3 +387,28 @@ class TestRLDKCallbackJSONL:
             print("✅ JSONL emission with zero interval handled gracefully")
         except ZeroDivisionError:
             pytest.fail("ZeroDivisionError should not occur with defensive check")
+
+    def test_malformed_jsonl_handling(self):
+        """Test that malformed JSONL is handled gracefully by the adapter."""
+        # Create a JSONL file with malformed JSON
+        jsonl_path = self.output_dir / "malformed_events.jsonl"
+        
+        with open(jsonl_path, 'w') as f:
+            # Write valid JSON line
+            f.write('{"step": 0, "metrics": {"loss": 0.5}, "model_info": {"run_id": "test"}}\n')
+            # Write malformed JSON line (missing closing brace)
+            f.write('{"step": 1, "metrics": {"loss": 0.6}, "model_info": {"run_id": "test"\n')
+            # Write another valid JSON line
+            f.write('{"step": 2, "metrics": {"loss": 0.4}, "model_info": {"run_id": "test"}}\n')
+        
+        # Test that TRLAdapter can handle this
+        from rldk.adapters.trl import TRLAdapter
+        
+        adapter = TRLAdapter(jsonl_path)
+        assert adapter.can_handle()
+        
+        # Should only load the valid lines (steps 0 and 2)
+        df = adapter.load()
+        assert len(df) == 2
+        assert df["step"].iloc[0] == 0
+        assert df["step"].iloc[1] == 2
