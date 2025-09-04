@@ -1,0 +1,353 @@
+=== rldk version ===
+Exit Code: 0
+Duration: 4.65s
+STDOUT:
+RL Debug Kit version 0.1.0
+STDERR:
+/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+
+=== rldk --help ===
+Exit Code: 0
+Duration: 4.09s
+STDOUT:
+Usage: rldk [OPTIONS] COMMAND [ARGS]...                                        
+                                                                                
+ RL Debug Kit - Library and CLI for debugging reinforcement learning training   
+ runs                                                                           
+                                                                                
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ ingest              Ingest training runs from various sources.               │
+│ diff                Find first divergence between two training runs.         │
+│ check-determinism   Check if a training command is deterministic.            │
+│ bisect              Find regression using git bisect.                        │
+│ reward-health       Analyze reward model health and detect pathologies.      │
+│ replay              Replay a training run with the original seed and verify  │
+│                     reproducibility.                                         │
+│ eval                Run evaluation suite with statistical analysis.          │
+│ compare-runs        Compare two training runs and identify divergences.      │
+│ diff-ckpt           Compare two model checkpoints and identify parameter     │
+│                     differences.                                             │
+│ env-audit           Audit environment for determinism and reproducibility.   │
+│ log-scan            Scan training logs for PPO anomalies and issues.         │
+│ track               Start tracking an experiment with W&B (default) or file  │
+│                     logging.                                                 │
+│ reward-drift        Compare two reward models and detect drift.              │
+│ doctor              Run comprehensive diagnostics on a training run or       │
+│                     repository.                                              │
+│ version             Show version information.                                │
+│ card                Generate trust cards for RL training runs.               │
+│ forensics           Forensics commands for RL training analysis              │
+│ reward              Reward model analysis commands                           │
+╰──────────────────────────────────────────────────────────────────────────────╯
+STDERR:
+/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+
+=== rldk ingest /tmp/tmpoivxiq5f/run_a --output /tmp/tmpoivxiq5f/ingest_output.jsonl ===
+Exit Code: 0
+Duration: 3.97s
+STDOUT:
+Ingesting runs from: /tmp/tmpoivxiq5f/run_a
+Saved 5 records to /tmp/tmpoivxiq5f/ingest_output.jsonl
+
+Ingested 5 training steps
+Columns: step, phase, reward_mean, reward_std, kl_mean, entropy_mean, clip_frac, grad_norm, lr, loss, tokens_in, tokens_out, wall_time, seed, run_id, git_sha
+Steps range: 1 to 5
+
+Sample data:
+   step  phase  reward_mean  reward_std  kl_mean  entropy_mean  clip_frac  grad_norm   lr  loss  tokens_in  tokens_out  wall_time  seed    run_id  git_sha
+0     1  train         0.10         0.0      0.0           0.0        0.0        0.0  0.0  0.50          0           0        0.0    42  custom_0  unknown
+1     2  train         0.15         0.0      0.0           0.0        0.0        0.0  0.0  0.40          0           0        0.0    42  custom_1  unknown
+2     3  train         0.20         0.0      0.0           0.0        0.0        0.0  0.0  0.30          0           0        0.0    42  custom_2  unknown
+3     4  train         0.25         0.0      0.0           0.0        0.0        0.0  0.0  0.25          0           0        0.0    42  custom_3  unknown
+4     5  train         0.30         0.0      0.0           0.0        0.0        0.0  0.0  0.20          0           0        0.0    42  custom_4  unknown
+STDERR:
+/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+
+=== rldk diff --a /tmp/tmpoivxiq5f/run_a --b /tmp/tmpoivxiq5f/run_b --signals loss,reward_scalar --output-dir /tmp/tmpoivxiq5f/diff_output ===
+Exit Code: 0
+Duration: 4.02s
+STDOUT:
+Comparing runs:
+  Run A: /tmp/tmpoivxiq5f/run_a
+  Run B: /tmp/tmpoivxiq5f/run_b
+  Signals: loss,reward_scalar
+  Tolerance: 2.0
+  K-consecutive: 3
+  Window size: 50
+
+Ingesting run A...
+Ingesting run B...
+
+Analyzing divergence...
+
+✅ No significant divergence detected
+
+Reports saved to: /tmp/tmpoivxiq5f/diff_output
+  - diff_report.json
+  - drift_card.json
+STDERR:
+/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+
+=== rldk check-determinism --cmd python -c 'import torch; print(torch.randn(1).item())' --compare loss --replicas 2 --output-dir /tmp/tmpoivxiq5f/determinism_output ===
+Exit Code: 0
+Duration: 4.04s
+STDOUT:
+Checking determinism for command: python -c 'import torch; print(torch.randn(1).item())'
+Metrics to compare: loss
+Stride: 50
+Runs: 2
+Tolerance: 0.01
+Device: auto-detected
+
+Running determinism check...
+Running 2 replicas for determinism check...
+Running replica 1/2...
+Running replica 2/2...
+
+✅ Determinism check passed
+
+Report saved to: /tmp/tmpoivxiq5f/determinism_output/determinism_card.json
+STDERR:
+/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+/workspace/src/rldk/determinism/check.py:124: UserWarning: Determinism: Skipped TensorFlow determinism check. Install tensorflow>=2.8.0 to enable. Set RLDK_SILENCE_DETERMINISM_WARN=1 to suppress.
+  if not _check_tensorflow_determinism():
+/workspace/src/rldk/determinism/check.py:127: UserWarning: Determinism: Skipped JAX determinism check. Install jax>=0.4.0 to enable. Set RLDK_SILENCE_DETERMINISM_WARN=1 to suppress.
+  if not _check_jax_determinism():
+
+=== rldk reward-health --run /tmp/tmpoivxiq5f/run_a --output-dir /tmp/tmpoivxiq5f/reward_health_output ===
+Exit Code: 0
+Duration: 4.03s
+STDOUT:
+Analyzing reward health for run: /tmp/tmpoivxiq5f/run_a
+Ingesting run data...
+Running reward health analysis...
+Generating reports...
+Warning: Failed to generate plots: 'reward_mean'
+Reward health report generated in: /tmp/tmpoivxiq5f/reward_health_output
+- Health card: /tmp/tmpoivxiq5f/reward_health_output/reward_health_card.md
+- Summary: /tmp/tmpoivxiq5f/reward_health_output/reward_health_summary.json
+- Calibration plots: /tmp/tmpoivxiq5f/reward_health_output/calibration_plots.png
+
+🚨 Reward health issues detected
+  - Poor calibration (score: 0.000)
+  - Label leakage risk: 0.400
+
+Reports saved to: /tmp/tmpoivxiq5f/reward_health_output
+  - reward_health_card.md
+  - reward_health_summary.json
+  - calibration_plots.png
+STDERR:
+/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+/workspace/rldk_golden_master_test/lib/python3.13/site-packages/numpy/lib/_function_base_impl.py:3065: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[:, None]
+/workspace/rldk_golden_master_test/lib/python3.13/site-packages/numpy/lib/_function_base_impl.py:3066: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[None, :]
+
+=== rldk eval --run /tmp/tmpoivxiq5f/run_a --suite quick --output-dir /tmp/tmpoivxiq5f/eval_output ===
+Exit Code: 1
+Duration: 4.04s
+STDOUT:
+Running evaluation suite 'quick' on run: /tmp/tmpoivxiq5f/run_a
+Ingesting run data...
+Running quick evaluation suite...
+STDERR:
+/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+WARNING:rldk.evals.metrics.throughput:Log column 'events' not found in data
+WARNING:rldk.evals.metrics.toxicity:Output column 'output' not found in data
+WARNING:rldk.evals.metrics.bias:Output column 'output' not found in data
+Error: unsupported operand type(s) for /: 'dict' and 'int'
+
+=== rldk track test_experiment --output-dir /tmp/tmpoivxiq5f/tracking_output --no-wandb ===
+Exit Code: 0
+Duration: 5.77s
+STDOUT:
+Starting experiment tracking: test_experiment
+Starting experiment: test_experiment (ID: 2eae616b-9f09-43d6-b24e-de9bba28ff98)
+Capturing environment state...
+Build Dependencies:
+  blas:
+    detection method: pkgconfig
+    found: true
+    include directory: /opt/_internal/cpython-3.13.5/lib/python3.13/site-packages/scipy_openblas64/include
+    lib directory: /opt/_internal/cpython-3.13.5/lib/python3.13/site-packages/scipy_openblas64/lib
+    name: scipy-openblas
+    openblas configuration: OpenBLAS 0.3.30  USE64BITINT DYNAMIC_ARCH NO_AFFINITY
+      Haswell MAX_THREADS=64
+    pc file directory: /project/.openblas
+    version: 0.3.30
+  lapack:
+    detection method: pkgconfig
+    found: true
+    include directory: /opt/_internal/cpython-3.13.5/lib/python3.13/site-packages/scipy_openblas64/include
+    lib directory: /opt/_internal/cpython-3.13.5/lib/python3.13/site-packages/scipy_openblas64/lib
+    name: scipy-openblas
+    openblas configuration: OpenBLAS 0.3.30  USE64BITINT DYNAMIC_ARCH NO_AFFINITY
+      Haswell MAX_THREADS=64
+    pc file directory: /project/.openblas
+    version: 0.3.30
+Compilers:
+  c:
+    commands: cc
+    linker: ld.bfd
+    name: gcc
+    version: 14.2.1
+  c++:
+    commands: c++
+    linker: ld.bfd
+    name: gcc
+    version: 14.2.1
+  cython:
+    commands: cython
+    linker: cython
+    name: cython
+    version: 3.1.2
+Machine Information:
+  build:
+    cpu: x86_64
+    endian: little
+    family: x86_64
+    system: linux
+  host:
+    cpu: x86_64
+    endian: little
+    family: x86_64
+    system: linux
+Python Information:
+  path: /tmp/build-env-7ps6a76l/bin/python
+  version: '3.13'
+SIMD Extensions:
+  baseline:
+  - SSE
+  - SSE2
+  - SSE3
+  found:
+  - SSSE3
+  - SSE41
+  - POPCNT
+  - SSE42
+  - AVX
+  - F16C
+  - FMA3
+  - AVX2
+  - AVX512F
+  - AVX512CD
+  - AVX512_SKX
+  - AVX512_CLX
+  - AVX512_CNL
+  - AVX512_ICL
+  - AVX512_SPR
+  not found:
+  - AVX512_KNL
+  - AVX512_KNM
+
+Capturing Git state...
+Capturing seed state...
+✅ Experiment tracking started successfully
+  Experiment: test_experiment
+  Experiment ID: 2eae616b-9f09-43d6-b24e-de9bba28ff98
+  Output directory: /tmp/tmpoivxiq5f/tracking_output
+  W&B enabled: False
+
+📊 Experiment tracking completed.
+Environment, Git, and seed state have been captured.
+Use --interactive flag to keep tracker running for manual logging.
+Finishing experiment: test_experiment
+
+==================================================
+EXPERIMENT TRACKING SUMMARY
+==================================================
+Experiment: test_experiment
+ID: 2eae616b-9f09-43d6-b24e-de9bba28ff98
+Output Directory: /tmp/tmpoivxiq5f/tracking_output
+Datasets Tracked: 0
+Models Tracked: 0
+Environment Captured: True
+Git State Captured: True
+Seeds Tracked: True
+Tags: None
+==================================================
+✅ Experiment completed successfully!
+STDERR:
+/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+
+=== rldk forensics compare-runs /tmp/tmpoivxiq5f/run_a /tmp/tmpoivxiq5f/run_b ===
+Exit Code: 0
+Duration: 4.06s
+STDOUT:
+Comparing runs:
+  Run A: /tmp/tmpoivxiq5f/run_a
+  Run B: /tmp/tmpoivxiq5f/run_b
+
+Comparison complete. Report saved to rldk_reports/run_comparison.json
+Run A anomalies: 0
+Run B anomalies: 0
+Earliest divergent step: 1
+STDERR:
+/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+
+=== rldk reward reward-drift /tmp/tmpoivxiq5f/model_a /tmp/tmpoivxiq5f/model_b --prompts /tmp/tmpoivxiq5f/prompts.jsonl ===
+Exit Code: 1
+Duration: 4.04s
+STDOUT:
+Comparing reward models:
+  Model A: /tmp/tmpoivxiq5f/model_a
+  Model B: /tmp/tmpoivxiq5f/model_b
+  Prompts: /tmp/tmpoivxiq5f/prompts.jsonl
+Loaded 3 prompts
+STDERR:
+/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+Error: No model files found in /tmp/tmpoivxiq5f/model_a
+
+=== ingest_runs(run_a) ===
+Exit Code: 0
+Duration: 0.00s
+STDOUT:
+Successfully ingested 5 records
+STDERR:
+
+
+=== first_divergence(run_a, run_b) ===
+Exit Code: 0
+Duration: 0.01s
+STDOUT:
+Divergence analysis complete, diverged: False
+STDERR:
+
+
+=== check_determinism ===
+Exit Code: 0
+Duration: 0.04s
+STDOUT:
+Determinism check complete, passed: True
+STDERR:
+
+
+=== reward_health(run_a) ===
+Exit Code: 0
+Duration: 0.00s
+STDOUT:
+Reward health analysis complete, passed: False
+STDERR:
+
+
+=== eval_quick(run_a) ===
+Exit Code: 1
+Duration: 0.00s
+STDOUT:
+
+STDERR:
+unsupported operand type(s) for /: 'dict' and 'int'
+

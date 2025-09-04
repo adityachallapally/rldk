@@ -1,0 +1,314 @@
+{
+  "version": "1.0",
+  "timestamp": "2025-09-04 23:06:20",
+  "commands": [
+    {
+      "command": "rldk version",
+      "exit_code": 0,
+      "stdout": "RL Debug Kit version 0.1.0",
+      "stderr": "/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.\n  import pkg_resources",
+      "artifacts": [],
+      "artifact_checksums": {},
+      "artifact_schemas": {},
+      "duration": 4.6522276401519775
+    },
+    {
+      "command": "rldk --help",
+      "exit_code": 0,
+      "stdout": "Usage: rldk [OPTIONS] COMMAND [ARGS]...                                        \n                                                                                \n RL Debug Kit - Library and CLI for debugging reinforcement learning training   \n runs                                                                           \n                                                                                \n\u256d\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 --help          Show this message and exit.                                  \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n\u256d\u2500 Commands \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 ingest              Ingest training runs from various sources.               \u2502\n\u2502 diff                Find first divergence between two training runs.         \u2502\n\u2502 check-determinism   Check if a training command is deterministic.            \u2502\n\u2502 bisect              Find regression using git bisect.                        \u2502\n\u2502 reward-health       Analyze reward model health and detect pathologies.      \u2502\n\u2502 replay              Replay a training run with the original seed and verify  \u2502\n\u2502                     reproducibility.                                         \u2502\n\u2502 eval                Run evaluation suite with statistical analysis.          \u2502\n\u2502 compare-runs        Compare two training runs and identify divergences.      \u2502\n\u2502 diff-ckpt           Compare two model checkpoints and identify parameter     \u2502\n\u2502                     differences.                                             \u2502\n\u2502 env-audit           Audit environment for determinism and reproducibility.   \u2502\n\u2502 log-scan            Scan training logs for PPO anomalies and issues.         \u2502\n\u2502 track               Start tracking an experiment with W&B (default) or file  \u2502\n\u2502                     logging.                                                 \u2502\n\u2502 reward-drift        Compare two reward models and detect drift.              \u2502\n\u2502 doctor              Run comprehensive diagnostics on a training run or       \u2502\n\u2502                     repository.                                              \u2502\n\u2502 version             Show version information.                                \u2502\n\u2502 card                Generate trust cards for RL training runs.               \u2502\n\u2502 forensics           Forensics commands for RL training analysis              \u2502\n\u2502 reward              Reward model analysis commands                           \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f",
+      "stderr": "/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.\n  import pkg_resources",
+      "artifacts": [],
+      "artifact_checksums": {},
+      "artifact_schemas": {},
+      "duration": 4.093777418136597
+    },
+    {
+      "command": "rldk ingest /tmp/tmpoivxiq5f/run_a --output /tmp/tmpoivxiq5f/ingest_output.jsonl",
+      "exit_code": 0,
+      "stdout": "Ingesting runs from: /tmp/tmpoivxiq5f/run_a\nSaved 5 records to /tmp/tmpoivxiq5f/ingest_output.jsonl\n\nIngested 5 training steps\nColumns: step, phase, reward_mean, reward_std, kl_mean, entropy_mean, clip_frac, grad_norm, lr, loss, tokens_in, tokens_out, wall_time, seed, run_id, git_sha\nSteps range: 1 to 5\n\nSample data:\n   step  phase  reward_mean  reward_std  kl_mean  entropy_mean  clip_frac  grad_norm   lr  loss  tokens_in  tokens_out  wall_time  seed    run_id  git_sha\n0     1  train         0.10         0.0      0.0           0.0        0.0        0.0  0.0  0.50          0           0        0.0    42  custom_0  unknown\n1     2  train         0.15         0.0      0.0           0.0        0.0        0.0  0.0  0.40          0           0        0.0    42  custom_1  unknown\n2     3  train         0.20         0.0      0.0           0.0        0.0        0.0  0.0  0.30          0           0        0.0    42  custom_2  unknown\n3     4  train         0.25         0.0      0.0           0.0        0.0        0.0  0.0  0.25          0           0        0.0    42  custom_3  unknown\n4     5  train         0.30         0.0      0.0           0.0        0.0        0.0  0.0  0.20          0           0        0.0    42  custom_4  unknown",
+      "stderr": "/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.\n  import pkg_resources",
+      "artifacts": [],
+      "artifact_checksums": {},
+      "artifact_schemas": {},
+      "duration": 3.9710423946380615
+    },
+    {
+      "command": "rldk diff --a /tmp/tmpoivxiq5f/run_a --b /tmp/tmpoivxiq5f/run_b --signals loss,reward_scalar --output-dir /tmp/tmpoivxiq5f/diff_output",
+      "exit_code": 0,
+      "stdout": "Comparing runs:\n  Run A: /tmp/tmpoivxiq5f/run_a\n  Run B: /tmp/tmpoivxiq5f/run_b\n  Signals: loss,reward_scalar\n  Tolerance: 2.0\n  K-consecutive: 3\n  Window size: 50\n\nIngesting run A...\nIngesting run B...\n\nAnalyzing divergence...\n\n\u2705 No significant divergence detected\n\nReports saved to: /tmp/tmpoivxiq5f/diff_output\n  - diff_report.json\n  - drift_card.json",
+      "stderr": "/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.\n  import pkg_resources",
+      "artifacts": [],
+      "artifact_checksums": {},
+      "artifact_schemas": {},
+      "duration": 4.020371675491333
+    },
+    {
+      "command": "rldk check-determinism --cmd python -c 'import torch; print(torch.randn(1).item())' --compare loss --replicas 2 --output-dir /tmp/tmpoivxiq5f/determinism_output",
+      "exit_code": 0,
+      "stdout": "Checking determinism for command: python -c 'import torch; print(torch.randn(1).item())'\nMetrics to compare: loss\nStride: 50\nRuns: 2\nTolerance: 0.01\nDevice: auto-detected\n\nRunning determinism check...\nRunning 2 replicas for determinism check...\nRunning replica 1/2...\nRunning replica 2/2...\n\n\u2705 Determinism check passed\n\nReport saved to: /tmp/tmpoivxiq5f/determinism_output/determinism_card.json",
+      "stderr": "/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.\n  import pkg_resources\n/workspace/src/rldk/determinism/check.py:124: UserWarning: Determinism: Skipped TensorFlow determinism check. Install tensorflow>=2.8.0 to enable. Set RLDK_SILENCE_DETERMINISM_WARN=1 to suppress.\n  if not _check_tensorflow_determinism():\n/workspace/src/rldk/determinism/check.py:127: UserWarning: Determinism: Skipped JAX determinism check. Install jax>=0.4.0 to enable. Set RLDK_SILENCE_DETERMINISM_WARN=1 to suppress.\n  if not _check_jax_determinism():",
+      "artifacts": [],
+      "artifact_checksums": {},
+      "artifact_schemas": {},
+      "duration": 4.039361238479614
+    },
+    {
+      "command": "rldk reward-health --run /tmp/tmpoivxiq5f/run_a --output-dir /tmp/tmpoivxiq5f/reward_health_output",
+      "exit_code": 0,
+      "stdout": "Analyzing reward health for run: /tmp/tmpoivxiq5f/run_a\nIngesting run data...\nRunning reward health analysis...\nGenerating reports...\nWarning: Failed to generate plots: 'reward_mean'\nReward health report generated in: /tmp/tmpoivxiq5f/reward_health_output\n- Health card: /tmp/tmpoivxiq5f/reward_health_output/reward_health_card.md\n- Summary: /tmp/tmpoivxiq5f/reward_health_output/reward_health_summary.json\n- Calibration plots: /tmp/tmpoivxiq5f/reward_health_output/calibration_plots.png\n\n\ud83d\udea8 Reward health issues detected\n  - Poor calibration (score: 0.000)\n  - Label leakage risk: 0.400\n\nReports saved to: /tmp/tmpoivxiq5f/reward_health_output\n  - reward_health_card.md\n  - reward_health_summary.json\n  - calibration_plots.png",
+      "stderr": "/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.\n  import pkg_resources\n/workspace/rldk_golden_master_test/lib/python3.13/site-packages/numpy/lib/_function_base_impl.py:3065: RuntimeWarning: invalid value encountered in divide\n  c /= stddev[:, None]\n/workspace/rldk_golden_master_test/lib/python3.13/site-packages/numpy/lib/_function_base_impl.py:3066: RuntimeWarning: invalid value encountered in divide\n  c /= stddev[None, :]",
+      "artifacts": [],
+      "artifact_checksums": {},
+      "artifact_schemas": {},
+      "duration": 4.027216196060181
+    },
+    {
+      "command": "rldk eval --run /tmp/tmpoivxiq5f/run_a --suite quick --output-dir /tmp/tmpoivxiq5f/eval_output",
+      "exit_code": 1,
+      "stdout": "Running evaluation suite 'quick' on run: /tmp/tmpoivxiq5f/run_a\nIngesting run data...\nRunning quick evaluation suite...",
+      "stderr": "/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.\n  import pkg_resources\nWARNING:rldk.evals.metrics.throughput:Log column 'events' not found in data\nWARNING:rldk.evals.metrics.toxicity:Output column 'output' not found in data\nWARNING:rldk.evals.metrics.bias:Output column 'output' not found in data\nError: unsupported operand type(s) for /: 'dict' and 'int'",
+      "artifacts": [],
+      "artifact_checksums": {},
+      "artifact_schemas": {},
+      "duration": 4.035268306732178
+    },
+    {
+      "command": "rldk track test_experiment --output-dir /tmp/tmpoivxiq5f/tracking_output --no-wandb",
+      "exit_code": 0,
+      "stdout": "Starting experiment tracking: test_experiment\nStarting experiment: test_experiment (ID: 2eae616b-9f09-43d6-b24e-de9bba28ff98)\nCapturing environment state...\nBuild Dependencies:\n  blas:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.5/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.5/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.30  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.30\n  lapack:\n    detection method: pkgconfig\n    found: true\n    include directory: /opt/_internal/cpython-3.13.5/lib/python3.13/site-packages/scipy_openblas64/include\n    lib directory: /opt/_internal/cpython-3.13.5/lib/python3.13/site-packages/scipy_openblas64/lib\n    name: scipy-openblas\n    openblas configuration: OpenBLAS 0.3.30  USE64BITINT DYNAMIC_ARCH NO_AFFINITY\n      Haswell MAX_THREADS=64\n    pc file directory: /project/.openblas\n    version: 0.3.30\nCompilers:\n  c:\n    commands: cc\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  c++:\n    commands: c++\n    linker: ld.bfd\n    name: gcc\n    version: 14.2.1\n  cython:\n    commands: cython\n    linker: cython\n    name: cython\n    version: 3.1.2\nMachine Information:\n  build:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\n  host:\n    cpu: x86_64\n    endian: little\n    family: x86_64\n    system: linux\nPython Information:\n  path: /tmp/build-env-7ps6a76l/bin/python\n  version: '3.13'\nSIMD Extensions:\n  baseline:\n  - SSE\n  - SSE2\n  - SSE3\n  found:\n  - SSSE3\n  - SSE41\n  - POPCNT\n  - SSE42\n  - AVX\n  - F16C\n  - FMA3\n  - AVX2\n  - AVX512F\n  - AVX512CD\n  - AVX512_SKX\n  - AVX512_CLX\n  - AVX512_CNL\n  - AVX512_ICL\n  - AVX512_SPR\n  not found:\n  - AVX512_KNL\n  - AVX512_KNM\n\nCapturing Git state...\nCapturing seed state...\n\u2705 Experiment tracking started successfully\n  Experiment: test_experiment\n  Experiment ID: 2eae616b-9f09-43d6-b24e-de9bba28ff98\n  Output directory: /tmp/tmpoivxiq5f/tracking_output\n  W&B enabled: False\n\n\ud83d\udcca Experiment tracking completed.\nEnvironment, Git, and seed state have been captured.\nUse --interactive flag to keep tracker running for manual logging.\nFinishing experiment: test_experiment\n\n==================================================\nEXPERIMENT TRACKING SUMMARY\n==================================================\nExperiment: test_experiment\nID: 2eae616b-9f09-43d6-b24e-de9bba28ff98\nOutput Directory: /tmp/tmpoivxiq5f/tracking_output\nDatasets Tracked: 0\nModels Tracked: 0\nEnvironment Captured: True\nGit State Captured: True\nSeeds Tracked: True\nTags: None\n==================================================\n\u2705 Experiment completed successfully!",
+      "stderr": "/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.\n  import pkg_resources",
+      "artifacts": [],
+      "artifact_checksums": {},
+      "artifact_schemas": {},
+      "duration": 5.77242636680603
+    },
+    {
+      "command": "rldk forensics compare-runs /tmp/tmpoivxiq5f/run_a /tmp/tmpoivxiq5f/run_b",
+      "exit_code": 0,
+      "stdout": "Comparing runs:\n  Run A: /tmp/tmpoivxiq5f/run_a\n  Run B: /tmp/tmpoivxiq5f/run_b\n\nComparison complete. Report saved to rldk_reports/run_comparison.json\nRun A anomalies: 0\nRun B anomalies: 0\nEarliest divergent step: 1",
+      "stderr": "/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.\n  import pkg_resources",
+      "artifacts": [],
+      "artifact_checksums": {},
+      "artifact_schemas": {},
+      "duration": 4.055393218994141
+    },
+    {
+      "command": "rldk reward reward-drift /tmp/tmpoivxiq5f/model_a /tmp/tmpoivxiq5f/model_b --prompts /tmp/tmpoivxiq5f/prompts.jsonl",
+      "exit_code": 1,
+      "stdout": "Comparing reward models:\n  Model A: /tmp/tmpoivxiq5f/model_a\n  Model B: /tmp/tmpoivxiq5f/model_b\n  Prompts: /tmp/tmpoivxiq5f/prompts.jsonl\nLoaded 3 prompts",
+      "stderr": "/workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.\n  import pkg_resources\nError: No model files found in /tmp/tmpoivxiq5f/model_a",
+      "artifacts": [],
+      "artifact_checksums": {},
+      "artifact_schemas": {},
+      "duration": 4.041643142700195
+    },
+    {
+      "command": "ingest_runs(run_a)",
+      "exit_code": 0,
+      "stdout": "Successfully ingested 5 records",
+      "stderr": "",
+      "artifacts": [
+        "/tmp/tmpoivxiq5f/ingest_result.json"
+      ],
+      "artifact_checksums": {
+        "/tmp/tmpoivxiq5f/ingest_result.json": "57d7e3c55a172e7b7de679f738986155e4705b002945ebf0dc7b5f37a53f1efe"
+      },
+      "artifact_schemas": {
+        "/tmp/tmpoivxiq5f/ingest_result.json": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "step": {
+                "type": "number"
+              },
+              "phase": {
+                "type": "string"
+              },
+              "reward_mean": {
+                "type": "number"
+              },
+              "reward_std": {
+                "type": "number"
+              },
+              "kl_mean": {
+                "type": "number"
+              },
+              "entropy_mean": {
+                "type": "number"
+              },
+              "clip_frac": {
+                "type": "number"
+              },
+              "grad_norm": {
+                "type": "number"
+              },
+              "lr": {
+                "type": "number"
+              },
+              "loss": {
+                "type": "number"
+              },
+              "tokens_in": {
+                "type": "number"
+              },
+              "tokens_out": {
+                "type": "number"
+              },
+              "wall_time": {
+                "type": "number"
+              },
+              "seed": {
+                "type": "number"
+              },
+              "run_id": {
+                "type": "string"
+              },
+              "git_sha": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "step",
+              "phase",
+              "reward_mean",
+              "reward_std",
+              "kl_mean",
+              "entropy_mean",
+              "clip_frac",
+              "grad_norm",
+              "lr",
+              "loss",
+              "tokens_in",
+              "tokens_out",
+              "wall_time",
+              "seed",
+              "run_id",
+              "git_sha"
+            ]
+          }
+        }
+      },
+      "duration": 0.003927469253540039
+    },
+    {
+      "command": "first_divergence(run_a, run_b)",
+      "exit_code": 0,
+      "stdout": "Divergence analysis complete, diverged: False",
+      "stderr": "",
+      "artifacts": [
+        "/tmp/tmpoivxiq5f/diff_result.json"
+      ],
+      "artifact_checksums": {
+        "/tmp/tmpoivxiq5f/diff_result.json": "d099469864b757d055934d5b520555dc4f2526d9a2c12c2ce487bc9a8d75ce22"
+      },
+      "artifact_schemas": {
+        "/tmp/tmpoivxiq5f/diff_result.json": {
+          "type": "object",
+          "properties": {
+            "diverged": {
+              "type": "number"
+            },
+            "first_step": {
+              "type": "null"
+            },
+            "tripped_signals": {
+              "type": "array",
+              "items": {}
+            }
+          },
+          "required": [
+            "diverged",
+            "first_step",
+            "tripped_signals"
+          ]
+        }
+      },
+      "duration": 0.008303165435791016
+    },
+    {
+      "command": "check_determinism",
+      "exit_code": 0,
+      "stdout": "Determinism check complete, passed: True",
+      "stderr": "",
+      "artifacts": [
+        "/tmp/tmpoivxiq5f/determinism_result.json"
+      ],
+      "artifact_checksums": {
+        "/tmp/tmpoivxiq5f/determinism_result.json": "2ff8974d2c44d04a2b3c1e8f27f9a6615c75ea460211ffdd923a395abaa951a8"
+      },
+      "artifact_schemas": {
+        "/tmp/tmpoivxiq5f/determinism_result.json": {
+          "type": "object",
+          "properties": {
+            "passed": {
+              "type": "number"
+            },
+            "culprit": {
+              "type": "null"
+            },
+            "fixes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "passed",
+            "culprit",
+            "fixes"
+          ]
+        }
+      },
+      "duration": 0.04070854187011719
+    },
+    {
+      "command": "reward_health(run_a)",
+      "exit_code": 0,
+      "stdout": "Reward health analysis complete, passed: False",
+      "stderr": "",
+      "artifacts": [
+        "/tmp/tmpoivxiq5f/reward_health_result.json"
+      ],
+      "artifact_checksums": {
+        "/tmp/tmpoivxiq5f/reward_health_result.json": "f9fcb2ec477f18c03237b20d2af4e7ab9658684e0b27eb705cc8051455f19797"
+      },
+      "artifact_schemas": {
+        "/tmp/tmpoivxiq5f/reward_health_result.json": {
+          "type": "object",
+          "properties": {
+            "passed": {
+              "type": "number"
+            },
+            "drift_detected": {
+              "type": "number"
+            },
+            "calibration_score": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "passed",
+            "drift_detected",
+            "calibration_score"
+          ]
+        }
+      },
+      "duration": 0.002812623977661133
+    },
+    {
+      "command": "eval_quick(run_a)",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "unsupported operand type(s) for /: 'dict' and 'int'",
+      "artifacts": [],
+      "artifact_checksums": {},
+      "artifact_schemas": {},
+      "duration": 0
+    }
+  ],
+  "total_commands": 15,
+  "successful_commands": 12,
+  "failed_commands": 3
+}
