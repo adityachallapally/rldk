@@ -752,8 +752,8 @@ class DistributedTrainingMonitor(OpenRLHFCallback):
             # Update current metrics with real measurements
             self.current_metrics.bandwidth_mbps = network_metrics.bandwidth_mbps
             self.current_metrics.latency_ms = network_metrics.latency_ms
-            self.current_metrics.bandwidth_upload_mbps = network_metrics.bandwidth_in_mbps
-            self.current_metrics.bandwidth_download_mbps = network_metrics.bandwidth_out_mbps
+            self.current_metrics.bandwidth_upload_mbps = network_metrics.bandwidth_out_mbps
+            self.current_metrics.bandwidth_download_mbps = network_metrics.bandwidth_in_mbps
             self.current_metrics.total_bandwidth_mbps = network_metrics.bandwidth_in_mbps + network_metrics.bandwidth_out_mbps
             
             # Add additional network metrics
