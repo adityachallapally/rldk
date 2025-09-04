@@ -180,79 +180,62 @@ def _run_replay(command: str, output_path: Path, device: Optional[str]) -> Repla
     # Set environment variable for metrics output
     env["RLDK_METRICS_PATH"] = metrics_file
 
-    # Parse command into argv for secure execution
+    # Ensure temp file cleanup in all code paths
     try:
-        argv = shlex.split(command)
-    except ValueError as e:
-        error_msg = f"Failed to parse command '{command}': {e}"
-        logger.error(error_msg)
-        return ReplayResult(
-            success=False,
-            return_code=-1,
-            stdout="",
-            stderr=error_msg,
-            metrics_data=pd.DataFrame(),
-            error_message=error_msg
-        )
-
-    # Run the command securely
-    logger.info(f"Executing: {command}")
-    try:
-        result = subprocess.run(
-            argv,
-            shell=False,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=3600,  # 1 hour timeout
-            check=False  # We'll handle errors explicitly
-        )
-    except subprocess.TimeoutExpired as e:
-        error_msg = f"Replay command timed out after 3600 seconds: {e}"
-        logger.error(error_msg)
-        return ReplayResult(
-            success=False,
-            return_code=-1,
-            stdout=e.stdout or "",
-            stderr=e.stderr or "",
-            metrics_data=pd.DataFrame(),
-            error_message=error_msg
-        )
-    except Exception as e:
-        error_msg = f"Failed to execute replay command: {e}"
-        logger.error(error_msg)
-        return ReplayResult(
-            success=False,
-            return_code=-1,
-            stdout="",
-            stderr=str(e),
-            metrics_data=pd.DataFrame(),
-            error_message=error_msg
-        )
-
-    # Check if command succeeded
-    if result.returncode != 0:
-        error_msg = f"Replay command failed with return code {result.returncode}"
-        logger.error(f"{error_msg}\nstdout: {result.stdout}\nstderr: {result.stderr}")
-        return ReplayResult(
-            success=False,
-            return_code=result.returncode,
-            stdout=result.stdout,
-            stderr=result.stderr,
-            metrics_data=pd.DataFrame(),
-            error_message=error_msg
-        )
-
-    # Load replay metrics
-    metrics_file_path = metrics_file
-    if not os.path.exists(metrics_file_path):
-        # Try to find metrics in the output directory
-        metrics_files = list(output_path.glob("*.jsonl"))
-        if metrics_files:
-            metrics_file_path = str(metrics_files[0])
-        else:
-            error_msg = "No metrics file found after replay"
+        # Parse command into argv for secure execution
+        try:
+            argv = shlex.split(command)
+        except ValueError as e:
+            error_msg = f"Failed to parse command '{command}': {e}"
             logger.error(error_msg)
+            return ReplayResult(
+                success=False,
+                return_code=-1,
+                stdout="",
+                stderr=error_msg,
+                metrics_data=pd.DataFrame(),
+                error_message=error_msg
+            )
+
+        # Run the command securely
+        logger.info(f"Executing: {command}")
+        try:
+            result = subprocess.run(
+                argv,
+                shell=False,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=3600,  # 1 hour timeout
+                check=False  # We'll handle errors explicitly
+            )
+        except subprocess.TimeoutExpired as e:
+            error_msg = f"Replay command timed out after 3600 seconds: {e}"
+            logger.error(error_msg)
+            return ReplayResult(
+                success=False,
+                return_code=-1,
+                stdout=e.stdout or "",
+                stderr=e.stderr or "",
+                metrics_data=pd.DataFrame(),
+                error_message=error_msg
+            )
+        except Exception as e:
+            error_msg = f"Failed to execute replay command: {e}"
+            logger.error(error_msg)
+            return ReplayResult(
+                success=False,
+                return_code=-1,
+                stdout="",
+                stderr=str(e),
+                metrics_data=pd.DataFrame(),
+                error_message=error_msg
+            )
+
+        # Check if command succeeded
+        if result.returncode != 0:
+            error_msg = f"Replay command failed with return code {result.returncode}"
+            logger.error(f"{error_msg}\nstdout: {result.stdout}\nstderr: {result.stderr}")
             return ReplayResult(
                 success=False,
                 return_code=result.returncode,
@@ -262,17 +245,15 @@ def _run_replay(command: str, output_path: Path, device: Optional[str]) -> Repla
                 error_message=error_msg
             )
 
-    try:
-        replay_df = pd.read_json(metrics_file_path, lines=True)
-    except Exception as e:
-        logger.warning(f"Failed to load replay metrics from file: {e}")
-        # Try to parse from stdout if available
-        if result.stdout:
-            logger.info("Attempting to parse metrics from stdout...")
-            try:
-                replay_df = _parse_metrics_from_stdout(result.stdout)
-            except Exception as parse_error:
-                error_msg = f"Could not load replay metrics from file or stdout: {parse_error}"
+        # Load replay metrics
+        metrics_file_path = metrics_file
+        if not os.path.exists(metrics_file_path):
+            # Try to find metrics in the output directory
+            metrics_files = list(output_path.glob("*.jsonl"))
+            if metrics_files:
+                metrics_file_path = str(metrics_files[0])
+            else:
+                error_msg = "No metrics file found after replay"
                 logger.error(error_msg)
                 return ReplayResult(
                     success=False,
@@ -282,29 +263,51 @@ def _run_replay(command: str, output_path: Path, device: Optional[str]) -> Repla
                     metrics_data=pd.DataFrame(),
                     error_message=error_msg
                 )
-        else:
-            error_msg = "Could not load replay metrics and no stdout available"
-            logger.error(error_msg)
-            return ReplayResult(
-                success=False,
-                return_code=result.returncode,
-                stdout=result.stdout,
-                stderr=result.stderr,
-                metrics_data=pd.DataFrame(),
-                error_message=error_msg
-            )
 
-    # Clean up temp file with explicit error handling
-    _cleanup_temp_file(metrics_file)
+        try:
+            replay_df = pd.read_json(metrics_file_path, lines=True)
+        except Exception as e:
+            logger.warning(f"Failed to load replay metrics from file: {e}")
+            # Try to parse from stdout if available
+            if result.stdout:
+                logger.info("Attempting to parse metrics from stdout...")
+                try:
+                    replay_df = _parse_metrics_from_stdout(result.stdout)
+                except Exception as parse_error:
+                    error_msg = f"Could not load replay metrics from file or stdout: {parse_error}"
+                    logger.error(error_msg)
+                    return ReplayResult(
+                        success=False,
+                        return_code=result.returncode,
+                        stdout=result.stdout,
+                        stderr=result.stderr,
+                        metrics_data=pd.DataFrame(),
+                        error_message=error_msg
+                    )
+            else:
+                error_msg = "Could not load replay metrics and no stdout available"
+                logger.error(error_msg)
+                return ReplayResult(
+                    success=False,
+                    return_code=result.returncode,
+                    stdout=result.stdout,
+                    stderr=result.stderr,
+                    metrics_data=pd.DataFrame(),
+                    error_message=error_msg
+                )
 
-    return ReplayResult(
-        success=True,
-        return_code=result.returncode,
-        stdout=result.stdout,
-        stderr=result.stderr,
-        metrics_data=replay_df,
-        error_message=None
-    )
+        return ReplayResult(
+            success=True,
+            return_code=result.returncode,
+            stdout=result.stdout,
+            stderr=result.stderr,
+            metrics_data=replay_df,
+            error_message=None
+        )
+
+    finally:
+        # Clean up temp file with explicit error handling - this runs in ALL code paths
+        _cleanup_temp_file(metrics_file)
 
 
 def _cleanup_temp_file(file_path: str) -> None:

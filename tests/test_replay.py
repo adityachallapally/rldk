@@ -422,5 +422,170 @@ class TestReplayResult:
         assert len(result.metrics_data) == 0
 
 
+class TestTempFileCleanup:
+    """Test that temporary files are cleaned up in all code paths."""
+
+    @patch("rldk.replay.replay._cleanup_temp_file")
+    @patch("rldk.replay.replay._detect_device")
+    @patch("rldk.replay.replay._get_deterministic_env")
+    def test_temp_file_cleanup_on_command_parse_error(self, mock_env, mock_device, mock_cleanup):
+        """Test that temp file is cleaned up when command parsing fails."""
+        from rldk.replay.replay import _run_replay
+        
+        mock_device.return_value = "cpu"
+        mock_env.return_value = {}
+        
+        # Test with invalid command that will fail parsing
+        invalid_command = "python train.py --invalid-quote \""
+        
+        result = _run_replay(invalid_command, Path("/tmp"), "cpu")
+        
+        # Verify cleanup was called
+        mock_cleanup.assert_called_once()
+        
+        # Verify result indicates failure
+        assert result.success is False
+        assert "Failed to parse command" in result.error_message
+
+    @patch("rldk.replay.replay._cleanup_temp_file")
+    @patch("rldk.replay.replay._detect_device")
+    @patch("rldk.replay.replay._get_deterministic_env")
+    @patch("subprocess.run")
+    def test_temp_file_cleanup_on_subprocess_timeout(self, mock_run, mock_env, mock_device, mock_cleanup):
+        """Test that temp file is cleaned up when subprocess times out."""
+        from rldk.replay.replay import _run_replay
+        import subprocess
+        
+        mock_device.return_value = "cpu"
+        mock_env.return_value = {}
+        mock_run.side_effect = subprocess.TimeoutExpired("python", 30)
+        
+        result = _run_replay("python train.py", Path("/tmp"), "cpu")
+        
+        # Verify cleanup was called
+        mock_cleanup.assert_called_once()
+        
+        # Verify result indicates timeout
+        assert result.success is False
+        assert "timed out" in result.error_message
+
+    @patch("rldk.replay.replay._cleanup_temp_file")
+    @patch("rldk.replay.replay._detect_device")
+    @patch("rldk.replay.replay._get_deterministic_env")
+    @patch("subprocess.run")
+    def test_temp_file_cleanup_on_subprocess_error(self, mock_run, mock_env, mock_device, mock_cleanup):
+        """Test that temp file is cleaned up when subprocess raises exception."""
+        from rldk.replay.replay import _run_replay
+        
+        mock_device.return_value = "cpu"
+        mock_env.return_value = {}
+        mock_run.side_effect = OSError("Command not found")
+        
+        result = _run_replay("python train.py", Path("/tmp"), "cpu")
+        
+        # Verify cleanup was called
+        mock_cleanup.assert_called_once()
+        
+        # Verify result indicates execution error
+        assert result.success is False
+        assert "Failed to execute replay command" in result.error_message
+
+    @patch("rldk.replay.replay._cleanup_temp_file")
+    @patch("rldk.replay.replay._detect_device")
+    @patch("rldk.replay.replay._get_deterministic_env")
+    @patch("subprocess.run")
+    def test_temp_file_cleanup_on_command_failure(self, mock_run, mock_env, mock_device, mock_cleanup):
+        """Test that temp file is cleaned up when command returns non-zero exit code."""
+        from rldk.replay.replay import _run_replay
+        from unittest.mock import MagicMock
+        
+        mock_device.return_value = "cpu"
+        mock_env.return_value = {}
+        
+        # Mock subprocess result with failure
+        mock_result = MagicMock()
+        mock_result.returncode = 1
+        mock_result.stdout = "Error output"
+        mock_result.stderr = "Error occurred"
+        mock_run.return_value = mock_result
+        
+        result = _run_replay("python train.py", Path("/tmp"), "cpu")
+        
+        # Verify cleanup was called
+        mock_cleanup.assert_called_once()
+        
+        # Verify result indicates command failure
+        assert result.success is False
+        assert "failed with return code 1" in result.error_message
+
+    @patch("rldk.replay.replay._cleanup_temp_file")
+    @patch("rldk.replay.replay._detect_device")
+    @patch("rldk.replay.replay._get_deterministic_env")
+    @patch("subprocess.run")
+    @patch("os.path.exists")
+    def test_temp_file_cleanup_on_no_metrics_file(self, mock_exists, mock_run, mock_env, mock_device, mock_cleanup):
+        """Test that temp file is cleaned up when no metrics file is found."""
+        from rldk.replay.replay import _run_replay
+        from unittest.mock import MagicMock
+        
+        mock_device.return_value = "cpu"
+        mock_env.return_value = {}
+        
+        # Mock subprocess result with success
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "Success"
+        mock_result.stderr = ""
+        mock_run.return_value = mock_result
+        
+        # Mock that metrics file doesn't exist
+        mock_exists.return_value = False
+        
+        result = _run_replay("python train.py", Path("/tmp"), "cpu")
+        
+        # Verify cleanup was called
+        mock_cleanup.assert_called_once()
+        
+        # Verify result indicates no metrics file found
+        assert result.success is False
+        assert "No metrics file found after replay" in result.error_message
+
+    @patch("rldk.replay.replay._cleanup_temp_file")
+    @patch("rldk.replay.replay._detect_device")
+    @patch("rldk.replay.replay._get_deterministic_env")
+    @patch("subprocess.run")
+    @patch("os.path.exists")
+    @patch("pandas.read_json")
+    def test_temp_file_cleanup_on_metrics_parse_error(self, mock_read_json, mock_exists, mock_run, mock_env, mock_device, mock_cleanup):
+        """Test that temp file is cleaned up when metrics parsing fails."""
+        from rldk.replay.replay import _run_replay
+        from unittest.mock import MagicMock
+        
+        mock_device.return_value = "cpu"
+        mock_env.return_value = {}
+        
+        # Mock subprocess result with success
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = ""
+        mock_result.stderr = ""
+        mock_run.return_value = mock_result
+        
+        # Mock that metrics file exists
+        mock_exists.return_value = True
+        
+        # Mock pandas.read_json to raise exception
+        mock_read_json.side_effect = Exception("Invalid JSON")
+        
+        result = _run_replay("python train.py", Path("/tmp"), "cpu")
+        
+        # Verify cleanup was called
+        mock_cleanup.assert_called_once()
+        
+        # Verify result indicates parsing error
+        assert result.success is False
+        assert "Could not load replay metrics" in result.error_message
+
+
 if __name__ == "__main__":
     pytest.main([__file__])
