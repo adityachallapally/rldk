@@ -245,9 +245,13 @@ monitor = ComprehensivePPOMonitor(
     enable_advantage_statistics=True
 )
 
-# Add to trainer callbacks
+# Add to trainer callbacks (TRL v0.22.2+ API)
 trainer = PPOTrainer(
-    # ... other args ...
+    args=config,
+    model=model,
+    ref_model=ref_model,
+    reward_model=reward_model,
+    value_model=value_model,
     callbacks=[monitor]
 )
 ```

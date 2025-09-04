@@ -30,13 +30,15 @@ config = PPOConfig(
     seed=42
 )
 
-# Initialize trainer
+# Initialize trainer (TRL v0.22.2+ API)
 trainer = PPOTrainer(
-    config=config,
+    args=config,
     model=model,
-    tokenizer=tokenizer,
-    dataset=dataset,
-    tokenizer=tokenizer,
+    ref_model=ref_model,
+    reward_model=reward_model,
+    value_model=value_model,
+    processing_class=tokenizer,
+    train_dataset=dataset,
 )
 
 # Add RLDK monitoring

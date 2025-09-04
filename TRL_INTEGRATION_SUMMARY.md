@@ -29,7 +29,14 @@ from rldk.integrations.trl import RLDKCallback
 from trl import PPOTrainer
 
 monitor = RLDKCallback(output_dir="./rldk_logs")
-trainer = PPOTrainer(..., callbacks=[monitor])
+trainer = PPOTrainer(
+    args=config,
+    model=model,
+    ref_model=ref_model,
+    reward_model=reward_model,
+    value_model=value_model,
+    callbacks=[monitor]
+)
 ```
 
 ### 2. 🔥 PPOTrainer Integration (CRITICAL)
@@ -59,7 +66,14 @@ ppo_monitor = PPOMonitor(
     reward_threshold=0.05,
     gradient_threshold=1.0
 )
-trainer = PPOTrainer(..., callbacks=[ppo_monitor])
+trainer = PPOTrainer(
+    args=config,
+    model=model,
+    ref_model=ref_model,
+    reward_model=reward_model,
+    value_model=value_model,
+    callbacks=[ppo_monitor]
+)
 ```
 
 ### 3. ⚡ Model Checkpointing & Analysis (HIGH VALUE)
@@ -86,7 +100,14 @@ checkpoint_monitor = CheckpointMonitor(
     enable_parameter_analysis=True,
     enable_gradient_analysis=True
 )
-trainer = PPOTrainer(..., callbacks=[checkpoint_monitor])
+trainer = PPOTrainer(
+    args=config,
+    model=model,
+    ref_model=ref_model,
+    reward_model=reward_model,
+    value_model=value_model,
+    callbacks=[checkpoint_monitor]
+)
 ```
 
 ### 4. 📊 Real-time Dashboard (BONUS)
