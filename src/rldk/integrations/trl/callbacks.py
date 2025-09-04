@@ -713,8 +713,8 @@ class RLDKCallback(TrainerCallback):
             # Create Event object using the schema
             event = create_event_from_row(event_data, self.run_id, self.current_metrics.git_sha)
             
-            # Write JSONL line with proper formatting
-            json_line = event.to_json()
+            # Write JSONL line with proper formatting (single line, not pretty-printed)
+            json_line = json.dumps(event.to_dict())
             self.jsonl_file.write(json_line + "\n")
             self.jsonl_file.flush()  # Ensure immediate write
             
@@ -723,8 +723,11 @@ class RLDKCallback(TrainerCallback):
     
     def _emit_jsonl_event(self, state: TrainerState, logs: Dict[str, float]):
         """Emit a standardized JSONL event compatible with Event schema and TRLAdapter."""
-        # Call the new _log_jsonl_event function for consistency
-        self._log_jsonl_event(state, logs)
+        # Check if we should log at this interval
+        if (self.enable_jsonl_logging and 
+            self.jsonl_log_interval > 0 and 
+            state.global_step % self.jsonl_log_interval == 0):
+            self._log_jsonl_event(state, logs)
     
     def _close_jsonl_file(self):
         """Close the JSONL file."""

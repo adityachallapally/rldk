@@ -40,6 +40,10 @@ class TRLAdapter(BaseAdapter):
                         # Check for TRL-specific keywords or our test fixture format
                         # First check if data is a dict and has the required keys
                         if isinstance(data, dict):
+                            # Check for new Event schema format
+                            if "metrics" in data and "model_info" in data:
+                                return True
+                            # Check for old format
                             return (
                                 "trl" in str(data).lower()
                                 or "trainer" in str(data).lower()
@@ -58,9 +62,13 @@ class TRLAdapter(BaseAdapter):
                 with open(file_path, "r") as f:
                     content = f.read()
                     return "trl" in content.lower() or "trainer" in content.lower()
-        except (OSError, IOError, json.JSONDecodeError, UnicodeDecodeError, TypeError) as e:
+        except (OSError, IOError, UnicodeDecodeError, TypeError) as e:
             # Log the specific error for debugging but don't fail the check
             print(f"Warning: Error checking if file {file_path} is TRL format: {e}")
+            return False
+        except json.JSONDecodeError as e:
+            # Log JSON decode error but don't fail the check
+            print(f"Warning: JSON decode error in {file_path}: {e}")
             return False
         return False
 
@@ -151,31 +159,59 @@ class TRLAdapter(BaseAdapter):
         self, data: Dict[str, Any], line_num: int
     ) -> Dict[str, Any]:
         """Extract metric from TRL JSON data."""
-        metric = {
-            "step": data.get("step", line_num),
-            "phase": data.get("phase", "train"),
-            "reward_mean": data.get("reward_mean")
-            or data.get("reward", {}).get("mean"),
-            "reward_std": data.get("reward_std") or data.get("reward", {}).get("std"),
-            "kl_mean": data.get("kl_mean") or data.get("kl_div", {}).get("mean"),
-            "entropy_mean": data.get("entropy_mean")
-            or data.get("entropy", {}).get("mean"),
-            "clip_frac": data.get("clip_frac") or data.get("clipped_ratio"),
-            "grad_norm": data.get("grad_norm") or data.get("gradient_norm"),
-            "lr": data.get("lr") or data.get("learning_rate"),
-            "loss": data.get("loss") or data.get("total_loss"),
-            "tokens_in": data.get("tokens_in") or data.get("input_tokens"),
-            "tokens_out": data.get("tokens_out") or data.get("output_tokens"),
-            "wall_time": data.get("wall_time")
-            or (
-                data.get("wall_time_ms", 0) / 1000.0
-                if data.get("wall_time_ms") is not None
-                else None
-            ),
-            "seed": data.get("seed"),
-            "run_id": data.get("run_id") or data.get("experiment_id"),
-            "git_sha": data.get("git_sha") or data.get("commit_hash"),
-        }
+        # Handle both old format and new Event schema format
+        if "metrics" in data and "model_info" in data:
+            # New Event schema format
+            metrics = data.get("metrics", {})
+            model_info = data.get("model_info", {})
+            rng = data.get("rng", {})
+            data_slice = data.get("data_slice", {})
+            
+            metric = {
+                "step": data.get("step", line_num),
+                "phase": model_info.get("phase", "train"),
+                "reward_mean": metrics.get("reward_mean"),
+                "reward_std": metrics.get("reward_std"),
+                "kl_mean": metrics.get("kl_mean"),
+                "entropy_mean": metrics.get("entropy_mean"),
+                "clip_frac": metrics.get("clip_frac"),
+                "grad_norm": metrics.get("grad_norm"),
+                "lr": metrics.get("lr"),
+                "loss": metrics.get("loss"),
+                "tokens_in": data_slice.get("tokens_in"),
+                "tokens_out": data_slice.get("tokens_out"),
+                "wall_time": data.get("wall_time"),
+                "seed": rng.get("seed"),
+                "run_id": model_info.get("run_id"),
+                "git_sha": model_info.get("git_sha"),
+            }
+        else:
+            # Old format (backward compatibility)
+            metric = {
+                "step": data.get("step", line_num),
+                "phase": data.get("phase", "train"),
+                "reward_mean": data.get("reward_mean")
+                or data.get("reward", {}).get("mean"),
+                "reward_std": data.get("reward_std") or data.get("reward", {}).get("std"),
+                "kl_mean": data.get("kl_mean") or data.get("kl_div", {}).get("mean"),
+                "entropy_mean": data.get("entropy_mean")
+                or data.get("entropy", {}).get("mean"),
+                "clip_frac": data.get("clip_frac") or data.get("clipped_ratio"),
+                "grad_norm": data.get("grad_norm") or data.get("gradient_norm"),
+                "lr": data.get("lr") or data.get("learning_rate"),
+                "loss": data.get("loss") or data.get("total_loss"),
+                "tokens_in": data.get("tokens_in") or data.get("input_tokens"),
+                "tokens_out": data.get("tokens_out") or data.get("output_tokens"),
+                "wall_time": data.get("wall_time")
+                or (
+                    data.get("wall_time_ms", 0) / 1000.0
+                    if data.get("wall_time_ms") is not None
+                    else None
+                ),
+                "seed": data.get("seed"),
+                "run_id": data.get("run_id") or data.get("experiment_id"),
+                "git_sha": data.get("git_sha") or data.get("commit_hash"),
+            }
 
         return metric
 
