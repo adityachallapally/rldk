@@ -768,6 +768,9 @@ class PerformanceAnalyzer:
         # Calculate overall performance score
         performance_score = self._calculate_performance_score(current_metrics)
         
+        # Add performance_score to current_metrics for status determination
+        current_metrics['performance_score'] = performance_score
+        
         # Determine performance status
         performance_status = self._determine_performance_status(current_metrics)
         
