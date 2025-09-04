@@ -45,12 +45,54 @@ class RLDKMetrics:
     # PPO-specific metrics
     reward_mean: float = 0.0
     reward_std: float = 0.0
+    reward_min: float = 0.0
+    reward_max: float = 0.0
     kl_mean: float = 0.0
     kl_std: float = 0.0
     entropy_mean: float = 0.0
     clip_frac: float = 0.0
     value_loss: float = 0.0
     policy_loss: float = 0.0
+    value_policy_loss: float = 0.0
+    policy_grad_norm: float = 0.0
+    value_grad_norm: float = 0.0
+    value_mean: float = 0.0
+    value_std: float = 0.0
+    rollout_length_mean: float = 0.0
+    rollout_length_std: float = 0.0
+    advantage_mean: float = 0.0
+    advantage_std: float = 0.0
+    
+    # PPO internal state metrics
+    kl_coef: float = 1.0
+    target_kl: float = 0.1
+    advantage_normalized: bool = True
+    clip_range: float = 0.2
+    clip_range_value: float = 0.2
+    batch_size: int = 0
+    global_step: int = 0
+    
+    # Model and dataset information
+    model_type: str = "unknown"
+    vocab_size: int = 0
+    tokenizer_vocab_size: int = 0
+    dataset_size: int = 0
+    
+    # PPO rollout metrics
+    rollout_buffer_size: int = 0
+    rollout_buffer_pos: int = 0
+    rollout_mean_reward: float = 0.0
+    rollout_std_reward: float = 0.0
+    
+    # PPO policy metrics
+    policy_total_params: int = 0
+    policy_trainable_params: int = 0
+    policy_lr: float = 0.0
+    
+    # PPO value metrics
+    value_total_params: int = 0
+    value_trainable_params: int = 0
+    value_lr: float = 0.0
     
     # Resource metrics
     gpu_memory_used: float = 0.0
@@ -227,6 +269,11 @@ class RLDKCallback(TrainerCallback):
             self.current_metrics.reward_mean = logs['ppo/rewards/mean']
         if 'ppo/rewards/std' in logs:
             self.current_metrics.reward_std = logs['ppo/rewards/std']
+        if 'ppo/rewards/min' in logs:
+            self.current_metrics.reward_min = logs['ppo/rewards/min']
+        if 'ppo/rewards/max' in logs:
+            self.current_metrics.reward_max = logs['ppo/rewards/max']
+            
         if 'ppo/policy/kl_mean' in logs:
             self.current_metrics.kl_mean = logs['ppo/policy/kl_mean']
         if 'ppo/policy/kl_std' in logs:
@@ -235,6 +282,11 @@ class RLDKCallback(TrainerCallback):
             self.current_metrics.entropy_mean = logs['ppo/policy/entropy']
         if 'ppo/policy/clipfrac' in logs:
             self.current_metrics.clip_frac = logs['ppo/policy/clipfrac']
+        if 'ppo/policy/policy_loss' in logs:
+            self.current_metrics.policy_loss = logs['ppo/policy/policy_loss']
+        if 'ppo/policy/grad_norm' in logs:
+            self.current_metrics.policy_grad_norm = logs['ppo/policy/grad_norm']
+            
         if 'ppo/val/value_loss' in logs:
             self.current_metrics.value_loss = logs['ppo/val/value_loss']
         # Check both policy loss key variants for backward compatibility
@@ -242,6 +294,24 @@ class RLDKCallback(TrainerCallback):
             self.current_metrics.policy_loss = logs['ppo/policy/policy_loss']
         elif 'ppo/val/policy_loss' in logs:
             self.current_metrics.policy_loss = logs['ppo/val/policy_loss']
+        if 'ppo/val/grad_norm' in logs:
+            self.current_metrics.value_grad_norm = logs['ppo/val/grad_norm']
+        if 'ppo/val/mean' in logs:
+            self.current_metrics.value_mean = logs['ppo/val/mean']
+        if 'ppo/val/std' in logs:
+            self.current_metrics.value_std = logs['ppo/val/std']
+            
+        # PPO rollout metrics
+        if 'ppo/rollout/length_mean' in logs:
+            self.current_metrics.rollout_length_mean = logs['ppo/rollout/length_mean']
+        if 'ppo/rollout/length_std' in logs:
+            self.current_metrics.rollout_length_std = logs['ppo/rollout/length_std']
+            
+        # PPO advantage metrics
+        if 'ppo/advantages/mean' in logs:
+            self.current_metrics.advantage_mean = logs['ppo/advantages/mean']
+        if 'ppo/advantages/std' in logs:
+            self.current_metrics.advantage_std = logs['ppo/advantages/std']
         
         # Real-time analysis
         self._analyze_logs(logs, state)
@@ -300,13 +370,147 @@ class RLDKCallback(TrainerCallback):
         """Collect PPO-specific metrics from trainer."""
         # Try to extract PPO metrics from trainer if available
         trainer = kwargs.get('trainer')
-        if trainer and hasattr(trainer, 'accelerator') and hasattr(trainer.accelerator, 'unwrap_model'):
-            try:
-                # This is a simplified extraction - in practice, you'd need to access
-                # the PPO trainer's internal state more carefully
-                pass
-            except Exception as e:
-                warnings.warn(f"Failed to collect PPO metrics: {e}")
+        if not trainer:
+            return
+            
+        try:
+            # Check if this is a PPO trainer
+            if not TRL_AVAILABLE or not isinstance(trainer, PPOTrainer):
+                return
+                
+            # Extract PPO-specific metrics from trainer's internal state
+            self._extract_ppo_internal_metrics(trainer)
+            
+        except Exception as e:
+            warnings.warn(f"Failed to collect PPO metrics: {e}")
+    
+    def _extract_ppo_internal_metrics(self, trainer):
+        """Extract PPO metrics from trainer's internal state."""
+        try:
+            # Extract KL coefficient if available
+            if hasattr(trainer, 'config') and hasattr(trainer.config, 'kl_coef'):
+                self.current_metrics.kl_coef = trainer.config.kl_coef
+            
+            # Extract advantage statistics if available
+            if hasattr(trainer, 'config') and hasattr(trainer.config, 'advantage_normalization'):
+                self.current_metrics.advantage_normalized = trainer.config.advantage_normalization
+            
+            # Extract rollout statistics if available
+            if hasattr(trainer, 'config') and hasattr(trainer.config, 'target_kl'):
+                self.current_metrics.target_kl = trainer.config.target_kl
+            
+            # Extract learning rate schedule information
+            if hasattr(trainer, 'config') and hasattr(trainer.config, 'learning_rate'):
+                self.current_metrics.learning_rate = trainer.config.learning_rate
+            
+            # Extract batch size information
+            if hasattr(trainer, 'config') and hasattr(trainer.config, 'batch_size'):
+                self.current_metrics.batch_size = trainer.config.batch_size
+            
+            # Extract PPO-specific hyperparameters
+            if hasattr(trainer, 'config') and hasattr(trainer.config, 'cliprange'):
+                self.current_metrics.clip_range = trainer.config.cliprange
+            
+            if hasattr(trainer, 'config') and hasattr(trainer.config, 'cliprange_value'):
+                self.current_metrics.clip_range_value = trainer.config.cliprange_value
+            
+            # Extract model information if available
+            if hasattr(trainer, 'model'):
+                model = trainer.model
+                if hasattr(model, 'config'):
+                    self.current_metrics.model_type = getattr(model.config, 'model_type', 'unknown')
+                    self.current_metrics.vocab_size = getattr(model.config, 'vocab_size', 0)
+            
+            # Extract tokenizer information if available
+            if hasattr(trainer, 'tokenizer'):
+                tokenizer = trainer.tokenizer
+                if hasattr(tokenizer, 'vocab_size'):
+                    self.current_metrics.tokenizer_vocab_size = tokenizer.vocab_size
+            
+            # Extract dataset information if available
+            if hasattr(trainer, 'train_dataset'):
+                dataset = trainer.train_dataset
+                if hasattr(dataset, '__len__'):
+                    self.current_metrics.dataset_size = len(dataset)
+            
+            # Extract training step information
+            if hasattr(trainer, 'state') and hasattr(trainer.state, 'global_step'):
+                self.current_metrics.global_step = trainer.state.global_step
+            
+            # Extract PPO-specific internal state metrics
+            self._extract_ppo_rollout_metrics(trainer)
+            self._extract_ppo_policy_metrics(trainer)
+            self._extract_ppo_value_metrics(trainer)
+            
+        except Exception as e:
+            warnings.warn(f"Failed to extract PPO internal metrics: {e}")
+    
+    def _extract_ppo_rollout_metrics(self, trainer):
+        """Extract PPO rollout-specific metrics."""
+        try:
+            # Try to access rollout buffer if available
+            if hasattr(trainer, 'rollout_buffer'):
+                buffer = trainer.rollout_buffer
+                if hasattr(buffer, 'size'):
+                    self.current_metrics.rollout_buffer_size = buffer.size
+                if hasattr(buffer, 'pos'):
+                    self.current_metrics.rollout_buffer_pos = buffer.pos
+            
+            # Try to access rollout statistics if available
+            if hasattr(trainer, 'rollout_stats'):
+                stats = trainer.rollout_stats
+                if hasattr(stats, 'mean_reward'):
+                    self.current_metrics.rollout_mean_reward = stats.mean_reward
+                if hasattr(stats, 'std_reward'):
+                    self.current_metrics.rollout_std_reward = stats.std_reward
+                    
+        except Exception as e:
+            # Rollout metrics extraction is optional, don't warn
+            pass
+    
+    def _extract_ppo_policy_metrics(self, trainer):
+        """Extract PPO policy-specific metrics."""
+        try:
+            # Try to access policy network if available
+            if hasattr(trainer, 'policy'):
+                policy = trainer.policy
+                if hasattr(policy, 'parameters'):
+                    total_params = sum(p.numel() for p in policy.parameters())
+                    trainable_params = sum(p.numel() for p in policy.parameters() if p.requires_grad)
+                    self.current_metrics.policy_total_params = total_params
+                    self.current_metrics.policy_trainable_params = trainable_params
+            
+            # Try to access policy optimizer if available
+            if hasattr(trainer, 'policy_optimizer'):
+                optimizer = trainer.policy_optimizer
+                if hasattr(optimizer, 'param_groups') and optimizer.param_groups:
+                    self.current_metrics.policy_lr = optimizer.param_groups[0].get('lr', 0.0)
+                    
+        except Exception as e:
+            # Policy metrics extraction is optional, don't warn
+            pass
+    
+    def _extract_ppo_value_metrics(self, trainer):
+        """Extract PPO value function-specific metrics."""
+        try:
+            # Try to access value network if available
+            if hasattr(trainer, 'value'):
+                value = trainer.value
+                if hasattr(value, 'parameters'):
+                    total_params = sum(p.numel() for p in value.parameters())
+                    trainable_params = sum(p.numel() for p in value.parameters() if p.requires_grad)
+                    self.current_metrics.value_total_params = total_params
+                    self.current_metrics.value_trainable_params = trainable_params
+            
+            # Try to access value optimizer if available
+            if hasattr(trainer, 'value_optimizer'):
+                optimizer = trainer.value_optimizer
+                if hasattr(optimizer, 'param_groups') and optimizer.param_groups:
+                    self.current_metrics.value_lr = optimizer.param_groups[0].get('lr', 0.0)
+                    
+        except Exception as e:
+            # Value metrics extraction is optional, don't warn
+            pass
     
     def _check_alerts(self):
         """Check for training issues and generate alerts."""
