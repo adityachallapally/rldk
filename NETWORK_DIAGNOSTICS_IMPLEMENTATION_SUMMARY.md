@@ -197,6 +197,40 @@ except ImportError:
 
 **Verification**: The fix ensures that distributed diagnostics work correctly when PyTorch distributed is active, while maintaining graceful handling when PyTorch is not available.
 
+## P2 Fix: Near-Zero Operation Time Handling
+
+**Issue**: The bandwidth calculations for allreduce and broadcast in `_run_distributed_diagnostics` didn't include a check for near-zero operation times. If these operations completed very quickly, it could cause a `ZeroDivisionError` or report incorrect, infinite bandwidth.
+
+**Solution**: Added the same near-zero operation time protection that exists in other similar methods in the file.
+
+**Before**:
+```python
+results['allreduce_test'] = {
+    'time_ms': allreduce_time * 1000,
+    'tensor_size_mb': test_tensor.numel() * test_tensor.element_size() / (1024 * 1024),
+    'bandwidth_mbps': (test_tensor.numel() * test_tensor.element_size() * 8) / (allreduce_time * 1_000_000)
+}
+```
+
+**After**:
+```python
+# Prevent division by zero and ensure minimum measurement time
+if allreduce_time <= 0.001:  # Less than 1ms, likely measurement error
+    results['allreduce_test'] = {
+        'time_ms': allreduce_time * 1000,
+        'tensor_size_mb': test_tensor.numel() * test_tensor.element_size() / (1024 * 1024),
+        'bandwidth_mbps': 0.0
+    }
+else:
+    results['allreduce_test'] = {
+        'time_ms': allreduce_time * 1000,
+        'tensor_size_mb': test_tensor.numel() * test_tensor.element_size() / (1024 * 1024),
+        'bandwidth_mbps': (test_tensor.numel() * test_tensor.element_size() * 8) / (allreduce_time * 1_000_000)
+    }
+```
+
+**Verification**: The fix prevents `ZeroDivisionError` and ensures consistent behavior with other similar methods in the file. All 6 methods now have proper near-zero operation time protection.
+
 ## Conclusion
 
 The network diagnostics implementation successfully replaces all placeholder tests with comprehensive, research-grade network analysis capabilities. The system provides accurate network assessment, automated health reporting, and seamless integration with distributed training monitoring, making it suitable for real research deployments.
