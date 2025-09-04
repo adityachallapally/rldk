@@ -102,43 +102,43 @@ class TestPerformanceAnalyzer:
             entropy_low=0.1,
             throughput_low=0.1
         )
-        
-        # Good metrics
+
+        # Good metrics - all values within acceptable ranges
         step_metrics = {
-            'kl_mean': 0.05,  # Between low and high thresholds
+            'kl_mean': 0.005,  # Below low threshold
             'entropy_mean': 0.5,  # Above low threshold
             'step_time': 1.0,  # Good throughput (1.0 steps/sec)
             'loss': 0.1,
             'reward_mean': 0.5
         }
-        
+
         result = analyzer.analyze(step_metrics)
-        
+
         assert result['status'] == 'ok'
         assert len(result['reasons']) == 0
-        assert result['signals']['kl_mean'] == 0.05
+        assert result['signals']['kl_mean'] == 0.005
         assert result['signals']['entropy_mean'] == 0.5
         assert result['signals']['throughput_mean'] == 1.0
     
     def test_analyze_warn_status_kl_low(self):
-        """Test analysis with KL divergence above low threshold."""
+        """Test analysis with KL divergence above low threshold but below high threshold."""
         analyzer = PerformanceAnalyzer(
             kl_high=0.1,
             kl_low=0.01,
             entropy_low=0.1,
             throughput_low=0.1
         )
-        
+
         step_metrics = {
-            'kl_mean': 0.05,  # Above low threshold but below high
+            'kl_mean': 0.05,  # Above low threshold (0.01) but below high threshold (0.1)
             'entropy_mean': 0.5,
             'step_time': 1.0,
             'loss': 0.1,
             'reward_mean': 0.5
         }
-        
+
         result = analyzer.analyze(step_metrics)
-        
+
         assert result['status'] == 'warn'
         assert len(result['reasons']) == 1
         assert 'KL divergence' in result['reasons'][0]
