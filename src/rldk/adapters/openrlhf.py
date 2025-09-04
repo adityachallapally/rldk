@@ -50,7 +50,9 @@ class OpenRLHFAdapter(BaseAdapter):
                 with open(file_path, "r") as f:
                     content = f.read()
                     return "openrlhf" in content.lower() or "rlhf" in content.lower()
-        except:
+        except (OSError, IOError, json.JSONDecodeError, UnicodeDecodeError) as e:
+            # Log the specific error for debugging but don't fail the check
+            print(f"Warning: Error checking if file {file_path} is OpenRLHF format: {e}")
             pass
         return False
 

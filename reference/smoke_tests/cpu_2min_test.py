@@ -119,8 +119,8 @@ def run_rldk_analysis(output_dir: str) -> bool:
         if result.returncode != 0:
             print("❌ RLDK not available, skipping analysis")
             return False
-    except:
-        print("❌ RLDK not available, skipping analysis")
+    except (OSError, subprocess.SubprocessError) as e:
+        print(f"❌ RLDK not available, skipping analysis: {e}")
         return False
 
     # Run divergence analysis

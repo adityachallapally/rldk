@@ -50,7 +50,9 @@ class TRLAdapter(BaseAdapter):
                 with open(file_path, "r") as f:
                     content = f.read()
                     return "trl" in content.lower() or "trainer" in content.lower()
-        except:
+        except (OSError, IOError, json.JSONDecodeError, UnicodeDecodeError) as e:
+            # Log the specific error for debugging but don't fail the check
+            print(f"Warning: Error checking if file {file_path} is TRL format: {e}")
             pass
         return False
 
