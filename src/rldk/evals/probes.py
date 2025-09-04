@@ -512,7 +512,9 @@ def evaluate_reward_alignment(
             try:
                 spearman_corr = stats.spearmanr(human_prefs, rewards)[0]
                 alignment_metrics.append(("spearman_correlation", spearman_corr))
-            except:
+            except (ValueError, TypeError) as e:
+                # Skip if correlation calculation fails (e.g., constant values)
+                print(f"Warning: Could not calculate Spearman correlation: {e}")
                 pass
 
     # Check for reward calibration

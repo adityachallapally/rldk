@@ -551,7 +551,9 @@ class RewardCalibrationDriftDetector:
                     ece += np.abs(avg_confidence_in_bin - accuracy_in_bin) * prop_in_bin
             
             return 1.0 - ece  # Higher is better
-        except:
+        except (ValueError, RuntimeError) as e:
+            # Log the specific error for debugging
+            print(f"Warning: Error calculating calibration score: {e}")
             return 0.5  # Default neutral score
 
 
@@ -705,7 +707,8 @@ class AdvancedAnomalyDetector:
             try:
                 # Try to convert to string as last resort
                 return str(obj)
-            except:
+            except Exception as e:
+                print(f"Warning: Could not serialize object: {e}")
                 return None
     
     def save_final_report(self):

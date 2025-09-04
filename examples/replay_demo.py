@@ -274,7 +274,9 @@ def demonstrate_replay_workflow():
     try:
         os.unlink(original_file)
         os.unlink(replay_file)
-    except:
+    except OSError as e:
+        # Log cleanup errors but don't fail the demo
+        print(f"Warning: Could not clean up temporary files: {e}")
         pass
 
     print("\n🎉 Demonstration completed!")

@@ -66,7 +66,8 @@ class TorchProfiler:
                 print("Warning: Profiler already running, stopping existing profiler first")
                 try:
                     torch.profiler._current_profiler.__exit__(None, None, None)
-                except:
+                except Exception as e:
+                    print(f"Warning: Error stopping existing profiler: {e}")
                     pass
             
             self.profiler = torch.profiler.profile(

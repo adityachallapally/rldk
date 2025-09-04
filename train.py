@@ -269,7 +269,8 @@ class RLHFTrainer:
                 try:
                     self.profiler_context.save_stage_times()
                     self.profiler_manager.save_stage_times()
-                except:
+                except Exception as e:
+                    print(f"Warning: Could not save profiler stage times: {e}")
                     pass
         
         # Save training results

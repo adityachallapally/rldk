@@ -51,7 +51,9 @@ def compute_kl_divergence(logits: torch.Tensor, ref_logits: torch.Tensor) -> flo
 
         kl_div = torch.sum(ref_probs * torch.log(ref_probs / probs))
         return kl_div.item()
-    except:
+    except (RuntimeError, ValueError) as e:
+        # Log the specific error for debugging
+        print(f"Warning: Error computing KL divergence: {e}")
         return float("nan")
 
 
@@ -100,8 +102,8 @@ def train_summarization(
     try:
         ref_model = GPT2LMHeadModel.from_pretrained("gpt2")
         ref_model.eval()
-    except:
-        print("Warning: Could not load reference model for KL computation")
+    except (OSError, ImportError, RuntimeError) as e:
+        print(f"Warning: Could not load reference model for KL computation: {e}")
 
     # Prepare data
     data = []

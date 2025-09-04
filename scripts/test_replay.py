@@ -175,7 +175,9 @@ def main():
         try:
             os.unlink(script_path)
             os.unlink(run_file)
-        except:
+        except OSError as e:
+            # Log cleanup errors but don't fail the test
+            print(f"Warning: Could not clean up test files: {e}")
             pass
 
 

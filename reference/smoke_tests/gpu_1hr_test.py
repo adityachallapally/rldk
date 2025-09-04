@@ -78,8 +78,8 @@ def check_gpu_availability() -> bool:
         else:
             print("❌ NVIDIA GPU not detected")
             return False
-    except:
-        print("❌ Cannot check GPU availability")
+    except (OSError, subprocess.SubprocessError) as e:
+        print(f"❌ Cannot check GPU availability: {e}")
         return False
 
 
@@ -111,8 +111,8 @@ def run_comprehensive_rldk_analysis(task_outputs: Dict[str, str]) -> Dict[str, b
         if result.returncode != 0:
             print("❌ RLDK not available, skipping analysis")
             return {task: False for task in task_outputs.keys()}
-    except:
-        print("❌ RLDK not available, skipping analysis")
+    except (OSError, subprocess.SubprocessError) as e:
+        print(f"❌ RLDK not available, skipping analysis: {e}")
         return {task: False for task in task_outputs.keys()}
 
     for task_name, output_dir in task_outputs.items():

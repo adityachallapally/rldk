@@ -199,7 +199,9 @@ def _run_replay(command: str, output_path: Path, device: Optional[str]) -> pd.Da
     # Clean up temp file
     try:
         os.unlink(metrics_file)
-    except:
+    except OSError as e:
+        # Log the error but don't fail the replay
+        print(f"Warning: Could not clean up temp file {metrics_file}: {e}")
         pass
 
     return replay_df
@@ -219,7 +221,8 @@ def _parse_metrics_from_stdout(stdout: str) -> pd.DataFrame:
             try:
                 json.loads(line)
                 metrics_lines.append(line)
-            except:
+            except json.JSONDecodeError:
+                # Skip invalid JSON lines
                 continue
 
     if not metrics_lines:
