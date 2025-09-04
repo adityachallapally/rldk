@@ -33,13 +33,30 @@ class CustomJSONLAdapter(BaseAdapter):
                     first_line = f.readline().strip()
                     if first_line:
                         data = json.loads(first_line)
-                        # Check for our custom schema
+                        # Check for our custom schema - be very specific to avoid misclassifying TRL/OpenRLHF
                         # Only check for required keys if data is a dict
                         if isinstance(data, dict):
-                            return all(
-                                key in data
-                                for key in ["global_step", "reward_scalar", "loss"]
+                            # Check for explicit custom format indicators (not standard format)
+                            # These are the unique identifiers of our custom format
+                            custom_indicators = [
+                                "global_step", "reward_scalar", "kl_to_ref"  # Unique to custom format
+                            ]
+                            
+                            # Must have at least one of the unique custom indicators
+                            has_custom_indicators = any(key in data for key in custom_indicators)
+                            
+                            # Also check that it doesn't look like standard TRL/OpenRLHF format
+                            # Standard formats typically have nested metrics or different structure
+                            is_standard_format = (
+                                "reward" in data and isinstance(data["reward"], dict) or  # Nested metrics
+                                "metrics" in data and isinstance(data["metrics"], dict) or  # Nested metrics
+                                ("step" in data and "reward_mean" in data and "kl_mean" in data and 
+                                 "entropy_mean" in data and "clip_frac" in data and "grad_norm" in data)  # Full standard schema
                             )
+                            
+                            # Only classify as custom if it has custom indicators AND doesn't look like standard format
+                            # This is already restrictive enough - requires explicit custom field names
+                            return has_custom_indicators and not is_standard_format
                         else:
                             # For non-dict data, it's not our custom format
                             return False
@@ -127,24 +144,63 @@ class CustomJSONLAdapter(BaseAdapter):
     ) -> Dict[str, Any]:
         """Extract metric from our custom JSONL format."""
         try:
+            # Helper function to safely get values with null handling
+            def safe_get(key, default=None):
+                """Get value from data, handling null values properly."""
+                value = data.get(key)
+                return value if value is not None else default
+            
             # Map our custom schema to the expected format
+            # Handle various possible field names for better compatibility
+            # Use 'in' checks to avoid skipping valid zeros, but handle null values
+            step = safe_get("global_step") if "global_step" in data and data["global_step"] is not None else safe_get("step", line_num)
+            reward_scalar = safe_get("reward_scalar") if "reward_scalar" in data and data["reward_scalar"] is not None else safe_get("reward_mean", 0.0)
+            kl_value = safe_get("kl_to_ref") if "kl_to_ref" in data and data["kl_to_ref"] is not None else safe_get("kl_mean", 0.0)
+            loss_value = safe_get("loss", 0.0)
+            
+            # Extract RNG seed from various possible locations
+            # Fix operator precedence by using proper conditional logic
+            seed = 42  # Default fallback
+            if "rng.python" in data and data["rng.python"] is not None:
+                seed = data["rng.python"]
+            elif "seed" in data and data["seed"] is not None:
+                seed = data["seed"]
+            elif "rng" in data and isinstance(data["rng"], dict) and "python" in data["rng"] and data["rng"]["python"] is not None:
+                seed = data["rng"]["python"]
+            
+            # Extract additional metrics if available
+            # Use 'in' checks to avoid skipping valid zeros, but handle null values
+            entropy_value = safe_get("entropy") if "entropy" in data and data["entropy"] is not None else safe_get("entropy_mean", 0.0)
+            clip_frac_value = safe_get("clip_frac", 0.0)
+            grad_norm_value = safe_get("grad_norm", 0.0)
+            lr_value = safe_get("lr") if "lr" in data and data["lr"] is not None else safe_get("learning_rate", 0.0)
+            reward_std_value = safe_get("reward_std", 0.0)
+            
+            # Extract data slice information if available
+            tokens_in = safe_get("tokens_in", 0)
+            tokens_out = safe_get("tokens_out", 0)
+            
+            # Extract wall time if available
+            # Use 'in' check to avoid skipping valid zeros, but handle null values
+            wall_time = safe_get("wall_time") if "wall_time" in data and data["wall_time"] is not None else safe_get("timestamp", 0.0)
+            
             metric = {
-                "step": data.get("global_step", line_num),
-                "phase": "train",  # Default phase
-                "reward_mean": data.get("reward_scalar", 0.0),
-                "reward_std": 0.0,  # We don't have this, use 0.0 instead of None
-                "kl_mean": data.get("kl_to_ref", 0.0),
-                "entropy_mean": 0.0,  # We don't have this, use 0.0 instead of None
-                "clip_frac": 0.0,  # We don't have this, use 0.0 instead of None
-                "grad_norm": 0.0,  # We don't have this, use 0.0 instead of None
-                "lr": 0.0,  # We don't have this, use 0.0 instead of None
-                "loss": data.get("loss", 0.0),
-                "tokens_in": 0,  # We don't have this, use 0 instead of None
-                "tokens_out": 0,  # We don't have this, use 0 instead of None
-                "wall_time": 0.0,  # We don't have this, use 0.0 instead of None
-                "seed": data.get("rng.python", 42),
-                "run_id": f"custom_{line_num}",
-                "git_sha": "unknown",  # We don't have this, use string instead of None
+                "step": int(step),
+                "phase": safe_get("phase", "train"),
+                "reward_mean": float(reward_scalar),
+                "reward_std": float(reward_std_value),
+                "kl_mean": float(kl_value),
+                "entropy_mean": float(entropy_value),
+                "clip_frac": float(clip_frac_value),
+                "grad_norm": float(grad_norm_value),
+                "lr": float(lr_value),
+                "loss": float(loss_value),
+                "tokens_in": int(tokens_in),
+                "tokens_out": int(tokens_out),
+                "wall_time": float(wall_time),
+                "seed": int(seed),
+                "run_id": safe_get("run_id", f"custom_{line_num}"),
+                "git_sha": safe_get("git_sha", "unknown"),
             }
 
             return metric

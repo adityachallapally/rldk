@@ -45,15 +45,22 @@ def validate_jsonl_schema(
                     data = json.loads(line)
                     
                     if strict:
-                        # Try to create Event object
+                        # Try to create Event object - be more flexible for custom formats
                         try:
+                            # First try direct Event creation
                             event = create_event_from_row(data, "validation", None)
                             # Verify Event object is valid
                             event_dict = event.to_dict()
                             if not isinstance(event_dict, dict):
                                 errors.append(f"Line {line_num}: Invalid Event object structure")
                         except Exception as e:
-                            errors.append(f"Line {line_num}: Event schema validation failed: {e}")
+                            # If direct creation fails, try to detect if it's a custom format
+                            # and suggest using an adapter
+                            custom_indicators = ["global_step", "reward_scalar", "kl_to_ref"]
+                            if any(key in data for key in custom_indicators):
+                                errors.append(f"Line {line_num}: Custom format detected - use CustomJSONLAdapter for proper mapping: {e}")
+                            else:
+                                errors.append(f"Line {line_num}: Event schema validation failed: {e}")
                     else:
                         # Check for required fields
                         missing_fields = [field for field in required_fields if field not in data]
@@ -219,6 +226,53 @@ def validate_event_schema_compatibility(
     
     except Exception as e:
         issues.append(f"File read error: {e}")
+    
+    return len(issues) == 0, issues
+
+
+def validate_custom_jsonl_with_adapter(
+    file_path: Path
+) -> Tuple[bool, List[str]]:
+    """
+    Validate custom JSONL file using the CustomJSONLAdapter.
+    
+    Args:
+        file_path: Path to custom JSONL file
+    
+    Returns:
+        Tuple of (is_valid, list_of_issues)
+    """
+    issues = []
+    
+    try:
+        # Import here to avoid circular imports
+        from ..adapters.custom_jsonl import CustomJSONLAdapter
+        
+        # Use the adapter to load and convert the data
+        adapter = CustomJSONLAdapter(file_path)
+        df = adapter.load()
+        
+        # Validate that we can create Event objects from the adapter output
+        for idx, row in df.iterrows():
+            try:
+                event = create_event_from_row(row.to_dict(), "validation", None)
+                
+                # Verify the Event object can be serialized
+                event_dict = event.to_dict()
+                event_json = event.to_json()
+                
+                # Verify we can recreate the Event from JSON
+                recreated_event = Event.from_json(event_json)
+                
+                # Verify the recreated event matches the original
+                if event_dict != recreated_event.to_dict():
+                    issues.append(f"Row {idx}: Event serialization/deserialization mismatch")
+                    
+            except Exception as e:
+                issues.append(f"Row {idx}: Event creation failed: {e}")
+    
+    except Exception as e:
+        issues.append(f"Adapter validation failed: {e}")
     
     return len(issues) == 0, issues
 

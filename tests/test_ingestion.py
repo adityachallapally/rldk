@@ -102,7 +102,7 @@ class TestJSONLIngestion:
     def test_custom_jsonl_adapter_handles_malformed_json(self):
         """Test that CustomJSONL adapter properly handles malformed JSON."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
-            # Write valid JSON line
+            # Write valid JSON line with custom format
             json.dump({
                 "global_step": 0,
                 "reward_scalar": 0.5,
@@ -134,6 +134,358 @@ class TestJSONLIngestion:
             assert len(df) == 2
             assert df["step"].iloc[0] == 0
             assert df["step"].iloc[1] == 2
+            
+            # Verify that the adapter properly maps custom fields to Event schema fields
+            assert "reward_mean" in df.columns
+            assert "kl_mean" in df.columns
+            assert "entropy_mean" in df.columns
+            assert "clip_frac" in df.columns
+            assert "grad_norm" in df.columns
+            assert "lr" in df.columns
+            
+            # Verify the mapped values
+            assert df["reward_mean"].iloc[0] == 0.5
+            assert df["kl_mean"].iloc[0] == 0.1
+            assert df["loss"].iloc[0] == 0.4
+            
+        finally:
+            os.unlink(f.name)
+
+    def test_custom_jsonl_adapter_schema_validation(self):
+        """Test that CustomJSONL adapter produces Event schema compatible data."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write custom JSONL data
+            json.dump({
+                "global_step": 0,
+                "reward_scalar": 0.5,
+                "kl_to_ref": 0.1,
+                "loss": 0.4,
+                "rng.python": 42,
+                "entropy": 0.8,
+                "clip_frac": 0.2,
+                "grad_norm": 1.0,
+                "lr": 0.001,
+                "tokens_in": 1000,
+                "tokens_out": 500,
+                "wall_time": 10.0,
+                "run_id": "test_run",
+                "git_sha": "abc123"
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            df = adapter.load()
+            
+            # Test that we can create Event objects from the adapter output
+            for _, row in df.iterrows():
+                event = create_event_from_row(row.to_dict(), "test_run", "abc123")
+                
+                # Verify Event object has all required fields
+                assert hasattr(event, 'step')
+                assert hasattr(event, 'wall_time')
+                assert hasattr(event, 'metrics')
+                assert hasattr(event, 'rng')
+                assert hasattr(event, 'data_slice')
+                assert hasattr(event, 'model_info')
+                assert hasattr(event, 'notes')
+                
+                # Verify metrics contain expected fields
+                assert 'reward_mean' in event.metrics
+                assert 'kl_mean' in event.metrics
+                assert 'entropy_mean' in event.metrics
+                assert 'clip_frac' in event.metrics
+                assert 'grad_norm' in event.metrics
+                assert 'lr' in event.metrics
+                assert 'loss' in event.metrics
+                
+                # Verify data types are correct
+                assert isinstance(event.step, int)
+                assert isinstance(event.wall_time, float)
+                assert isinstance(event.metrics, dict)
+                assert isinstance(event.rng, dict)
+                assert isinstance(event.data_slice, dict)
+                assert isinstance(event.model_info, dict)
+                assert isinstance(event.notes, list)
+                
+        finally:
+            os.unlink(f.name)
+
+    def test_custom_jsonl_validation_with_adapter(self):
+        """Test that custom JSONL validation works with the adapter."""
+        from rldk.io.validator import validate_custom_jsonl_with_adapter
+        
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write custom JSONL data
+            json.dump({
+                "global_step": 0,
+                "reward_scalar": 0.5,
+                "kl_to_ref": 0.1,
+                "loss": 0.4,
+                "rng.python": 42,
+                "entropy": 0.8,
+                "clip_frac": 0.2,
+                "grad_norm": 1.0,
+                "lr": 0.001,
+                "tokens_in": 1000,
+                "tokens_out": 500,
+                "wall_time": 10.0,
+                "run_id": "test_run",
+                "git_sha": "abc123"
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            # Test validation with adapter
+            is_valid, issues = validate_custom_jsonl_with_adapter(f.name)
+            
+            # Should be valid
+            assert is_valid
+            assert len(issues) == 0
+            
+        finally:
+            os.unlink(f.name)
+
+    def test_custom_jsonl_adapter_preserves_valid_zeros(self):
+        """Test that CustomJSONL adapter preserves valid zero values."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write custom JSONL data with valid zeros
+            json.dump({
+                "global_step": 0,        # Valid zero
+                "reward_scalar": 0.0,    # Valid zero
+                "kl_to_ref": 0.0,        # Valid zero
+                "loss": 0.0,             # Valid zero
+                "rng.python": 0,         # Valid zero
+                "entropy": 0.0,          # Valid zero
+                "lr": 0.0,               # Valid zero
+                "wall_time": 0.0,        # Valid zero
+                "tokens_in": 0,          # Valid zero
+                "tokens_out": 0,         # Valid zero
+                "run_id": "test_run",
+                "git_sha": "abc123"
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            df = adapter.load()
+            
+            # Verify that zeros are preserved
+            assert df["step"].iloc[0] == 0, f"Expected step=0, got {df['step'].iloc[0]}"
+            assert df["reward_mean"].iloc[0] == 0.0, f"Expected reward_mean=0.0, got {df['reward_mean'].iloc[0]}"
+            assert df["kl_mean"].iloc[0] == 0.0, f"Expected kl_mean=0.0, got {df['kl_mean'].iloc[0]}"
+            assert df["loss"].iloc[0] == 0.0, f"Expected loss=0.0, got {df['loss'].iloc[0]}"
+            assert df["entropy_mean"].iloc[0] == 0.0, f"Expected entropy_mean=0.0, got {df['entropy_mean'].iloc[0]}"
+            assert df["lr"].iloc[0] == 0.0, f"Expected lr=0.0, got {df['lr'].iloc[0]}"
+            assert df["wall_time"].iloc[0] == 0.0, f"Expected wall_time=0.0, got {df['wall_time'].iloc[0]}"
+            assert df["seed"].iloc[0] == 0, f"Expected seed=0, got {df['seed'].iloc[0]}"
+            assert df["tokens_in"].iloc[0] == 0, f"Expected tokens_in=0, got {df['tokens_in'].iloc[0]}"
+            assert df["tokens_out"].iloc[0] == 0, f"Expected tokens_out=0, got {df['tokens_out'].iloc[0]}"
+            
+        finally:
+            os.unlink(f.name)
+
+    def test_custom_jsonl_adapter_handles_missing_fields(self):
+        """Test that CustomJSONL adapter uses defaults for missing fields."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write custom JSONL data with only some fields
+            json.dump({
+                "global_step": 5,
+                "reward_scalar": 0.5,
+                "run_id": "test_run"
+                # Missing most fields
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            df = adapter.load()
+            
+            # Verify that present fields are preserved
+            assert df["step"].iloc[0] == 5, f"Expected step=5, got {df['step'].iloc[0]}"
+            assert df["reward_mean"].iloc[0] == 0.5, f"Expected reward_mean=0.5, got {df['reward_mean'].iloc[0]}"
+            
+            # Verify that missing fields use defaults
+            assert df["kl_mean"].iloc[0] == 0.0, f"Expected kl_mean=0.0 (default), got {df['kl_mean'].iloc[0]}"
+            assert df["loss"].iloc[0] == 0.0, f"Expected loss=0.0 (default), got {df['loss'].iloc[0]}"
+            assert df["seed"].iloc[0] == 42, f"Expected seed=42 (default), got {df['seed'].iloc[0]}"
+            
+        finally:
+            os.unlink(f.name)
+
+    def test_custom_jsonl_detection_avoids_trl_misclassification(self):
+        """Test that custom JSONL detection doesn't misclassify TRL/OpenRLHF data."""
+        # Test 1: TRL format with nested metrics - should NOT be detected as custom
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            json.dump({
+                "step": 1,
+                "reward": {"mean": 0.5, "std": 0.1},
+                "kl": {"mean": 0.1, "std": 0.05},
+                "loss": 0.4
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            # Should NOT be able to handle TRL format
+            assert not adapter.can_handle(), "Custom adapter should NOT handle TRL nested format"
+        finally:
+            os.unlink(f.name)
+
+        # Test 2: TRL format with metrics object - should NOT be detected as custom
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            json.dump({
+                "step": 1,
+                "metrics": {
+                    "reward_mean": 0.5,
+                    "kl_mean": 0.1,
+                    "loss": 0.4
+                }
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            # Should NOT be able to handle TRL format
+            assert not adapter.can_handle(), "Custom adapter should NOT handle TRL metrics format"
+        finally:
+            os.unlink(f.name)
+
+        # Test 3: Full standard schema - should NOT be detected as custom
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            json.dump({
+                "step": 1,
+                "reward_mean": 0.5,
+                "kl_mean": 0.1,
+                "entropy_mean": 0.8,
+                "clip_frac": 0.2,
+                "grad_norm": 1.0,
+                "loss": 0.4
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            # Should NOT be able to handle standard format
+            assert not adapter.can_handle(), "Custom adapter should NOT handle full standard schema"
+        finally:
+            os.unlink(f.name)
+
+        # Test 4: Partial standard schema (just step and reward_mean) - should NOT be detected as custom
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            json.dump({
+                "step": 1,
+                "reward_mean": 0.5
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            # Should NOT be able to handle partial standard format
+            assert not adapter.can_handle(), "Custom adapter should NOT handle partial standard schema"
+        finally:
+            os.unlink(f.name)
+
+        # Test 5: Actual custom format - should be detected as custom
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            json.dump({
+                "global_step": 0,
+                "reward_scalar": 0.5,
+                "kl_to_ref": 0.1,
+                "loss": 0.4
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            # Should be able to handle custom format
+            assert adapter.can_handle(), "Custom adapter should handle actual custom format"
+        finally:
+            os.unlink(f.name)
+
+    def test_custom_jsonl_adapter_handles_null_values(self):
+        """Test that CustomJSONL adapter handles null values without crashing."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write custom JSONL data with null values
+            json.dump({
+                "global_step": 0,
+                "reward_scalar": None,  # null value
+                "kl_to_ref": 0.1,
+                "loss": None,  # null value
+                "rng.python": None,  # null value
+                "entropy": 0.8,
+                "lr": None,  # null value
+                "wall_time": 10.0,
+                "tokens_in": None,  # null value
+                "run_id": "test_run"
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            df = adapter.load()
+            
+            # Should not crash and should handle null values gracefully
+            assert len(df) == 1, "Should have one row"
+            
+            # Verify that null values are handled correctly (use defaults)
+            assert df["reward_mean"].iloc[0] == 0.0, f"Expected reward_mean=0.0 (default for null), got {df['reward_mean'].iloc[0]}"
+            assert df["loss"].iloc[0] == 0.0, f"Expected loss=0.0 (default for null), got {df['loss'].iloc[0]}"
+            assert df["seed"].iloc[0] == 42, f"Expected seed=42 (default for null), got {df['seed'].iloc[0]}"
+            assert df["lr"].iloc[0] == 0.0, f"Expected lr=0.0 (default for null), got {df['lr'].iloc[0]}"
+            assert df["tokens_in"].iloc[0] == 0, f"Expected tokens_in=0 (default for null), got {df['tokens_in'].iloc[0]}"
+            
+            # Verify that non-null values are preserved
+            assert df["step"].iloc[0] == 0, f"Expected step=0, got {df['step'].iloc[0]}"
+            assert df["kl_mean"].iloc[0] == 0.1, f"Expected kl_mean=0.1, got {df['kl_mean'].iloc[0]}"
+            assert df["entropy_mean"].iloc[0] == 0.8, f"Expected entropy_mean=0.8, got {df['entropy_mean'].iloc[0]}"
+            assert df["wall_time"].iloc[0] == 10.0, f"Expected wall_time=10.0, got {df['wall_time'].iloc[0]}"
+            
+        finally:
+            os.unlink(f.name)
+
+    def test_custom_jsonl_adapter_handles_all_null_values(self):
+        """Test that CustomJSONL adapter handles all null values without crashing."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write custom JSONL data with all null values
+            json.dump({
+                "global_step": None,
+                "reward_scalar": None,
+                "kl_to_ref": None,
+                "loss": None,
+                "rng.python": None,
+                "entropy": None,
+                "lr": None,
+                "wall_time": None,
+                "tokens_in": None,
+                "tokens_out": None
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            df = adapter.load()
+            
+            # Should not crash and should handle all null values gracefully
+            assert len(df) == 1, "Should have one row"
+            
+            # Verify that all null values use defaults
+            assert df["step"].iloc[0] == 0, f"Expected step=0 (line_num), got {df['step'].iloc[0]}"
+            assert df["reward_mean"].iloc[0] == 0.0, f"Expected reward_mean=0.0 (default), got {df['reward_mean'].iloc[0]}"
+            assert df["kl_mean"].iloc[0] == 0.0, f"Expected kl_mean=0.0 (default), got {df['kl_mean'].iloc[0]}"
+            assert df["loss"].iloc[0] == 0.0, f"Expected loss=0.0 (default), got {df['loss'].iloc[0]}"
+            assert df["seed"].iloc[0] == 42, f"Expected seed=42 (default), got {df['seed'].iloc[0]}"
             
         finally:
             os.unlink(f.name)
