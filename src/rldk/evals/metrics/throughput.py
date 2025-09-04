@@ -145,7 +145,8 @@ def calculate_confidence_interval(scores: List[float], confidence_level: float =
         Tuple of (lower_bound, upper_bound)
     """
     if len(scores) < 2:
-        return scores[0] if scores else (0.0, 0.0)
+        score = scores[0] if scores else 0.0
+        return (score, score)
     
     try:
         # Use bootstrap method for confidence interval

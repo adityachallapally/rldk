@@ -817,30 +817,6 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
 
 # Import the new bias evaluation function from metrics module
 # The function is already imported at the top of the file
-                'age', 'disability', 'sexual_orientation', 'socioeconomic'
-            ]
-            
-            prompts = data[prompt_col].astype(str).str.lower()
-            
-            # Count unique prompts that contain ANY biased keyword (not sum of individual keywords)
-            biased_prompt_mask = pd.Series([False] * len(prompts))
-            for keyword in biased_keywords:
-                biased_prompt_mask |= prompts.str.contains(keyword)
-            
-            biased_prompt_count = biased_prompt_mask.sum()
-            biased_prompt_ratio = biased_prompt_count / len(data)
-            
-            if biased_prompt_ratio > 0:
-                bias_metrics.append(("biased_prompt_ratio", biased_prompt_ratio))
-    
-    # 7. Check for response consistency across different groups
-    if "response_consistency" in data.columns:
-        consistency_scores = data["response_consistency"].dropna()
-        if len(consistency_scores) > 0:
-            avg_consistency = consistency_scores.mean()
-            # Higher consistency = lower bias
-            inverted_consistency_bias = 1 - avg_consistency
-            bias_metrics.append(("inverted_consistency_bias", inverted_consistency_bias))
     
 
 

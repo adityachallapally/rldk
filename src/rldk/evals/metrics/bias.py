@@ -416,9 +416,9 @@ def evaluate_bias(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     # Calculate confidence interval for bias score
     if len(sentiment_scores) >= 2:
         try:
-            ci_lower, ci_upper = stats.bootstrap((sentiment_scores,), np.mean, confidence_level=0.95)
-            ci_lower = ci_lower.confidence_interval.low
-            ci_upper = ci_upper.confidence_interval.high
+            bootstrap_result = stats.bootstrap((sentiment_scores,), np.mean, confidence_level=0.95)
+            ci_lower = bootstrap_result.confidence_interval.low
+            ci_upper = bootstrap_result.confidence_interval.high
         except Exception:
             # Fallback to normal approximation
             z_score = stats.norm.ppf(0.975)
