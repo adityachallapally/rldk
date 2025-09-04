@@ -1,12 +1,12 @@
 {
   "version": "1",
   "run_a": {
-    "path": "/tmp/tmpxsx3ijad",
+    "path": "/tmp/tmp0sj9qh69/run_a",
     "anomalies": []
   },
   "run_b": {
-    "path": "/tmp/tmpxsx3ijad",
+    "path": "/tmp/tmp0sj9qh69/run_b",
     "anomalies": []
   },
-  "earliest_divergent_step": null
+  "earliest_divergent_step": 1
 }

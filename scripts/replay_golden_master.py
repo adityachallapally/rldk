@@ -26,7 +26,7 @@ import difflib
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from scripts.capture_golden_master import (
+from capture_golden_master import (
     create_synthetic_data,
     run_cli_command,
     run_programmatic_tests,
@@ -34,7 +34,7 @@ from scripts.capture_golden_master import (
     calculate_file_checksum,
     CommandResult,
 )
-from scripts.artifact_schemas import validate_artifact, get_schema_for_artifact
+from artifact_schemas import validate_artifact, get_schema_for_artifact
 
 
 @dataclass

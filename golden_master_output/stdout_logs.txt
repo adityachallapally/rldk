@@ -1,6 +1,6 @@
 === rldk version ===
 Exit Code: 0
-Duration: 4.65s
+Duration: 4.93s
 STDOUT:
 RL Debug Kit version 0.1.0
 STDERR:
@@ -9,7 +9,7 @@ STDERR:
 
 === rldk --help ===
 Exit Code: 0
-Duration: 4.09s
+Duration: 4.25s
 STDOUT:
 Usage: rldk [OPTIONS] COMMAND [ARGS]...                                        
                                                                                 
@@ -47,12 +47,12 @@ STDERR:
 /workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
   import pkg_resources
 
-=== rldk ingest /tmp/tmpoivxiq5f/run_a --output /tmp/tmpoivxiq5f/ingest_output.jsonl ===
+=== rldk ingest /tmp/tmpkwls18x7/run_a --output /tmp/tmpkwls18x7/ingest_output.jsonl ===
 Exit Code: 0
-Duration: 3.97s
+Duration: 4.12s
 STDOUT:
-Ingesting runs from: /tmp/tmpoivxiq5f/run_a
-Saved 5 records to /tmp/tmpoivxiq5f/ingest_output.jsonl
+Ingesting runs from: /tmp/tmpkwls18x7/run_a
+Saved 5 records to /tmp/tmpkwls18x7/ingest_output.jsonl
 
 Ingested 5 training steps
 Columns: step, phase, reward_mean, reward_std, kl_mean, entropy_mean, clip_frac, grad_norm, lr, loss, tokens_in, tokens_out, wall_time, seed, run_id, git_sha
@@ -69,13 +69,13 @@ STDERR:
 /workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
   import pkg_resources
 
-=== rldk diff --a /tmp/tmpoivxiq5f/run_a --b /tmp/tmpoivxiq5f/run_b --signals loss,reward_scalar --output-dir /tmp/tmpoivxiq5f/diff_output ===
+=== rldk diff --a /tmp/tmpkwls18x7/run_a --b /tmp/tmpkwls18x7/run_b --signals loss,reward_scalar --output-dir /tmp/tmpkwls18x7/diff_output ===
 Exit Code: 0
-Duration: 4.02s
+Duration: 4.06s
 STDOUT:
 Comparing runs:
-  Run A: /tmp/tmpoivxiq5f/run_a
-  Run B: /tmp/tmpoivxiq5f/run_b
+  Run A: /tmp/tmpkwls18x7/run_a
+  Run B: /tmp/tmpkwls18x7/run_b
   Signals: loss,reward_scalar
   Tolerance: 2.0
   K-consecutive: 3
@@ -88,16 +88,16 @@ Analyzing divergence...
 
 ✅ No significant divergence detected
 
-Reports saved to: /tmp/tmpoivxiq5f/diff_output
+Reports saved to: /tmp/tmpkwls18x7/diff_output
   - diff_report.json
   - drift_card.json
 STDERR:
 /workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
   import pkg_resources
 
-=== rldk check-determinism --cmd python -c 'import torch; print(torch.randn(1).item())' --compare loss --replicas 2 --output-dir /tmp/tmpoivxiq5f/determinism_output ===
+=== rldk check-determinism --cmd python -c 'import torch; print(torch.randn(1).item())' --compare loss --replicas 2 --output-dir /tmp/tmpkwls18x7/determinism_output ===
 Exit Code: 0
-Duration: 4.04s
+Duration: 4.17s
 STDOUT:
 Checking determinism for command: python -c 'import torch; print(torch.randn(1).item())'
 Metrics to compare: loss
@@ -113,7 +113,7 @@ Running replica 2/2...
 
 ✅ Determinism check passed
 
-Report saved to: /tmp/tmpoivxiq5f/determinism_output/determinism_card.json
+Report saved to: /tmp/tmpkwls18x7/determinism_output/determinism_card.json
 STDERR:
 /workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
   import pkg_resources
@@ -122,25 +122,25 @@ STDERR:
 /workspace/src/rldk/determinism/check.py:127: UserWarning: Determinism: Skipped JAX determinism check. Install jax>=0.4.0 to enable. Set RLDK_SILENCE_DETERMINISM_WARN=1 to suppress.
   if not _check_jax_determinism():
 
-=== rldk reward-health --run /tmp/tmpoivxiq5f/run_a --output-dir /tmp/tmpoivxiq5f/reward_health_output ===
+=== rldk reward-health --run /tmp/tmpkwls18x7/run_a --output-dir /tmp/tmpkwls18x7/reward_health_output ===
 Exit Code: 0
-Duration: 4.03s
+Duration: 4.27s
 STDOUT:
-Analyzing reward health for run: /tmp/tmpoivxiq5f/run_a
+Analyzing reward health for run: /tmp/tmpkwls18x7/run_a
 Ingesting run data...
 Running reward health analysis...
 Generating reports...
 Warning: Failed to generate plots: 'reward_mean'
-Reward health report generated in: /tmp/tmpoivxiq5f/reward_health_output
-- Health card: /tmp/tmpoivxiq5f/reward_health_output/reward_health_card.md
-- Summary: /tmp/tmpoivxiq5f/reward_health_output/reward_health_summary.json
-- Calibration plots: /tmp/tmpoivxiq5f/reward_health_output/calibration_plots.png
+Reward health report generated in: /tmp/tmpkwls18x7/reward_health_output
+- Health card: /tmp/tmpkwls18x7/reward_health_output/reward_health_card.md
+- Summary: /tmp/tmpkwls18x7/reward_health_output/reward_health_summary.json
+- Calibration plots: /tmp/tmpkwls18x7/reward_health_output/calibration_plots.png
 
 🚨 Reward health issues detected
   - Poor calibration (score: 0.000)
   - Label leakage risk: 0.400
 
-Reports saved to: /tmp/tmpoivxiq5f/reward_health_output
+Reports saved to: /tmp/tmpkwls18x7/reward_health_output
   - reward_health_card.md
   - reward_health_summary.json
   - calibration_plots.png
@@ -152,11 +152,11 @@ STDERR:
 /workspace/rldk_golden_master_test/lib/python3.13/site-packages/numpy/lib/_function_base_impl.py:3066: RuntimeWarning: invalid value encountered in divide
   c /= stddev[None, :]
 
-=== rldk eval --run /tmp/tmpoivxiq5f/run_a --suite quick --output-dir /tmp/tmpoivxiq5f/eval_output ===
+=== rldk eval --run /tmp/tmpkwls18x7/run_a --suite quick --output-dir /tmp/tmpkwls18x7/eval_output ===
 Exit Code: 1
-Duration: 4.04s
+Duration: 4.13s
 STDOUT:
-Running evaluation suite 'quick' on run: /tmp/tmpoivxiq5f/run_a
+Running evaluation suite 'quick' on run: /tmp/tmpkwls18x7/run_a
 Ingesting run data...
 Running quick evaluation suite...
 STDERR:
@@ -167,12 +167,12 @@ WARNING:rldk.evals.metrics.toxicity:Output column 'output' not found in data
 WARNING:rldk.evals.metrics.bias:Output column 'output' not found in data
 Error: unsupported operand type(s) for /: 'dict' and 'int'
 
-=== rldk track test_experiment --output-dir /tmp/tmpoivxiq5f/tracking_output --no-wandb ===
+=== rldk track test_experiment --output-dir /tmp/tmpkwls18x7/tracking_output --no-wandb ===
 Exit Code: 0
-Duration: 5.77s
+Duration: 5.89s
 STDOUT:
 Starting experiment tracking: test_experiment
-Starting experiment: test_experiment (ID: 2eae616b-9f09-43d6-b24e-de9bba28ff98)
+Starting experiment: test_experiment (ID: 990e0ecb-0238-4261-9603-b2af867882fa)
 Capturing environment state...
 Build Dependencies:
   blas:
@@ -254,8 +254,8 @@ Capturing Git state...
 Capturing seed state...
 ✅ Experiment tracking started successfully
   Experiment: test_experiment
-  Experiment ID: 2eae616b-9f09-43d6-b24e-de9bba28ff98
-  Output directory: /tmp/tmpoivxiq5f/tracking_output
+  Experiment ID: 990e0ecb-0238-4261-9603-b2af867882fa
+  Output directory: /tmp/tmpkwls18x7/tracking_output
   W&B enabled: False
 
 📊 Experiment tracking completed.
@@ -267,8 +267,8 @@ Finishing experiment: test_experiment
 EXPERIMENT TRACKING SUMMARY
 ==================================================
 Experiment: test_experiment
-ID: 2eae616b-9f09-43d6-b24e-de9bba28ff98
-Output Directory: /tmp/tmpoivxiq5f/tracking_output
+ID: 990e0ecb-0238-4261-9603-b2af867882fa
+Output Directory: /tmp/tmpkwls18x7/tracking_output
 Datasets Tracked: 0
 Models Tracked: 0
 Environment Captured: True
@@ -281,13 +281,13 @@ STDERR:
 /workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
   import pkg_resources
 
-=== rldk forensics compare-runs /tmp/tmpoivxiq5f/run_a /tmp/tmpoivxiq5f/run_b ===
+=== rldk forensics compare-runs /tmp/tmpkwls18x7/run_a /tmp/tmpkwls18x7/run_b ===
 Exit Code: 0
-Duration: 4.06s
+Duration: 4.15s
 STDOUT:
 Comparing runs:
-  Run A: /tmp/tmpoivxiq5f/run_a
-  Run B: /tmp/tmpoivxiq5f/run_b
+  Run A: /tmp/tmpkwls18x7/run_a
+  Run B: /tmp/tmpkwls18x7/run_b
 
 Comparison complete. Report saved to rldk_reports/run_comparison.json
 Run A anomalies: 0
@@ -297,23 +297,23 @@ STDERR:
 /workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
   import pkg_resources
 
-=== rldk reward reward-drift /tmp/tmpoivxiq5f/model_a /tmp/tmpoivxiq5f/model_b --prompts /tmp/tmpoivxiq5f/prompts.jsonl ===
+=== rldk reward reward-drift /tmp/tmpkwls18x7/model_a /tmp/tmpkwls18x7/model_b --prompts /tmp/tmpkwls18x7/prompts.jsonl ===
 Exit Code: 1
-Duration: 4.04s
+Duration: 4.12s
 STDOUT:
 Comparing reward models:
-  Model A: /tmp/tmpoivxiq5f/model_a
-  Model B: /tmp/tmpoivxiq5f/model_b
-  Prompts: /tmp/tmpoivxiq5f/prompts.jsonl
+  Model A: /tmp/tmpkwls18x7/model_a
+  Model B: /tmp/tmpkwls18x7/model_b
+  Prompts: /tmp/tmpkwls18x7/prompts.jsonl
 Loaded 3 prompts
 STDERR:
 /workspace/src/rldk/tracking/environment_tracker.py:12: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
   import pkg_resources
-Error: No model files found in /tmp/tmpoivxiq5f/model_a
+Error: No model files found in /tmp/tmpkwls18x7/model_a
 
 === ingest_runs(run_a) ===
 Exit Code: 0
-Duration: 0.00s
+Duration: 0.01s
 STDOUT:
 Successfully ingested 5 records
 STDERR:
