@@ -1,0 +1,10 @@
+# Determinism Report
+
+**Passed:** True
+
+**Culprit:** None
+
+**Fixes:** ['Set torch.backends.cudnn.deterministic = True', 'Set torch.backends.cudnn.benchmark = False', 'Use torch.manual_seed() consistently', 'Disable dropout or use deterministic=True', 'Use deterministic reduction operations']
+
+**Replica Variance:** {}
+

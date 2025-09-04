@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 
 from .suites import get_eval_suite
-from .metrics import calculate_confidence_intervals, calculate_effect_sizes
+from .statistical_metrics import calculate_confidence_intervals, calculate_effect_sizes
 
 
 @dataclass
