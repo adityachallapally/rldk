@@ -320,11 +320,11 @@ class RLDKCallback(TrainerCallback):
         # Store metrics AFTER log values are applied
         self.metrics_history.append(RLDKMetrics(**self.current_metrics.to_dict()))
         
-        # Emit JSONL event if enabled and at the right interval
+        # Log JSONL event at specified intervals
         if (self.enable_jsonl_logging and 
             self.jsonl_log_interval > 0 and 
             state.global_step % self.jsonl_log_interval == 0):
-            self._emit_jsonl_event(state, logs)
+            self._log_jsonl_event(state, logs)
         
         # Check for alerts AFTER metrics are stored
         self._check_alerts()
@@ -606,12 +606,15 @@ class RLDKCallback(TrainerCallback):
         # Convert to DataFrame
         df = pd.DataFrame([m.to_dict() for m in self.metrics_history])
         
-        # Save as CSV and JSON
+        # Save as CSV and JSON (aggregates only)
         csv_path = self.output_dir / f"{self.run_id}_metrics.csv"
         json_path = self.output_dir / f"{self.run_id}_metrics.json"
         
         df.to_csv(csv_path, index=False)
         df.to_json(json_path, orient='records', indent=2)
+        
+        # Note: JSONL file is handled separately and should not be modified here
+        # The JSONL file contains per-step events and is written in real-time
     
     def _save_alerts(self):
         """Save alerts to file."""
@@ -670,15 +673,16 @@ class RLDKCallback(TrainerCallback):
         self.jsonl_file = open(jsonl_path, "w")
         print(f"📝 JSONL events will be written to: {jsonl_path}")
     
-    def _emit_jsonl_event(self, state: TrainerState, logs: Dict[str, float]):
-        """Emit a standardized JSONL event compatible with Event schema and TRLAdapter."""
+    def _log_jsonl_event(self, state: TrainerState, logs: Dict[str, float]):
+        """Log a standardized JSONL event with Event schema structure."""
         if not self.jsonl_file or not EVENT_SCHEMA_AVAILABLE:
             return
         
         try:
-            # Create event data compatible with TRLAdapter expectations
+            # Create event data with required fields for Event schema
             event_data = {
                 "step": state.global_step,
+                "timestamp": time.time(),
                 "phase": "train",
                 "wall_time": self.current_metrics.wall_time,
                 "reward_mean": self.current_metrics.reward_mean,
@@ -709,13 +713,18 @@ class RLDKCallback(TrainerCallback):
             # Create Event object using the schema
             event = create_event_from_row(event_data, self.run_id, self.current_metrics.git_sha)
             
-            # Write JSONL line
+            # Write JSONL line with proper formatting
             json_line = event.to_json()
             self.jsonl_file.write(json_line + "\n")
             self.jsonl_file.flush()  # Ensure immediate write
             
         except Exception as e:
-            warnings.warn(f"Failed to emit JSONL event: {e}")
+            warnings.warn(f"Failed to log JSONL event: {e}")
+    
+    def _emit_jsonl_event(self, state: TrainerState, logs: Dict[str, float]):
+        """Emit a standardized JSONL event compatible with Event schema and TRLAdapter."""
+        # Call the new _log_jsonl_event function for consistency
+        self._log_jsonl_event(state, logs)
     
     def _close_jsonl_file(self):
         """Close the JSONL file."""

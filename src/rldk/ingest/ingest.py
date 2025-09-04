@@ -21,6 +21,8 @@ def ingest_runs(
     Returns:
         DataFrame with standardized training metrics
     """
+    import logging
+    
     source_str = str(source)
 
     # Try to auto-detect adapter if no hint provided
@@ -43,8 +45,13 @@ def ingest_runs(
     else:
         raise ValueError(f"Unknown adapter type: {adapter_hint}")
 
-    # Load data
-    df = adapter.load()
+    # Load data with robust error handling
+    try:
+        df = adapter.load()
+        logging.info(f"Successfully ingested {len(df)} events from {source}")
+    except Exception as e:
+        logging.error(f"Failed to ingest {source}: {e}")
+        raise
 
     # Validate schema
     required_cols = [
