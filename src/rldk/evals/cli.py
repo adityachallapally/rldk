@@ -114,7 +114,13 @@ def run_evaluation_suite(
                 result = eval_func(data, **kwargs)
             
             results["evaluations"][eval_name] = result
-            results["summary"]["successful_evaluations"] += 1
+            
+            # Check if the evaluation actually succeeded (no error in result)
+            if "error" in result and result["error"]:
+                logger.warning(f"Evaluation {eval_name} completed but with errors: {result['error']}")
+                results["summary"]["failed_evaluations"] += 1
+            else:
+                results["summary"]["successful_evaluations"] += 1
             
         except Exception as e:
             logger.error(f"Evaluation {eval_name} failed: {e}")
