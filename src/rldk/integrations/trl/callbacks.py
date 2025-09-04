@@ -53,6 +53,7 @@ class RLDKMetrics:
     clip_frac: float = 0.0
     value_loss: float = 0.0
     policy_loss: float = 0.0
+    value_policy_loss: float = 0.0
     policy_grad_norm: float = 0.0
     value_grad_norm: float = 0.0
     value_mean: float = 0.0
@@ -289,7 +290,7 @@ class RLDKCallback(TrainerCallback):
         if 'ppo/val/value_loss' in logs:
             self.current_metrics.value_loss = logs['ppo/val/value_loss']
         if 'ppo/val/policy_loss' in logs:
-            self.current_metrics.policy_loss = logs['ppo/val/policy_loss']
+            self.current_metrics.value_policy_loss = logs['ppo/val/policy_loss']
         if 'ppo/val/grad_norm' in logs:
             self.current_metrics.value_grad_norm = logs['ppo/val/grad_norm']
         if 'ppo/val/mean' in logs:

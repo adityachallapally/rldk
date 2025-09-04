@@ -8,7 +8,20 @@ This document summarizes the implementation of comprehensive PPO-specific metric
 
 The original `_collect_ppo_metrics` method in `src/rldk/integrations/trl/callbacks.py` was a stub that did not extract any PPO-specific metrics from the trainer, preventing richer diagnostics and analysis of PPO training runs.
 
+Additionally, there was a bug where the `policy_loss` metric was being overwritten by two different log keys (`ppo/policy/policy_loss` and `ppo/val/policy_loss`), causing one of these distinct policy loss values to be lost.
+
 ## Solution Implementation
+
+### 0. Bug Fix: Policy Loss Metric Overwrite
+
+**Problem**: The `policy_loss` metric was being assigned from both `ppo/policy/policy_loss` and `ppo/val/policy_loss` log keys, causing the second assignment to overwrite the first.
+
+**Solution**: 
+- Added a new field `value_policy_loss` to distinguish between the two policy loss types
+- `policy_loss` now exclusively stores the value from `ppo/policy/policy_loss`
+- `value_policy_loss` stores the value from `ppo/val/policy_loss`
+
+This ensures both distinct policy loss values are preserved and available for analysis.
 
 ### 1. Enhanced `_collect_ppo_metrics` Method
 
@@ -110,12 +123,12 @@ if 'ppo/advantages/std' in logs:
 
 ### 4. Enhanced RLDKMetrics Dataclass
 
-The `RLDKMetrics` dataclass has been expanded to include 39 PPO-specific fields:
+The `RLDKMetrics` dataclass has been expanded to include 40 PPO-specific fields (increased from 39 due to the policy loss bug fix):
 
 #### Basic PPO Metrics
 - `reward_mean`, `reward_std`, `reward_min`, `reward_max`
 - `kl_mean`, `kl_std`, `entropy_mean`, `clip_frac`
-- `value_loss`, `policy_loss`, `policy_grad_norm`, `value_grad_norm`
+- `value_loss`, `policy_loss`, `value_policy_loss`, `policy_grad_norm`, `value_grad_norm`
 - `value_mean`, `value_std`, `rollout_length_mean`, `rollout_length_std`
 - `advantage_mean`, `advantage_std`
 
@@ -141,7 +154,7 @@ The `RLDKMetrics` dataclass has been expanded to include 39 PPO-specific fields:
 ### 1. Comprehensive Coverage
 The implementation covers all major PPO metrics including:
 - **Reward metrics**: mean, std, min, max
-- **Policy metrics**: KL divergence, entropy, clip fraction, policy loss, gradient norms
+- **Policy metrics**: KL divergence, entropy, clip fraction, policy loss, value policy loss, gradient norms
 - **Value function metrics**: value loss, value statistics, gradient norms
 - **Rollout metrics**: length statistics, buffer information
 - **Advantage metrics**: advantage statistics
@@ -165,12 +178,13 @@ The implementation covers all major PPO metrics including:
 
 ## Testing
 
-A comprehensive test suite (`test_ppo_metrics_collection.py`) has been created to validate:
+A comprehensive test suite has been created to validate:
 
-1. **Dataclass Completeness**: Verifies all 39 PPO fields are present
+1. **Dataclass Completeness**: Verifies all 40 PPO fields are present
 2. **Metrics Collection**: Tests extraction of PPO metrics from logs
 3. **History Storage**: Validates metrics are properly stored in history
 4. **Error Handling**: Ensures graceful handling of missing or malformed data
+5. **Policy Loss Bug Fix**: Verifies that both policy loss types are preserved correctly
 
 All tests pass successfully, confirming the implementation works correctly.
 
