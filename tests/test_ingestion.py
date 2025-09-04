@@ -412,6 +412,84 @@ class TestJSONLIngestion:
         finally:
             os.unlink(f.name)
 
+    def test_custom_jsonl_adapter_handles_null_values(self):
+        """Test that CustomJSONL adapter handles null values without crashing."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write custom JSONL data with null values
+            json.dump({
+                "global_step": 0,
+                "reward_scalar": None,  # null value
+                "kl_to_ref": 0.1,
+                "loss": None,  # null value
+                "rng.python": None,  # null value
+                "entropy": 0.8,
+                "lr": None,  # null value
+                "wall_time": 10.0,
+                "tokens_in": None,  # null value
+                "run_id": "test_run"
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            df = adapter.load()
+            
+            # Should not crash and should handle null values gracefully
+            assert len(df) == 1, "Should have one row"
+            
+            # Verify that null values are handled correctly (use defaults)
+            assert df["reward_mean"].iloc[0] == 0.0, f"Expected reward_mean=0.0 (default for null), got {df['reward_mean'].iloc[0]}"
+            assert df["loss"].iloc[0] == 0.0, f"Expected loss=0.0 (default for null), got {df['loss'].iloc[0]}"
+            assert df["seed"].iloc[0] == 42, f"Expected seed=42 (default for null), got {df['seed'].iloc[0]}"
+            assert df["lr"].iloc[0] == 0.0, f"Expected lr=0.0 (default for null), got {df['lr'].iloc[0]}"
+            assert df["tokens_in"].iloc[0] == 0, f"Expected tokens_in=0 (default for null), got {df['tokens_in'].iloc[0]}"
+            
+            # Verify that non-null values are preserved
+            assert df["step"].iloc[0] == 0, f"Expected step=0, got {df['step'].iloc[0]}"
+            assert df["kl_mean"].iloc[0] == 0.1, f"Expected kl_mean=0.1, got {df['kl_mean'].iloc[0]}"
+            assert df["entropy_mean"].iloc[0] == 0.8, f"Expected entropy_mean=0.8, got {df['entropy_mean'].iloc[0]}"
+            assert df["wall_time"].iloc[0] == 10.0, f"Expected wall_time=10.0, got {df['wall_time'].iloc[0]}"
+            
+        finally:
+            os.unlink(f.name)
+
+    def test_custom_jsonl_adapter_handles_all_null_values(self):
+        """Test that CustomJSONL adapter handles all null values without crashing."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            # Write custom JSONL data with all null values
+            json.dump({
+                "global_step": None,
+                "reward_scalar": None,
+                "kl_to_ref": None,
+                "loss": None,
+                "rng.python": None,
+                "entropy": None,
+                "lr": None,
+                "wall_time": None,
+                "tokens_in": None,
+                "tokens_out": None
+            }, f)
+            f.write("\n")
+            f.flush()
+
+        try:
+            adapter = CustomJSONLAdapter(f.name)
+            df = adapter.load()
+            
+            # Should not crash and should handle all null values gracefully
+            assert len(df) == 1, "Should have one row"
+            
+            # Verify that all null values use defaults
+            assert df["step"].iloc[0] == 0, f"Expected step=0 (line_num), got {df['step'].iloc[0]}"
+            assert df["reward_mean"].iloc[0] == 0.0, f"Expected reward_mean=0.0 (default), got {df['reward_mean'].iloc[0]}"
+            assert df["kl_mean"].iloc[0] == 0.0, f"Expected kl_mean=0.0 (default), got {df['kl_mean'].iloc[0]}"
+            assert df["loss"].iloc[0] == 0.0, f"Expected loss=0.0 (default), got {df['loss'].iloc[0]}"
+            assert df["seed"].iloc[0] == 42, f"Expected seed=42 (default), got {df['seed'].iloc[0]}"
+            
+        finally:
+            os.unlink(f.name)
+
     def test_adapters_produce_identical_event_objects(self):
         """Test that TRL and OpenRLHF adapters produce identical Event objects from compatible logs."""
         # Create identical training data

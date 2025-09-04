@@ -55,6 +55,7 @@ class CustomJSONLAdapter(BaseAdapter):
                             )
                             
                             # Only classify as custom if it has custom indicators AND doesn't look like standard format
+                            # This is already restrictive enough - requires explicit custom field names
                             return has_custom_indicators and not is_standard_format
                         else:
                             # For non-dict data, it's not our custom format
@@ -143,43 +144,49 @@ class CustomJSONLAdapter(BaseAdapter):
     ) -> Dict[str, Any]:
         """Extract metric from our custom JSONL format."""
         try:
+            # Helper function to safely get values with null handling
+            def safe_get(key, default=None):
+                """Get value from data, handling null values properly."""
+                value = data.get(key)
+                return value if value is not None else default
+            
             # Map our custom schema to the expected format
             # Handle various possible field names for better compatibility
-            # Use 'in' checks to avoid skipping valid zeros
-            step = data.get("global_step") if "global_step" in data else data.get("step", line_num)
-            reward_scalar = data.get("reward_scalar") if "reward_scalar" in data else data.get("reward_mean", 0.0)
-            kl_value = data.get("kl_to_ref") if "kl_to_ref" in data else data.get("kl_mean", 0.0)
-            loss_value = data.get("loss", 0.0)
+            # Use 'in' checks to avoid skipping valid zeros, but handle null values
+            step = safe_get("global_step") if "global_step" in data and data["global_step"] is not None else safe_get("step", line_num)
+            reward_scalar = safe_get("reward_scalar") if "reward_scalar" in data and data["reward_scalar"] is not None else safe_get("reward_mean", 0.0)
+            kl_value = safe_get("kl_to_ref") if "kl_to_ref" in data and data["kl_to_ref"] is not None else safe_get("kl_mean", 0.0)
+            loss_value = safe_get("loss", 0.0)
             
             # Extract RNG seed from various possible locations
             # Fix operator precedence by using proper conditional logic
             seed = 42  # Default fallback
-            if "rng.python" in data:
+            if "rng.python" in data and data["rng.python"] is not None:
                 seed = data["rng.python"]
-            elif "seed" in data:
+            elif "seed" in data and data["seed"] is not None:
                 seed = data["seed"]
-            elif "rng" in data and isinstance(data["rng"], dict) and "python" in data["rng"]:
+            elif "rng" in data and isinstance(data["rng"], dict) and "python" in data["rng"] and data["rng"]["python"] is not None:
                 seed = data["rng"]["python"]
             
             # Extract additional metrics if available
-            # Use 'in' checks to avoid skipping valid zeros
-            entropy_value = data.get("entropy") if "entropy" in data else data.get("entropy_mean", 0.0)
-            clip_frac_value = data.get("clip_frac", 0.0)
-            grad_norm_value = data.get("grad_norm", 0.0)
-            lr_value = data.get("lr") if "lr" in data else data.get("learning_rate", 0.0)
-            reward_std_value = data.get("reward_std", 0.0)
+            # Use 'in' checks to avoid skipping valid zeros, but handle null values
+            entropy_value = safe_get("entropy") if "entropy" in data and data["entropy"] is not None else safe_get("entropy_mean", 0.0)
+            clip_frac_value = safe_get("clip_frac", 0.0)
+            grad_norm_value = safe_get("grad_norm", 0.0)
+            lr_value = safe_get("lr") if "lr" in data and data["lr"] is not None else safe_get("learning_rate", 0.0)
+            reward_std_value = safe_get("reward_std", 0.0)
             
             # Extract data slice information if available
-            tokens_in = data.get("tokens_in", 0)
-            tokens_out = data.get("tokens_out", 0)
+            tokens_in = safe_get("tokens_in", 0)
+            tokens_out = safe_get("tokens_out", 0)
             
             # Extract wall time if available
-            # Use 'in' check to avoid skipping valid zeros
-            wall_time = data.get("wall_time") if "wall_time" in data else data.get("timestamp", 0.0)
+            # Use 'in' check to avoid skipping valid zeros, but handle null values
+            wall_time = safe_get("wall_time") if "wall_time" in data and data["wall_time"] is not None else safe_get("timestamp", 0.0)
             
             metric = {
                 "step": int(step),
-                "phase": data.get("phase", "train"),
+                "phase": safe_get("phase", "train"),
                 "reward_mean": float(reward_scalar),
                 "reward_std": float(reward_std_value),
                 "kl_mean": float(kl_value),
@@ -192,8 +199,8 @@ class CustomJSONLAdapter(BaseAdapter):
                 "tokens_out": int(tokens_out),
                 "wall_time": float(wall_time),
                 "seed": int(seed),
-                "run_id": data.get("run_id", f"custom_{line_num}"),
-                "git_sha": data.get("git_sha", "unknown"),
+                "run_id": safe_get("run_id", f"custom_{line_num}"),
+                "git_sha": safe_get("git_sha", "unknown"),
             }
 
             return metric
