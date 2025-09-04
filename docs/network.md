@@ -15,6 +15,10 @@ The network monitoring system provides accurate, real-time measurements of netwo
 - **Real-time Dashboard**: Live monitoring with alerts and thresholds
 - **Thread-safe**: Safe for concurrent access during training
 - **Error Handling**: Graceful fallbacks and detailed error reporting
+- **Sampling Frequency Control**: Configurable network metrics collection frequency
+- **Environment Variable Support**: `RLDK_NETWORK_SAMPLING_FREQUENCY` for easy configuration
+- **JSONL Event Logging**: Network metrics included in structured event logs
+- **Per-node Aggregation**: Mean and max statistics across distributed nodes
 
 ## Architecture
 
@@ -486,6 +490,108 @@ python examples/openrlhf_network_demo.py --mode all
    dashboard.add_metrics(metrics.to_dict())
    dashboard.check_network_thresholds(metrics.to_dict())
    ```
+
+## Latest Features (v0.1.0)
+
+### Sampling Frequency Control
+
+The network monitoring system now supports configurable sampling frequency to reduce overhead during training:
+
+```python
+# Constructor parameter
+monitor = NetworkMonitor(sampling_frequency=10)  # Sample every 10 steps
+
+# Environment variable
+export RLDK_NETWORK_SAMPLING_FREQUENCY=5  # Sample every 5 steps
+
+# OpenRLHF callback
+callback = OpenRLHFCallback(
+    network_sampling_frequency=15,  # Sample every 15 steps
+    enable_distributed_monitoring=True
+)
+```
+
+### Enhanced Metrics Format
+
+The `get_current_metrics()` method now returns a comprehensive set of network metrics:
+
+```python
+{
+    'bandwidth_mbps': 100.0,           # Primary download bandwidth
+    'bandwidth_upload_mbps': 50.0,     # Upload bandwidth
+    'bandwidth_download_mbps': 100.0,  # Download bandwidth
+    'latency_ms': 5.0,                 # Average latency
+    'total_bandwidth_mbps': 150.0,     # Total bandwidth
+    'timestamp': 1234567890.0          # Measurement timestamp
+}
+```
+
+### Distributed Metrics Aggregation
+
+The `DistributedMetricsCollector` now provides per-node statistics:
+
+```python
+@dataclass
+class DistributedMetrics:
+    network_bandwidth_total: float = 0.0    # Sum across all nodes
+    network_bandwidth_mean: float = 0.0     # Average across all nodes
+    network_bandwidth_max: float = 0.0      # Maximum across all nodes
+    avg_network_latency: float = 0.0        # Average latency
+    max_network_latency: float = 0.0        # Maximum latency
+```
+
+### JSONL Event Logging
+
+Network metrics are now automatically included in JSONL event logs:
+
+```json
+{
+  "step": 100,
+  "timestamp": 1234567890.0,
+  "network_bandwidth": 100.0,
+  "network_latency": 5.0,
+  "bandwidth_mbps": 100.0,
+  "latency_ms": 5.0,
+  "bandwidth_upload_mbps": 50.0,
+  "bandwidth_download_mbps": 100.0,
+  "total_bandwidth_mbps": 150.0,
+  "allreduce_bandwidth": 25.0,
+  "broadcast_bandwidth": 30.0,
+  "gather_bandwidth": 20.0,
+  "scatter_bandwidth": 15.0,
+  "packet_loss_percent": 0.1,
+  "network_errors": 0,
+  "dns_resolution_ms": 2.0
+}
+```
+
+### Dependencies
+
+The network monitoring system requires the following packages:
+
+```bash
+pip install psutil iperf3
+```
+
+- **psutil**: For network I/O counters and system metrics
+- **iperf3**: For bandwidth testing (optional, falls back to other methods)
+
+### Error Handling
+
+The system includes comprehensive error handling:
+
+```python
+# Individual error handling for different failure modes
+try:
+    # psutil operations
+    current_net_io = psutil.net_io_counters()
+except psutil.Error as e:
+    self.last_errors['bandwidth'] = f"psutil error: {e}"
+    return 0.0, 0.0
+except OSError as e:
+    self.last_errors['bandwidth'] = f"OS error: {e}"
+    return 0.0, 0.0
+```
 
 ## Future Enhancements
 

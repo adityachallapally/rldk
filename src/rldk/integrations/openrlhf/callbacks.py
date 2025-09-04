@@ -162,6 +162,7 @@ class OpenRLHFCallback:
         dataset_name: Optional[str] = None,
         enable_jsonl_logging: bool = True,
         jsonl_log_interval: int = 1,
+        network_sampling_frequency: int = None,
     ):
         """Initialize OpenRLHF callback.
         
@@ -176,6 +177,8 @@ class OpenRLHFCallback:
             dataset_name: Name of the dataset being used
             enable_jsonl_logging: Whether to enable JSONL event logging
             jsonl_log_interval: Steps between JSONL event logging
+            network_sampling_frequency: How often to sample network metrics (every N steps).
+                                      If None, will use RLDK_NETWORK_SAMPLING_FREQUENCY env var or default to 10.
         """
         if not OPENRLHF_AVAILABLE:
             raise ImportError(
@@ -191,12 +194,20 @@ class OpenRLHFCallback:
         if jsonl_log_interval <= 0:
             raise ValueError("jsonl_log_interval must be positive")
         
+        # Handle network sampling frequency
+        if network_sampling_frequency is None:
+            import os
+            network_sampling_frequency = int(os.environ.get('RLDK_NETWORK_SAMPLING_FREQUENCY', '10'))
+        if network_sampling_frequency <= 0:
+            raise ValueError("network_sampling_frequency must be positive")
+        
         self.log_interval = log_interval
         self.alert_thresholds = alert_thresholds or {}
         self.enable_resource_monitoring = enable_resource_monitoring
         self.enable_distributed_monitoring = enable_distributed_monitoring
         self.enable_jsonl_logging = enable_jsonl_logging
         self.jsonl_log_interval = jsonl_log_interval
+        self.network_sampling_frequency = network_sampling_frequency
         
         self.run_id = run_id or f"openrlhf_run_{int(time.time())}"
         self.model_name = model_name or "unknown_model"
@@ -661,6 +672,21 @@ class OpenRLHFCallback:
                 "cpu_memory_used": self.current_metrics.cpu_memory_used,
                 "training_stability_score": self.current_metrics.training_stability_score,
                 "convergence_indicator": self.current_metrics.convergence_indicator,
+                # Network metrics
+                "network_bandwidth": self.current_metrics.network_bandwidth,
+                "network_latency": self.current_metrics.network_latency,
+                "bandwidth_mbps": self.current_metrics.bandwidth_mbps,
+                "latency_ms": self.current_metrics.latency_ms,
+                "bandwidth_upload_mbps": self.current_metrics.bandwidth_upload_mbps,
+                "bandwidth_download_mbps": self.current_metrics.bandwidth_download_mbps,
+                "total_bandwidth_mbps": self.current_metrics.total_bandwidth_mbps,
+                "allreduce_bandwidth": self.current_metrics.allreduce_bandwidth,
+                "broadcast_bandwidth": self.current_metrics.broadcast_bandwidth,
+                "gather_bandwidth": self.current_metrics.gather_bandwidth,
+                "scatter_bandwidth": self.current_metrics.scatter_bandwidth,
+                "packet_loss_percent": self.current_metrics.packet_loss_percent,
+                "network_errors": self.current_metrics.network_errors,
+                "dns_resolution_ms": self.current_metrics.dns_resolution_ms,
             }
             
             # Create Event object using the schema
@@ -699,6 +725,10 @@ class DistributedTrainingMonitor(OpenRLHFCallback):
     
     def __init__(self, **kwargs):
         """Initialize distributed training monitor."""
+        # Remove duplicate parameters from kwargs
+        kwargs.pop('enable_distributed_monitoring', None)
+        kwargs.pop('enable_resource_monitoring', None)
+        
         super().__init__(
             enable_distributed_monitoring=True,
             enable_resource_monitoring=True,
@@ -727,6 +757,15 @@ class DistributedTrainingMonitor(OpenRLHFCallback):
     
     def _collect_network_metrics(self):
         """Collect network performance metrics using real measurements."""
+        # Only collect network metrics at the specified sampling frequency
+        if not hasattr(self, '_last_network_collection_step'):
+            self._last_network_collection_step = 0
+        
+        if self.current_metrics.step - self._last_network_collection_step < self.network_sampling_frequency:
+            return
+        
+        self._last_network_collection_step = self.current_metrics.step
+        
         try:
             from .network_monitor import RealNetworkMonitor
             import threading

@@ -30,6 +30,10 @@ class NetworkMetrics:
     latency_ms: float = 0.0
     packet_loss_percent: float = 0.0
     
+    # Distributed training info
+    world_size: int = 1
+    rank: int = 0
+    
     # Advanced metrics
     bandwidth_in_mbps: float = 0.0
     bandwidth_out_mbps: float = 0.0
