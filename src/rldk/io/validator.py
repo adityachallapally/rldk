@@ -275,16 +275,14 @@ def validate_jsonl_consistency(
     except Exception as e:
         issues.append(f"File read error: {e}")
     
-    # Check sequential steps
+    # Check sequential steps (in file order)
     if check_sequential_steps and steps:
-        steps.sort(key=lambda x: x[1])  # Sort by step value
         for i, (line_num, step) in enumerate(steps):
             if i > 0 and step <= steps[i-1][1]:
                 issues.append(f"Line {line_num}: Non-sequential step {step} (previous: {steps[i-1][1]})")
     
-    # Check monotonic time
+    # Check monotonic time (in file order)
     if check_monotonic_time and times:
-        times.sort(key=lambda x: x[1])  # Sort by time value
         for i, (line_num, time_val) in enumerate(times):
             if i > 0 and time_val < times[i-1][1]:
                 issues.append(f"Line {line_num}: Non-monotonic time {time_val} (previous: {times[i-1][1]})")
