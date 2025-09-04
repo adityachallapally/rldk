@@ -1,6 +1,6 @@
 # Makefile for RL Debug Kit Reference Suite
 
-.PHONY: help reference\:cpu_smoke reference\:bisect_demo reference\:setup clean profile profile-check profile-train profile-dashboard profile-clean test-trl test-trl-unit test-trl-integration test-trl-slow
+.PHONY: help reference\:cpu_smoke reference\:bisect_demo reference\:setup clean profile profile-check profile-train profile-dashboard profile-clean test-trl test-trl-unit test-trl-integration test-trl-slow golden-master-test
 
 help:
 	@echo "RL Debug Kit Reference Suite"
@@ -9,6 +9,7 @@ help:
 	@echo "  reference:setup        - Setup reference runs for testing"
 	@echo "  reference:cpu_smoke    - Run CPU smoke tests and generate cards"
 	@echo "  reference:bisect_demo  - Run bisect demonstration"
+	@echo "  golden-master-test     - Run golden master test (capture + replay)"
 	@echo "  profile                - Run profiler test"
 	@echo "  profile-check          - Check profiler artifacts"
 	@echo "  profile-train          - Run training with profiler"
@@ -24,6 +25,7 @@ help:
 	@echo "  make reference:setup"
 	@echo "  make reference:cpu_smoke"
 	@echo "  make reference:bisect_demo"
+	@echo "  make golden-master-test"
 	@echo "  make profile"
 	@echo "  make profile-train"
 
@@ -146,6 +148,15 @@ reference\:bisect_demo:
 	@echo "Bisect demonstration complete!"
 	@echo "Results saved to reference/expected/bisect.json"
 
+# Golden Master Test Target
+golden-master-test:
+	@echo "Running golden master test..."
+	@echo "This will create a fresh virtual environment and run capture + replay tests"
+	@echo "Expected duration: 2-5 minutes"
+	@echo ""
+	./scripts/run_golden_master_test.sh
+	@echo "✅ Golden master test completed!"
+
 # Clean target
 clean:
 	@echo "Cleaning generated files..."
@@ -153,6 +164,10 @@ clean:
 	rm -rf reference/runs/
 	rm -rf reference/expected/
 	rm -f reference/tasks/summarization/train.py.backup
+	rm -rf golden_master_output/
+	rm -rf replay_output/
+	rm -f golden_master.zip
+	rm -f golden_master_test_report.md
 	@echo "Clean complete!"
 
 # Install dependencies
