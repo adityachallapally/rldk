@@ -735,8 +735,108 @@ class ComprehensivePPOMonitor(TrainerCallback):
     
     def _extract_metrics_from_state(self, state: TrainerState):
         """Extract additional metrics from trainer state."""
-        # This method can be extended to extract more metrics from the trainer state
-        pass
+        # Extract basic training state information
+        if hasattr(state, 'global_step'):
+            self.forensics.current_metrics.step = state.global_step
+        
+        if hasattr(state, 'epoch'):
+            self.forensics.current_metrics.epoch = state.epoch
+        
+        # Extract learning rate from log history if available
+        if hasattr(state, 'log_history') and state.log_history:
+            latest_log = state.log_history[-1]
+            
+            # Extract learning rate
+            if 'learning_rate' in latest_log:
+                self.forensics.current_metrics.learning_rate = latest_log['learning_rate']
+            
+            # Extract loss information
+            if 'train_loss' in latest_log:
+                self.forensics.current_metrics.loss = latest_log['train_loss']
+            
+            # Extract gradient norm
+            if 'grad_norm' in latest_log:
+                self.forensics.current_metrics.grad_norm = latest_log['grad_norm']
+            
+            # Extract PPO-specific metrics from log history
+            if 'ppo/rewards/mean' in latest_log:
+                self.forensics.current_metrics.reward_mean = latest_log['ppo/rewards/mean']
+            if 'ppo/rewards/std' in latest_log:
+                self.forensics.current_metrics.reward_std = latest_log['ppo/rewards/std']
+            if 'ppo/policy/kl_mean' in latest_log:
+                self.forensics.current_metrics.kl = latest_log['ppo/policy/kl_mean']
+            if 'ppo/policy/kl_std' in latest_log:
+                self.forensics.current_metrics.kl_std = latest_log['ppo/policy/kl_std']
+            if 'ppo/policy/entropy' in latest_log:
+                self.forensics.current_metrics.entropy = latest_log['ppo/policy/entropy']
+            if 'ppo/policy/clipfrac' in latest_log:
+                self.forensics.current_metrics.clip_frac = latest_log['ppo/policy/clipfrac']
+            if 'ppo/val/value_loss' in latest_log:
+                self.forensics.current_metrics.value_loss = latest_log['ppo/val/value_loss']
+            if 'ppo/val/policy_loss' in latest_log:
+                self.forensics.current_metrics.policy_loss = latest_log['ppo/val/policy_loss']
+            if 'ppo/policy/grad_norm' in latest_log:
+                self.forensics.current_metrics.policy_grad_norm = latest_log['ppo/policy/grad_norm']
+            if 'ppo/val/grad_norm' in latest_log:
+                self.forensics.current_metrics.value_grad_norm = latest_log['ppo/val/grad_norm']
+            if 'ppo/advantages/mean' in latest_log:
+                self.forensics.current_metrics.advantage_mean = latest_log['ppo/advantages/mean']
+            if 'ppo/advantages/std' in latest_log:
+                self.forensics.current_metrics.advantage_std = latest_log['ppo/advantages/std']
+            if 'ppo/policy/kl_coef' in latest_log:
+                self.forensics.current_metrics.kl_coef = latest_log['ppo/policy/kl_coef']
+            
+            # Extract rollout information if available
+            if 'ppo/rollout/length_mean' in latest_log:
+                self.forensics.current_metrics.rollout_length_mean = latest_log['ppo/rollout/length_mean']
+            if 'ppo/rollout/length_std' in latest_log:
+                self.forensics.current_metrics.rollout_length_std = latest_log['ppo/rollout/length_std']
+        
+        # Calculate derived metrics
+        self._calculate_derived_metrics()
+    
+    def _calculate_derived_metrics(self):
+        """Calculate derived metrics from extracted state information."""
+        # Calculate KL divergence if both mean and std are available
+        if hasattr(self.forensics.current_metrics, 'kl') and hasattr(self.forensics.current_metrics, 'kl_std'):
+            if self.forensics.current_metrics.kl is not None and self.forensics.current_metrics.kl_std is not None:
+                # Store KL divergence for trend analysis
+                if not hasattr(self, 'kl_divergence_history'):
+                    self.kl_divergence_history = []
+                self.kl_divergence_history.append(self.forensics.current_metrics.kl)
+        
+        # Calculate policy entropy trend if available
+        if hasattr(self.forensics.current_metrics, 'entropy') and self.forensics.current_metrics.entropy is not None:
+            if not hasattr(self, 'policy_entropy_history'):
+                self.policy_entropy_history = []
+            self.policy_entropy_history.append(self.forensics.current_metrics.entropy)
+        
+        # Calculate reward trend if available
+        if hasattr(self.forensics.current_metrics, 'reward_mean') and self.forensics.current_metrics.reward_mean is not None:
+            if not hasattr(self, 'reward_history'):
+                self.reward_history = []
+            self.reward_history.append(self.forensics.current_metrics.reward_mean)
+        
+        # Calculate advantage statistics if available
+        if hasattr(self.forensics.current_metrics, 'advantage_mean') and hasattr(self.forensics.current_metrics, 'advantage_std'):
+            if (self.forensics.current_metrics.advantage_mean is not None and 
+                self.forensics.current_metrics.advantage_std is not None):
+                if not hasattr(self, 'advantage_history'):
+                    self.advantage_history = []
+                self.advantage_history.append({
+                    'mean': self.forensics.current_metrics.advantage_mean,
+                    'std': self.forensics.current_metrics.advantage_std
+                })
+        
+        # Calculate gradient norm ratio if both policy and value gradients are available
+        if (hasattr(self.forensics.current_metrics, 'policy_grad_norm') and 
+            hasattr(self.forensics.current_metrics, 'value_grad_norm')):
+            if (self.forensics.current_metrics.policy_grad_norm is not None and 
+                self.forensics.current_metrics.value_grad_norm is not None):
+                if self.forensics.current_metrics.value_grad_norm > 0:
+                    self.forensics.current_metrics.policy_value_grad_ratio = (
+                        self.forensics.current_metrics.policy_grad_norm / self.forensics.current_metrics.value_grad_norm
+                    )
     
     def _log_comprehensive_metrics(self):
         """Log comprehensive metrics at intervals."""
