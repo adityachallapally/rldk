@@ -2,7 +2,11 @@
 """Test card generation function imports."""
 
 import sys
-sys.path.insert(0, '/workspace/src')
+from pathlib import Path
+
+# Add src to path
+src_path = Path(__file__).resolve().parents[1] / 'src'
+sys.path.insert(0, str(src_path))
 
 def test_drift_card_import():
     """Test drift card import."""

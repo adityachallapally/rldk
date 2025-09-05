@@ -6,7 +6,8 @@ import os
 from pathlib import Path
 
 # Add src to path
-sys.path.insert(0, '/workspace/src')
+src_path = Path(__file__).resolve().parents[1] / 'src'
+sys.path.insert(0, str(src_path))
 
 def test_public_api_imports():
     """Test that the main public API can be imported."""

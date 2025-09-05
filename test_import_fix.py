@@ -2,7 +2,11 @@
 """Test that the missing import is now fixed."""
 
 import sys
-sys.path.insert(0, '/workspace/src')
+from pathlib import Path
+
+# Add src to path
+src_path = Path(__file__).resolve().parents[1] / 'src'
+sys.path.insert(0, str(src_path))
 
 def test_ingest_runs_to_events_import():
     """Test that ingest_runs_to_events can be imported."""

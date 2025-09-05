@@ -8,7 +8,8 @@ import tempfile
 import json
 
 # Add src to path
-sys.path.insert(0, '/workspace/src')
+src_path = Path(__file__).resolve().parents[1] / 'src'
+sys.path.insert(0, str(src_path))
 
 def test_card_functions():
     """Test that card generation functions have correct signatures."""
