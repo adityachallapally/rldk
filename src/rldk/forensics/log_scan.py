@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Dict, Any, Iterator
 
 from rldk.io.readers import read_jsonl, read_tensorboard_export, read_wandb_export
-from rldk.forensics.ppo_scan import scan_ppo_events
+from .ppo_scan import scan_ppo_events
 
 
 def scan_logs(run_or_export: str) -> Dict[str, Any]:
