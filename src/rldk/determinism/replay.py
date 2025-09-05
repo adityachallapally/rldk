@@ -13,7 +13,7 @@ import pandas as pd
 import numpy as np
 
 from rldk.ingest import ingest_runs
-from rldk.determinism.check import _get_deterministic_env, _detect_device
+from .check import _get_deterministic_env, _detect_device
 
 # Set up logging
 logger = logging.getLogger(__name__)

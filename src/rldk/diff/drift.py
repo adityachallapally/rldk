@@ -9,7 +9,7 @@ import numpy as np
 from datetime import datetime
 
 from ..io.event_schema import Event
-from ..diff.diff import first_divergence_events
+from .diff import first_divergence_events
 
 
 def generate_drift_card(

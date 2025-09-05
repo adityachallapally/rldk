@@ -1,8 +1,19 @@
-"""Determinism checking for training runs."""
+"""Determinism checking and experiment replay."""
 
-from .check import check, DeterminismReport
+from .check import check
+from .replay import (
+    replay,
+    ReplayReport,
+    _compare_metrics,
+    _prepare_replay_command,
+)
+from .determinism import generate_determinism_card  # Moved from cards module
 
-# Export both names for API consistency
-check_determinism = check
-
-__all__ = ["check", "check_determinism", "DeterminismReport"]
+__all__ = [
+    "check",
+    "replay", 
+    "ReplayReport",
+    "_compare_metrics",
+    "_prepare_replay_command",
+    "generate_determinism_card"
+]

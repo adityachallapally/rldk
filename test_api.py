@@ -10,7 +10,11 @@ def test_imports():
     """Test that all main functions can be imported."""
     print("Testing imports...")
 
-    # Test main functions
+    # Test main public API
+    assert hasattr(rldk, "ExperimentTracker")
+    assert hasattr(rldk, "TrackingConfig")
+    
+    # Test core functions
     assert hasattr(rldk, "ingest_runs")
     assert hasattr(rldk, "first_divergence")
     assert hasattr(rldk, "check")
