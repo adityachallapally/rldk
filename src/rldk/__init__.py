@@ -6,7 +6,7 @@ __version__ = "0.1.0"
 from .tracking import ExperimentTracker, TrackingConfig
 
 # Core functions from other modules
-from .ingest import ingest_runs
+from .ingest import ingest_runs, ingest_runs_to_events
 from .diff import first_divergence
 from .determinism import check
 from .reward import health, RewardHealthReport
@@ -21,6 +21,7 @@ __all__ = [
     "TrackingConfig",
     # Core functions
     "ingest_runs",
+    "ingest_runs_to_events",
     "first_divergence", 
     "check",
     "bisect_commits",
