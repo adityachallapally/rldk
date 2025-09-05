@@ -809,7 +809,7 @@ def card(
     ),
     run_a: str = typer.Argument(..., help="Path to first run directory"),
     run_b: Optional[str] = typer.Argument(
-        None, help="Path to second run directory (for drift cards)"
+        None, help="Path to second run directory (for drift cards only)"
     ),
     output_dir: Optional[str] = typer.Option(
         None, "--output-dir", "-o", help="Output directory for cards"
@@ -851,22 +851,18 @@ def card(
             typer.echo(f"  Issues: {len(card_data.get('issues', []))}")
 
         elif card_type == "reward":
-            if not run_b:
-                typer.echo("Error: reward cards require two runs", err=True)
-                raise typer.Exit(1)
+            typer.echo(f"Generating reward card for run: {run_a}")
 
-            typer.echo(f"Generating reward card for runs: {run_a} vs {run_b}")
-
-            # Ingest events for both runs
-            events_a = ingest_runs_to_events(run_a)
-            events_b = ingest_runs_to_events(run_b)
+            # Ingest events for single run
+            events = ingest_runs_to_events(run_a)
 
             # Generate card
-            card_data = generate_reward_card(events_a, events_b, run_a, run_b, output_dir)
+            card_data = generate_reward_card(events, run_a, output_dir)
 
             typer.echo("✅ Reward card generated")
             typer.echo(f"  Status: {'PASS' if card_data['passed'] else 'FAIL'}")
-            typer.echo(f"  Correlation: {card_data.get('correlation', 'N/A')}")
+            typer.echo(f"  Drift detected: {card_data.get('drift_detected', 'N/A')}")
+            typer.echo(f"  Calibration score: {card_data.get('calibration_score', 'N/A')}")
             typer.echo(f"  Issues: {len(card_data.get('issues', []))}")
 
         else:
