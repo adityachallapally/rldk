@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from pathlib import Path
 
-from rldk.artifacts.ckpt_diff import diff_checkpoints
+from rldk.forensics.ckpt_diff import diff_checkpoints
 from rldk.io.schemas import validate, CkptDiffReportV1
 
 

@@ -4,7 +4,7 @@ import json
 import tempfile
 from pathlib import Path
 
-from rldk.artifacts.log_scan import scan_logs
+from rldk.forensics.log_scan import scan_logs
 
 
 def test_compare_runs_clean_vs_doctored():
