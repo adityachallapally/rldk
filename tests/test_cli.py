@@ -56,8 +56,9 @@ class TestCLI:
         # Should fail with non-zero exit code
         assert result.exit_code != 0, "Invalid command should fail"
         
-        # Should have error output
-        assert result.stderr is not None and len(result.stderr.strip()) > 0, "Invalid command should produce error message"
+        # Should have error output (Typer typically writes to stdout, not stderr)
+        error_output = result.stderr or result.stdout
+        assert error_output is not None and len(error_output.strip()) > 0, "Invalid command should produce error message"
     
     def test_no_arguments(self):
         """Test CLI behavior with no arguments."""
