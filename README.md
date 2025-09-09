@@ -46,7 +46,7 @@ rldk reward-drift model_a model_b --prompts prompts.jsonl
 # → "📉 Reward correlation dropped to 0.12"
 
 # Run comparison - find divergences
-rldk diff run_a run_b --signals loss,reward_mean
+rldk diff --a run_a --b run_b --signals loss,reward_mean
 # → "🚨 Divergence detected at step 150"
 ```
 
@@ -55,7 +55,7 @@ All commands work offline with no external dependencies:
 
 ```bash
 # Experiment tracking
-rldk track --experiment-name "my_experiment"
+rldk track "my_experiment"
 
 # Forensics analysis  
 rldk env-audit <run_or_repo>
