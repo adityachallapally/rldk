@@ -313,7 +313,7 @@ class TestToxicityEvaluation:
         """Test toxicity evaluation with real test data."""
         # Read the test data file
         import os
-        test_file = os.path.join(os.path.dirname(__file__), "data", "toxicity_outputs.txt")
+        test_file = os.path.join(os.path.dirname(__file__), "..", "data", "toxicity_outputs.txt")
         with open(test_file, "r") as f:
             outputs = [line.strip() for line in f if line.strip()]
         

@@ -331,7 +331,7 @@ class TestThroughputEvaluation:
         """Test throughput evaluation with real log file data."""
         import os
         # Read the test log file using absolute path
-        test_file = os.path.join(os.path.dirname(__file__), "data", "throughput_log.jsonl")
+        test_file = os.path.join(os.path.dirname(__file__), "..", "data", "throughput_log.jsonl")
         with open(test_file, "r") as f:
             log_entries = [json.loads(line) for line in f]
         
