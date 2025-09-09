@@ -27,9 +27,9 @@ from rldk.cards import (
 )
 
 # Import forensics modules
-from rldk.artifacts.ckpt_diff import diff_checkpoints
-from rldk.artifacts.env_audit import audit_environment
-from rldk.artifacts.log_scan import scan_logs
+from rldk.forensics.ckpt_diff import diff_checkpoints
+from rldk.forensics.env_audit import audit_environment
+from rldk.forensics.log_scan import scan_logs
 from rldk.io import write_json as write_json_report, write_png, mkdir_reports, validate
 from rldk.io import DeterminismCardV1, PPOScanReportV1, CkptDiffReportV1, RewardDriftReportV1
 
