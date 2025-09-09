@@ -31,14 +31,14 @@ from rldk.artifacts.ckpt_diff import diff_checkpoints
 from rldk.artifacts.env_audit import audit_environment
 from rldk.artifacts.log_scan import scan_logs
 from rldk.io import write_json as write_json_report, write_png, mkdir_reports, validate
-from rldk.io import DeterminismCardV1, PPOScanReportV1, CkptDiffReportV1
+from rldk.io import DeterminismCardV1, PPOScanReportV1, CkptDiffReportV1, RewardDriftReportV1
 
 # Import reward modules
 from rldk.reward.drift import compare_models
 from rldk.reward.health_analysis import health as reward_health_analysis
 from rldk.reward.health_config.exit_codes import raise_on_failure
 from rldk.reward.health_config.config import load_config, get_legacy_thresholds
-from rldk.io import RewardDriftReportV1, read_jsonl, read_reward_head
+from rldk.io import read_jsonl, read_reward_head
 
 # Import evaluation modules
 from rldk.evals.suites import QUICK_SUITE, COMPREHENSIVE_SUITE, SAFETY_SUITE
