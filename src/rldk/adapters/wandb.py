@@ -12,6 +12,7 @@ except ImportError:
     WANDB_AVAILABLE = False
 
 from .base import BaseAdapter
+from ..config import settings
 
 
 class WandBAdapter(BaseAdapter):

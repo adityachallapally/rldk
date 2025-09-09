@@ -18,6 +18,7 @@ from rldk.reward import health
 from rldk.evals import run
 from rldk.replay import replay
 from rldk.tracking import ExperimentTracker, TrackingConfig
+from rldk.config import settings
 
 # Import card generation modules
 from rldk.cards import (
@@ -43,6 +44,18 @@ from rldk.io import read_jsonl, read_reward_head
 # Import evaluation modules
 from rldk.evals.suites import QUICK_SUITE, COMPREHENSIVE_SUITE, SAFETY_SUITE
 from rldk.evals.metrics import evaluate_throughput, evaluate_toxicity, evaluate_bias
+
+def ensure_config_initialized():
+    """Ensure configuration is initialized for CLI operations."""
+    try:
+        settings.initialize()
+    except PermissionError as e:
+        # If we can't create directories, that's okay for read-only operations
+        # Just log a warning and continue
+        logging.warning(f"Could not create RLDK directories: {e}")
+    except Exception as e:
+        # For other errors, log but don't fail
+        logging.warning(f"Configuration initialization warning: {e}")
 
 app = typer.Typer(
     name="rldk",
@@ -72,6 +85,7 @@ def forensics_compare_runs(
 ):
     """Compare two training runs and identify divergences."""
     try:
+        ensure_config_initialized()
         typer.echo("Comparing runs:")
         typer.echo(f"  Run A: {run_a}")
         typer.echo(f"  Run B: {run_b}")
@@ -858,6 +872,7 @@ def ingest(
 ):
     """Ingest training runs from various sources."""
     try:
+        ensure_config_initialized()
         typer.echo(f"Ingesting runs from: {runs}")
 
         # Ingest the runs

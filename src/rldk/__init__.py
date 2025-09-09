@@ -8,6 +8,7 @@ from .determinism import check
 from .bisect import bisect_commits
 from .reward import health, RewardHealthReport
 from .evals import run, EvalResult
+from .config import settings, RLDKSettings, ConfigSchema
 
 __all__ = [
     "ingest_runs",
@@ -18,4 +19,7 @@ __all__ = [
     "RewardHealthReport",
     "run",
     "EvalResult",
+    "settings",
+    "RLDKSettings",
+    "ConfigSchema",
 ]
