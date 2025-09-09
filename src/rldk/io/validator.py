@@ -246,7 +246,7 @@ def validate_custom_jsonl_with_adapter(
     
     try:
         # Import here to avoid circular imports
-        from ..adapters.custom_jsonl import CustomJSONLAdapter
+        from ..integrations.custom_jsonl import CustomJSONLAdapter
         
         # Use the adapter to load and convert the data
         adapter = CustomJSONLAdapter(file_path)
