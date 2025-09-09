@@ -19,7 +19,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from rldk.evals.metrics import evaluate_throughput, evaluate_toxicity, evaluate_bias
-from rldk.evals.cli import run_evaluation_suite
+from rldk.cli import run_evaluation_suite
 
 
 def create_sample_data():

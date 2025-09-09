@@ -165,7 +165,7 @@ toxicity_result = evaluate_toxicity(data)
 bias_result = evaluate_bias(data)
 
 # Run evaluation suite
-from rldk.evals.cli import run_evaluation_suite
+from rldk.cli import run_evaluation_suite
 results = run_evaluation_suite(data, suite_name="quick")
 ```
 

@@ -4,8 +4,12 @@ import typer
 from pathlib import Path
 from typing import List, Optional
 import numpy as np
+import json
+import logging
+import sys
+import pandas as pd
 
-from rldk.ingest import ingest_runs
+from rldk.ingest import ingest_runs, ingest_runs_to_events
 from rldk.diff import first_divergence
 from rldk.determinism.check import check
 from rldk.bisect import bisect_commits
@@ -16,17 +20,36 @@ from rldk.io.reward_writers import generate_reward_health_report
 from rldk.replay import replay
 from rldk.tracking import ExperimentTracker, TrackingConfig
 
-# Import new forensics and reward CLI modules
-from rldk.cli_forensics import app as forensics_app
-from rldk.cli_reward import app as reward_app
-
 # Import card generation modules
 from rldk.cards import (
     generate_determinism_card,
     generate_drift_card,
     generate_reward_card,
 )
-from rldk.ingest import ingest_runs, ingest_runs_to_events
+
+# Import forensics modules
+from rldk.artifacts.ckpt_diff import diff_checkpoints
+from rldk.artifacts.env_audit import audit_environment
+from rldk.artifacts.log_scan import scan_logs
+from rldk.io.writers import write_json as write_json_report, write_png, mkdir_reports
+from rldk.io.schemas import (
+    validate,
+    DeterminismCardV1,
+    PPOScanReportV1,
+    CkptDiffReportV1,
+)
+
+# Import reward modules
+from rldk.reward.drift import compare_models
+from rldk.reward.health_analysis import health as reward_health_analysis
+from rldk.reward.health_config.exit_codes import raise_on_failure
+from rldk.reward.health_config.config import load_config, get_legacy_thresholds
+from rldk.io.schemas import RewardDriftReportV1
+from rldk.io.readers import read_jsonl, read_reward_head
+
+# Import evaluation modules
+from rldk.evals.suites import QUICK_SUITE, COMPREHENSIVE_SUITE, SAFETY_SUITE
+from rldk.evals.metrics import evaluate_throughput, evaluate_toxicity, evaluate_bias
 
 app = typer.Typer(
     name="rldk",
@@ -34,10 +57,783 @@ app = typer.Typer(
     add_completion=False,
 )
 
-# Add sub-apps for forensics and reward commands
+# Create sub-apps
+forensics_app = typer.Typer(name="forensics", help="Forensics commands for RL training analysis")
+reward_app = typer.Typer(name="reward", help="Reward model analysis commands")
+evals_app = typer.Typer(name="evals", help="Evaluation suite commands")
+
+# Add sub-apps to main app
 app.add_typer(forensics_app, name="forensics")
 app.add_typer(reward_app, name="reward")
+app.add_typer(evals_app, name="evals")
 
+
+# ============================================================================
+# FORENSICS COMMANDS
+# ============================================================================
+
+@forensics_app.command(name="compare-runs")
+def forensics_compare_runs(
+    run_a: str = typer.Argument(..., help="Path to first run directory"),
+    run_b: str = typer.Argument(..., help="Path to second run directory"),
+):
+    """Compare two training runs and identify divergences."""
+    try:
+        typer.echo("Comparing runs:")
+        typer.echo(f"  Run A: {run_a}")
+        typer.echo(f"  Run B: {run_b}")
+
+        # Scan both runs
+        scan_a = scan_logs(run_a)
+        scan_b = scan_logs(run_b)
+
+        # Create comparison report
+        comparison = {
+            "version": "1",
+            "run_a": {"path": run_a, "anomalies": scan_a.get("rules_fired", [])},
+            "run_b": {"path": run_b, "anomalies": scan_b.get("rules_fired", [])},
+            "earliest_divergent_step": None,
+        }
+
+        # Find earliest divergent step if both have step data
+        if scan_a.get("earliest_step") and scan_b.get("earliest_step"):
+            comparison["earliest_divergent_step"] = min(
+                scan_a["earliest_step"], scan_b["earliest_step"]
+            )
+
+        # Write report
+        mkdir_reports()
+        write_json_report(comparison, "rldk_reports/run_comparison.json")
+
+        typer.echo(
+            "\nComparison complete. Report saved to rldk_reports/run_comparison.json"
+        )
+
+        # Print summary
+        anomalies_a = len(scan_a.get("rules_fired", []))
+        anomalies_b = len(scan_b.get("rules_fired", []))
+        typer.echo(f"Run A anomalies: {anomalies_a}")
+        typer.echo(f"Run B anomalies: {anomalies_b}")
+
+        if comparison["earliest_divergent_step"]:
+            typer.echo(
+                f"Earliest divergent step: {comparison['earliest_divergent_step']}"
+            )
+
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+@forensics_app.command(name="diff-ckpt")
+def forensics_diff_ckpt(
+    ckpt_a: str = typer.Argument(..., help="Path to first checkpoint"),
+    ckpt_b: str = typer.Argument(..., help="Path to second checkpoint"),
+):
+    """Compare two model checkpoints and identify parameter differences."""
+    try:
+        typer.echo("Comparing checkpoints:")
+        typer.echo(f"  Checkpoint A: {ckpt_a}")
+        typer.echo(f"  Checkpoint B: {ckpt_b}")
+
+        # Diff checkpoints
+        report = diff_checkpoints(ckpt_a, ckpt_b)
+
+        # Validate report
+        validate(CkptDiffReportV1, report)
+
+        # Write report and plot
+        mkdir_reports()
+        write_json_report(report, "rldk_reports/ckpt_diff.json")
+
+        # Create bar plot of top movers
+        if report["top_movers"]:
+            import matplotlib.pyplot as plt
+
+            names = [m["name"] for m in report["top_movers"][:10]]
+            l2_norms = [m["l2"] for m in report["top_movers"][:10]]
+
+            fig, ax = plt.subplots(figsize=(10, 6))
+            bars = ax.barh(range(len(names)), l2_norms)
+            ax.set_yticks(range(len(names)))
+            ax.set_yticklabels(names)
+            ax.set_xlabel("L2 Norm of Parameter Difference")
+            ax.set_title("Top Parameter Changes")
+            ax.invert_yaxis()
+
+            write_png(fig, "rldk_reports/ckpt_diff.png")
+            plt.close()
+
+        typer.echo(
+            "\nCheckpoint diff complete. Report saved to rldk_reports/ckpt_diff.json"
+        )
+
+        # Print summary
+        summary = report["summary"]
+        typer.echo(f"Total parameters: {summary['num_params']}")
+        typer.echo(f"Common parameters: {summary['num_common_params']}")
+        if summary['num_only_in_a'] > 0:
+            typer.echo(f"Only in checkpoint A: {summary['num_only_in_a']}")
+        if summary['num_only_in_b'] > 0:
+            typer.echo(f"Only in checkpoint B: {summary['num_only_in_b']}")
+        typer.echo(f"Average cosine similarity: {summary['avg_cosine']:.4f}")
+        typer.echo(
+            f"L2 norm percentiles - 5%: {summary['l2_p05']:.6f}, 50%: {summary['l2_p50']:.6f}, 95%: {summary['l2_p95']:.6f}"
+        )
+
+        if report["top_movers"]:
+            typer.echo("\nTop parameter changes:")
+            for i, mover in enumerate(report["top_movers"][:5]):
+                note = mover.get('note', '')
+                if note:
+                    typer.echo(
+                        f"  {i+1}. {mover['name']}: L2={mover['l2']:.6f}, cosine={mover['cosine']:.4f} ({note})"
+                    )
+                else:
+                    typer.echo(
+                        f"  {i+1}. {mover['name']}: L2={mover['l2']:.6f}, cosine={mover['cosine']:.4f}"
+                    )
+
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+@forensics_app.command(name="env-audit")
+def forensics_env_audit(
+    repo_or_run: str = typer.Argument(..., help="Path to repository or run directory"),
+):
+    """Audit environment for determinism and reproducibility."""
+    try:
+        typer.echo(f"Auditing environment for: {repo_or_run}")
+
+        # Run audit
+        determinism_card, lock_content = audit_environment(repo_or_run)
+
+        # Validate determinism card
+        validate(DeterminismCardV1, determinism_card)
+
+        # Write outputs
+        mkdir_reports()
+        write_json_report(determinism_card, "rldk_reports/determinism_card.json")
+
+        with open("rldk.lock", "w") as f:
+            f.write(lock_content)
+
+        typer.echo("\nEnvironment audit complete.")
+        typer.echo("  Determinism card: rldk_reports/determinism_card.json")
+        typer.echo("  Lock file: rldk.lock")
+
+        # Print summary
+        flags = determinism_card["flags"]
+        typer.echo("\nKey findings:")
+        typer.echo(f"  Deterministic: {determinism_card['pass']}")
+        typer.echo(f"  CUDNN deterministic: {flags['cudnn_deterministic']}")
+        typer.echo(f"  Tokenizers parallelism: {flags['tokenizers_parallelism']}")
+
+        if determinism_card["nondeterminism_hints"]:
+            typer.echo(
+                f"  Nondeterminism hints: {len(determinism_card['nondeterminism_hints'])}"
+            )
+            for hint in determinism_card["nondeterminism_hints"][:3]:
+                typer.echo(f"    - {hint}")
+
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+@forensics_app.command(name="log-scan")
+def forensics_log_scan(
+    run_or_export: str = typer.Argument(..., help="Path to run or export directory"),
+):
+    """Scan training logs for PPO anomalies and issues."""
+    try:
+        typer.echo(f"Scanning logs: {run_or_export}")
+
+        # Scan logs
+        report = scan_logs(run_or_export)
+
+        # Validate report
+        validate(PPOScanReportV1, report)
+
+        # Write report
+        mkdir_reports()
+        write_json_report(report, "rldk_reports/ppo_scan.json")
+
+        typer.echo("\nLog scan complete. Report saved to rldk_reports/ppo_scan.json")
+
+        # Print summary
+        rules_fired = report.get("rules_fired", [])
+        typer.echo(f"Rules fired: {len(rules_fired)}")
+
+        if rules_fired:
+            typer.echo("Anomalies detected:")
+            for rule in rules_fired:
+                typer.echo(f"  - {rule['rule']}: {rule['description']}")
+                if rule.get("step_range"):
+                    typer.echo(
+                        f"    Steps: {rule['step_range'][0]} to {rule['step_range'][1]}"
+                    )
+        else:
+            typer.echo("No anomalies detected.")
+
+        if report.get("earliest_step"):
+            typer.echo(f"Earliest step with data: {report['earliest_step']}")
+
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+@forensics_app.command(name="doctor")
+def forensics_doctor(
+    run_or_repo: str = typer.Argument(..., help="Path to run or repository directory"),
+):
+    """Run comprehensive diagnostics on a training run or repository."""
+    try:
+        typer.echo(f"Running diagnostics on: {run_or_repo}")
+
+        # Run env audit
+        typer.echo("\n1. Environment audit...")
+        determinism_card, lock_content = audit_environment(run_or_repo)
+
+        # Run log scan
+        typer.echo("2. Log scan...")
+        scan_report = scan_logs(run_or_repo)
+
+        # Write outputs
+        mkdir_reports()
+        write_json_report(determinism_card, "rldk_reports/determinism_card.json")
+        write_json_report(scan_report, "rldk_reports/ppo_scan.json")
+
+        with open("rldk.lock", "w") as f:
+            f.write(lock_content)
+
+        # Print summary
+        typer.echo("\nDiagnostics complete!")
+        typer.echo("Files generated:")
+        typer.echo("  - rldk_reports/determinism_card.json")
+        typer.echo("  - rldk_reports/ppo_scan.json")
+        typer.echo("  - rldk.lock")
+
+        # Health summary
+        env_healthy = determinism_card["pass"]
+        log_healthy = len(scan_report.get("rules_fired", [])) == 0
+
+        if env_healthy and log_healthy:
+            typer.echo("\n✅ All systems healthy!")
+        else:
+            typer.echo("\n⚠️  Issues detected:")
+            if not env_healthy:
+                typer.echo("  - Environment has nondeterminism issues")
+            if not log_healthy:
+                typer.echo(
+                    f"  - Training logs show {len(scan_report.get('rules_fired', []))} anomalies"
+                )
+
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+# ============================================================================
+# REWARD COMMANDS
+# ============================================================================
+
+@reward_app.command(name="reward-drift")
+def reward_drift(
+    model_a: str = typer.Argument(..., help="Path to first reward model directory"),
+    model_b: str = typer.Argument(..., help="Path to second reward model directory"),
+    prompts: str = typer.Option(
+        ..., "--prompts", "-p", help="Path to prompts JSONL file"
+    ),
+):
+    """Compare two reward models and detect drift."""
+    try:
+        typer.echo("Comparing reward models:")
+        typer.echo(f"  Model A: {model_a}")
+        typer.echo(f"  Model B: {model_b}")
+        typer.echo(f"  Prompts: {prompts}")
+
+        # Read prompts
+        prompt_list = list(read_jsonl(prompts))
+        prompt_texts = [p.get("text", p.get("prompt", "")) for p in prompt_list]
+
+        if not prompt_texts:
+            raise ValueError("No valid prompts found in file")
+
+        typer.echo(f"Loaded {len(prompt_texts)} prompts")
+
+        # Compare models
+        report = compare_models(model_a, model_b, prompt_texts)
+
+        # Validate report
+        validate(RewardDriftReportV1, report)
+
+        # Write report and plot
+        mkdir_reports()
+        write_json_report(report, "rldk_reports/reward_drift.json")
+
+        # Create scatter plot
+        import matplotlib.pyplot as plt
+
+        # Load model outputs for plotting
+        model_a_fn = read_reward_head(model_a)
+        model_b_fn = read_reward_head(model_b)
+
+        scores_a = model_a_fn(prompt_texts)
+        scores_b = model_b_fn(prompt_texts)
+
+        fig, ax = plt.subplots(figsize=(8, 8))
+        ax.scatter(scores_a, scores_b, alpha=0.6)
+
+        # Add diagonal line
+        min_val = min(min(scores_a), min(scores_b))
+        max_val = max(max(scores_a), max(scores_b))
+        ax.plot([min_val, max_val], [min_val, max_val], "r--", alpha=0.5)
+
+        ax.set_xlabel("Model A Scores")
+        ax.set_ylabel("Model B Scores")
+        ax.set_title("Reward Model Comparison")
+
+        # Add correlation info
+        ax.text(
+            0.05,
+            0.95,
+            f"Pearson: {report['pearson']:.3f}\nSpearman: {report['spearman']:.3f}",
+            transform=ax.transAxes,
+            verticalalignment="top",
+            bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+        )
+
+        write_png(fig, "rldk_reports/reward_drift.png")
+        plt.close()
+
+        typer.echo(
+            "\nReward drift analysis complete. Report saved to rldk_reports/reward_drift.json"
+        )
+
+        # Print summary
+        typer.echo("\nCorrelation metrics:")
+        typer.echo(f"  Pearson correlation: {report['pearson']:.4f}")
+        typer.echo(f"  Spearman correlation: {report['spearman']:.4f}")
+        typer.echo(f"  MAE (z-scored): {report['mae_z']:.4f}")
+        typer.echo(f"  L2 distance (z-scored): {report['l2_z']:.4f}")
+        typer.echo(f"  Sign flip rate: {report['sign_flip_rate']:.4f}")
+
+        if report["slice_deltas"]:
+            typer.echo("\nSlice analysis:")
+            for slice_name, slice_data in report["slice_deltas"].items():
+                typer.echo(
+                    f"  {slice_name}: delta_mean={slice_data['delta_mean']:.4f}, n={slice_data['n']}"
+                )
+
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+# Create a sub-app for reward-health commands
+reward_health_app = typer.Typer(name="reward-health", help="Reward health analysis commands")
+reward_app.add_typer(reward_health_app, name="reward-health")
+
+
+@reward_health_app.command(name="run")
+def reward_health_run(
+    scores: str = typer.Option(..., "--scores", help="Path to scores JSONL file"),
+    config: Optional[str] = typer.Option(None, "--config", help="Path to health configuration YAML file"),
+    out: str = typer.Option(..., "--out", help="Output directory for reports"),
+    adapter: Optional[str] = typer.Option(None, "--adapter", help="Adapter type for data ingestion (custom_jsonl, trl, openrlhf, wandb)"),
+    gate: bool = typer.Option(False, "--gate", help="Enable CI gate mode with exit codes (0=pass, 1=warn, 2=fail). Use 'gate' subcommand for health.json-based gating."),
+):
+    """Run reward health analysis on scores data."""
+    try:
+        typer.echo(f"Running reward health analysis on scores: {scores}")
+        
+        # Ingest scores data
+        typer.echo("Ingesting scores data...")
+        scores_data = ingest_runs(scores, adapter_hint=adapter)
+        
+        # Load configuration (default or user-provided)
+        if config:
+            typer.echo(f"Using user configuration: {config}")
+        else:
+            typer.echo("Using default configuration (recipes/health_default.yaml)")
+        config_data = load_config(config)
+        
+        # Extract thresholds from config
+        legacy_thresholds = get_legacy_thresholds(config_data)
+        threshold_drift = legacy_thresholds['threshold_drift']
+        threshold_saturation = legacy_thresholds['threshold_saturation']
+        threshold_calibration = legacy_thresholds['threshold_calibration']
+        threshold_shortcut = legacy_thresholds['threshold_shortcut']
+        threshold_leakage = legacy_thresholds['threshold_leakage']
+        
+        # Run reward health analysis
+        typer.echo("Running reward health analysis...")
+        health_report = reward_health_analysis(
+            run_data=scores_data,
+            reference_data=None,  # No reference data for now
+            reward_col="reward_mean",
+            step_col="step",
+            threshold_drift=threshold_drift,
+            threshold_saturation=threshold_saturation,
+            threshold_calibration=threshold_calibration,
+            threshold_shortcut=threshold_shortcut,
+            threshold_leakage=threshold_leakage,
+        )
+        
+        # Generate reports
+        typer.echo("Generating reports...")
+        generate_reward_health_report(health_report, out)
+        
+        # Display results
+        if health_report.passed:
+            typer.echo("\n✅ Reward health check passed")
+            exit_code = 0
+        else:
+            typer.echo("\n🚨 Reward health issues detected")
+            
+            if health_report.drift_detected:
+                typer.echo("  - Reward drift detected")
+            if health_report.saturation_issues:
+                typer.echo(f"  - {len(health_report.saturation_issues)} saturation issues")
+            if health_report.calibration_score < threshold_calibration:
+                typer.echo(f"  - Poor calibration (score: {health_report.calibration_score:.3f})")
+            if health_report.shortcut_signals:
+                typer.echo(f"  - {len(health_report.shortcut_signals)} shortcut signals")
+            if health_report.label_leakage_risk > threshold_leakage:
+                typer.echo(f"  - Label leakage risk: {health_report.label_leakage_risk:.3f}")
+            
+            # Determine exit code based on severity
+            critical_issues = 0
+            if health_report.drift_detected:
+                critical_issues += 1
+            if health_report.label_leakage_risk > threshold_leakage:
+                critical_issues += 1
+            
+            if critical_issues > 0:
+                exit_code = 2  # Fail - critical issues
+            else:
+                exit_code = 1  # Warn - non-critical issues
+        
+        typer.echo(f"\nReports saved to: {out}")
+        typer.echo("  - reward_health_card.md")
+        typer.echo("  - reward_health_summary.json")
+        if health_report.drift_metrics is not None and not health_report.drift_metrics.empty:
+            typer.echo("  - drift_analysis.csv")
+        typer.echo("  - calibration_plots.png")
+        
+        # Handle gate mode
+        if gate:
+            if exit_code == 0:
+                typer.echo("GATE: PASS")
+            elif exit_code == 1:
+                typer.echo("GATE: WARN")
+            else:
+                typer.echo("GATE: FAIL")
+            raise typer.Exit(exit_code)
+    
+    except typer.Exit:
+        # Re-raise typer.Exit to preserve intended exit codes
+        raise
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        if gate:
+            typer.echo("GATE: FAIL")
+            raise typer.Exit(2)
+        else:
+            raise typer.Exit(1)
+
+
+@reward_health_app.command(name="gate")
+def reward_health_gate(
+    from_path: str = typer.Option(..., "--from", help="Path to health.json file"),
+):
+    """Gate CI based on health.json results (exit codes: 0=pass, 3=fail)."""
+    try:
+        typer.echo(f"Reading health data from: {from_path}")
+        raise_on_failure(from_path)
+    except SystemExit:
+        # Re-raise SystemExit to preserve exit codes from raise_on_failure
+        raise
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+# ============================================================================
+# EVALUATION COMMANDS
+# ============================================================================
+
+def load_jsonl_data(file_path: Path) -> pd.DataFrame:
+    """
+    Load data from JSONL file.
+    
+    Args:
+        file_path: Path to JSONL file
+        
+    Returns:
+        DataFrame with loaded data
+    """
+    try:
+        data = []
+        with open(file_path, 'r') as f:
+            for line_num, line in enumerate(f, 1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data.append(json.loads(line))
+                except json.JSONDecodeError as e:
+                    logging.warning(f"Invalid JSON on line {line_num}: {e}")
+                    continue
+        
+        if not data:
+            raise ValueError("No valid JSON records found in file")
+        
+        return pd.DataFrame(data)
+    
+    except Exception as e:
+        logging.error(f"Failed to load JSONL file: {e}")
+        raise
+
+
+def run_evaluation_suite(
+    data: pd.DataFrame,
+    suite_name: str,
+    output_column: str = "output",
+    events_column: str = "events",
+    **kwargs
+) -> dict:
+    """
+    Run evaluation suite on data.
+    
+    Args:
+        data: Input data DataFrame
+        suite_name: Name of evaluation suite
+        output_column: Column containing model outputs
+        events_column: Column containing event logs
+        **kwargs: Additional evaluation parameters
+        
+    Returns:
+        Dictionary with evaluation results
+    """
+    if suite_name == "quick":
+        suite = QUICK_SUITE
+    elif suite_name == "comprehensive":
+        suite = COMPREHENSIVE_SUITE
+    elif suite_name == "safety":
+        suite = SAFETY_SUITE
+    else:
+        raise ValueError(f"Unknown suite: {suite_name}")
+    
+    results = {
+        "suite_name": suite_name,
+        "suite_description": suite["description"],
+        "evaluations": {},
+        "summary": {
+            "total_evaluations": 0,
+            "successful_evaluations": 0,
+            "failed_evaluations": 0,
+            "errors": []
+        }
+    }
+    
+    # Add output column to data if not present
+    if output_column not in data.columns:
+        data[output_column] = "No output data available"
+    
+    # Add events column to data if not present
+    if events_column not in data.columns:
+        data[events_column] = "[]"
+    
+    for eval_name, eval_func in suite["evaluations"].items():
+        try:
+            logging.info(f"Running evaluation: {eval_name}")
+            
+            # Handle different evaluation types
+            if eval_name == "throughput":
+                result = evaluate_throughput(data, log_column=events_column, **kwargs)
+            elif eval_name == "toxicity":
+                result = evaluate_toxicity(data, output_column=output_column, **kwargs)
+            elif eval_name == "bias":
+                result = evaluate_bias(data, output_column=output_column, **kwargs)
+            else:
+                # For other evaluations, try with default parameters
+                result = eval_func(data, **kwargs)
+            
+            results["evaluations"][eval_name] = result
+            
+            # Check if the evaluation actually succeeded (no error in result)
+            if "error" in result and result["error"]:
+                logging.warning(f"Evaluation {eval_name} completed but with errors: {result['error']}")
+                results["summary"]["failed_evaluations"] += 1
+            else:
+                results["summary"]["successful_evaluations"] += 1
+            
+        except Exception as e:
+            logging.error(f"Evaluation {eval_name} failed: {e}")
+            results["evaluations"][eval_name] = {
+                "score": 0.0,
+                "details": f"Evaluation failed: {str(e)}",
+                "error": str(e)
+            }
+            results["summary"]["errors"].append({
+                "evaluation": eval_name,
+                "error": str(e)
+            })
+            results["summary"]["failed_evaluations"] += 1
+        
+        results["summary"]["total_evaluations"] += 1
+    
+    # Calculate overall score
+    successful_scores = [
+        eval_result["score"] 
+        for eval_result in results["evaluations"].values()
+        if "score" in eval_result and "error" not in eval_result
+    ]
+    
+    if successful_scores:
+        results["summary"]["overall_score"] = sum(successful_scores) / len(successful_scores)
+    else:
+        results["summary"]["overall_score"] = 0.0
+    
+    return results
+
+
+@evals_app.command()
+def evaluate(
+    input_file: Path = typer.Argument(..., help="Path to JSONL input file"),
+    suite: str = typer.Option("quick", "--suite", "-s", help="Evaluation suite to run (quick/comprehensive/safety)"),
+    output_file: Optional[Path] = typer.Option(None, "--output", "-o", help="Path to output JSON file"),
+    output_column: str = typer.Option("output", "--output-column", help="Column name containing model outputs"),
+    events_column: str = typer.Option("events", "--events-column", help="Column name containing event logs"),
+    min_samples: int = typer.Option(10, "--min-samples", help="Minimum samples required for evaluation"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging")
+):
+    """
+    Run evaluation suite on JSONL data.
+    
+    Example:
+        rldk evals evaluate data.jsonl --suite comprehensive --output results.json
+    """
+    # Setup logging
+    log_level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(level=log_level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    
+    try:
+        # Load data
+        logging.info(f"Loading data from {input_file}")
+        data = load_jsonl_data(input_file)
+        logging.info(f"Loaded {len(data)} records")
+        
+        # Run evaluation
+        logging.info(f"Running {suite} evaluation suite")
+        results = run_evaluation_suite(
+            data=data,
+            suite_name=suite,
+            output_column=output_column,
+            events_column=events_column,
+            min_samples=min_samples
+        )
+        
+        # Output results
+        if output_file:
+            logging.info(f"Writing results to {output_file}")
+            with open(output_file, 'w') as f:
+                json.dump(results, f, indent=2)
+        else:
+            # Print to stdout
+            print(json.dumps(results, indent=2))
+        
+        # Print summary
+        summary = results["summary"]
+        logging.info(f"Evaluation complete: {summary['successful_evaluations']}/{summary['total_evaluations']} successful")
+        logging.info(f"Overall score: {summary['overall_score']:.3f}")
+        
+        if summary["errors"]:
+            logging.warning(f"{summary['failed_evaluations']} evaluations failed")
+            for error in summary["errors"]:
+                logging.warning(f"  {error['evaluation']}: {error['error']}")
+        
+        # Exit with error code if any evaluations failed
+        if summary["failed_evaluations"] > 0:
+            sys.exit(1)
+    
+    except Exception as e:
+        logging.error(f"Evaluation failed: {e}")
+        sys.exit(1)
+
+
+@evals_app.command()
+def list_suites():
+    """List available evaluation suites."""
+    suites = {
+        "quick": QUICK_SUITE,
+        "comprehensive": COMPREHENSIVE_SUITE,
+        "safety": SAFETY_SUITE
+    }
+    
+    print("Available evaluation suites:")
+    print()
+    
+    for name, suite in suites.items():
+        print(f"  {name}:")
+        print(f"    Description: {suite['description']}")
+        print(f"    Default sample size: {suite['default_sample_size']}")
+        print(f"    Estimated runtime: {suite['estimated_runtime']}")
+        print(f"    Evaluations: {', '.join(suite['evaluations'].keys())}")
+        print()
+
+
+@evals_app.command()
+def validate(
+    input_file: Path = typer.Argument(..., help="Path to JSONL input file to validate"),
+    output_column: str = typer.Option("output", "--output-column", help="Column name containing model outputs"),
+    events_column: str = typer.Option("events", "--events-column", help="Column name containing event logs")
+):
+    """
+    Validate JSONL file structure and data.
+    
+    Example:
+        rldk evals validate data.jsonl
+    """
+    try:
+        logging.info(f"Validating {input_file}")
+        data = load_jsonl_data(input_file)
+        
+        print(f"File validation results:")
+        print(f"  Total records: {len(data)}")
+        print(f"  Columns: {list(data.columns)}")
+        
+        # Check required columns
+        if output_column in data.columns:
+            output_count = data[output_column].notna().sum()
+            print(f"  Output column '{output_column}': {output_count} non-null values")
+        else:
+            print(f"  Output column '{output_column}': NOT FOUND")
+        
+        if events_column in data.columns:
+            events_count = data[events_column].notna().sum()
+            print(f"  Events column '{events_column}': {events_count} non-null values")
+        else:
+            print(f"  Events column '{events_column}': NOT FOUND")
+        
+        # Check data quality
+        print(f"  Missing values: {data.isnull().sum().sum()}")
+        
+        logging.info("Validation complete")
+    
+    except Exception as e:
+        logging.error(f"Validation failed: {e}")
+        sys.exit(1)
+
+
+# ============================================================================
+# MAIN CLI COMMANDS
+# ============================================================================
 
 @app.command(name="ingest")
 def ingest(
@@ -650,16 +1446,14 @@ def eval_cmd(
         raise typer.Exit(1)
 
 
-# Add individual forensics commands to main app
+# Legacy command aliases for backward compatibility
 @app.command(name="compare-runs")
 def compare_runs(
     run_a: str = typer.Argument(..., help="Path to first run directory"),
     run_b: str = typer.Argument(..., help="Path to second run directory"),
 ):
     """Compare two training runs and identify divergences."""
-    from rldk.cli_forensics import compare_runs as _compare_runs
-
-    _compare_runs(run_a, run_b)
+    forensics_compare_runs(run_a, run_b)
 
 
 @app.command(name="diff-ckpt")
@@ -668,9 +1462,7 @@ def diff_ckpt(
     ckpt_b: str = typer.Argument(..., help="Path to second checkpoint"),
 ):
     """Compare two model checkpoints and identify parameter differences."""
-    from rldk.cli_forensics import diff_ckpt as _diff_ckpt
-
-    _diff_ckpt(ckpt_a, ckpt_b)
+    forensics_diff_ckpt(ckpt_a, ckpt_b)
 
 
 @app.command(name="env-audit")
@@ -678,9 +1470,7 @@ def env_audit(
     repo_or_run: str = typer.Argument(..., help="Path to repository or run directory"),
 ):
     """Audit environment for determinism and reproducibility."""
-    from rldk.cli_forensics import env_audit as _env_audit
-
-    _env_audit(repo_or_run)
+    forensics_env_audit(repo_or_run)
 
 
 @app.command(name="log-scan")
@@ -688,9 +1478,7 @@ def log_scan(
     run_or_export: str = typer.Argument(..., help="Path to run or export directory"),
 ):
     """Scan training logs for PPO anomalies and issues."""
-    from rldk.cli_forensics import log_scan as _log_scan
-
-    _log_scan(run_or_export)
+    forensics_log_scan(run_or_export)
 
 
 @app.command(name="track")
@@ -786,7 +1574,7 @@ def track(
 
 
 @app.command(name="reward-drift")
-def reward_drift(
+def reward_drift_legacy(
     model_a: str = typer.Argument(..., help="Path to first reward model directory"),
     model_b: str = typer.Argument(..., help="Path to second reward model directory"),
     prompts: str = typer.Option(
@@ -794,9 +1582,7 @@ def reward_drift(
     ),
 ):
     """Compare two reward models and detect drift."""
-    from rldk.cli_reward import reward_drift as _reward_drift
-
-    _reward_drift(model_a, model_b, prompts)
+    reward_drift(model_a, model_b, prompts)
 
 
 @app.command(name="doctor")
@@ -804,9 +1590,7 @@ def doctor(
     run_or_repo: str = typer.Argument(..., help="Path to run or repository directory"),
 ):
     """Run comprehensive diagnostics on a training run or repository."""
-    from rldk.cli_forensics import doctor as _doctor
-
-    _doctor(run_or_repo)
+    forensics_doctor(run_or_repo)
 
 
 @app.command(name="version")
