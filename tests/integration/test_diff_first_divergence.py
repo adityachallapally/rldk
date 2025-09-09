@@ -44,7 +44,7 @@ class TestFirstDivergence:
     def test_clean_versus_kl_spike_divergence(self):
         """Test that KL spike is detected."""
         # Load fixture data
-        fixture_dir = Path(__file__).parent.parent / "runs_fixtures"
+        fixture_dir = Path(__file__).resolve().parents[2] / "runs_fixtures"
         clean_df = pd.read_json(fixture_dir / "clean_ppo.jsonl", lines=True)
         kl_spike_df = pd.read_json(fixture_dir / "kl_spike.jsonl", lines=True)
 
@@ -239,7 +239,7 @@ class TestFirstDivergence:
     def test_kl_spike_specific_detection(self):
         """Test that KL divergence is detected when comparing clean vs spike data."""
         # Load fixture data
-        fixture_dir = Path(__file__).parent.parent / "runs_fixtures"
+        fixture_dir = Path(__file__).resolve().parents[2] / "runs_fixtures"
         clean_df = pd.read_json(fixture_dir / "clean_ppo.jsonl", lines=True)
         kl_spike_df = pd.read_json(fixture_dir / "kl_spike.jsonl", lines=True)
 
