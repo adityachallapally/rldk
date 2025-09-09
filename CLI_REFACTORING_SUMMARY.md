@@ -6,14 +6,16 @@ Successfully refactored the large CLI file (1700+ lines) into a modular structur
 ## New Structure
 
 ```
-src/rldk/cli/
-├── __init__.py          # Exports main app
-├── main.py              # Main app and sub-app registration
-├── forensics.py         # Forensics commands (compare-runs, diff-ckpt, env-audit, log-scan, doctor)
-├── reward.py            # Reward commands (reward-drift, reward-health)
-├── evals.py             # Evaluation commands (evaluate, list-suites, validate-data)
-├── tracking.py          # Tracking commands (track)
-└── main_commands.py     # Main CLI commands (ingest, diff, check-determinism, bisect, etc.)
+src/rldk/
+├── cli_main.py          # Main CLI entry point (renamed from cli.py)
+└── cli/
+    ├── __init__.py      # Exports main app
+    ├── main.py          # Main app and sub-app registration
+    ├── forensics.py     # Forensics commands (compare-runs, diff-ckpt, env-audit, log-scan, doctor)
+    ├── reward.py        # Reward commands (reward-drift, reward-health)
+    ├── evals.py         # Evaluation commands (evaluate, list-suites, validate-data)
+    ├── tracking.py      # Tracking commands (track)
+    └── main_commands.py # Main CLI commands (ingest, diff, check-determinism, bisect, etc.)
 ```
 
 ## Key Changes
@@ -74,6 +76,18 @@ src/rldk/cli/
 - `version` - Show version information
 - `card` - Generate trust cards
 
+## Bug Fixes Applied
+
+### 1. Circular Import Issue
+- **Problem**: Naming conflict between `cli.py` and `cli/` directory caused circular imports
+- **Solution**: Renamed main CLI file to `cli_main.py` and updated imports
+- **Result**: Clean import structure without circular dependencies
+
+### 2. Missing Configuration Initialization
+- **Problem**: Forensics commands were missing `ensure_config_initialized()` calls
+- **Solution**: Added configuration initialization to all forensics commands
+- **Result**: Proper RLDK configuration setup for all forensics operations
+
 ## Benefits
 
 1. **Maintainability**: Each module is focused and manageable
@@ -82,6 +96,7 @@ src/rldk/cli/
 4. **Testing**: Individual modules can be tested independently
 5. **Documentation**: Clear separation makes documentation easier
 6. **Backward Compatibility**: No breaking changes for existing users
+7. **Robustness**: Proper configuration initialization and clean imports
 
 ## Usage
 

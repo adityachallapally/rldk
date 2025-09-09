@@ -1,6 +1,7 @@
 """Forensics commands for RL training analysis."""
 
 import typer
+import logging
 from pathlib import Path
 
 from rldk.forensics.ckpt_diff import diff_checkpoints
@@ -8,6 +9,20 @@ from rldk.forensics.env_audit import audit_environment
 from rldk.forensics.log_scan import scan_logs
 from rldk.io import write_json as write_json_report, write_png, mkdir_reports, validate
 from rldk.io import DeterminismCardV1, PPOScanReportV1, CkptDiffReportV1
+from rldk.config import settings
+
+
+def ensure_config_initialized():
+    """Ensure configuration is initialized for CLI operations."""
+    try:
+        settings.initialize()
+    except PermissionError as e:
+        # If we can't create directories, that's okay for read-only operations
+        # Just log a warning and continue
+        logging.warning(f"Could not create RLDK directories: {e}")
+    except Exception as e:
+        # For other errors, log but don't fail
+        logging.warning(f"Configuration initialization warning: {e}")
 
 
 # Create forensics sub-app
@@ -21,6 +36,7 @@ def forensics_compare_runs(
 ):
     """Compare two training runs and identify divergences."""
     try:
+        ensure_config_initialized()
         typer.echo("Comparing runs:")
         typer.echo(f"  Run A: {run_a}")
         typer.echo(f"  Run B: {run_b}")
@@ -147,6 +163,7 @@ def forensics_env_audit(
 ):
     """Audit environment for determinism and reproducibility."""
     try:
+        ensure_config_initialized()
         typer.echo(f"Auditing environment for: {repo_or_run}")
 
         # Run audit
@@ -191,6 +208,7 @@ def forensics_log_scan(
 ):
     """Scan training logs for PPO anomalies and issues."""
     try:
+        ensure_config_initialized()
         typer.echo(f"Scanning logs: {run_or_export}")
 
         # Scan logs
@@ -234,6 +252,7 @@ def forensics_doctor(
 ):
     """Run comprehensive diagnostics on a training run or repository."""
     try:
+        ensure_config_initialized()
         typer.echo(f"Running diagnostics on: {run_or_repo}")
 
         # Run env audit
