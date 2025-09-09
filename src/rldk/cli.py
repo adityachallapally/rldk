@@ -788,8 +788,8 @@ def list_suites():
         print()
 
 
-@evals_app.command()
-def validate(
+@evals_app.command(name="validate-data")
+def validate_data(
     input_file: Path = typer.Argument(..., help="Path to JSONL input file to validate"),
     output_column: str = typer.Option("output", "--output-column", help="Column name containing model outputs"),
     events_column: str = typer.Option("events", "--events-column", help="Column name containing event logs")
@@ -798,7 +798,7 @@ def validate(
     Validate JSONL file structure and data.
     
     Example:
-        rldk evals validate data.jsonl
+        rldk evals validate-data data.jsonl
     """
     try:
         logging.info(f"Validating {input_file}")
@@ -829,6 +829,22 @@ def validate(
     except Exception as e:
         logging.error(f"Validation failed: {e}")
         sys.exit(1)
+
+
+# Backward compatibility alias
+@evals_app.command(name="validate")
+def validate_alias(
+    input_file: Path = typer.Argument(..., help="Path to JSONL input file to validate"),
+    output_column: str = typer.Option("output", "--output-column", help="Column name containing model outputs"),
+    events_column: str = typer.Option("events", "--events-column", help="Column name containing event logs")
+):
+    """
+    Validate JSONL file structure and data (alias for validate-data).
+    
+    Example:
+        rldk evals validate data.jsonl
+    """
+    validate_data(input_file, output_column, events_column)
 
 
 # ============================================================================
