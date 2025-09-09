@@ -128,11 +128,9 @@ tracker.track_model(model, "gpt2_policy")
 tracker.set_seeds(42)
 
 # Add metadata
-tracker.add_metadata({
-    "learning_rate": 1e-5,
-    "batch_size": 32,
-    "epochs": 10
-})
+tracker.add_metadata("learning_rate", 1e-5)
+tracker.add_metadata("batch_size", 32)
+tracker.add_metadata("epochs", 10)
 
 tracker.finish_experiment()
 ```
