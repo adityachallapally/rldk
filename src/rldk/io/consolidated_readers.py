@@ -10,6 +10,70 @@ import pandas as pd
 from .consolidated_schemas import TrainingMetrics, MetricsSchema, Event, create_event_from_row
 
 
+def _hash_state_dict(state_dict: Dict[str, Any]) -> str:
+    """
+    Efficiently hash a state dictionary by sampling tensor data.
+    
+    This function creates a deterministic hash from model weights without
+    converting entire tensors to strings, which is memory-intensive and
+    non-deterministic for large models.
+    
+    Args:
+        state_dict: Dictionary containing model parameters
+        
+    Returns:
+        8-character hash string
+    """
+    import hashlib
+    import numpy as np
+    
+    hash_components = []
+    
+    for name, param in sorted(state_dict.items()):
+        if hasattr(param, 'data') and hasattr(param.data, 'numpy'):
+            # PyTorch tensor - sample data efficiently
+            try:
+                # Convert to numpy and sample for large tensors
+                data = param.data.detach().cpu().numpy()
+                
+                if data.size > 1000:
+                    # For large tensors, sample a subset of values
+                    # Use deterministic sampling based on tensor shape
+                    sample_size = min(1000, data.size)
+                    indices = np.linspace(0, data.size - 1, sample_size, dtype=int)
+                    sampled_data = data.flat[indices]
+                else:
+                    # For small tensors, use all data
+                    sampled_data = data.flatten()
+                
+                # Create hash from shape, dtype, and sampled data
+                shape_str = str(data.shape)
+                dtype_str = str(data.dtype)
+                data_str = str(sampled_data.tolist())
+                hash_components.append(f"{name}:{shape_str}:{dtype_str}:{data_str}")
+                
+            except Exception:
+                # Fallback: use tensor properties
+                shape_str = str(param.shape) if hasattr(param, 'shape') else 'unknown'
+                dtype_str = str(param.dtype) if hasattr(param, 'dtype') else 'unknown'
+                hash_components.append(f"{name}:{shape_str}:{dtype_str}:fallback")
+        
+        elif hasattr(param, 'shape') and hasattr(param, 'dtype'):
+            # Tensor-like object
+            shape_str = str(param.shape)
+            dtype_str = str(param.dtype)
+            hash_components.append(f"{name}:{shape_str}:{dtype_str}:tensor_like")
+        
+        else:
+            # Non-tensor parameter - use string representation
+            param_str = str(param)[:100]  # Limit length to avoid memory issues
+            hash_components.append(f"{name}:{param_str}")
+    
+    # Create final hash from all components
+    combined = "|".join(hash_components)
+    return hashlib.md5(combined.encode()).hexdigest()[:8]
+
+
 def read_metrics_jsonl(file_path: Union[str, Path]) -> pd.DataFrame:
     """Read metrics from JSONL file."""
     file_path = Path(file_path)
@@ -154,19 +218,21 @@ def read_reward_head(dir_path: Union[str, Path]) -> Callable[[List[str]], List[f
             # Handle different model types that torch.load() can return
             try:
                 if isinstance(model, dict):
-                    # Model is a state dict or dictionary
-                    model_items = sorted(model.items())
+                    # Model is a state dict or dictionary - hash tensor data directly
+                    model_hash = _hash_state_dict(model)
                 elif hasattr(model, 'state_dict'):
                     # Model is a PyTorch module with state_dict method
-                    model_items = sorted(model.state_dict().items())
+                    model_hash = _hash_state_dict(model.state_dict())
                 elif hasattr(model, 'parameters'):
                     # Model is a PyTorch module with parameters
-                    model_items = sorted([(name, param) for name, param in model.named_parameters()])
+                    state_dict = {name: param for name, param in model.named_parameters()}
+                    model_hash = _hash_state_dict(state_dict)
                 else:
-                    # Fallback: convert model to string representation
-                    model_items = sorted(str(model).split('\n'))
+                    # Fallback: use model type and basic properties
+                    model_type = type(model).__name__
+                    model_size = len(str(model)) if hasattr(model, '__len__') else 0
+                    model_hash = hashlib.md5(f"{model_type}_{model_size}_{model_path}".encode()).hexdigest()[:8]
                 
-                model_hash = hashlib.md5(str(model_items).encode()).hexdigest()[:8]
             except Exception:
                 # Ultimate fallback: use model path and size as hash
                 model_hash = hashlib.md5(f"{model_path}_{len(str(model))}".encode()).hexdigest()[:8]
