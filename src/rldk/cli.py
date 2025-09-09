@@ -37,6 +37,7 @@ from rldk.io.schemas import (
     DeterminismCardV1,
     PPOScanReportV1,
     CkptDiffReportV1,
+    RewardDriftReportV1,
 )
 
 # Import reward modules
@@ -44,7 +45,6 @@ from rldk.reward.drift import compare_models
 from rldk.reward.health_analysis import health as reward_health_analysis
 from rldk.reward.health_config.exit_codes import raise_on_failure
 from rldk.reward.health_config.config import load_config, get_legacy_thresholds
-from rldk.io.schemas import RewardDriftReportV1
 from rldk.io.readers import read_jsonl, read_reward_head
 
 # Import evaluation modules
