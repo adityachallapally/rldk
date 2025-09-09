@@ -27,6 +27,17 @@ def main():
     print(f"   Default window size: {settings.default_window_size}")
     print()
     
+    # 1.5. Initialize configuration (optional - only needed for logging/directories)
+    print("1.5. Initializing Configuration:")
+    try:
+        settings.initialize()
+        print("   ✅ Configuration initialized successfully")
+    except PermissionError as e:
+        print(f"   ⚠️  Could not create directories (read-only environment): {e}")
+    except Exception as e:
+        print(f"   ⚠️  Configuration initialization warning: {e}")
+    print()
+    
     # 2. Creating a custom settings instance
     print("2. Custom Settings Instance:")
     custom_settings = RLDKSettings(

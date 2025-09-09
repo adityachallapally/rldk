@@ -126,6 +126,16 @@ class RLDKSettings(BaseSettings):
             config["entity"] = self.wandb_entity
         return config
     
+    def initialize(self) -> None:
+        """Initialize logging and create directories.
+        
+        This method should be called explicitly when the configuration
+        needs to be fully initialized. It's not called automatically
+        on import to avoid side effects.
+        """
+        self.setup_logging()
+        self.create_directories()
+    
     class Config:
         env_prefix = "RLDK_"
         case_sensitive = False
@@ -134,6 +144,7 @@ class RLDKSettings(BaseSettings):
 # Global settings instance
 settings = RLDKSettings()
 
-# Initialize logging and directories on import
-settings.setup_logging()
-settings.create_directories()
+# Note: setup_logging() and create_directories() are not called automatically
+# to avoid side effects on import. Call them explicitly when needed:
+# settings.setup_logging()
+# settings.create_directories()

@@ -107,7 +107,20 @@ The configuration system is integrated throughout RLDK:
 - **Tracking**: Automatically uses W&B and directory settings
 - **Adapters**: Use configuration for connection settings
 - **Analysis**: Use tolerance and window size settings
-- **Logging**: Automatically configured on import
+- **Logging**: Configured when explicitly initialized
+
+## Initialization
+
+The configuration system defers side effects (logging setup and directory creation) to avoid breaking consumers in read-only environments. To initialize:
+
+```python
+from rldk.config import settings
+
+# Initialize logging and create directories
+settings.initialize()
+```
+
+**Important**: The CLI automatically calls `settings.initialize()` when needed, but library users should call it explicitly if they need logging or directory creation.
 
 ## Examples
 
