@@ -178,9 +178,11 @@ All schemas are now in one place:
 ### 4. Enhanced Error Handling
 
 New exception types:
-- `IOError` - Base exception for IO operations
+- `RLDebugKitIOError` - Base exception for RL Debug Kit IO operations
 - `FileWriteError` - File writing failures
 - `SchemaValidationError` - Schema validation failures
+
+**Note:** We use `RLDebugKitIOError` instead of `IOError` to avoid conflicts with Python's built-in `IOError` (which is an alias for `OSError`).
 
 ## Testing
 

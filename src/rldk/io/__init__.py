@@ -64,7 +64,7 @@ from .consolidated_writers import (
 # Import unified writer
 from .unified_writer import (
     UnifiedWriter,
-    IOError,
+    RLDebugKitIOError,
     FileWriteError,
     SchemaValidationError,
 )
@@ -136,7 +136,7 @@ __all__ = [
     
     # Unified Writer
     "UnifiedWriter",
-    "IOError",
+    "RLDebugKitIOError",
     "FileWriteError",
     "SchemaValidationError",
     

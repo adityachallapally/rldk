@@ -13,17 +13,17 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 
-class IOError(Exception):
-    """Base exception for IO operations."""
+class RLDebugKitIOError(Exception):
+    """Base exception for RL Debug Kit IO operations."""
     pass
 
 
-class FileWriteError(IOError):
+class FileWriteError(RLDebugKitIOError):
     """Exception raised when file writing fails."""
     pass
 
 
-class SchemaValidationError(IOError):
+class SchemaValidationError(RLDebugKitIOError):
     """Exception raised when schema validation fails."""
     pass
 
