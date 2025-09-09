@@ -151,9 +151,25 @@ def read_reward_head(dir_path: Union[str, Path]) -> Callable[[List[str]], List[f
             import hashlib
 
             # Create a hash from model weights to ensure identical models produce identical scores
-            model_hash = hashlib.md5(str(sorted(model.items())).encode()).hexdigest()[
-                :8
-            ]
+            # Handle different model types that torch.load() can return
+            try:
+                if isinstance(model, dict):
+                    # Model is a state dict or dictionary
+                    model_items = sorted(model.items())
+                elif hasattr(model, 'state_dict'):
+                    # Model is a PyTorch module with state_dict method
+                    model_items = sorted(model.state_dict().items())
+                elif hasattr(model, 'parameters'):
+                    # Model is a PyTorch module with parameters
+                    model_items = sorted([(name, param) for name, param in model.named_parameters()])
+                else:
+                    # Fallback: convert model to string representation
+                    model_items = sorted(str(model).split('\n'))
+                
+                model_hash = hashlib.md5(str(model_items).encode()).hexdigest()[:8]
+            except Exception:
+                # Ultimate fallback: use model path and size as hash
+                model_hash = hashlib.md5(f"{model_path}_{len(str(model))}".encode()).hexdigest()[:8]
 
             scores = []
             for prompt in prompts:
