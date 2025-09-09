@@ -323,13 +323,43 @@ def generate_reward_health_report(
         try:
             from ..reward.plots import generate_calibration_plots
 
-            # Generate calibration plots
+            # Generate calibration plots using actual reward data from the report
             writer = UnifiedWriter(output_dir)
-            generate_calibration_plots(
-                reward_data=pd.DataFrame(),  # You'd need actual data here
-                reward_col="reward_mean",
-                output_path=writer.output_dir / "calibration_plots.png",
-            )
+            
+            # Extract reward data from the report if available
+            reward_data = None
+            if hasattr(report, 'reward_data') and report.reward_data is not None:
+                reward_data = report.reward_data
+            elif hasattr(report, 'metrics') and report.metrics is not None:
+                # Try to extract reward data from metrics
+                if hasattr(report.metrics, 'to_dataframe'):
+                    reward_data = report.metrics.to_dataframe()
+                elif isinstance(report.metrics, pd.DataFrame):
+                    reward_data = report.metrics
+            elif hasattr(report, 'drift_metrics') and report.drift_metrics is not None:
+                # Use drift metrics as fallback if available
+                reward_data = report.drift_metrics
+            
+            # Only generate plots if we have actual data
+            if reward_data is not None and not reward_data.empty:
+                # Determine the appropriate reward column
+                reward_col = "reward_mean"
+                if "reward_mean" not in reward_data.columns:
+                    # Look for alternative reward columns
+                    reward_cols = [col for col in reward_data.columns if 'reward' in col.lower()]
+                    if reward_cols:
+                        reward_col = reward_cols[0]
+                    else:
+                        print("Warning: No reward columns found in data, skipping plot generation")
+                        return
+                
+                generate_calibration_plots(
+                    reward_data=reward_data,
+                    reward_col=reward_col,
+                    output_path=writer.output_dir / "calibration_plots.png",
+                )
+            else:
+                print("Warning: No reward data available for plot generation")
 
         except Exception as e:
             # Log plot generation failure but continue
