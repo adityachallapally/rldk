@@ -1,8 +1,75 @@
-"""IO utilities for reading and writing training run data."""
+"""Consolidated IO utilities for reading and writing training run data."""
 
-from .schema import TrainingMetrics, MetricsSchema
-from .readers import read_metrics_jsonl, write_metrics_jsonl
-from .writers import write_json, write_png, mkdir_reports, write_drift_card
+# Import consolidated schemas
+from .consolidated_schemas import (
+    TrainingMetrics,
+    MetricsSchema,
+    Event,
+    create_event_from_row,
+    events_to_dataframe,
+    dataframe_to_events,
+    validate,
+    get_schema_for_artifact,
+    validate_artifact,
+    list_artifact_types,
+    # JSON Schemas
+    DeterminismCardV1,
+    DeterminismCardV2,
+    DriftCardV1,
+    RewardCardV1,
+    PPOScanReportV1,
+    CkptDiffReportV1,
+    RewardDriftReportV1,
+    ARTIFACT_SCHEMAS,
+)
+
+# Import consolidated readers
+from .consolidated_readers import (
+    read_metrics_jsonl,
+    read_jsonl,
+    read_tensorboard_export,
+    read_wandb_export,
+    read_checkpoint,
+    read_reward_head,
+    read_events_jsonl,
+    read_csv_metrics,
+    read_json_report,
+    read_markdown_report,
+    read_directory_metrics,
+)
+
+# Import consolidated writers
+from .consolidated_writers import (
+    write_drift_card,
+    write_reward_health_card,
+    write_drift_analysis_csv,
+    write_reward_health_summary,
+    generate_reward_health_report,
+    write_events_jsonl,
+    write_metrics_jsonl,
+    write_determinism_card,
+    write_ppo_scan_report,
+    write_ckpt_diff_report,
+    write_reward_drift_report,
+    write_run_comparison,
+    write_eval_summary,
+    write_environment_audit,
+    write_replay_comparison,
+    write_tracking_data,
+    mkdir_reports,
+    write_json,
+    write_png,
+)
+
+# Import unified writer
+from .unified_writer import (
+    UnifiedWriter,
+    RLDebugKitIOError,
+    FileWriteError,
+    SchemaValidationError,
+)
+
+# Import validator functions
 from .validator import (
     validate_jsonl_schema,
     validate_jsonl_file,
@@ -13,14 +80,67 @@ from .validator import (
 )
 
 __all__ = [
+    # Schemas
     "TrainingMetrics",
     "MetricsSchema",
+    "Event",
+    "create_event_from_row",
+    "events_to_dataframe",
+    "dataframe_to_events",
+    "validate",
+    "get_schema_for_artifact",
+    "validate_artifact",
+    "list_artifact_types",
+    "DeterminismCardV1",
+    "DeterminismCardV2",
+    "DriftCardV1",
+    "RewardCardV1",
+    "PPOScanReportV1",
+    "CkptDiffReportV1",
+    "RewardDriftReportV1",
+    "ARTIFACT_SCHEMAS",
+    
+    # Readers
     "read_metrics_jsonl",
+    "read_jsonl",
+    "read_tensorboard_export",
+    "read_wandb_export",
+    "read_checkpoint",
+    "read_reward_head",
+    "read_events_jsonl",
+    "read_csv_metrics",
+    "read_json_report",
+    "read_markdown_report",
+    "read_directory_metrics",
+    
+    # Writers
+    "write_drift_card",
+    "write_reward_health_card",
+    "write_drift_analysis_csv",
+    "write_reward_health_summary",
+    "generate_reward_health_report",
+    "write_events_jsonl",
     "write_metrics_jsonl",
+    "write_determinism_card",
+    "write_ppo_scan_report",
+    "write_ckpt_diff_report",
+    "write_reward_drift_report",
+    "write_run_comparison",
+    "write_eval_summary",
+    "write_environment_audit",
+    "write_replay_comparison",
+    "write_tracking_data",
+    "mkdir_reports",
     "write_json",
     "write_png",
-    "mkdir_reports",
-    "write_drift_card",
+    
+    # Unified Writer
+    "UnifiedWriter",
+    "RLDebugKitIOError",
+    "FileWriteError",
+    "SchemaValidationError",
+    
+    # Validators
     "validate_jsonl_schema",
     "validate_jsonl_file",
     "validate_jsonl_directory",
