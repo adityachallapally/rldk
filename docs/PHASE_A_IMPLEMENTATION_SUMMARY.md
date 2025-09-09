@@ -40,8 +40,7 @@ Implemented comprehensive PPO anomaly detection:
 ## 📁 Files Added
 
 ### CLI Modules
-- `src/rldk/cli_forensics.py` - Forensics commands (compare-runs, diff-ckpt, env-audit, log-scan, doctor)
-- `src/rldk/cli_reward.py` - Reward commands (reward-drift)
+- `src/rldk/cli.py` - Consolidated CLI with sub-commands for forensics, reward, and evaluation commands
 
 ### Artifacts Analysis
 - `src/rldk/artifacts/ckpt_diff.py` - Checkpoint comparison with cosine similarity and L2 norms
