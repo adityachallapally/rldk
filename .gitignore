@@ -154,3 +154,19 @@ golden_master.zip
 # Temporary files
 /tmp/
 /var/tmp/
+
+# Accidental version files
+=*
+
+# Generated directories and outputs
+runs/
+replay_output/
+golden_master_output/
+anomaly_test_results/
+eval_results/
+rldk_reports/
+tracking_demo_output/
+training_anomaly_detection/
+test_artifacts/
+runs_fixtures/
+temp_diff/
