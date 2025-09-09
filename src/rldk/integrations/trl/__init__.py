@@ -3,6 +3,7 @@
 from .callbacks import RLDKCallback, RLDKMonitor, RLDKMetrics
 from .monitors import PPOMonitor, CheckpointMonitor, PPOMetrics, CheckpointMetrics
 from .dashboard import RLDKDashboard
+from .adapter import TRLAdapter
 
 __all__ = [
     "RLDKCallback",
@@ -13,4 +14,5 @@ __all__ = [
     "CheckpointMonitor",
     "CheckpointMetrics",
     "RLDKDashboard",
+    "TRLAdapter",
 ]

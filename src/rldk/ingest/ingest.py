@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import Union, Optional, List
 import pandas as pd
 
-from ..adapters import TRLAdapter, OpenRLHFAdapter, WandBAdapter, CustomJSONLAdapter
+from ..integrations import TRLAdapter, OpenRLHFAdapter, WandBAdapter
+from ..integrations.custom_jsonl import CustomJSONLAdapter
 from ..io.event_schema import Event, dataframe_to_events
 
 

@@ -29,6 +29,7 @@ from .network_monitor import (
     NetworkBandwidthMonitor,
     DistributedNetworkMonitor,
 )
+from .adapter import OpenRLHFAdapter
 
 __all__ = [
     # Main callbacks
@@ -61,4 +62,7 @@ __all__ = [
     
     # Dashboard
     "OpenRLHFDashboard",
+    
+    # Adapter
+    "OpenRLHFAdapter",
 ]
