@@ -2,7 +2,7 @@
 
 import tempfile
 
-from rldk.artifacts.env_audit import audit_environment
+from rldk.forensics.env_audit import audit_environment
 from rldk.io.schemas import validate, DeterminismCardV1
 
 
