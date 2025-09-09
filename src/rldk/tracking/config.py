@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from typing import Dict, Any, Optional, List
 from pathlib import Path
 
+from ..config import settings
+
 
 @dataclass
 class TrackingConfig:
@@ -14,7 +16,7 @@ class TrackingConfig:
     # Base configuration
     experiment_name: str
     experiment_id: Optional[str] = None
-    output_dir: Path = field(default_factory=lambda: Path("./runs"))
+    output_dir: Path = field(default_factory=lambda: settings.runs_dir)
     
     # Tracking components to enable
     enable_dataset_tracking: bool = True
@@ -51,11 +53,11 @@ class TrackingConfig:
     # Output options
     save_to_json: bool = True
     save_to_yaml: bool = True
-    save_to_wandb: bool = True
-    wandb_project: Optional[str] = "rldk-experiments"
+    save_to_wandb: bool = field(default_factory=lambda: settings.wandb_enabled)
+    wandb_project: Optional[str] = field(default_factory=lambda: settings.wandb_project)
     
     # Additional metadata
-    tags: List[str] = field(default_factory=list)
+    tags: List[str] = field(default_factory=lambda: settings.wandb_tags.copy())
     notes: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
     
