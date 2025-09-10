@@ -21,12 +21,51 @@ from typing import Dict, Any, Optional, List, Union
 from dataclasses import dataclass, field
 
 # Mock the external dependencies
+class MockWandB:
+    def __init__(self):
+        self.__spec__ = None
+    
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: None
+
+class MockMatplotlib:
+    def __init__(self):
+        self.__spec__ = None
+        self.pyplot = MockPyplot()
+    
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: None
+
+class MockPyplot:
+    def __init__(self):
+        pass
+    
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: None
+class MockRandom:
+    def __init__(self):
+        pass
+    
+    def seed(self, seed):
+        return True
+    
+    def randn(self, *args):
+        return [0.1, 0.2, 0.3]
+    
+    def choice(self, n, size, replace=False):
+        return list(range(min(size, n)))
+    
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: None
+
 class MockNumpy:
     def __init__(self):
         self.__version__ = "1.21.0"
-    
-    def random(self):
-        return self
+        self.__spec__ = None
+        self.random = MockRandom()
+        self.ndarray = MockNDArrayType
+        self.exceptions = MockExceptions()
+        self.typing = MockTyping()
     
     def randn(self, *args):
         return [0.1, 0.2, 0.3]
@@ -40,12 +79,56 @@ class MockNumpy:
     def __getattr__(self, name):
         return lambda *args, **kwargs: None
 
+class MockTyping:
+    def __init__(self):
+        pass
+    
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: None
+
+class MockExceptions:
+    def __init__(self):
+        self.VisibleDeprecationWarning = Warning
+
+class MockNDArray:
+    def __init__(self):
+        pass
+    
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: self
+
+# Create a proper type for isinstance checks
+MockNDArrayType = type('MockNDArrayType', (), {})
+
 class MockPandas:
     def __init__(self):
         self.__version__ = "1.3.0"
+        self.__spec__ = None
     
     def DataFrame(self, data):
         return MockDataFrame(data)
+    
+    def Series(self, data):
+        return MockSeries(data)
+
+class MockSeries:
+    def __init__(self, data):
+        self.data = data
+    
+    def __getitem__(self, key):
+        return self.data[key] if isinstance(self.data, (list, tuple)) else self.data
+    
+    def __len__(self):
+        return len(self.data) if hasattr(self.data, '__len__') else 1
+    
+    def __iter__(self):
+        return iter(self.data) if hasattr(self.data, '__iter__') else iter([self.data])
+    
+    def tolist(self):
+        return list(self.data) if hasattr(self.data, '__iter__') else [self.data]
+    
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: self
 
 class MockDataFrame:
     def __init__(self, data):
@@ -62,7 +145,11 @@ class MockDataFrame:
 class MockTorch:
     def __init__(self):
         self.__version__ = "1.12.0"
+        self.__spec__ = None
         self.uint8 = "uint8"
+        self.nn = MockNN()
+        self.Tensor = MockTensor
+        self.random = MockRandom()
     
     def tensor(self, data, dtype=None):
         return MockTensor(data, dtype)
@@ -80,6 +167,20 @@ class MockTorch:
     
     def cuda(self):
         return MockCuda()
+    
+    def randn(self, *args):
+        return MockTensor([0.1, 0.2, 0.3])
+    
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: MockTensor([0.1, 0.2, 0.3])
+
+class MockModule:
+    def __init__(self):
+        pass
+
+class MockNN:
+    def __init__(self):
+        self.Module = MockModule
     
     def __getattr__(self, name):
         if name == 'cuda':
@@ -105,6 +206,23 @@ class MockTensor:
     
     def flatten(self):
         return self
+    
+    def numel(self):
+        return len(self.data) if hasattr(self.data, '__len__') else 1
+    
+    def parameters(self):
+        return [self]
+    
+    def __add__(self, other):
+        if isinstance(other, int):
+            return MockTensor(self.data)
+        return self
+    
+    def __radd__(self, other):
+        return self.__add__(other)
+    
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: self
     
     def __getitem__(self, key):
         return MockTensor(self.data[key] if isinstance(self.data, list) else self.data)
@@ -135,8 +253,12 @@ class MockCuda:
 
 # Mock the modules
 sys.modules['numpy'] = MockNumpy()
+sys.modules['numpy.typing'] = MockTyping()
 sys.modules['pandas'] = MockPandas()
 sys.modules['torch'] = MockTorch()
+sys.modules['wandb'] = MockWandB()
+sys.modules['matplotlib'] = MockMatplotlib()
+sys.modules['matplotlib.pyplot'] = MockPyplot()
 
 # Import our tracking system
 from src.rldk.tracking import DatasetTracker, ModelTracker, SeedTracker
