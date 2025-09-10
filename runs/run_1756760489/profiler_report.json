@@ -1,0 +1,26 @@
+{
+  "timestamp": 1756760535.3555484,
+  "profiler_dir": "runs/run_1756760489",
+  "artifacts": {
+    "trace_json": false,
+    "op_stats_csv": false,
+    "stage_times_json": true,
+    "memory_stats_json": false
+  },
+  "stage_times": {
+    "stage_times": {},
+    "average_times": {},
+    "total_steps": 1
+  },
+  "operation_stats": null,
+  "memory_stats": null,
+  "summary": {
+    "total_artifacts": 1,
+    "profiling_successful": false,
+    "stage_summary": {
+      "total_stages": 0,
+      "average_times": {},
+      "total_steps": 1
+    }
+  }
+}

@@ -1,0 +1,190 @@
+{
+  "timestamp": 1756944381.0686955,
+  "ping_tests": {
+    "8.8.8.8": {
+      "error": "Ping failed: ping: socktype: SOCK_RAW\nping: socket: Operation not permitted\nping: => missing cap_net_raw+p capability or setuid?\n",
+      "latency": Infinity
+    },
+    "1.1.1.1": {
+      "error": "Ping failed: ping: socktype: SOCK_RAW\nping: socket: Operation not permitted\nping: => missing cap_net_raw+p capability or setuid?\n",
+      "latency": Infinity
+    },
+    "208.67.222.222": {
+      "error": "Ping failed: ping: socktype: SOCK_RAW\nping: socket: Operation not permitted\nping: => missing cap_net_raw+p capability or setuid?\n",
+      "latency": Infinity
+    },
+    "google.com": {
+      "error": "Ping failed: ping: socktype: SOCK_RAW\nping: socket: Operation not permitted\nping: => missing cap_net_raw+p capability or setuid?\n",
+      "latency": Infinity
+    },
+    "github.com": {
+      "error": "Ping failed: ping: socktype: SOCK_RAW\nping: socket: Operation not permitted\nping: => missing cap_net_raw+p capability or setuid?\n",
+      "latency": Infinity
+    },
+    "pytorch.org": {
+      "error": "Ping failed: ping: socktype: SOCK_RAW\nping: socket: Operation not permitted\nping: => missing cap_net_raw+p capability or setuid?\n",
+      "latency": Infinity
+    }
+  },
+  "dns_tests": {
+    "google.com": {
+      "resolved_ip": "142.251.167.101",
+      "resolution_time_ms": 6.24394416809082,
+      "success": true
+    },
+    "github.com": {
+      "resolved_ip": "140.82.113.4",
+      "resolution_time_ms": 5.909204483032227,
+      "success": true
+    },
+    "pytorch.org": {
+      "resolved_ip": "23.185.0.2",
+      "resolution_time_ms": 63.50421905517578,
+      "success": true
+    }
+  },
+  "connectivity_tests": {
+    "tcp_tests": {
+      "8.8.8.8:80": {
+        "connected": false,
+        "connect_time_ms": 5005.193710327148,
+        "success": false
+      },
+      "8.8.8.8:443": {
+        "connected": true,
+        "connect_time_ms": 5.276203155517578,
+        "success": true
+      },
+      "8.8.8.8:22": {
+        "connected": false,
+        "connect_time_ms": 5005.165338516235,
+        "success": false
+      },
+      "8.8.8.8:53": {
+        "connected": true,
+        "connect_time_ms": 4.3163299560546875,
+        "success": true
+      },
+      "1.1.1.1:80": {
+        "connected": true,
+        "connect_time_ms": 4.087686538696289,
+        "success": true
+      },
+      "1.1.1.1:443": {
+        "connected": true,
+        "connect_time_ms": 4.480123519897461,
+        "success": true
+      },
+      "1.1.1.1:22": {
+        "connected": false,
+        "connect_time_ms": 5005.1445960998535,
+        "success": false
+      },
+      "1.1.1.1:53": {
+        "connected": true,
+        "connect_time_ms": 4.088878631591797,
+        "success": true
+      },
+      "208.67.222.222:80": {
+        "connected": true,
+        "connect_time_ms": 3.945589065551758,
+        "success": true
+      },
+      "208.67.222.222:443": {
+        "connected": true,
+        "connect_time_ms": 3.5588741302490234,
+        "success": true
+      },
+      "208.67.222.222:22": {
+        "connected": false,
+        "connect_time_ms": 5005.187034606934,
+        "success": false
+      },
+      "208.67.222.222:53": {
+        "connected": true,
+        "connect_time_ms": 3.4637451171875,
+        "success": true
+      }
+    },
+    "udp_tests": {
+      "8.8.8.8": {
+        "connect_time_ms": 0.11587142944335938,
+        "success": true
+      },
+      "1.1.1.1": {
+        "connect_time_ms": 0.05888938903808594,
+        "success": true
+      },
+      "208.67.222.222": {
+        "connect_time_ms": 0.04744529724121094,
+        "success": true
+      }
+    },
+    "socket_tests": {}
+  },
+  "bandwidth_tests": {
+    "speedtest": {
+      "error": "[Errno 2] No such file or directory: 'speedtest-cli'",
+      "success": false
+    },
+    "iperf": {
+      "error": "[Errno 2] No such file or directory: 'iperf3'",
+      "success": false
+    },
+    "curl": {
+      "error": "Curl failed: ",
+      "success": false
+    }
+  },
+  "interface_analysis": {
+    "lo": {
+      "is_up": true,
+      "speed_mbps": null,
+      "mtu": 65536,
+      "duplex": 0,
+      "ip_addresses": [
+        "127.0.0.1"
+      ],
+      "bytes_sent": 0,
+      "bytes_recv": 0,
+      "packets_sent": 0,
+      "packets_recv": 0,
+      "errin": 0,
+      "errout": 0,
+      "dropin": 0,
+      "dropout": 0
+    },
+    "eth0": {
+      "is_up": true,
+      "speed_mbps": null,
+      "mtu": 1500,
+      "duplex": 0,
+      "ip_addresses": [
+        "172.30.0.2"
+      ],
+      "bytes_sent": 2681948,
+      "bytes_recv": 1740336685,
+      "packets_sent": 34347,
+      "packets_recv": 394039,
+      "errin": 0,
+      "errout": 0,
+      "dropin": 0,
+      "dropout": 0
+    }
+  },
+  "path_analysis": {
+    "8.8.8.8": {
+      "error": "[Errno 2] No such file or directory: 'traceroute'",
+      "success": false
+    },
+    "1.1.1.1": {
+      "error": "[Errno 2] No such file or directory: 'traceroute'",
+      "success": false
+    },
+    "208.67.222.222": {
+      "error": "[Errno 2] No such file or directory: 'traceroute'",
+      "success": false
+    }
+  },
+  "distributed_tests": {}
+}

@@ -1,0 +1,25 @@
+[
+  {
+    "severity": "medium",
+    "category": "learning_rate",
+    "message": "Sudden learning rate change detected: 50.00% > 30.00%",
+    "step": 101,
+    "value": 0.5,
+    "threshold": 0.3,
+    "metadata": {
+      "recent_lrs": [
+        5e-05,
+        5e-05,
+        5e-05,
+        5e-05,
+        2.5e-05
+      ],
+      "changes": [
+        0.0,
+        0.0,
+        0.0,
+        0.5
+      ]
+    }
+  }
+]

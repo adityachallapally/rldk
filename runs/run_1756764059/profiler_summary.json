@@ -1,0 +1,52 @@
+{
+  "profiler_manager": {
+    "enabled": true,
+    "output_dir": "runs/run_1756764059",
+    "stage_times": {
+      "forward": 0.0004517078399658203,
+      "backward": 0.0011263370513916015
+    },
+    "total_steps": 5,
+    "artifacts": {
+      "trace_json": true,
+      "op_stats_csv": true,
+      "stage_times_json": true
+    }
+  },
+  "torch_profiler": {
+    "is_active": false,
+    "step_count": 0,
+    "output_dir": "runs/run_1756764059",
+    "artifacts": {
+      "trace_json": true,
+      "op_stats_csv": true,
+      "memory_stats_json": false
+    }
+  },
+  "profiler_context": {
+    "output_dir": "runs/run_1756764059",
+    "stages": [
+      "epoch_0",
+      "forward",
+      "backward"
+    ],
+    "average_times": {
+      "epoch_0": 0.00044608116149902344,
+      "forward": 0.0005036354064941406,
+      "backward": 0.0011626243591308593
+    },
+    "total_stages": 3
+  },
+  "step_profiler": {
+    "step_count": 5,
+    "average_step_time": 0.0017726421356201172,
+    "total_time": 0.008863210678100586,
+    "step_times": [
+      0.002155780792236328,
+      0.0028629302978515625,
+      0.0013837814331054688,
+      0.0013663768768310547,
+      0.0010943412780761719
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+[
+  {
+    "severity": "medium",
+    "category": "reward_drift",
+    "message": "Reward distribution drift: mean change=0.1404",
+    "step": 33,
+    "value": 0.14039121159052667,
+    "threshold": 0.1,
+    "metadata": {
+      "old_mean": 0.26764867076194365,
+      "new_mean": 0.305224193334719
+    }
+  }
+]
