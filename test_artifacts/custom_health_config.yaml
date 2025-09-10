@@ -1,8 +1,0 @@
-detectors:
-  reward_length_correlation:
-    enabled: true
-    thresholds:
-      warn: 0.10  # More sensitive
-      fail: 0.20
-  saturation_high_tail:
-    enabled: false  # Disable this detector
