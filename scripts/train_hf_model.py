@@ -7,8 +7,8 @@ using real Hugging Face transformer models. It supports the --profiler on/off ar
 to enable/disable profiling.
 
 Example usage:
-    python train_hf_model.py --model distilbert-base-uncased --profiler on
-    python train_hf_model.py --model bert-base-uncased --profiler off
+    python scripts/train_hf_model.py --model distilbert-base-uncased --profiler on
+    python scripts/train_hf_model.py --model bert-base-uncased --profiler off
 """
 
 import argparse
@@ -23,20 +23,32 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
-from transformers import (
-    AutoTokenizer, 
-    AutoModel, 
-    AutoConfig,
-    get_linear_schedule_with_warmup
-)
 
-# Add current directory to path for imports
-sys.path.append(str(Path(__file__).parent))
+# Add parent directory to path for imports
+sys.path.append(str(Path(__file__).parent.parent / "src"))
+sys.path.append(str(Path(__file__).parent.parent))
 
-from rlhf_core.profiler import ProfilerManager
-from profiler.torch_profiler import TorchProfiler
-from profiler.profiler_context import ProfilerContext
-from profiler.hooks import profiler_registry, StepProfiler
+# Check dependencies before importing
+try:
+    from transformers import (
+        AutoTokenizer, 
+        AutoModel, 
+        AutoConfig,
+        get_linear_schedule_with_warmup
+    )
+except ImportError as e:
+    print(f"❌ Error: Missing transformers dependency")
+    print(f"   {e}")
+    print("\n💡 To fix this, install the missing dependencies:")
+    print("   pip install transformers")
+    print("   # or with --break-system-packages if needed:")
+    print("   pip install transformers --break-system-packages")
+    sys.exit(1)
+
+from rldk.core.profiler import ProfilerManager
+from tools.profiler.torch_profiler import TorchProfiler
+from tools.profiler.profiler_context import ProfilerContext
+from tools.profiler.hooks import profiler_registry, StepProfiler
 
 
 class HuggingFaceModelWrapper(nn.Module):
@@ -166,8 +178,8 @@ def train_epoch(model, dataloader, optimizer, scheduler, criterion, device, prof
         total_predictions += labels.size(0)
         
         # Profiler step
-        # if profiler_context:
-        #     profiler_context.step()  # ProfilerContext doesn't have a step() method
+        # ProfilerContext doesn't have a step() method
+        # The profiling is handled by the stage context managers
         
         if batch_idx % 10 == 0:
             print(f"Batch {batch_idx}, Loss: {loss.item():.4f}, "

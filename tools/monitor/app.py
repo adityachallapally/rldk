@@ -17,7 +17,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 # Check dependencies before importing
 try:
-    from utils.dependency_checker import check_streamlit_dependencies
+    from rldk.utils.dependency_checker import check_streamlit_dependencies
     check_streamlit_dependencies()
     
     import streamlit as st

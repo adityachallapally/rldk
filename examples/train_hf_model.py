@@ -25,6 +25,7 @@ from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 
 # Add parent directory to path for imports
+sys.path.append(str(Path(__file__).parent.parent / "src"))
 sys.path.append(str(Path(__file__).parent.parent))
 
 # Check dependencies before importing
@@ -44,10 +45,10 @@ except ImportError as e:
     print("   pip install transformers --break-system-packages")
     sys.exit(1)
 
-from rlhf_core.profiler import ProfilerManager
-from profiler.torch_profiler import TorchProfiler
-from profiler.profiler_context import ProfilerContext
-from profiler.hooks import profiler_registry, StepProfiler
+from rldk.core.profiler import ProfilerManager
+from tools.profiler.torch_profiler import TorchProfiler
+from tools.profiler.profiler_context import ProfilerContext
+from tools.profiler.hooks import profiler_registry, StepProfiler
 
 
 class HuggingFaceModelWrapper(nn.Module):
@@ -177,8 +178,8 @@ def train_epoch(model, dataloader, optimizer, scheduler, criterion, device, prof
         total_predictions += labels.size(0)
         
         # Profiler step
-        if profiler_context:
-            profiler_context.step()
+        # ProfilerContext doesn't have a step() method
+        # The profiling is handled by the stage context managers
         
         if batch_idx % 10 == 0:
             print(f"Batch {batch_idx}, Loss: {loss.item():.4f}, "

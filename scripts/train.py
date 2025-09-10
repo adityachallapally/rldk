@@ -22,7 +22,7 @@ import numpy as np
 # Add current directory to path for imports
 sys.path.append(str(Path(__file__).parent))
 
-from rlhf_core.profiler import ProfilerManager
+from rldk.core.profiler import ProfilerManager
 from profiler.torch_profiler import TorchProfiler
 from profiler.profiler_context import ProfilerContext
 from profiler.hooks import profiler_registry, StepProfiler
