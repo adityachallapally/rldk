@@ -9,7 +9,10 @@ import json
 import hashlib
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-import pkg_resources
+try:
+    from importlib import metadata
+except ImportError:
+    import importlib_metadata as metadata
 import torch
 import numpy as np
 
@@ -147,14 +150,14 @@ class EnvironmentTracker:
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
             pip_info["list"] = "pip list failed"
         
-        # Get installed packages using pkg_resources
+        # Get installed packages using importlib.metadata
         try:
             installed_packages = []
-            for dist in pkg_resources.working_set:
+            for dist in metadata.distributions():
                 installed_packages.append({
-                    "name": dist.project_name,
+                    "name": dist.metadata["Name"],
                     "version": dist.version,
-                    "location": dist.location
+                    "location": dist.locate_file("") if hasattr(dist, 'locate_file') else "unknown"
                 })
             pip_info["installed_packages"] = installed_packages
         except Exception as e:
