@@ -19,9 +19,7 @@ sys.path.append('src')
 class MockNumpy:
     def __init__(self):
         self.__version__ = "1.21.0"
-    
-    def random(self):
-        return self
+        self.random = MockRandom()
     
     def randn(self, *args):
         return [0.1, 0.2, 0.3]  # Mock data
@@ -35,12 +33,25 @@ class MockNumpy:
     def __getattr__(self, name):
         return lambda *args, **kwargs: None
 
+class MockRandom:
+    def __init__(self):
+        pass
+    
+    def seed(self, seed):
+        return True
+    
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: None
+
 class MockPandas:
     def __init__(self):
         self.__version__ = "1.3.0"
     
     def DataFrame(self, data):
         return MockDataFrame(data)
+    
+    def Series(self, data):
+        return MockSeries(data)
 
 class MockDataFrame:
     def __init__(self, data):
@@ -64,10 +75,25 @@ class MockSeries:
 class MockTorch:
     def __init__(self):
         self.__version__ = "1.12.0"
+        self.nn = MockNN()
     
     def __getattr__(self, name):
         if name == 'cuda':
             return MockCuda()
+        return lambda *args, **kwargs: None
+
+class MockNN:
+    def __init__(self):
+        self.Module = MockModule
+    
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: None
+
+class MockModule:
+    def __init__(self, *args, **kwargs):
+        pass
+    
+    def __getattr__(self, name):
         return lambda *args, **kwargs: None
 
 class MockCuda:

@@ -45,9 +45,9 @@ except ImportError as e:
     sys.exit(1)
 
 from rlhf_core.profiler import ProfilerManager
-from profiler.torch_profiler import TorchProfiler
-from profiler.profiler_context import ProfilerContext
-from profiler.hooks import profiler_registry, StepProfiler
+from tools.profiler.torch_profiler import TorchProfiler
+from tools.profiler.profiler_context import ProfilerContext
+from tools.profiler.hooks import profiler_registry, StepProfiler
 
 
 class HuggingFaceModelWrapper(nn.Module):
@@ -147,7 +147,7 @@ def create_dummy_dataset(tokenizer, num_samples: int = 1000, max_length: int = 1
     )
 
 
-def train_epoch(model, dataloader, optimizer, scheduler, criterion, device, profiler_context=None):
+def train_epoch(model, dataloader, optimizer, scheduler, criterion, device, profiler_context=None, torch_profiler=None):
     """Train for one epoch."""
     model.train()
     total_loss = 0
@@ -159,6 +159,7 @@ def train_epoch(model, dataloader, optimizer, scheduler, criterion, device, prof
         attention_mask = attention_mask.to(device)
         labels = labels.to(device)
         
+        # Core training step - single implementation
         optimizer.zero_grad()
         
         # Forward pass
@@ -170,15 +171,15 @@ def train_epoch(model, dataloader, optimizer, scheduler, criterion, device, prof
         optimizer.step()
         scheduler.step()
         
+        # Profiler step - record after each batch
+        if torch_profiler:
+            torch_profiler.step()
+        
         # Statistics
         total_loss += loss.item()
         predictions = torch.argmax(outputs, dim=1)
         correct_predictions += (predictions == labels).sum().item()
         total_predictions += labels.size(0)
-        
-        # Profiler step
-        if profiler_context:
-            profiler_context.step()
         
         if batch_idx % 10 == 0:
             print(f"Batch {batch_idx}, Loss: {loss.item():.4f}, "
@@ -291,14 +292,26 @@ def main():
     
     # Initialize profiler if enabled
     profiler_context = None
+    torch_profiler = None
     if config.profiler_enabled:
         print("Initializing profiler...")
         try:
+            # Initialize stage-level profiler
             profiler_context = ProfilerContext(
                 output_dir=config.output_dir,
                 model_name=config.model_name,
                 config=config.to_dict()
             )
+            
+            # Initialize step-level profiler
+            torch_profiler = TorchProfiler(
+                output_dir=config.output_dir,
+                warmup_steps=5,
+                active_steps=10,
+                repeat=1
+            )
+            torch_profiler.start()
+            
             print("✓ Profiler initialized successfully")
         except Exception as e:
             print(f"✗ Error initializing profiler: {e}")
@@ -316,7 +329,7 @@ def main():
         # Train
         train_loss, train_acc = train_epoch(
             model, train_loader, optimizer, scheduler, criterion, 
-            config.device, profiler_context
+            config.device, profiler_context, torch_profiler
         )
         
         # Validate
@@ -360,7 +373,8 @@ def main():
     print(f"✓ Model saved to: {model_path}")
     print(f"✓ Training history saved to: {os.path.join(config.output_dir, 'training_history.json')}")
     
-    if config.profiler_enabled and profiler_context:
+    if config.profiler_enabled and torch_profiler:
+        torch_profiler.stop()
         print(f"✓ Profiler artifacts saved to: {config.output_dir}")
     
     return 0
