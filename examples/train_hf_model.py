@@ -45,9 +45,9 @@ except ImportError as e:
     sys.exit(1)
 
 from rlhf_core.profiler import ProfilerManager
-from profiler.torch_profiler import TorchProfiler
-from profiler.profiler_context import ProfilerContext
-from profiler.hooks import profiler_registry, StepProfiler
+from tools.profiler.torch_profiler import TorchProfiler
+from tools.profiler.profiler_context import ProfilerContext
+from tools.profiler.hooks import profiler_registry, StepProfiler
 
 
 class HuggingFaceModelWrapper(nn.Module):
@@ -159,26 +159,36 @@ def train_epoch(model, dataloader, optimizer, scheduler, criterion, device, prof
         attention_mask = attention_mask.to(device)
         labels = labels.to(device)
         
-        optimizer.zero_grad()
-        
-        # Forward pass
-        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-        loss = criterion(outputs, labels)
-        
-        # Backward pass
-        loss.backward()
-        optimizer.step()
-        scheduler.step()
+        # Profiler step - wrap the actual training step
+        if profiler_context:
+            with profiler_context.stage("training_step"):
+                optimizer.zero_grad()
+                
+                # Forward pass
+                outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+                loss = criterion(outputs, labels)
+                
+                # Backward pass
+                loss.backward()
+                optimizer.step()
+                scheduler.step()
+        else:
+            optimizer.zero_grad()
+            
+            # Forward pass
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+            loss = criterion(outputs, labels)
+            
+            # Backward pass
+            loss.backward()
+            optimizer.step()
+            scheduler.step()
         
         # Statistics
         total_loss += loss.item()
         predictions = torch.argmax(outputs, dim=1)
         correct_predictions += (predictions == labels).sum().item()
         total_predictions += labels.size(0)
-        
-        # Profiler step
-        if profiler_context:
-            profiler_context.step()
         
         if batch_idx % 10 == 0:
             print(f"Batch {batch_idx}, Loss: {loss.item():.4f}, "

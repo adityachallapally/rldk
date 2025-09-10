@@ -20,13 +20,11 @@ import uuid
 from typing import Dict, Any, Optional, List, Union
 from dataclasses import dataclass, field
 
-# Mock the external dependencies
+# Mock the external dependencies BEFORE any imports
 class MockNumpy:
     def __init__(self):
         self.__version__ = "1.21.0"
-    
-    def random(self):
-        return self
+        self.random = MockRandom()
     
     def randn(self, *args):
         return [0.1, 0.2, 0.3]
@@ -40,12 +38,25 @@ class MockNumpy:
     def __getattr__(self, name):
         return lambda *args, **kwargs: None
 
+class MockRandom:
+    def __init__(self):
+        pass
+    
+    def seed(self, seed):
+        return True
+    
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: None
+
 class MockPandas:
     def __init__(self):
         self.__version__ = "1.3.0"
     
     def DataFrame(self, data):
         return MockDataFrame(data)
+    
+    def Series(self, data):
+        return MockSeries(data)
 
 class MockDataFrame:
     def __init__(self, data):
@@ -63,9 +74,13 @@ class MockTorch:
     def __init__(self):
         self.__version__ = "1.12.0"
         self.uint8 = "uint8"
+        self.nn = MockNN()
     
     def tensor(self, data, dtype=None):
         return MockTensor(data, dtype)
+    
+    def randn(self, *args):
+        return MockTensor([0.1, 0.2, 0.3] * (args[0] if args else 1))
     
     def set_rng_state(self, state):
         if hasattr(state, 'dtype') and str(state.dtype) != 'uint8':
@@ -84,6 +99,20 @@ class MockTorch:
     def __getattr__(self, name):
         if name == 'cuda':
             return MockCuda()
+        return lambda *args, **kwargs: None
+
+class MockNN:
+    def __init__(self):
+        self.Module = MockModule
+    
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: None
+
+class MockModule:
+    def __init__(self, *args, **kwargs):
+        pass
+    
+    def __getattr__(self, name):
         return lambda *args, **kwargs: None
 
 class MockTensor:
@@ -105,6 +134,11 @@ class MockTensor:
     
     def flatten(self):
         return self
+    
+    def numel(self):
+        if isinstance(self.data, list):
+            return len(self.data)
+        return 1
     
     def __getitem__(self, key):
         return MockTensor(self.data[key] if isinstance(self.data, list) else self.data)
@@ -133,7 +167,7 @@ class MockCuda:
     def manual_seed_all(self, seed):
         return True
 
-# Mock the modules
+# Mock the modules BEFORE any imports
 sys.modules['numpy'] = MockNumpy()
 sys.modules['pandas'] = MockPandas()
 sys.modules['torch'] = MockTorch()
