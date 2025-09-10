@@ -1,6 +1,6 @@
 """Seeded replay utility for training runs."""
 
-from rldk.replay.replay import (
+from .replay import (
     replay,
     ReplayReport,
     _compare_metrics,
