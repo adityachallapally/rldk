@@ -14,6 +14,7 @@ import sys
 
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 # Check dependencies before importing
 try:
@@ -25,7 +26,7 @@ try:
     import plotly.express as px
     import plotly.graph_objects as go
     
-    from profiler.report import ProfilerReport
+    from tools.profiler.report import ProfilerReport
     
 except ImportError as e:
     print(f"❌ Error: {e}")

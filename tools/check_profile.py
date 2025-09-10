@@ -14,8 +14,9 @@ import pandas as pd
 
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-from profiler.report import ProfilerReport
+from tools.profiler.report import ProfilerReport
 
 
 def check_profiler_artifacts(profiler_dir: str) -> dict:
