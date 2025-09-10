@@ -44,6 +44,3 @@ psutil==5.9.0
 # Content analysis
 detoxify==0.5.2
 vaderSentiment==3.3.2
-
-# Backward compatibility for Python < 3.8
-importlib-metadata==6.0.0; python_version<"3.8"
