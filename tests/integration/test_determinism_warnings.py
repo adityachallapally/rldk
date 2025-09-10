@@ -39,7 +39,7 @@ class TestDeterminismWarnings:
                         mock_run.return_value = mock_result
                         
                         report = check(
-                            cmd="python train.py",
+                            cmd="python scripts/train.py",
                             compare=["reward_mean"],
                             replicas=2,
                             device="cpu"
@@ -80,7 +80,7 @@ class TestDeterminismWarnings:
                         mock_run.return_value = mock_result
                         
                         report = check(
-                            cmd="python train.py",
+                            cmd="python scripts/train.py",
                             compare=["reward_mean"],
                             replicas=2,
                             device="cpu"
@@ -121,7 +121,7 @@ class TestDeterminismWarnings:
                         mock_run.return_value = mock_result
                         
                         report = check(
-                            cmd="python train.py",
+                            cmd="python scripts/train.py",
                             compare=["reward_mean"],
                             replicas=2,
                             device="cpu"
@@ -162,7 +162,7 @@ class TestDeterminismWarnings:
                         mock_run.return_value = mock_result
                         
                         report = check(
-                            cmd="python train.py",
+                            cmd="python scripts/train.py",
                             compare=["reward_mean"],
                             replicas=2,
                             device="cpu"
@@ -206,7 +206,7 @@ class TestDeterminismWarnings:
                         mock_run.return_value = mock_result
                         
                         report = check(
-                            cmd="python train.py",
+                            cmd="python scripts/train.py",
                             compare=["reward_mean"],
                             replicas=2,
                             device="cpu"
@@ -251,7 +251,7 @@ class TestDeterminismWarnings:
                         mock_run.return_value = mock_result
                         
                         report = check(
-                            cmd="python train.py",
+                            cmd="python scripts/train.py",
                             compare=["reward_mean"],
                             replicas=2,
                             device="cpu"

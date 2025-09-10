@@ -66,8 +66,8 @@ rldk compare-runs <run_a> <run_b>
 rldk doctor <run_or_repo>
 
 # Evaluation & reproducibility
-rldk check-determinism --cmd "python train.py"
-rldk replay <run_path> --command "python train.py"
+rldk check-determinism --cmd "python scripts/train.py"
+rldk replay <run_path> --command "python scripts/train.py"
 rldk eval <run_path> --suite quick
 ```
 
@@ -153,10 +153,10 @@ rldk reward-drift reward_model_v1 reward_model_v2 --prompts prompts.jsonl
 ### **3. Reproduce Experiments**
 ```bash
 # Check determinism
-rldk check-determinism --cmd "python train.py" --compare loss,reward_mean
+rldk check-determinism --cmd "python scripts/train.py" --compare loss,reward_mean
 
 # Replay with same seed
-rldk replay ./my_training_run --command "python train.py" --metrics loss,reward_mean
+rldk replay ./my_training_run --command "python scripts/train.py" --metrics loss,reward_mean
 
 # Run evaluation
 rldk eval ./my_training_run --suite quick

@@ -81,7 +81,7 @@ Successfully implemented deterministic dependency warnings in `rldk/determinism.
 from rldk.determinism.check import check
 
 # This will show warnings for missing dependencies
-report = check("python train.py", ["loss"], replicas=2)
+report = check("python scripts/train.py", ["loss"], replicas=2)
 
 # Check which dependencies were missing
 print("Skipped checks:", report.skipped_checks)
@@ -92,7 +92,7 @@ print("Skipped checks:", report.skipped_checks)
 ```bash
 # Suppress warnings
 export RLDK_SILENCE_DETERMINISM_WARN=1
-python -c "from rldk.determinism.check import check; check('python train.py', ['loss'])"
+python -c "from rldk.determinism.check import check; check('python scripts/train.py', ['loss'])"
 ```
 
 ### Warning Messages

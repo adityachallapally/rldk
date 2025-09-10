@@ -201,7 +201,7 @@ def demonstrate_replay_workflow():
         tolerance=tolerance,
         mismatches=mismatches,
         comparison_stats=comparison_stats,
-        replay_command=f"python train.py --seed {original_seed}",
+        replay_command=f"python scripts/train.py --seed {original_seed}",
         replay_duration=replay_duration,
     )
 

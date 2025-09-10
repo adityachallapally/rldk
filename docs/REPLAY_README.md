@@ -135,7 +135,7 @@ replay_results/
       "tolerance_violations": 0
     }
   },
-  "replay_command": "python train.py --seed 42",
+  "replay_command": "python scripts/train.py --seed 42",
   "replay_duration": 45.2
 }
 ```

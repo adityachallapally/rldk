@@ -107,7 +107,7 @@ class ProfilerDashboard:
         - 📈 **Performance Analysis**: Detailed breakdowns of training stages
         
         ### Getting Started:
-        1. Start a training run with profiling enabled: `python train.py --profiler on`
+        1. Start a training run with profiling enabled: `python scripts/train.py --profiler on`
         2. Select the run from the sidebar
         3. Explore the profiler data and visualizations
         

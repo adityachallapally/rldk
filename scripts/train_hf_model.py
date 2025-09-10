@@ -7,8 +7,8 @@ using real Hugging Face transformer models. It supports the --profiler on/off ar
 to enable/disable profiling.
 
 Example usage:
-    python train_hf_model.py --model distilbert-base-uncased --profiler on
-    python train_hf_model.py --model bert-base-uncased --profiler off
+    python scripts/train_hf_model.py --model distilbert-base-uncased --profiler on
+    python scripts/train_hf_model.py --model bert-base-uncased --profiler off
 """
 
 import argparse

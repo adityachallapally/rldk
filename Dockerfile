@@ -35,7 +35,7 @@ RUN mkdir -p test_artifacts/logs_clean \
 RUN python3 tests/_make_fixtures.py
 
 # Generate training logs
-RUN python3 generate_logs.py
+RUN python3 scripts/generate_logs.py
 
 # Make demo script executable
 RUN chmod +x scripts/demo.sh

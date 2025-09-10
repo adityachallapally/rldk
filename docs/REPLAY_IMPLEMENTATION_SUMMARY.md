@@ -155,7 +155,7 @@ from rldk.replay import replay
 
 report = replay(
     run_path="runs/training.jsonl",
-    training_command="python train.py",
+    training_command="python scripts/train.py",
     metrics_to_compare=["loss", "accuracy"],
     tolerance=0.01
 )

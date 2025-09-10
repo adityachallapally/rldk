@@ -16,29 +16,29 @@ class TestReplayCommandPreparation:
 
     def test_add_seed_to_command(self):
         """Test adding seed argument to command."""
-        command = "python train.py --epochs 10"
+        command = "python scripts/train.py --epochs 10"
         seed = 42
 
         result = _prepare_replay_command(command, seed)
-        expected = "python train.py --epochs 10 --seed 42"
+        expected = "python scripts/train.py --epochs 10 --seed 42"
         assert result == expected
 
     def test_replace_existing_seed(self):
         """Test replacing existing seed argument."""
-        command = "python train.py --seed 100 --epochs 10"
+        command = "python scripts/train.py --seed 100 --epochs 10"
         seed = 42
 
         result = _prepare_replay_command(command, seed)
-        expected = "python train.py --seed 42 --epochs 10"
+        expected = "python scripts/train.py --seed 42 --epochs 10"
         assert result == expected
 
     def test_command_with_multiple_seed_occurrences(self):
         """Test command with multiple seed occurrences (should replace first)."""
-        command = "python train.py --seed 100 --other --seed 200"
+        command = "python scripts/train.py --seed 100 --other --seed 200"
         seed = 42
 
         result = _prepare_replay_command(command, seed)
-        expected = "python train.py --seed 42 --other --seed 200"
+        expected = "python scripts/train.py --seed 42 --other --seed 200"
         assert result == expected
 
 
@@ -182,7 +182,7 @@ class TestReplayFunction:
         with tempfile.TemporaryDirectory() as temp_dir:
             report = replay(
                 run_path="test_run.jsonl",
-                training_command="python train.py",
+                training_command="python scripts/train.py",
                 metrics_to_compare=["reward_mean", "kl_mean"],
                 tolerance=0.01,
                 output_dir=temp_dir,
@@ -233,7 +233,7 @@ class TestReplayFunction:
         with tempfile.TemporaryDirectory() as temp_dir:
             report = replay(
                 run_path="test_run.jsonl",
-                training_command="python train.py",
+                training_command="python scripts/train.py",
                 metrics_to_compare=["reward_mean", "kl_mean"],
                 tolerance=0.01,
                 output_dir=temp_dir,
@@ -258,7 +258,7 @@ class TestReplayFunction:
             with pytest.raises(ValueError, match="must contain 'seed' column"):
                 replay(
                     run_path="test_run.jsonl",
-                    training_command="python train.py",
+                    training_command="python scripts/train.py",
                     metrics_to_compare=["reward_mean"],
                     tolerance=0.01,
                 )
@@ -277,7 +277,7 @@ class TestReplayFunction:
             with pytest.raises(ValueError, match="seed is missing or NaN"):
                 replay(
                     run_path="test_run.jsonl",
-                    training_command="python train.py",
+                    training_command="python scripts/train.py",
                     metrics_to_compare=["reward_mean"],
                     tolerance=0.01,
                 )
@@ -298,7 +298,7 @@ class TestReplayReport:
             original_metrics=pd.DataFrame(),
             replay_metrics=pd.DataFrame(),
             comparison_stats={},
-            replay_command="python train.py",
+            replay_command="python scripts/train.py",
             replay_duration=10.5,
         )
 
@@ -308,7 +308,7 @@ class TestReplayReport:
         assert report.metrics_compared == ["reward_mean"]
         assert report.tolerance == 0.01
         assert len(report.mismatches) == 0
-        assert report.replay_command == "python train.py"
+        assert report.replay_command == "python scripts/train.py"
         assert report.replay_duration == 10.5
 
 
@@ -436,7 +436,7 @@ class TestTempFileCleanup:
         mock_env.return_value = {}
         
         # Test with invalid command that will fail parsing
-        invalid_command = "python train.py --invalid-quote \""
+        invalid_command = "python scripts/train.py --invalid-quote \""
         
         result = _run_replay(invalid_command, Path("/tmp"), "cpu")
         
@@ -460,7 +460,7 @@ class TestTempFileCleanup:
         mock_env.return_value = {}
         mock_run.side_effect = subprocess.TimeoutExpired("python", 30)
         
-        result = _run_replay("python train.py", Path("/tmp"), "cpu")
+        result = _run_replay("python scripts/train.py", Path("/tmp"), "cpu")
         
         # Verify cleanup was called
         mock_cleanup.assert_called_once()
@@ -481,7 +481,7 @@ class TestTempFileCleanup:
         mock_env.return_value = {}
         mock_run.side_effect = OSError("Command not found")
         
-        result = _run_replay("python train.py", Path("/tmp"), "cpu")
+        result = _run_replay("python scripts/train.py", Path("/tmp"), "cpu")
         
         # Verify cleanup was called
         mock_cleanup.assert_called_once()
@@ -509,7 +509,7 @@ class TestTempFileCleanup:
         mock_result.stderr = "Error occurred"
         mock_run.return_value = mock_result
         
-        result = _run_replay("python train.py", Path("/tmp"), "cpu")
+        result = _run_replay("python scripts/train.py", Path("/tmp"), "cpu")
         
         # Verify cleanup was called
         mock_cleanup.assert_called_once()
@@ -541,7 +541,7 @@ class TestTempFileCleanup:
         # Mock that metrics file doesn't exist
         mock_exists.return_value = False
         
-        result = _run_replay("python train.py", Path("/tmp"), "cpu")
+        result = _run_replay("python scripts/train.py", Path("/tmp"), "cpu")
         
         # Verify cleanup was called
         mock_cleanup.assert_called_once()
@@ -577,7 +577,7 @@ class TestTempFileCleanup:
         # Mock pandas.read_json to raise exception
         mock_read_json.side_effect = Exception("Invalid JSON")
         
-        result = _run_replay("python train.py", Path("/tmp"), "cpu")
+        result = _run_replay("python scripts/train.py", Path("/tmp"), "cpu")
         
         # Verify cleanup was called
         mock_cleanup.assert_called_once()

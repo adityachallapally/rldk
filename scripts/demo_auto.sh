@@ -118,10 +118,10 @@ main() {
     # Step 4: Generate training logs
     print_step "Generating Training Logs"
     
-    if [ -f "generate_logs.py" ]; then
-        run_with_timing "python3 generate_logs.py" "Generating training logs"
+    if [ -f "scripts/generate_logs.py" ]; then
+        run_with_timing "python3 scripts/generate_logs.py" "Generating training logs"
     else
-        print_warning "generate_logs.py not found, using existing logs"
+        print_warning "scripts/generate_logs.py not found, using existing logs"
     fi
     
     # Step 5: Verify artifacts exist

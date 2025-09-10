@@ -34,7 +34,7 @@ class TestDeterminismHarness:
             "rldk.determinism.check._run_deterministic_cmd", return_value=mock_result
         ):
             report = check(
-                cmd="python train.py",
+                cmd="python scripts/train.py",
                 compare=["reward_mean", "kl_mean", "entropy_mean"],
                 steps=[10, 20, 30],
                 replicas=3,
@@ -79,7 +79,7 @@ class TestDeterminismHarness:
             "rldk.determinism.check._run_deterministic_cmd", side_effect=replica_results
         ):
             report = check(
-                cmd="python train.py",
+                cmd="python scripts/train.py",
                 compare=["reward_mean", "kl_mean", "entropy_mean"],
                 steps=[10, 20, 30],
                 replicas=3,
@@ -108,13 +108,13 @@ class TestDeterminismHarness:
         ):
             # Test CPU device
             report = check(
-                cmd="python train.py", compare=["reward_mean"], replicas=1, device="cpu"
+                cmd="python scripts/train.py", compare=["reward_mean"], replicas=1, device="cpu"
             )
             assert report.passed
 
             # Test CUDA device
             report = check(
-                cmd="python train.py",
+                cmd="python scripts/train.py",
                 compare=["reward_mean"],
                 replicas=1,
                 device="cuda",
@@ -153,7 +153,7 @@ class TestDeterminismHarness:
             side_effect=[mock_result1, mock_result2],
         ):
             report = check(
-                cmd="python train.py", compare=["reward_mean"], replicas=2, device="cpu"
+                cmd="python scripts/train.py", compare=["reward_mean"], replicas=2, device="cpu"
             )
 
             # Should detect non-deterministic operations
@@ -182,7 +182,7 @@ class TestDeterminismHarness:
             "rldk.determinism.check._run_deterministic_cmd", side_effect=mock_results
         ):
             report = check(
-                cmd="python train.py",
+                cmd="python scripts/train.py",
                 compare=["reward_mean", "kl_mean"],
                 replicas=3,
                 device="cpu",
@@ -213,7 +213,7 @@ class TestDeterminismHarness:
             "rldk.determinism.check._run_deterministic_cmd", return_value=mock_result
         ):
             report = check(
-                cmd="python train.py", compare=["reward_mean"], replicas=1, device="cpu"
+                cmd="python scripts/train.py", compare=["reward_mean"], replicas=1, device="cpu"
             )
 
             # Should create RNG map
@@ -240,7 +240,7 @@ class TestDeterminismHarness:
             "rldk.determinism.check._run_deterministic_cmd", return_value=mock_result
         ):
             report = check(
-                cmd="python train.py", compare=["reward_mean"], replicas=1, device="cpu"
+                cmd="python scripts/train.py", compare=["reward_mean"], replicas=1, device="cpu"
             )
 
             # Should still pass with only one replica
@@ -273,7 +273,7 @@ class TestDeterminismHarness:
             side_effect=[mock_result1, mock_result2],
         ):
             report = check(
-                cmd="python train.py", compare=["reward_mean"], replicas=2, device="cpu"
+                cmd="python scripts/train.py", compare=["reward_mean"], replicas=2, device="cpu"
             )
 
             # Should fail due to timeout
@@ -306,7 +306,7 @@ class TestDeterminismHarness:
             side_effect=[mock_result1, mock_result2],
         ):
             report = check(
-                cmd="python train.py", compare=["reward_mean"], replicas=2, device="cpu"
+                cmd="python scripts/train.py", compare=["reward_mean"], replicas=2, device="cpu"
             )
 
             # Should fail due to missing metrics
@@ -333,7 +333,7 @@ class TestDeterminismHarness:
             "rldk.determinism.check._run_deterministic_cmd", return_value=mock_result
         ):
             report = check(
-                cmd="python train.py",
+                cmd="python scripts/train.py",
                 compare=["reward_mean", "kl_mean"],
                 steps=[10, 25, 40],  # Specific steps
                 replicas=3,

@@ -195,7 +195,7 @@ profile-check:
 
 profile-train:
 	@echo "Running training with profiler enabled..."
-	python3 train.py --profiler on --epochs 3 --steps-per-epoch 10
+	python3 scripts/train.py --profiler on --epochs 3 --steps-per-epoch 10
 	@echo "Training with profiler complete!"
 
 profile-dashboard:

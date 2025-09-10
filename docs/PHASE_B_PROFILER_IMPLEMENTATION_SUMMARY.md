@@ -2,7 +2,7 @@
 
 ## Overview
 
-Phase B profiler implementation has been **COMPLETED** successfully. The profiler system is now fully integrated with the training loop and generates the expected artifacts when running `python train.py --profiler on`.
+Phase B profiler implementation has been **COMPLETED** successfully. The profiler system is now fully integrated with the training loop and generates the expected artifacts when running `python scripts/train.py --profiler on`.
 
 ## ✅ What's Been Implemented
 
@@ -42,7 +42,7 @@ Phase B profiler implementation has been **COMPLETED** successfully. The profile
   - `make profile-dashboard` - Start Streamlit dashboard
   - `make profile-clean` - Clean profiler artifacts
 
-### 5. Training Integration (`train.py`)
+### 5. Training Integration (`scripts/train.py`)
 
 - **Full integration** with `--profiler on/off` argument
 - **Multiple profiler components** working together:
@@ -80,7 +80,7 @@ Phase B profiler implementation has been **COMPLETED** successfully. The profile
 
 ## 📊 Generated Artifacts
 
-When running `python train.py --profiler on`, the following artifacts are generated:
+When running `python scripts/train.py --profiler on`, the following artifacts are generated:
 
 ```
 runs/{run_id}/
@@ -98,7 +98,7 @@ runs/{run_id}/
 ### End-to-End Testing ✅
 ```bash
 # Training with profiler
-python3 train.py --profiler on --epochs 2 --steps-per-epoch 5
+python3 scripts/train.py --profiler on --epochs 2 --steps-per-epoch 5
 # Result: ✅ SUCCESS - Artifacts generated
 
 # Standalone profiler test
@@ -146,7 +146,7 @@ make profile-train
 
 ### Basic Training with Profiler
 ```bash
-python3 train.py --profiler on --epochs 5 --steps-per-epoch 20
+python3 scripts/train.py --profiler on --epochs 5 --steps-per-epoch 20
 ```
 
 ### Standalone Profiler Testing
