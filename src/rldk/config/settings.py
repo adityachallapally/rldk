@@ -11,12 +11,9 @@ class RLDKSettings(BaseSettings):
     """Main RLDK configuration."""
     
     model_config = ConfigDict(
-        env_file='.env',
-        env_file_encoding='utf-8',
         env_prefix='RLDK_',
         case_sensitive=False,
-        validate_assignment=True,
-        extra='forbid'
+        validate_assignment=True
     )
     
     # Output directories
