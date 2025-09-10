@@ -1,0 +1,181 @@
+{
+  "total_alerts": 645,
+  "by_category": {
+    "gradient": 219,
+    "learning_rate": 287,
+    "convergence": 121,
+    "batch_size": 10,
+    "reward_drift": 8
+  },
+  "by_severity": {
+    "critical": 204,
+    "high": 371,
+    "medium": 70
+  },
+  "latest_alerts": [
+    {
+      "severity": "medium",
+      "category": "reward_drift",
+      "message": "Reward distribution drift: mean change=0.1367",
+      "step": 547,
+      "value": 0.13669466972351074,
+      "threshold": 0.1,
+      "metadata": {
+        "old_mean": 0.4522585868835449,
+        "new_mean": 0.5140799283981323
+      }
+    },
+    {
+      "severity": "medium",
+      "category": "reward_drift",
+      "message": "Reward distribution drift: mean change=0.1008",
+      "step": 548,
+      "value": 0.10079891979694366,
+      "threshold": 0.1,
+      "metadata": {
+        "old_mean": 0.4616594910621643,
+        "new_mean": 0.5081942677497864
+      }
+    },
+    {
+      "severity": "medium",
+      "category": "reward_drift",
+      "message": "Reward distribution drift: mean change=0.1005",
+      "step": 549,
+      "value": 0.10046645253896713,
+      "threshold": 0.1,
+      "metadata": {
+        "old_mean": 0.45538264513015747,
+        "new_mean": 0.5011333227157593
+      }
+    },
+    {
+      "severity": "medium",
+      "category": "reward_drift",
+      "message": "Reward distribution drift: mean change=0.1146",
+      "step": 550,
+      "value": 0.1146082729101181,
+      "threshold": 0.1,
+      "metadata": {
+        "old_mean": 0.4512263238430023,
+        "new_mean": 0.5029405951499939
+      }
+    },
+    {
+      "severity": "medium",
+      "category": "learning_rate",
+      "message": "Sudden learning rate change detected: 50.00% > 30.00%",
+      "step": 551,
+      "value": 0.5,
+      "threshold": 0.3,
+      "metadata": {
+        "recent_lrs": [
+          0.078125,
+          0.078125,
+          0.078125,
+          0.078125,
+          0.0390625
+        ],
+        "changes": [
+          0.0,
+          0.0,
+          0.0,
+          0.5
+        ]
+      }
+    },
+    {
+      "severity": "medium",
+      "category": "learning_rate",
+      "message": "Sudden learning rate change detected: 50.00% > 30.00%",
+      "step": 552,
+      "value": 0.5,
+      "threshold": 0.3,
+      "metadata": {
+        "recent_lrs": [
+          0.078125,
+          0.078125,
+          0.078125,
+          0.0390625,
+          0.0390625
+        ],
+        "changes": [
+          0.0,
+          0.0,
+          0.5,
+          0.0
+        ]
+      }
+    },
+    {
+      "severity": "medium",
+      "category": "learning_rate",
+      "message": "Sudden learning rate change detected: 50.00% > 30.00%",
+      "step": 553,
+      "value": 0.5,
+      "threshold": 0.3,
+      "metadata": {
+        "recent_lrs": [
+          0.078125,
+          0.078125,
+          0.0390625,
+          0.0390625,
+          0.0390625
+        ],
+        "changes": [
+          0.0,
+          0.5,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "severity": "medium",
+      "category": "learning_rate",
+      "message": "Sudden learning rate change detected: 50.00% > 30.00%",
+      "step": 554,
+      "value": 0.5,
+      "threshold": 0.3,
+      "metadata": {
+        "recent_lrs": [
+          0.078125,
+          0.0390625,
+          0.0390625,
+          0.0390625,
+          0.0390625
+        ],
+        "changes": [
+          0.5,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "severity": "medium",
+      "category": "reward_drift",
+      "message": "Reward distribution drift: mean change=0.1117",
+      "step": 565,
+      "value": 0.11174637079238892,
+      "threshold": 0.1,
+      "metadata": {
+        "old_mean": 0.4931013584136963,
+        "new_mean": 0.5482036471366882
+      }
+    },
+    {
+      "severity": "medium",
+      "category": "reward_drift",
+      "message": "Reward distribution drift: mean change=0.1010",
+      "step": 575,
+      "value": 0.10102343559265137,
+      "threshold": 0.1,
+      "metadata": {
+        "old_mean": 0.5482036471366882,
+        "new_mean": 0.49282222986221313
+      }
+    }
+  ]
+}

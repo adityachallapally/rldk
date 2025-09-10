@@ -1,0 +1,199 @@
+{
+  "version": "1.0",
+  "timestamp": "2025-09-04 23:44:32",
+  "golden_master_path": "golden_master_output",
+  "comparisons": [
+    {
+      "command": "rldk version",
+      "exit_code_match": true,
+      "stdout_match": true,
+      "stderr_match": true,
+      "artifacts_match": true,
+      "schema_valid": true,
+      "checksum_matches": {},
+      "field_deltas": {},
+      "passed": true,
+      "errors": []
+    },
+    {
+      "command": "rldk --help",
+      "exit_code_match": true,
+      "stdout_match": true,
+      "stderr_match": true,
+      "artifacts_match": true,
+      "schema_valid": true,
+      "checksum_matches": {},
+      "field_deltas": {},
+      "passed": true,
+      "errors": []
+    },
+    {
+      "command": "rldk ingest /tmp/tmp4sg54o2a/run_a --output /tmp/tmp4sg54o2a/ingest_output.jsonl",
+      "exit_code_match": true,
+      "stdout_match": true,
+      "stderr_match": true,
+      "artifacts_match": true,
+      "schema_valid": true,
+      "checksum_matches": {},
+      "field_deltas": {},
+      "passed": true,
+      "errors": []
+    },
+    {
+      "command": "rldk diff --a /tmp/tmp4sg54o2a/run_a --b /tmp/tmp4sg54o2a/run_b --signals loss,reward_scalar --output-dir /tmp/tmp4sg54o2a/diff_output",
+      "exit_code_match": true,
+      "stdout_match": true,
+      "stderr_match": true,
+      "artifacts_match": true,
+      "schema_valid": true,
+      "checksum_matches": {},
+      "field_deltas": {},
+      "passed": true,
+      "errors": []
+    },
+    {
+      "command": "rldk check-determinism --cmd python -c 'import torch; print(torch.randn(1).item())' --compare loss --replicas 2 --output-dir /tmp/tmp4sg54o2a/determinism_output",
+      "exit_code_match": true,
+      "stdout_match": true,
+      "stderr_match": true,
+      "artifacts_match": true,
+      "schema_valid": true,
+      "checksum_matches": {},
+      "field_deltas": {},
+      "passed": true,
+      "errors": []
+    },
+    {
+      "command": "rldk reward-health --run /tmp/tmp4sg54o2a/run_a --output-dir /tmp/tmp4sg54o2a/reward_health_output",
+      "exit_code_match": true,
+      "stdout_match": true,
+      "stderr_match": true,
+      "artifacts_match": true,
+      "schema_valid": true,
+      "checksum_matches": {},
+      "field_deltas": {},
+      "passed": true,
+      "errors": []
+    },
+    {
+      "command": "rldk eval --run /tmp/tmp4sg54o2a/run_a --suite quick --output-dir /tmp/tmp4sg54o2a/eval_output",
+      "exit_code_match": true,
+      "stdout_match": true,
+      "stderr_match": true,
+      "artifacts_match": true,
+      "schema_valid": true,
+      "checksum_matches": {},
+      "field_deltas": {},
+      "passed": true,
+      "errors": []
+    },
+    {
+      "command": "rldk track test_experiment --output-dir /tmp/tmp4sg54o2a/tracking_output --no-wandb",
+      "exit_code_match": true,
+      "stdout_match": true,
+      "stderr_match": true,
+      "artifacts_match": true,
+      "schema_valid": true,
+      "checksum_matches": {},
+      "field_deltas": {},
+      "passed": true,
+      "errors": []
+    },
+    {
+      "command": "rldk forensics compare-runs /tmp/tmp4sg54o2a/run_a /tmp/tmp4sg54o2a/run_b",
+      "exit_code_match": true,
+      "stdout_match": true,
+      "stderr_match": true,
+      "artifacts_match": true,
+      "schema_valid": true,
+      "checksum_matches": {},
+      "field_deltas": {},
+      "passed": true,
+      "errors": []
+    },
+    {
+      "command": "rldk reward reward-drift /tmp/tmp4sg54o2a/model_a /tmp/tmp4sg54o2a/model_b --prompts /tmp/tmp4sg54o2a/prompts.jsonl",
+      "exit_code_match": true,
+      "stdout_match": true,
+      "stderr_match": true,
+      "artifacts_match": true,
+      "schema_valid": true,
+      "checksum_matches": {},
+      "field_deltas": {},
+      "passed": true,
+      "errors": []
+    },
+    {
+      "command": "ingest_runs(run_a)",
+      "exit_code_match": true,
+      "stdout_match": true,
+      "stderr_match": true,
+      "artifacts_match": true,
+      "schema_valid": true,
+      "checksum_matches": {
+        "/tmp/tmp4sg54o2a/ingest_result.json": true
+      },
+      "field_deltas": {},
+      "passed": true,
+      "errors": []
+    },
+    {
+      "command": "first_divergence(run_a, run_b)",
+      "exit_code_match": true,
+      "stdout_match": true,
+      "stderr_match": true,
+      "artifacts_match": true,
+      "schema_valid": true,
+      "checksum_matches": {
+        "/tmp/tmp4sg54o2a/diff_result.json": true
+      },
+      "field_deltas": {},
+      "passed": true,
+      "errors": []
+    },
+    {
+      "command": "check_determinism",
+      "exit_code_match": true,
+      "stdout_match": true,
+      "stderr_match": true,
+      "artifacts_match": true,
+      "schema_valid": true,
+      "checksum_matches": {
+        "/tmp/tmp4sg54o2a/determinism_result.json": true
+      },
+      "field_deltas": {},
+      "passed": true,
+      "errors": []
+    },
+    {
+      "command": "reward_health(run_a)",
+      "exit_code_match": true,
+      "stdout_match": true,
+      "stderr_match": true,
+      "artifacts_match": true,
+      "schema_valid": true,
+      "checksum_matches": {
+        "/tmp/tmp4sg54o2a/reward_health_result.json": true
+      },
+      "field_deltas": {},
+      "passed": true,
+      "errors": []
+    },
+    {
+      "command": "eval_quick(run_a)",
+      "exit_code_match": true,
+      "stdout_match": true,
+      "stderr_match": true,
+      "artifacts_match": true,
+      "schema_valid": true,
+      "checksum_matches": {},
+      "field_deltas": {},
+      "passed": true,
+      "errors": []
+    }
+  ],
+  "total_commands": 15,
+  "passed_commands": 15,
+  "failed_commands": 0,
+  "all_passed": true
+}

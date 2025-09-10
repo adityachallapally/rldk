@@ -1,0 +1,11 @@
+{
+  "stage_times": {
+    "forward": [
+      0.027483224868774414
+    ]
+  },
+  "average_times": {
+    "forward": 0.027483224868774414
+  },
+  "total_steps": 0
+}

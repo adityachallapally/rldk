@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "overall_status": "passed",
+  "drift_detected": false,
+  "saturation_issues_count": 0,
+  "calibration_score": 0.0,
+  "shortcut_signals_count": 0,
+  "label_leakage_risk": 0.0,
+  "fixes": [],
+  "saturation_analysis": {
+    "upper_saturation_ratio": 0.0,
+    "lower_saturation_ratio": 0.0,
+    "total_samples": 5,
+    "zero_ratio": 0.0
+  },
+  "shortcut_analysis": {
+    "length_correlation": null
+  }
+}

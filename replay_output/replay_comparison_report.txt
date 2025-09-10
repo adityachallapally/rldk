@@ -1,0 +1,138 @@
+RL Debug Kit Golden Master Replay Report
+==================================================
+
+Golden Master: golden_master_output
+Timestamp: 2025-09-04 23:44:32
+Total Commands: 15
+Passed: 15
+Failed: 0
+All Passed: True
+
+Command: rldk version
+  Passed: True
+  Exit Code Match: True
+  STDOUT Match: True
+  STDERR Match: True
+  Artifacts Match: True
+  Schema Valid: True
+
+Command: rldk --help
+  Passed: True
+  Exit Code Match: True
+  STDOUT Match: True
+  STDERR Match: True
+  Artifacts Match: True
+  Schema Valid: True
+
+Command: rldk ingest /tmp/tmp4sg54o2a/run_a --output /tmp/tmp4sg54o2a/ingest_output.jsonl
+  Passed: True
+  Exit Code Match: True
+  STDOUT Match: True
+  STDERR Match: True
+  Artifacts Match: True
+  Schema Valid: True
+
+Command: rldk diff --a /tmp/tmp4sg54o2a/run_a --b /tmp/tmp4sg54o2a/run_b --signals loss,reward_scalar --output-dir /tmp/tmp4sg54o2a/diff_output
+  Passed: True
+  Exit Code Match: True
+  STDOUT Match: True
+  STDERR Match: True
+  Artifacts Match: True
+  Schema Valid: True
+
+Command: rldk check-determinism --cmd python -c 'import torch; print(torch.randn(1).item())' --compare loss --replicas 2 --output-dir /tmp/tmp4sg54o2a/determinism_output
+  Passed: True
+  Exit Code Match: True
+  STDOUT Match: True
+  STDERR Match: True
+  Artifacts Match: True
+  Schema Valid: True
+
+Command: rldk reward-health --run /tmp/tmp4sg54o2a/run_a --output-dir /tmp/tmp4sg54o2a/reward_health_output
+  Passed: True
+  Exit Code Match: True
+  STDOUT Match: True
+  STDERR Match: True
+  Artifacts Match: True
+  Schema Valid: True
+
+Command: rldk eval --run /tmp/tmp4sg54o2a/run_a --suite quick --output-dir /tmp/tmp4sg54o2a/eval_output
+  Passed: True
+  Exit Code Match: True
+  STDOUT Match: True
+  STDERR Match: True
+  Artifacts Match: True
+  Schema Valid: True
+
+Command: rldk track test_experiment --output-dir /tmp/tmp4sg54o2a/tracking_output --no-wandb
+  Passed: True
+  Exit Code Match: True
+  STDOUT Match: True
+  STDERR Match: True
+  Artifacts Match: True
+  Schema Valid: True
+
+Command: rldk forensics compare-runs /tmp/tmp4sg54o2a/run_a /tmp/tmp4sg54o2a/run_b
+  Passed: True
+  Exit Code Match: True
+  STDOUT Match: True
+  STDERR Match: True
+  Artifacts Match: True
+  Schema Valid: True
+
+Command: rldk reward reward-drift /tmp/tmp4sg54o2a/model_a /tmp/tmp4sg54o2a/model_b --prompts /tmp/tmp4sg54o2a/prompts.jsonl
+  Passed: True
+  Exit Code Match: True
+  STDOUT Match: True
+  STDERR Match: True
+  Artifacts Match: True
+  Schema Valid: True
+
+Command: ingest_runs(run_a)
+  Passed: True
+  Exit Code Match: True
+  STDOUT Match: True
+  STDERR Match: True
+  Artifacts Match: True
+  Schema Valid: True
+  Checksum Matches:
+    /tmp/tmp4sg54o2a/ingest_result.json: True
+
+Command: first_divergence(run_a, run_b)
+  Passed: True
+  Exit Code Match: True
+  STDOUT Match: True
+  STDERR Match: True
+  Artifacts Match: True
+  Schema Valid: True
+  Checksum Matches:
+    /tmp/tmp4sg54o2a/diff_result.json: True
+
+Command: check_determinism
+  Passed: True
+  Exit Code Match: True
+  STDOUT Match: True
+  STDERR Match: True
+  Artifacts Match: True
+  Schema Valid: True
+  Checksum Matches:
+    /tmp/tmp4sg54o2a/determinism_result.json: True
+
+Command: reward_health(run_a)
+  Passed: True
+  Exit Code Match: True
+  STDOUT Match: True
+  STDERR Match: True
+  Artifacts Match: True
+  Schema Valid: True
+  Checksum Matches:
+    /tmp/tmp4sg54o2a/reward_health_result.json: True
+
+Command: eval_quick(run_a)
+  Passed: True
+  Exit Code Match: True
+  STDOUT Match: True
+  STDERR Match: True
+  Artifacts Match: True
+  Schema Valid: True
+
