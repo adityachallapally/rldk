@@ -37,7 +37,7 @@ rldk log-scan ./my_training_run
 rldk diff-ckpt model_a.pt model_b.pt
 
 # Run comparison - find divergences
-rldk forensics compare-runs run_a run_b
+rldk compare-runs run_a run_b
 
 # Comprehensive diagnostics
 rldk doctor ./my_training_run
@@ -48,10 +48,10 @@ Analyze reward model health and detect issues:
 
 ```bash
 # Compare reward models
-rldk reward reward-drift model_a model_b --prompts prompts.jsonl
+rldk reward-drift model_a model_b --prompts prompts.jsonl
 
 # Health analysis
-rldk reward reward-health run --scores scores.jsonl --out analysis/
+rldk reward-health run --scores scores.jsonl --out analysis/
 ```
 
 ### **Determinism Checking**
@@ -70,10 +70,10 @@ Run evaluation on your training data:
 
 ```bash
 # Quick evaluation
-rldk evals evaluate data.jsonl --suite quick
+rldk eval data.jsonl --suite quick
 
 # Comprehensive evaluation
-rldk evals evaluate data.jsonl --suite comprehensive --output results.json
+rldk eval data.jsonl --suite comprehensive --output results.json
 ```
 
 ## 📦 **Installation**
@@ -113,10 +113,10 @@ rldk diff-ckpt checkpoint_100.pt checkpoint_200.pt
 ### **3. Analyze Reward Models**
 ```bash
 # Compare reward models
-rldk reward reward-drift reward_model_v1 reward_model_v2 --prompts prompts.jsonl
+rldk reward-drift reward_model_v1 reward_model_v2 --prompts prompts.jsonl
 
 # Health analysis
-rldk reward reward-health run --scores scores.jsonl --out analysis/
+rldk reward-health run --scores scores.jsonl --out analysis/
 ```
 
 ## 📊 **Core Features**
