@@ -1,6 +1,6 @@
 """Configuration schemas for RLDK."""
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import Optional, List, Dict, Any, Union
 from pathlib import Path
 from enum import Enum
@@ -31,8 +31,7 @@ class LoggingConfig(BaseModel):
     file: Optional[Path] = Field(default=None, description="Log file path")
     console: bool = Field(default=True, description="Enable console logging")
     
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 class AnalysisConfig(BaseModel):
     """Analysis configuration schema."""
@@ -78,15 +77,15 @@ class VisualizationConfig(BaseModel):
     save_format: str = Field(default="png", description="Default save format")
     show_plots: bool = Field(default=True, description="Show plots interactively")
     
-    @validator('figure_size')
+    @field_validator('figure_size')
+    @classmethod
     def validate_figure_size(cls, v):
         """Validate figure size tuple."""
         if len(v) != 2 or not all(isinstance(x, (int, float)) and x > 0 for x in v):
             raise ValueError("figure_size must be a tuple of two positive numbers")
         return v
     
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 class DirectoryConfig(BaseModel):
     """Directory configuration schema."""
@@ -127,11 +126,11 @@ class ConfigSchema(BaseModel):
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary."""
-        return self.dict()
+        return self.model_dump()
     
     def to_json(self) -> str:
         """Convert configuration to JSON string."""
-        return self.json(indent=2)
+        return self.model_dump_json(indent=2)
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ConfigSchema':
@@ -141,7 +140,7 @@ class ConfigSchema(BaseModel):
     @classmethod
     def from_json(cls, json_str: str) -> 'ConfigSchema':
         """Create configuration from JSON string."""
-        return cls.parse_raw(json_str)
+        return cls.model_validate_json(json_str)
     
     def validate_config(self) -> bool:
         """Validate the entire configuration."""
