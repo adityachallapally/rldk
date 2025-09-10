@@ -2,24 +2,103 @@
 
 __version__ = "0.1.0"
 
-from .ingest import ingest_runs
-from .diff import first_divergence
-from .determinism import check
-from .bisect import bisect_commits
-from .reward import health, RewardHealthReport
+# Core functionality (existing)
+from .ingest import ingest_runs, ingest_runs_to_events
+from .diff import first_divergence, DivergenceReport
+from .determinism import check, DeterminismReport
+from .bisect import bisect_commits, BisectResult
+from .reward import health, RewardHealthReport, compare_models
 from .evals import run, EvalResult
+from .replay import replay, ReplayReport
+
+# Forensics functionality (existing)
+from .forensics import (
+    scan_logs, diff_checkpoints, audit_environment,
+    ComprehensivePPOForensics, ComprehensivePPOMetrics
+)
+
+# Tracking functionality (existing)
+from .tracking import (
+    ExperimentTracker, TrackingConfig,
+    DatasetTracker, ModelTracker, EnvironmentTracker,
+    SeedTracker, GitTracker
+)
+
+# Card generation (existing)
+from .cards import (
+    generate_determinism_card, generate_drift_card, generate_reward_card
+)
+
+# Adapters (existing)
+from .adapters import (
+    BaseAdapter, TRLAdapter, OpenRLHFAdapter, WandBAdapter, CustomJSONLAdapter
+)
+
+# Configuration (existing)
 from .config import settings, RLDKSettings, ConfigSchema
 
+# Utility functions (existing)
+from .io import (
+    write_json, write_png, mkdir_reports, validate,
+    read_jsonl, read_reward_head
+)
+
 __all__ = [
+    # Core functionality
     "ingest_runs",
+    "ingest_runs_to_events", 
     "first_divergence",
+    "DivergenceReport",
     "check",
+    "DeterminismReport",
     "bisect_commits",
+    "BisectResult",
     "health",
     "RewardHealthReport",
+    "compare_models",
     "run",
     "EvalResult",
+    "replay",
+    "ReplayReport",
+    
+    # Forensics functionality
+    "scan_logs",
+    "diff_checkpoints", 
+    "audit_environment",
+    "ComprehensivePPOForensics",
+    "ComprehensivePPOMetrics",
+    
+    # Tracking functionality
+    "ExperimentTracker",
+    "TrackingConfig",
+    "DatasetTracker",
+    "ModelTracker", 
+    "EnvironmentTracker",
+    "SeedTracker",
+    "GitTracker",
+    
+    # Card generation
+    "generate_determinism_card",
+    "generate_drift_card", 
+    "generate_reward_card",
+    
+    # Adapters
+    "BaseAdapter",
+    "TRLAdapter",
+    "OpenRLHFAdapter",
+    "WandBAdapter",
+    "CustomJSONLAdapter",
+    
+    # Configuration
     "settings",
     "RLDKSettings",
     "ConfigSchema",
+    
+    # Utility functions
+    "write_json",
+    "write_png",
+    "mkdir_reports",
+    "validate",
+    "read_jsonl",
+    "read_reward_head",
 ]
