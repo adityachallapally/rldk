@@ -7,11 +7,18 @@ import sys
 import platform
 import json
 import hashlib
+import site
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-import pkg_resources
 import torch
 import numpy as np
+
+# Use importlib.metadata instead of deprecated pkg_resources
+try:
+    from importlib.metadata import distributions, version
+except ImportError:
+    # Fallback for Python < 3.8
+    from importlib_metadata import distributions, version
 
 
 class EnvironmentTracker:
@@ -147,14 +154,68 @@ class EnvironmentTracker:
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
             pip_info["list"] = "pip list failed"
         
-        # Get installed packages using pkg_resources
+        # Get installed packages using importlib.metadata
         try:
             installed_packages = []
-            for dist in pkg_resources.working_set:
+            # Get site-packages directories
+            site_packages_dirs = site.getsitepackages() + [site.getusersitepackages()]
+            
+            for dist in distributions():
+                # Get the package location properly
+                try:
+                    # Use the distribution's origin to get the location
+                    if hasattr(dist, 'origin') and dist.origin:
+                        origin_path = Path(dist.origin)
+                        # Find which site-packages directory this package is in
+                        for site_dir in site_packages_dirs:
+                            if str(origin_path).startswith(site_dir):
+                                # Get the package name from the path
+                                relative_path = origin_path.relative_to(site_dir)
+                                package_name = relative_path.parts[0]
+                                
+                                # Handle .dist-info directories (metadata only packages)
+                                if package_name.endswith('.dist-info'):
+                                    # For metadata packages, use the site-packages directory
+                                    location = site_dir
+                                else:
+                                    # For regular packages, use the package directory
+                                    location = str(Path(site_dir) / package_name)
+                                break
+                        else:
+                            # Fallback to parent directory
+                            location = str(origin_path.parent)
+                    elif hasattr(dist, 'files') and dist.files:
+                        # Fallback: get from first file in distribution
+                        first_file = dist.files[0]
+                        if hasattr(first_file, 'locate'):
+                            file_path = Path(first_file.locate())
+                            # Find which site-packages directory this package is in
+                            for site_dir in site_packages_dirs:
+                                if str(file_path).startswith(site_dir):
+                                    relative_path = file_path.relative_to(site_dir)
+                                    package_name = relative_path.parts[0]
+                                    
+                                    # Handle .dist-info directories (metadata only packages)
+                                    if package_name.endswith('.dist-info'):
+                                        # For metadata packages, use the site-packages directory
+                                        location = site_dir
+                                    else:
+                                        # For regular packages, use the package directory
+                                        location = str(Path(site_dir) / package_name)
+                                    break
+                            else:
+                                location = str(file_path.parent)
+                        else:
+                            location = "unknown"
+                    else:
+                        location = "unknown"
+                except Exception:
+                    location = "unknown"
+                
                 installed_packages.append({
-                    "name": dist.project_name,
+                    "name": dist.metadata["Name"],
                     "version": dist.version,
-                    "location": dist.location
+                    "location": location
                 })
             pip_info["installed_packages"] = installed_packages
         except Exception as e:

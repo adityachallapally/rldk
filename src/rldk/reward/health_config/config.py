@@ -3,7 +3,13 @@
 import yaml
 from pathlib import Path
 from typing import Dict, Any, Optional
-import pkg_resources
+
+# Use importlib.resources instead of deprecated pkg_resources
+try:
+    from importlib.resources import files
+except ImportError:
+    # Fallback for Python < 3.9
+    from importlib_resources import files
 
 
 def get_default_config_path() -> Path:
@@ -11,9 +17,9 @@ def get_default_config_path() -> Path:
     # Try to find the default config in the package data
     try:
         # Look for the config in the package data
-        config_path = pkg_resources.resource_filename('rldk.reward.health_config', 'data/health_default.yaml')
-        if Path(config_path).exists():
-            return Path(config_path)
+        config_path = files('rldk.reward.health_config.data').joinpath('health_default.yaml')
+        if config_path.exists():
+            return Path(str(config_path))
     except Exception:
         pass
     
