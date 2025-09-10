@@ -12,7 +12,7 @@ from pathlib import Path
 # Add current directory to path
 sys.path.append(str(Path(__file__).parent))
 
-from utils.dependency_checker import (
+from rldk.utils.dependency_checker import (
     DependencyChecker, 
     check_all_optional_dependencies,
     check_streamlit_dependencies,

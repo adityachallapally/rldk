@@ -17,10 +17,11 @@ import torch.optim as optim
 
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-from rlhf_core.profiler import ProfilerManager
-from profiler.torch_profiler import TorchProfiler
-from profiler.profiler_context import ProfilerContext
+from rldk.core.profiler import ProfilerManager
+from tools.profiler.torch_profiler import TorchProfiler
+from tools.profiler.profiler_context import ProfilerContext
 
 
 def create_dummy_model():
