@@ -1,6 +1,7 @@
 """Central configuration management for RLDK."""
 
-from pydantic import BaseSettings, Field, validator
+from pydantic_settings import BaseSettings
+from pydantic import Field, field_validator, ConfigDict
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 import os
@@ -8,6 +9,12 @@ import logging
 
 class RLDKSettings(BaseSettings):
     """Main RLDK configuration."""
+    
+    model_config = ConfigDict(
+        env_prefix='RLDK_',
+        case_sensitive=False,
+        validate_assignment=True
+    )
     
     # Output directories
     default_output_dir: Path = Field(default="rldk_reports", description="Default output directory")
@@ -45,7 +52,8 @@ class RLDKSettings(BaseSettings):
     seed: Optional[int] = Field(default=None, description="Random seed")
     debug: bool = Field(default=False, description="Debug mode")
     
-    @validator('log_level')
+    @field_validator('log_level')
+    @classmethod
     def validate_log_level(cls, v):
         """Validate log level."""
         valid_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
@@ -53,28 +61,32 @@ class RLDKSettings(BaseSettings):
             raise ValueError(f"log_level must be one of {valid_levels}")
         return v.upper()
     
-    @validator('default_tolerance')
+    @field_validator('default_tolerance')
+    @classmethod
     def validate_tolerance(cls, v):
         """Validate tolerance value."""
         if not 0 < v < 1:
             raise ValueError("tolerance must be between 0 and 1")
         return v
     
-    @validator('default_window_size')
+    @field_validator('default_window_size')
+    @classmethod
     def validate_window_size(cls, v):
         """Validate window size."""
         if v <= 0:
             raise ValueError("window_size must be positive")
         return v
     
-    @validator('num_workers')
+    @field_validator('num_workers')
+    @classmethod
     def validate_num_workers(cls, v):
         """Validate number of workers."""
         if v <= 0:
             raise ValueError("num_workers must be positive")
         return v
     
-    @validator('batch_size')
+    @field_validator('batch_size')
+    @classmethod
     def validate_batch_size(cls, v):
         """Validate batch size."""
         if v <= 0:
@@ -136,10 +148,6 @@ class RLDKSettings(BaseSettings):
         self.setup_logging()
         self.create_directories()
     
-    class Config:
-        env_prefix = "RLDK_"
-        case_sensitive = False
-        validate_assignment = True
 
 # Global settings instance
 settings = RLDKSettings()
