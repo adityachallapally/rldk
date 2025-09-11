@@ -2,96 +2,264 @@
 
 > **The missing piece for RL experiment reproducibility. Track everything, debug anything, reproduce everything.**
 
-RLDK is a **super sharp but minimal knife** that solves critical pain points with RL frameworks today. It provides comprehensive experiment tracking, debugging tools, and reproducibility guarantees - all working offline with no cloud dependencies.
+RLDK is a comprehensive debugging and analysis toolkit for reinforcement learning training runs. It provides experiment tracking, forensics analysis, reproducibility tools, and evaluation suites - all working offline with minimal dependencies.
 
-## 🚀 **What's Ready Now (Phase 1)**
+## 🚀 **Core Features**
 
-### **Standalone Experiment Tracking**
-Track every aspect of your RL experiments with zero dependencies:
+### **Experiment Tracking System**
+Complete experiment tracking with dataset versioning, model fingerprinting, and environment capture:
 
 ```python
 from rldk.tracking import ExperimentTracker, TrackingConfig
 
-# Complete experiment tracking
-config = TrackingConfig(experiment_name="my_ppo_experiment")
+# Configure tracking
+config = TrackingConfig(
+    experiment_name="my_ppo_experiment",
+    enable_dataset_tracking=True,
+    enable_model_tracking=True,
+    enable_environment_tracking=True,
+    enable_seed_tracking=True,
+    enable_git_tracking=True
+)
 tracker = ExperimentTracker(config)
 
+# Start experiment and capture state
 tracker.start_experiment()
+
+# Track datasets with checksums
 tracker.track_dataset(data, "training_data")
+tracker.track_dataset(eval_data, "eval_data")
+
+# Track models with architecture fingerprinting
 tracker.track_model(model, "gpt2_policy")
+tracker.track_tokenizer(tokenizer, "gpt2_tokenizer")
+
+# Set reproducible seeds
 tracker.set_seeds(42)
+
+# Add custom metadata
+tracker.add_metadata("learning_rate", 1e-5)
+tracker.add_metadata("batch_size", 32)
+
+# Finish and save
 tracker.finish_experiment()
-
-# Reproduce exactly: same data, model, seeds, environment
 ```
 
-### **Forensics & Debugging Tools**
-Debug RL training issues with comprehensive analysis:
+### **Comprehensive PPO Forensics**
+Advanced PPO training analysis with 182+ anomaly detection rules:
 
-```bash
-# Environment audit - detect non-determinism
-rldk env-audit ./my_training_run
-# → "❌ Non-deterministic training detected"
+```python
+from rldk.forensics import ComprehensivePPOForensics
 
-# Log scanning - find PPO anomalies  
-rldk log-scan ./my_training_run
-# → "🚨 KL spike detected at step 800"
+# Initialize forensics
+forensics = ComprehensivePPOForensics(
+    kl_target=0.1,
+    enable_kl_schedule_tracking=True,
+    enable_gradient_norms_analysis=True,
+    enable_advantage_statistics=True
+)
 
-# Checkpoint comparison - track model changes
-rldk diff-ckpt model_a.pt model_b.pt
-# → "⚠️ Value head parameters changed significantly"
+# Update with training data
+metrics = forensics.update(
+    step=100,
+    kl=0.15,
+    kl_coef=0.2,
+    entropy=2.5,
+    reward_mean=0.8,
+    reward_std=0.3,
+    policy_grad_norm=1.2,
+    value_grad_norm=0.8,
+    advantage_mean=0.1,
+    advantage_std=0.5
+)
 
-# Reward drift detection
-rldk reward-drift model_a model_b --prompts prompts.jsonl
-# → "📉 Reward correlation dropped to 0.12"
-
-# Run comparison - find divergences
-rldk diff --a run_a --b run_b --signals loss,reward_mean
-# → "🚨 Divergence detected at step 150"
+# Get comprehensive analysis
+analysis = forensics.get_comprehensive_analysis()
+anomalies = forensics.get_anomalies()
+health_summary = forensics.get_health_summary()
 ```
 
-### **Core CLI Commands**
-All commands work offline with no external dependencies:
+### **Determinism Checking & Verification**
+Verify training reproducibility across multiple runs:
+
+```python
+from rldk.determinism import check
+
+# Check if training is deterministic
+report = check(
+    cmd="python train.py --seed 42",
+    compare=["loss", "reward_mean", "kl"],
+    replicas=5,
+    tolerance=0.01
+)
+
+print(f"Deterministic: {report.passed}")
+print(f"Issues found: {len(report.mismatches)}")
+print(f"Recommended fixes: {report.fixes}")
+```
+
+### **Reward Model Health Analysis**
+Comprehensive reward model analysis and drift detection:
+
+```python
+from rldk.reward import health, compare_models
+
+# Analyze reward model health
+health_report = health(
+    run_data=training_data,
+    reference_data=baseline_data,
+    reward_col="reward_mean",
+    threshold_drift=0.1,
+    threshold_saturation=0.8,
+    threshold_calibration=0.7
+)
+
+# Compare two reward models
+drift_report = compare_models(
+    model_a="path/to/model_a",
+    model_b="path/to/model_b", 
+    prompts=prompt_texts
+)
+```
+
+### **Evaluation Suites**
+Statistical evaluation with multiple test suites:
+
+```python
+from rldk.evals import run, QUICK_SUITE, COMPREHENSIVE_SUITE
+
+# Run evaluation suite
+eval_result = run(
+    run_data=training_data,
+    suite="comprehensive",
+    seed=42,
+    sample_size=200
+)
+
+print(f"Overall score: {eval_result.overall_score}")
+print(f"Confidence intervals: {eval_result.confidence_intervals}")
+```
+
+### **Run Comparison & Divergence Detection**
+Find when and why training runs diverge:
+
+```python
+from rldk.diff import first_divergence
+
+# Compare two training runs
+divergence_report = first_divergence(
+    df_a=run_a_data,
+    df_b=run_b_data,
+    signals=["loss", "reward_mean", "kl"],
+    k_consecutive=3,
+    window=50,
+    tolerance=2.0
+)
+
+print(f"Diverged: {divergence_report.diverged}")
+print(f"First divergence at step: {divergence_report.first_step}")
+print(f"Tripped signals: {divergence_report.tripped_signals}")
+```
+
+### **Seeded Replay System**
+Reproduce training runs with exact same seeds:
+
+```python
+from rldk.replay import replay
+
+# Replay a training run
+replay_report = replay(
+    run_path="./original_run",
+    training_command="python train.py --seed {seed}",
+    metrics_to_compare=["loss", "reward_mean"],
+    tolerance=0.01,
+    max_steps=1000
+)
+
+print(f"Replay passed: {replay_report.passed}")
+print(f"Original seed: {replay_report.original_seed}")
+print(f"Replay seed: {replay_report.replay_seed}")
+```
+
+### **Data Ingestion & Adapters**
+Support for multiple training frameworks and data sources:
+
+```python
+from rldk.ingest import ingest_runs
+from rldk.adapters import TRLAdapter, OpenRLHFAdapter, WandBAdapter
+
+# Ingest from various sources
+df = ingest_runs("path/to/logs", adapter_hint="trl")
+df = ingest_runs("wandb://project/run_id", adapter_hint="wandb")
+df = ingest_runs("path/to/openrlhf_logs", adapter_hint="openrlhf")
+```
+
+### **CLI Commands**
+Comprehensive command-line interface for all functionality:
 
 ```bash
 # Experiment tracking
-rldk track "my_experiment"
+rldk track "my_experiment" --interactive
 
-# Forensics analysis  
-rldk env-audit <run_or_repo>
-rldk log-scan <run_or_export>
-rldk diff-ckpt <ckpt_a> <ckpt_b>
-rldk reward-drift <model_a> <model_b>
-rldk compare-runs <run_a> <run_b>
-rldk doctor <run_or_repo>
+# Forensics analysis
+rldk forensics env-audit ./my_training_run
+rldk forensics log-scan ./my_training_run
+rldk forensics diff-ckpt model_a.pt model_b.pt
+rldk forensics compare-runs run_a run_b
+rldk forensics doctor ./my_training_run
 
-# Evaluation & reproducibility
-rldk check-determinism --cmd "python train.py"
-rldk replay <run_path> --command "python train.py"
-rldk eval <run_path> --suite quick
+# Reward analysis
+rldk reward reward-drift model_a model_b --prompts prompts.jsonl
+rldk reward reward-health run --scores scores.jsonl --out ./reports
+
+# Evaluation
+rldk evals evaluate data.jsonl --suite comprehensive --output results.json
+rldk evals list-suites
+rldk evals validate-data data.jsonl
+
+# Determinism & reproducibility
+rldk check-determinism --cmd "python train.py" --compare loss,reward_mean
+rldk replay ./run --command "python train.py --seed {seed}" --metrics loss,reward_mean
+rldk bisect --good abc123 --bad def456 --cmd "python train.py"
+
+# Data ingestion
+rldk ingest ./logs --adapter trl --output metrics.jsonl
+rldk diff --a run_a --b run_b --signals loss,reward_mean
+
+# Card generation
+rldk card determinism run_a
+rldk card drift run_a run_b
+rldk card reward run_a
 ```
 
-## 🎯 **Value for Serious Researchers**
+## 🎯 **Key Capabilities**
 
 ### **Complete Reproducibility**
-- **Dataset versioning** - SHA-256 checksums for all data
-- **Model fingerprinting** - Architecture and parameter tracking  
-- **Environment capture** - Complete system state snapshots
-- **Seed management** - Reproducible random state
-- **Git integration** - Repository state tracking
+- **Dataset versioning** - SHA-256 checksums with intelligent sampling for large datasets
+- **Model fingerprinting** - Architecture fingerprinting and parameter tracking (up to 365M parameters)
+- **Environment capture** - Complete system state snapshots including conda/pip environments
+- **Seed management** - Comprehensive RNG state tracking (Python, NumPy, PyTorch, CUDA)
+- **Git integration** - Repository state tracking with commit hashes and diff capture
 
-### **Debugging Superpowers**
-- **PPO anomaly detection** - 182+ rules for training issues
-- **Determinism checking** - Find non-reproducible training
-- **Drift detection** - Catch reward model changes
-- **Checkpoint analysis** - Track model evolution
-- **Run comparison** - Find divergences between experiments
+### **Advanced Debugging**
+- **PPO anomaly detection** - 182+ rules for training issues including KL spikes, gradient anomalies, advantage statistics
+- **Determinism checking** - Multi-replica verification with detailed mismatch analysis
+- **Reward drift detection** - Statistical analysis of reward model changes with correlation metrics
+- **Checkpoint analysis** - Parameter-level comparison with L2 norms and cosine similarity
+- **Run comparison** - Rolling z-score divergence detection with configurable thresholds
+
+### **Comprehensive Analysis**
+- **Health scoring** - Overall training health, stability, and convergence quality metrics
+- **Statistical evaluation** - Multiple evaluation suites (quick, comprehensive, safety) with confidence intervals
+- **Card generation** - Visual trust cards for determinism, drift, and reward analysis
+- **Data ingestion** - Support for TRL, OpenRLHF, WandB, and custom JSONL formats
+- **Seeded replay** - Exact reproduction of training runs with tolerance-based verification
 
 ### **Production Ready**
-- **Works offline** - No cloud dependencies
-- **CPU-only** - No GPU required for analysis
-- **Lightweight** - Minimal dependencies
-- **Extensible** - Plugin architecture for custom analysis
+- **Offline operation** - No cloud dependencies required
+- **Memory efficient** - Intelligent sampling for large datasets and models
+- **Extensible** - Plugin architecture with custom adapters and evaluation metrics
+- **CI/CD integration** - Gate mode with configurable exit codes for automated testing
 
 ## 📦 **Installation**
 
@@ -100,9 +268,15 @@ rldk eval <run_path> --suite quick
 pip install rldk
 ```
 
-### **Full Package (Optional)**
+### **Development Package**
 ```bash
-pip install rldk[full]  # Includes all integrations
+pip install rldk[dev]  # Includes testing and development tools
+```
+
+### **Optional Dependencies**
+```bash
+pip install rldk[parquet]  # For Parquet file support
+pip install rldk[openrlhf]  # For OpenRLHF integration
 ```
 
 ## 🚀 **Quick Start**
@@ -111,104 +285,175 @@ pip install rldk[full]  # Includes all integrations
 ```python
 from rldk.tracking import ExperimentTracker, TrackingConfig
 
-# Start tracking
-config = TrackingConfig(experiment_name="ppo_training")
+# Configure tracking
+config = TrackingConfig(
+    experiment_name="ppo_training",
+    enable_dataset_tracking=True,
+    enable_model_tracking=True,
+    enable_environment_tracking=True,
+    enable_seed_tracking=True,
+    enable_git_tracking=True
+)
 tracker = ExperimentTracker(config)
 
+# Start experiment and capture state
 tracker.start_experiment()
 
-# Track your data
+# Track datasets with checksums
 tracker.track_dataset(training_data, "training_data")
 tracker.track_dataset(eval_data, "eval_data")
 
-# Track your model
+# Track models with architecture fingerprinting
 tracker.track_model(model, "gpt2_policy")
+tracker.track_tokenizer(tokenizer, "gpt2_tokenizer")
 
 # Set reproducible seeds
 tracker.set_seeds(42)
 
-# Add metadata
+# Add custom metadata
 tracker.add_metadata("learning_rate", 1e-5)
 tracker.add_metadata("batch_size", 32)
-tracker.add_metadata("epochs", 10)
 
+# Finish and save
 tracker.finish_experiment()
 ```
 
 ### **2. Debug Training Issues**
 ```bash
-# Check for non-determinism
-rldk env-audit ./my_training_run
+# Environment audit - detect non-determinism
+rldk forensics env-audit ./my_training_run
 
-# Scan for PPO anomalies
-rldk log-scan ./my_training_run
+# Log scan - find PPO anomalies
+rldk forensics log-scan ./my_training_run
 
-# Compare checkpoints
-rldk diff-ckpt checkpoint_100.pt checkpoint_200.pt
+# Checkpoint comparison - track model changes
+rldk forensics diff-ckpt checkpoint_100.pt checkpoint_200.pt
 
-# Detect reward drift
-rldk reward-drift reward_model_v1 reward_model_v2 --prompts prompts.jsonl
+# Comprehensive diagnostics
+rldk forensics doctor ./my_training_run
+
+# Reward drift detection
+rldk reward reward-drift model_a model_b --prompts prompts.jsonl
 ```
 
 ### **3. Reproduce Experiments**
 ```bash
-# Check determinism
-rldk check-determinism --cmd "python train.py" --compare loss,reward_mean
+# Check determinism across multiple runs
+rldk check-determinism --cmd "python train.py" --compare loss,reward_mean --replicas 5
 
-# Replay with same seed
-rldk replay ./my_training_run --command "python train.py" --metrics loss,reward_mean
+# Replay with exact same seed
+rldk replay ./my_training_run --command "python train.py --seed {seed}" --metrics loss,reward_mean
 
-# Run evaluation
-rldk eval ./my_training_run --suite quick
+# Run evaluation suite
+rldk evals evaluate data.jsonl --suite quick --output results.json
+
+# Find regression with git bisect
+rldk bisect --good abc123 --bad def456 --cmd "python train.py"
 ```
 
 ## 📊 **What You Get**
 
-### **Experiment Tracking**
-- ✅ **Dataset versioning** - Track data changes and integrity
-- ✅ **Model fingerprinting** - Architecture and parameter checksums
-- ✅ **Environment capture** - Complete system state snapshots
-- ✅ **Seed management** - Reproducible random state
-- ✅ **Git integration** - Repository state tracking
-- ✅ **Metadata tracking** - Custom experiment metadata
+### **Experiment Tracking System**
+- ✅ **Dataset versioning** - SHA-256 checksums with intelligent sampling for large datasets
+- ✅ **Model fingerprinting** - Architecture fingerprinting and parameter tracking (up to 365M parameters)
+- ✅ **Environment capture** - Complete system state snapshots including conda/pip environments
+- ✅ **Seed management** - Comprehensive RNG state tracking (Python, NumPy, PyTorch, CUDA)
+- ✅ **Git integration** - Repository state tracking with commit hashes and diff capture
+- ✅ **Metadata tracking** - Custom experiment metadata and tags
+- ✅ **WandB integration** - Optional cloud logging with Weights & Biases
 
-### **Forensics Analysis**
-- ✅ **Environment audit** - Detect non-determinism issues
-- ✅ **PPO anomaly detection** - 182+ rules for training problems
-- ✅ **Checkpoint comparison** - Track model parameter changes
-- ✅ **Reward drift detection** - Catch reward model changes
-- ✅ **Run comparison** - Find divergences between experiments
-- ✅ **Comprehensive diagnostics** - Combined analysis tools
+### **Comprehensive Forensics Analysis**
+- ✅ **Environment audit** - Detect non-determinism issues with detailed diagnostics
+- ✅ **PPO anomaly detection** - 182+ rules for training problems including KL spikes, gradient anomalies
+- ✅ **Checkpoint comparison** - Parameter-level comparison with L2 norms and cosine similarity
+- ✅ **Reward drift detection** - Statistical analysis with correlation metrics and scatter plots
+- ✅ **Run comparison** - Rolling z-score divergence detection with configurable thresholds
+- ✅ **Comprehensive diagnostics** - Combined analysis with health scoring and anomaly detection
+- ✅ **Advantage statistics** - Advanced tracking of advantage distribution and quality metrics
 
-### **Reproducibility Tools**
-- ✅ **Determinism checking** - Verify reproducible training
-- ✅ **Experiment replay** - Reproduce with same seeds
-- ✅ **Evaluation suites** - Statistical analysis of results
-- ✅ **Regression detection** - Git bisect for finding issues
+### **Reproducibility & Verification Tools**
+- ✅ **Determinism checking** - Multi-replica verification with detailed mismatch analysis
+- ✅ **Seeded replay** - Exact reproduction of training runs with tolerance-based verification
+- ✅ **Evaluation suites** - Multiple test suites (quick, comprehensive, safety) with statistical analysis
+- ✅ **Regression detection** - Git bisect integration for finding problematic commits
+- ✅ **Health analysis** - Overall training health, stability, and convergence quality metrics
+- ✅ **Card generation** - Visual trust cards for determinism, drift, and reward analysis
+
+### **Data Ingestion & Integration**
+- ✅ **Multi-framework support** - TRL, OpenRLHF, WandB, and custom JSONL adapters
+- ✅ **Flexible data sources** - Support for local files, directories, and cloud URIs
+- ✅ **Schema validation** - Automatic data validation and standardization
+- ✅ **Event processing** - Normalized event schema for consistent analysis
 
 ## 🔧 **Architecture**
 
 ### **Core Components**
 ```
 rldk/
-├── tracking/          # Standalone experiment tracking
-├── forensics/         # PPO anomaly detection & analysis
-├── ingest/           # Data ingestion from various sources
-├── diff/             # Run comparison & divergence detection
-├── determinism/       # Determinism checking & verification
-├── reward/           # Reward model analysis & drift detection
-├── evals/            # Evaluation suites & statistical analysis
-└── cli.py            # Command-line interface
+├── tracking/              # Experiment tracking system
+│   ├── tracker.py        # Main ExperimentTracker class
+│   ├── config.py         # TrackingConfig and settings
+│   ├── dataset_tracker.py # Dataset versioning and checksums
+│   ├── model_tracker.py  # Model fingerprinting and architecture tracking
+│   ├── environment_tracker.py # Environment state capture
+│   ├── seed_tracker.py   # RNG state management
+│   └── git_tracker.py    # Git repository state tracking
+├── forensics/            # PPO forensics and anomaly detection
+│   ├── comprehensive_ppo_forensics.py # Advanced PPO analysis
+│   ├── ppo_scan.py       # PPO anomaly detection rules
+│   ├── env_audit.py      # Environment determinism audit
+│   ├── log_scan.py       # Training log analysis
+│   ├── ckpt_diff.py      # Checkpoint comparison
+│   └── advantage_statistics_tracker.py # Advantage analysis
+├── ingest/               # Data ingestion and adapters
+│   └── ingest.py         # Main ingestion functions
+├── adapters/             # Framework-specific adapters
+│   ├── base.py           # Base adapter interface
+│   ├── trl.py            # TRL integration
+│   ├── openrlhf.py       # OpenRLHF integration
+│   ├── wandb.py          # Weights & Biases integration
+│   └── custom_jsonl.py   # Custom JSONL format support
+├── diff/                 # Run comparison and divergence detection
+│   └── diff.py           # Rolling z-score divergence analysis
+├── determinism/          # Determinism checking and verification
+│   └── check.py          # Multi-replica determinism verification
+├── reward/               # Reward model analysis and health checking
+│   ├── health_analysis.py # Reward model health analysis
+│   ├── drift.py          # Reward drift detection
+│   └── calibration.py    # Reward calibration analysis
+├── evals/                # Evaluation suites and statistical analysis
+│   ├── suites.py         # Evaluation suite definitions
+│   ├── runner.py         # Evaluation execution
+│   ├── metrics/          # Evaluation metrics (bias, toxicity, throughput)
+│   └── probes.py         # Evaluation probes and tests
+├── replay/               # Seeded replay system
+│   └── replay.py         # Training run reproduction
+├── bisect/               # Git bisect integration
+│   └── bisect.py         # Regression detection
+├── cards/                # Trust card generation
+│   ├── determinism.py    # Determinism cards
+│   ├── drift.py          # Drift cards
+│   └── reward.py         # Reward health cards
+├── io/                   # I/O utilities and schemas
+│   ├── event_schema.py   # Normalized event schema
+│   ├── writers.py        # Data writers
+│   └── readers.py        # Data readers
+├── config/               # Configuration management
+│   └── settings.py       # Global settings and configuration
+└── cli.py                # Command-line interface
 ```
 
-### **Integration Components** (Coming in v0.2)
+### **Integration Components**
 ```
 rldk/
-├── integrations/     # Framework integrations (optional)
-│   ├── trl/         # TRL integration
-│   ├── openrlhf/    # OpenRLHF integration
-│   └── wandb/       # Weights & Biases integration
-└── examples/        # Integration examples
+├── integrations/         # Framework integrations
+│   ├── trl/             # TRL monitoring and callbacks
+│   └── openrlhf/        # OpenRLHF monitoring
+└── examples/            # Usage examples and demos
+    ├── comprehensive_ppo_forensics_example.py
+    ├── tracking_demo.py
+    ├── replay_demo.py
+    └── trl_integration/  # TRL integration examples
 ```
 
 ## 📈 **Performance**
@@ -217,51 +462,370 @@ rldk/
 - ✅ **Models up to 365M parameters** - Efficient architecture fingerprinting
 - ✅ **Datasets with 1M+ samples** - Intelligent sampling for checksums
 - ✅ **Fast checksum computation** - 1M elements in 0.040 seconds
+- ✅ **Memory efficient** - No model weight storage, architecture fingerprinting only
+- ✅ **Streaming support** - Process data without loading everything into memory
 
-### **Memory Efficient**
-- ✅ **No model weight storage** - Architecture fingerprinting only
-- ✅ **Intelligent sampling** - Large dataset handling
-- ✅ **Streaming support** - Process data without loading everything
+### **Scalability**
+- ✅ **Multi-replica determinism checks** - Parallel execution across replicas
+- ✅ **Rolling window analysis** - Efficient z-score computation for large datasets
+- ✅ **Intelligent sampling** - Representative sampling for large datasets
+- ✅ **Batch processing** - Efficient processing of multiple training runs
+
+## 📚 **API Documentation**
+
+### **Core Tracking API**
+
+#### `ExperimentTracker`
+Main class for experiment tracking and state capture.
+
+```python
+from rldk.tracking import ExperimentTracker, TrackingConfig
+
+# Initialize tracker
+config = TrackingConfig(
+    experiment_name="my_experiment",
+    enable_dataset_tracking=True,
+    enable_model_tracking=True,
+    enable_environment_tracking=True,
+    enable_seed_tracking=True,
+    enable_git_tracking=True,
+    save_to_wandb=True,
+    wandb_project="my_project"
+)
+tracker = ExperimentTracker(config)
+
+# Core methods
+tracker.start_experiment()                    # Start experiment and capture state
+tracker.track_dataset(data, name, metadata)   # Track dataset with checksums
+tracker.track_model(model, name, metadata)    # Track model with fingerprinting
+tracker.track_tokenizer(tokenizer, name)      # Track tokenizer
+tracker.set_seeds(seed)                       # Set reproducible seeds
+tracker.add_metadata(key, value)              # Add custom metadata
+tracker.add_tag(tag)                          # Add experiment tag
+tracker.finish_experiment()                   # Finish and save experiment
+```
+
+#### `TrackingConfig`
+Configuration class for experiment tracking.
+
+```python
+config = TrackingConfig(
+    experiment_name="required",
+    experiment_id="optional_uuid",
+    output_dir=Path("./runs"),
+    
+    # Component toggles
+    enable_dataset_tracking=True,
+    enable_model_tracking=True,
+    enable_environment_tracking=True,
+    enable_seed_tracking=True,
+    enable_git_tracking=True,
+    
+    # Dataset tracking options
+    dataset_checksum_algorithm="sha256",
+    
+    # Model tracking options
+    model_fingerprint_algorithm="sha256",
+    save_model_architecture=True,
+    save_model_weights=False,
+    
+    # Environment tracking options
+    capture_conda_env=True,
+    capture_pip_freeze=True,
+    capture_system_info=True,
+    
+    # Seed tracking options
+    track_numpy_seed=True,
+    track_torch_seed=True,
+    track_python_seed=True,
+    track_cuda_seed=True,
+    
+    # Output options
+    save_to_json=True,
+    save_to_yaml=True,
+    save_to_wandb=False,
+    wandb_project="rldk-experiments",
+    
+    # Metadata
+    tags=["experiment", "ppo"],
+    notes="Optional experiment notes",
+    metadata={"learning_rate": 1e-5}
+)
+```
+
+### **Forensics API**
+
+#### `ComprehensivePPOForensics`
+Advanced PPO training analysis with comprehensive tracking.
+
+```python
+from rldk.forensics import ComprehensivePPOForensics
+
+# Initialize forensics
+forensics = ComprehensivePPOForensics(
+    kl_target=0.1,
+    kl_target_tolerance=0.05,
+    window_size=100,
+    enable_kl_schedule_tracking=True,
+    enable_gradient_norms_analysis=True,
+    enable_advantage_statistics=True
+)
+
+# Update with training data
+metrics = forensics.update(
+    step=100,
+    kl=0.15,
+    kl_coef=0.2,
+    entropy=2.5,
+    reward_mean=0.8,
+    reward_std=0.3,
+    policy_grad_norm=1.2,
+    value_grad_norm=0.8,
+    total_grad_norm=2.0,
+    advantage_mean=0.1,
+    advantage_std=0.5,
+    advantage_min=-0.5,
+    advantage_max=1.0,
+    advantage_median=0.05,
+    advantage_samples=[0.1, 0.2, -0.1, 0.3]
+)
+
+# Analysis methods
+analysis = forensics.get_comprehensive_analysis()
+anomalies = forensics.get_anomalies()
+health_summary = forensics.get_health_summary()
+forensics.save_analysis("analysis.json")
+```
+
+#### PPO Anomaly Detection
+```python
+from rldk.forensics import scan_logs, diff_checkpoints, audit_environment
+
+# Scan training logs for anomalies
+scan_report = scan_logs("path/to/training_logs")
+
+# Compare model checkpoints
+diff_report = diff_checkpoints("model_a.pt", "model_b.pt")
+
+# Audit environment for determinism
+determinism_card, lock_content = audit_environment("path/to/repo")
+```
+
+### **Determinism API**
+
+#### `check`
+Multi-replica determinism verification.
+
+```python
+from rldk.determinism import check, DeterminismReport
+
+report = check(
+    cmd="python train.py --seed 42",
+    compare=["loss", "reward_mean", "kl"],
+    steps=[100, 200, 300],  # Optional specific steps
+    replicas=5,
+    tolerance=0.01,
+    device="cuda"  # Optional device specification
+)
+
+# Report attributes
+print(f"Passed: {report.passed}")
+print(f"Culprit: {report.culprit}")
+print(f"Fixes: {report.fixes}")
+print(f"Replica variance: {report.replica_variance}")
+print(f"RNG map: {report.rng_map}")
+print(f"Mismatches: {report.mismatches}")
+print(f"Dataloader notes: {report.dataloader_notes}")
+```
+
+### **Reward Analysis API**
+
+#### `health`
+Comprehensive reward model health analysis.
+
+```python
+from rldk.reward import health, compare_models, RewardHealthReport
+
+# Analyze reward model health
+health_report = health(
+    run_data=training_data,
+    reference_data=baseline_data,  # Optional
+    reward_col="reward_mean",
+    step_col="step",
+    threshold_drift=0.1,
+    threshold_saturation=0.8,
+    threshold_calibration=0.7,
+    threshold_shortcut=0.6,
+    threshold_leakage=0.3
+)
+
+# Health report attributes
+print(f"Passed: {health_report.passed}")
+print(f"Drift detected: {health_report.drift_detected}")
+print(f"Saturation issues: {health_report.saturation_issues}")
+print(f"Calibration score: {health_report.calibration_score}")
+print(f"Shortcut signals: {health_report.shortcut_signals}")
+print(f"Label leakage risk: {health_report.label_leakage_risk}")
+
+# Compare two reward models
+drift_report = compare_models(
+    model_a="path/to/model_a",
+    model_b="path/to/model_b",
+    prompts=["prompt1", "prompt2", "prompt3"]
+)
+```
+
+### **Evaluation API**
+
+#### `run`
+Statistical evaluation with multiple test suites.
+
+```python
+from rldk.evals import run, QUICK_SUITE, COMPREHENSIVE_SUITE, SAFETY_SUITE
+
+# Run evaluation suite
+eval_result = run(
+    run_data=training_data,
+    suite="comprehensive",  # "quick", "comprehensive", or "safety"
+    seed=42,
+    sample_size=200,  # Optional
+    output_dir="./eval_results"
+)
+
+# Evaluation result attributes
+print(f"Overall score: {eval_result.overall_score}")
+print(f"Scores: {eval_result.scores}")
+print(f"Confidence intervals: {eval_result.confidence_intervals}")
+print(f"Effect sizes: {eval_result.effect_sizes}")
+print(f"Sample size: {eval_result.sample_size}")
+```
+
+### **Run Comparison API**
+
+#### `first_divergence`
+Find when and why training runs diverge.
+
+```python
+from rldk.diff import first_divergence, DivergenceReport
+
+divergence_report = first_divergence(
+    df_a=run_a_data,
+    df_b=run_b_data,
+    signals=["loss", "reward_mean", "kl"],
+    k_consecutive=3,
+    window=50,
+    tolerance=2.0,
+    output_dir="diff_analysis"
+)
+
+# Divergence report attributes
+print(f"Diverged: {divergence_report.diverged}")
+print(f"First step: {divergence_report.first_step}")
+print(f"Tripped signals: {divergence_report.tripped_signals}")
+print(f"Notes: {divergence_report.notes}")
+print(f"Suspected causes: {divergence_report.suspected_causes}")
+```
+
+### **Replay API**
+
+#### `replay`
+Reproduce training runs with exact same seeds.
+
+```python
+from rldk.replay import replay, ReplayReport
+
+replay_report = replay(
+    run_path="./original_run",
+    training_command="python train.py --seed {seed}",
+    metrics_to_compare=["loss", "reward_mean"],
+    tolerance=0.01,
+    max_steps=1000,
+    output_dir="./replay_results",
+    device="cuda"
+)
+
+# Replay report attributes
+print(f"Passed: {replay_report.passed}")
+print(f"Original seed: {replay_report.original_seed}")
+print(f"Replay seed: {replay_report.replay_seed}")
+print(f"Metrics compared: {replay_report.metrics_compared}")
+print(f"Mismatches: {replay_report.mismatches}")
+print(f"Comparison stats: {replay_report.comparison_stats}")
+print(f"Replay duration: {replay_report.replay_duration}")
+```
+
+### **Data Ingestion API**
+
+#### `ingest_runs`
+Load training data from various sources.
+
+```python
+from rldk.ingest import ingest_runs, ingest_runs_to_events
+from rldk.adapters import TRLAdapter, OpenRLHFAdapter, WandBAdapter
+
+# Ingest from various sources
+df = ingest_runs("path/to/logs", adapter_hint="trl")
+df = ingest_runs("wandb://project/run_id", adapter_hint="wandb")
+df = ingest_runs("path/to/openrlhf_logs", adapter_hint="openrlhf")
+
+# Convert to normalized events
+events = ingest_runs_to_events("path/to/logs", adapter_hint="trl")
+
+# Use specific adapters
+trl_adapter = TRLAdapter("path/to/trl_logs")
+df = trl_adapter.load()
+
+wandb_adapter = WandBAdapter("wandb://project/run_id")
+df = wandb_adapter.load()
+```
 
 ## 🎯 **Use Cases**
 
 ### **For Researchers**
 - **Complete reproducibility** - Every experiment can be exactly reproduced
-- **Debugging tools** - Find training issues quickly
-- **Experiment management** - Track and compare experiments
-- **Collaboration** - Share reproducible experiments with team
+- **Debugging tools** - Find training issues quickly with comprehensive analysis
+- **Experiment management** - Track and compare experiments with detailed metadata
+- **Collaboration** - Share reproducible experiments with team members
 
 ### **For Teams**
-- **Experiment tracking** - Centralized experiment management
-- **Issue debugging** - Quick identification of training problems
-- **Model comparison** - Track model evolution and changes
-- **Compliance** - Complete audit trail for experiments
+- **Experiment tracking** - Centralized experiment management with version control
+- **Issue debugging** - Quick identification of training problems with automated analysis
+- **Model comparison** - Track model evolution and changes with detailed metrics
+- **Compliance** - Complete audit trail for experiments with full reproducibility
 
 ### **For Production**
-- **Model deployment** - Verified model architectures and data
-- **Rollback capability** - Revert to previous experiment states
-- **Debugging** - Full context for troubleshooting issues
-- **Audit trail** - Complete history for regulatory requirements
+- **Model deployment** - Verified model architectures and data with integrity checks
+- **Rollback capability** - Revert to previous experiment states with exact reproduction
+- **Debugging** - Full context for troubleshooting issues with comprehensive diagnostics
+- **Audit trail** - Complete history for regulatory requirements with detailed tracking
 
-## 🚀 **Roadmap**
+## 🚀 **Current Status**
 
-### **v0.1 (Current) - Core Release**
-- ✅ **Standalone tracking system** - Complete experiment tracking
-- ✅ **Phase A forensics** - PPO anomaly detection & analysis
-- ✅ **Core CLI commands** - All debugging tools
-- ✅ **Offline operation** - No cloud dependencies
+### **v0.1.0 - Core Release (Available Now)**
+- ✅ **Complete experiment tracking** - Dataset versioning, model fingerprinting, environment capture
+- ✅ **Comprehensive PPO forensics** - 182+ anomaly detection rules with advanced tracking
+- ✅ **Determinism verification** - Multi-replica checking with detailed analysis
+- ✅ **Reward model analysis** - Health checking, drift detection, and calibration analysis
+- ✅ **Evaluation suites** - Quick, comprehensive, and safety evaluation suites
+- ✅ **Run comparison** - Rolling z-score divergence detection
+- ✅ **Seeded replay** - Exact reproduction of training runs
+- ✅ **Data ingestion** - Support for TRL, OpenRLHF, WandB, and custom formats
+- ✅ **CLI interface** - Comprehensive command-line tools
+- ✅ **Card generation** - Visual trust cards for analysis results
+- ✅ **Git bisect integration** - Regression detection and debugging
 
-### **v0.2 (Next) - Integration Release**
-- 🔄 **TRL integration** - Seamless TRL training monitoring
-- 🔄 **OpenRLHF integration** - Distributed training monitoring
-- 🔄 **WandB integration** - Cloud experiment tracking
-- 🔄 **Advanced visualizations** - Web dashboard
+### **Integration Support (Available Now)**
+- ✅ **TRL integration** - Seamless TRL training monitoring with callbacks
+- ✅ **OpenRLHF integration** - Distributed training monitoring
+- ✅ **WandB integration** - Cloud experiment tracking and logging
+- ✅ **Custom adapters** - Extensible adapter system for new frameworks
 
-### **v0.3 (Future) - Advanced Features**
-- 🔄 **Real-time monitoring** - Live training monitoring
-- 🔄 **Automated debugging** - AI-powered issue detection
-- 🔄 **Cloud deployment** - Managed experiment tracking
-- 🔄 **API access** - Programmatic access to tracking data
+### **Future Enhancements**
+- 🔄 **Real-time monitoring** - Live training monitoring dashboard
+- 🔄 **Advanced visualizations** - Interactive web dashboard
+- 🔄 **Automated debugging** - AI-powered issue detection and recommendations
+- 🔄 **Cloud deployment** - Managed experiment tracking service
+- 🔄 **API access** - RESTful API for programmatic access
 
 ## 🤝 **Contributing**
 
@@ -276,12 +840,45 @@ pip install -e .[dev]
 
 ### **Running Tests**
 ```bash
-# Core functionality tests
-python test_tracking_standalone.py
-python test_deterministic_standalone.py
+# Run all tests
+pytest
 
-# Integration tests (requires dependencies)
-python test_acceptance.py
+# Run specific test categories
+pytest tests/unit/          # Unit tests
+pytest tests/integration/   # Integration tests
+pytest tests/e2e/          # End-to-end tests
+
+# Run with coverage
+pytest --cov=rldk --cov-report=html
+
+# Run specific test files
+pytest tests/unit/test_tracking.py
+pytest tests/unit/test_forensics.py
+pytest tests/unit/test_determinism.py
+```
+
+### **Code Quality**
+```bash
+# Format code
+black src/ tests/
+isort src/ tests/
+
+# Type checking
+mypy src/
+
+# Linting
+ruff check src/ tests/
+```
+
+### **Examples and Demos**
+```bash
+# Run example scripts
+python examples/tracking_demo.py
+python examples/comprehensive_ppo_forensics_example.py
+python examples/replay_demo.py
+
+# Run Jupyter notebook
+jupyter notebook examples/rldk_demo.ipynb
 ```
 
 ## 📄 **License**
@@ -294,7 +891,22 @@ RLDK builds on the work of the open-source RL community, particularly:
 - [TRL](https://github.com/huggingface/trl) - RL training library
 - [OpenRLHF](https://github.com/OpenRLHF/OpenRLHF) - RLHF framework
 - [Weights & Biases](https://wandb.ai/) - Experiment tracking
+- [PyTorch](https://pytorch.org/) - Deep learning framework
+- [Transformers](https://github.com/huggingface/transformers) - Model architectures
+- [Datasets](https://github.com/huggingface/datasets) - Dataset handling
+
+## 📞 **Support**
+
+- **Documentation**: [GitHub Wiki](https://github.com/your-org/rldk/wiki)
+- **Issues**: [GitHub Issues](https://github.com/your-org/rldk/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-org/rldk/discussions)
+- **Examples**: [Examples Directory](examples/)
 
 ---
 
 **Ready to ship reproducible RL experiments?** Get started with RLDK today!
+
+```bash
+pip install rldk
+rldk track "my_first_experiment"
+```
