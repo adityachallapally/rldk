@@ -3,7 +3,10 @@
 import yaml
 from pathlib import Path
 from typing import Dict, Any, Optional
-import pkg_resources
+try:
+    from importlib import metadata
+except ImportError:
+    import importlib_metadata as metadata
 
 
 def get_default_config_path() -> Path:
@@ -11,7 +14,21 @@ def get_default_config_path() -> Path:
     # Try to find the default config in the package data
     try:
         # Look for the config in the package data
-        config_path = pkg_resources.resource_filename('rldk.reward.health_config', 'data/health_default.yaml')
+        try:
+            # Try to get the package location using importlib.metadata
+            dist = metadata.distribution('rldk')
+            config_path = dist.locate_file('rldk/reward/health_config/data/health_default.yaml')
+        except Exception:
+            # Fallback to using files() if available
+            try:
+                files = metadata.files('rldk')
+                config_file = next((f for f in files if f.name == 'health_default.yaml' and 'health_config/data' in str(f)), None)
+                if config_file:
+                    config_path = str(config_file.locate())
+                else:
+                    raise FileNotFoundError
+            except Exception:
+                raise FileNotFoundError
         if Path(config_path).exists():
             return Path(config_path)
     except Exception:
