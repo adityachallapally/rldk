@@ -7,7 +7,7 @@ from pathlib import Path
 import tempfile
 import shutil
 
-from src.rldk.evals.integrity import (
+from rldk.evals.integrity import (
     evaluate_prompt_contamination,
     evaluate_answer_leakage,
     evaluate_data_split_integrity,

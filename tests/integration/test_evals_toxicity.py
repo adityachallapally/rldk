@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from unittest.mock import patch, MagicMock
 
-from src.rldk.evals.metrics.toxicity import (
+from rldk.evals.metrics.toxicity import (
     evaluate_toxicity,
     SimpleToxicityClassifier,
     detect_toxic_patterns

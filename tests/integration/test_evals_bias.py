@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from unittest.mock import patch, MagicMock
 
-from src.rldk.evals.metrics.bias import (
+from rldk.evals.metrics.bias import (
     evaluate_bias,
     SimpleSentimentAnalyzer,
     detect_demographic_mentions,

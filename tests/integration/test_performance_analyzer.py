@@ -6,7 +6,7 @@ import warnings
 from unittest.mock import patch
 import numpy as np
 
-from src.rldk.integrations.openrlhf.performance_analyzer import PerformanceAnalyzer, PerformanceThresholds
+from rldk.integrations.openrlhf.performance_analyzer import PerformanceAnalyzer, PerformanceThresholds
 
 
 class TestPerformanceAnalyzer:

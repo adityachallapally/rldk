@@ -1,0 +1,19 @@
+{
+  "version": "1",
+  "rng": {
+    "python": null,
+    "torch": null
+  },
+  "flags": {
+    "cudnn_deterministic": false,
+    "cudnn_benchmark": true,
+    "tokenizers_parallelism": null
+  },
+  "nondeterminism_hints": [
+    "TOKENIZERS_PARALLELISM not set to 'false'",
+    "CUDNN deterministic mode not enabled",
+    "Python random seed not set",
+    "PyTorch random seed not set"
+  ],
+  "pass": false
+}

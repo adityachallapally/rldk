@@ -195,31 +195,44 @@ class TestCLICommands:
             import torch
             from collections import OrderedDict
             
-            checkpoint_a = Path(self.temp_dir) / "model_a.pt"
-            checkpoint_b = Path(self.temp_dir) / "model_b.pt"
-            
-            # Create minimal valid PyTorch checkpoints
-            model_a_state = OrderedDict([
-                ('layer1.weight', torch.randn(10, 5)),
-                ('layer1.bias', torch.randn(10)),
-                ('layer2.weight', torch.randn(1, 10)),
-                ('layer2.bias', torch.randn(1))
-            ])
-            
-            model_b_state = OrderedDict([
-                ('layer1.weight', torch.randn(10, 5) + 0.1),  # Slightly different
-                ('layer1.bias', torch.randn(10)),
-                ('layer2.weight', torch.randn(1, 10)),
-                ('layer2.bias', torch.randn(1))
-            ])
-            
-            torch.save(model_a_state, checkpoint_a)
-            torch.save(model_b_state, checkpoint_b)
-            
-            self.checkpoint_a = str(checkpoint_a)
-            self.checkpoint_b = str(checkpoint_b)
-        except ImportError:
-            # Fallback to dummy files if torch not available
+            # Check if torch is mocked
+            if hasattr(torch, 'randn') and hasattr(torch.randn, '__call__'):
+                # Real torch
+                checkpoint_a = Path(self.temp_dir) / "model_a.pt"
+                checkpoint_b = Path(self.temp_dir) / "model_b.pt"
+                
+                # Create minimal valid PyTorch checkpoints
+                model_a_state = OrderedDict([
+                    ('layer1.weight', torch.randn(10, 5)),
+                    ('layer1.bias', torch.randn(10)),
+                    ('layer2.weight', torch.randn(1, 10)),
+                    ('layer2.bias', torch.randn(1))
+                ])
+                
+                model_b_state = OrderedDict([
+                    ('layer1.weight', torch.randn(10, 5) + torch.tensor(0.1)),  # Slightly different
+                    ('layer1.bias', torch.randn(10)),
+                    ('layer2.weight', torch.randn(1, 10)),
+                    ('layer2.bias', torch.randn(1))
+                ])
+                
+                torch.save(model_a_state, checkpoint_a)
+                torch.save(model_b_state, checkpoint_b)
+                
+                self.checkpoint_a = str(checkpoint_a)
+                self.checkpoint_b = str(checkpoint_b)
+            else:
+                # Mocked torch, create dummy files
+                checkpoint_a = Path(self.temp_dir) / "model_a.pt"
+                checkpoint_b = Path(self.temp_dir) / "model_b.pt"
+                
+                checkpoint_a.write_text('{"dummy": "checkpoint_a"}')
+                checkpoint_b.write_text('{"dummy": "checkpoint_b"}')
+                
+                self.checkpoint_a = str(checkpoint_a)
+                self.checkpoint_b = str(checkpoint_b)
+        except (ImportError, TypeError, AttributeError):
+            # Fallback to dummy files if torch not available or mocked
             checkpoint_a = Path(self.temp_dir) / "model_a.pt"
             checkpoint_b = Path(self.temp_dir) / "model_b.pt"
             

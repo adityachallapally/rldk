@@ -14,12 +14,12 @@ import numpy as np
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.rldk.integrations.openrlhf.network_monitor import (
+from rldk.integrations.openrlhf.network_monitor import (
     NetworkMetrics, NetworkDiagnostics, NetworkInterfaceMonitor,
     NetworkLatencyMonitor, NetworkBandwidthMonitor, DistributedNetworkMonitor,
     RealNetworkMonitor
 )
-from src.rldk.integrations.openrlhf.distributed import NetworkMonitor
+from rldk.integrations.openrlhf.distributed import NetworkMonitor
 
 
 class MockNetIOCounters:

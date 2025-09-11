@@ -17,11 +17,9 @@ import sys
 import argparse
 from typing import Dict, Any, List
 
-# Add current directory to path for imports
-sys.path.append(str(Path(__file__).parent))
-
-from profiler.anomaly_detection import AdvancedAnomalyDetector
-from profiler.hooks import AnomalyDetectionHook, profiler_registry
+# Import from tools.profiler module
+from tools.profiler.anomaly_detection import AdvancedAnomalyDetector
+from tools.profiler.hooks import AnomalyDetectionHook, profiler_registry
 
 
 class LargeTransformerModel(nn.Module):

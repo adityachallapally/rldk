@@ -20,13 +20,13 @@ sys.modules['openrlhf'] = MagicMock()
 sys.modules['openrlhf.trainer'] = MagicMock()
 sys.modules['openrlhf.models'] = MagicMock()
 
-from src.rldk.integrations.openrlhf.network_monitor import (
+from rldk.integrations.openrlhf.network_monitor import (
     NetworkMetrics, RealNetworkMonitor
 )
-from src.rldk.integrations.openrlhf.distributed import (
+from rldk.integrations.openrlhf.distributed import (
     NetworkMonitor, DistributedMetricsCollector, DistributedMetrics
 )
-from src.rldk.integrations.openrlhf.callbacks import (
+from rldk.integrations.openrlhf.callbacks import (
     OpenRLHFCallback, DistributedTrainingMonitor, OpenRLHFMetrics
 )
 
