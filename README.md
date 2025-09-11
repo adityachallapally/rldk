@@ -46,7 +46,7 @@ tracker.finish_experiment()
 ```
 
 ### **Comprehensive PPO Forensics**
-Advanced PPO training analysis with 182+ anomaly detection rules:
+Advanced PPO training analysis with 30+ comprehensive anomaly detection rules:
 
 ```python
 from rldk.forensics import ComprehensivePPOForensics
@@ -356,7 +356,7 @@ rldk bisect --good abc123 --bad def456 --cmd "python train.py"
 
 ### **Experiment Tracking System**
 - ✅ **Dataset versioning** - SHA-256 checksums with intelligent sampling for large datasets
-- ✅ **Model fingerprinting** - Architecture fingerprinting and parameter tracking (up to 365M parameters)
+- ✅ **Model fingerprinting** - Architecture fingerprinting and parameter tracking (up to 100M parameters)
 - ✅ **Environment capture** - Complete system state snapshots including conda/pip environments
 - ✅ **Seed management** - Comprehensive RNG state tracking (Python, NumPy, PyTorch, CUDA)
 - ✅ **Git integration** - Repository state tracking with commit hashes and diff capture
@@ -365,7 +365,7 @@ rldk bisect --good abc123 --bad def456 --cmd "python train.py"
 
 ### **Comprehensive Forensics Analysis**
 - ✅ **Environment audit** - Detect non-determinism issues with detailed diagnostics
-- ✅ **PPO anomaly detection** - 182+ rules for training problems including KL spikes, gradient anomalies
+- ✅ **PPO anomaly detection** - 30+ comprehensive rules for training problems including KL spikes, gradient anomalies
 - ✅ **Checkpoint comparison** - Parameter-level comparison with L2 norms and cosine similarity
 - ✅ **Reward drift detection** - Statistical analysis with correlation metrics and scatter plots
 - ✅ **Run comparison** - Rolling z-score divergence detection with configurable thresholds
@@ -460,9 +460,9 @@ rldk/
 ## 📈 **Performance**
 
 ### **Large Model Support**
-- ✅ **Models up to 365M parameters** - Efficient architecture fingerprinting
+- ✅ **Models up to 100M parameters** - Efficient architecture fingerprinting
 - ✅ **Datasets with 1M+ samples** - Intelligent sampling for checksums
-- ✅ **Fast checksum computation** - 1M elements in 0.040 seconds
+- ✅ **Fast checksum computation** - Efficient sampling for large datasets
 - ✅ **Memory efficient** - No model weight storage, architecture fingerprinting only
 - ✅ **Streaming support** - Process data without loading everything into memory
 
@@ -804,7 +804,7 @@ df = wandb_adapter.load()
 
 ### **v0.1.0 - Core Release (Available Now)**
 - ✅ **Complete experiment tracking** - Dataset versioning, model fingerprinting, environment capture
-- ✅ **Comprehensive PPO forensics** - 182+ anomaly detection rules with advanced tracking
+- ✅ **Comprehensive PPO forensics** - 30+ comprehensive anomaly detection rules with advanced tracking
 - ✅ **Determinism verification** - Multi-replica checking with detailed analysis
 - ✅ **Reward model analysis** - Health checking, drift detection, and calibration analysis
 - ✅ **Evaluation suites** - Quick, comprehensive, and safety evaluation suites
