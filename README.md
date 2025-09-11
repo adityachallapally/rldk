@@ -90,7 +90,7 @@ report = check(
     cmd="python train.py --seed 42",
     compare=["loss", "reward_mean", "kl"],
     replicas=5,
-    tolerance=0.01
+    device="cuda"  # Optional device specification
 )
 
 print(f"Deterministic: {report.passed}")
@@ -126,7 +126,8 @@ drift_report = compare_models(
 Statistical evaluation with multiple test suites:
 
 ```python
-from rldk.evals import run, QUICK_SUITE, COMPREHENSIVE_SUITE
+from rldk.evals import run
+from rldk.evals.suites import QUICK_SUITE, COMPREHENSIVE_SUITE
 
 # Run evaluation suite
 eval_result = run(
@@ -624,7 +625,6 @@ report = check(
     compare=["loss", "reward_mean", "kl"],
     steps=[100, 200, 300],  # Optional specific steps
     replicas=5,
-    tolerance=0.01,
     device="cuda"  # Optional device specification
 )
 
@@ -681,7 +681,8 @@ drift_report = compare_models(
 Statistical evaluation with multiple test suites.
 
 ```python
-from rldk.evals import run, QUICK_SUITE, COMPREHENSIVE_SUITE, SAFETY_SUITE
+from rldk.evals import run
+from rldk.evals.suites import QUICK_SUITE, COMPREHENSIVE_SUITE, SAFETY_SUITE
 
 # Run evaluation suite
 eval_result = run(
