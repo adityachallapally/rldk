@@ -154,10 +154,32 @@ class EnvironmentTracker:
         try:
             installed_packages = []
             for dist in metadata.distributions():
+                # Get package location using locate_file with a common package file
+                location = "unknown"
+                try:
+                    # Try to locate a common package file to determine installation directory
+                    package_name = dist.metadata.get("Name", "").lower().replace("-", "_")
+                    if package_name:
+                        # Try common package files
+                        for test_file in [f"{package_name}/__init__.py", f"{package_name}.py", "__init__.py"]:
+                            try:
+                                file_path = dist.locate_file(test_file)
+                                if file_path and file_path.exists():
+                                    location = str(file_path.parent)
+                                    break
+                            except Exception:
+                                continue
+                    
+                    # If that didn't work, try to get from the distribution's origin
+                    if location == "unknown" and hasattr(dist, 'origin') and dist.origin:
+                        location = str(dist.origin.parent)
+                except Exception:
+                    pass
+                
                 installed_packages.append({
-                    "name": dist.metadata["Name"],
+                    "name": dist.metadata.get("Name", "unknown"),
                     "version": dist.version,
-                    "location": dist.locate_file("") if hasattr(dist, 'locate_file') else "unknown"
+                    "location": location
                 })
             pip_info["installed_packages"] = installed_packages
         except Exception as e:
