@@ -36,6 +36,23 @@ from rldk.utils.validation import (
 from rldk.utils.error_handling import ValidationError
 
 
+@pytest.fixture
+def temp_dir():
+    """Create a temporary directory for testing."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        yield Path(tmpdir)
+
+
+@pytest.fixture
+def sample_data():
+    """Create sample data for testing."""
+    return {
+        'numbers': [1, 2, 3, 4, 5],
+        'strings': ['a', 'b', 'c'],
+        'mixed': [1, 'a', 2.5, 'b']
+    }
+
+
 class TestFileValidation:
     """Test file validation functions."""
     

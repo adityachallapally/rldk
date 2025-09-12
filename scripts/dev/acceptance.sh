@@ -109,7 +109,7 @@ print_status "INFO" "Running coverage analysis"
 if pytest -q --cov=src/rldk --cov-report=term-missing --cov-report=xml; then
     # Check if coverage meets threshold
     COVERAGE=$(coverage report --show-missing | grep "TOTAL" | awk '{print $4}' | sed 's/%//')
-    if (( $(echo "$COVERAGE >= 80" | bc -l) )); then
+    if (( $(awk "BEGIN {print ($COVERAGE >= 80)}") )); then
         print_status "SUCCESS" "Coverage threshold met: ${COVERAGE}% >= 80%"
     else
         print_status "ERROR" "Coverage below threshold: ${COVERAGE}% < 80%"
@@ -180,7 +180,7 @@ echo "==================================="
 # Performance checks
 print_status "INFO" "Checking import time..."
 IMPORT_TIME=$(python -c "import time; start=time.time(); import rldk; print(f'Import time: {time.time()-start:.2f}s')" | grep -E "Import time: [0-9]+\.[0-9]+s" | awk -F: '{print $2}' | sed 's/s//' | awk '{print $1}')
-if (( $(echo "$IMPORT_TIME <= 2.0" | bc -l) )); then
+if (( $(awk "BEGIN {print ($IMPORT_TIME <= 2.0)}") )); then
     print_status "SUCCESS" "Import time acceptable: ${IMPORT_TIME}s <= 2.0s"
 else
     print_status "ERROR" "Import time too slow: ${IMPORT_TIME}s > 2.0s"
@@ -189,7 +189,7 @@ fi
 
 print_status "INFO" "Checking memory usage..."
 MEMORY_USAGE=$(python -c "import psutil, rldk; print(f'Memory usage: {psutil.Process().memory_info().rss / 1024 / 1024:.1f} MB')" | grep -E "Memory usage: [0-9]+\.[0-9]+ MB" | awk -F: '{print $2}' | sed 's/ MB//' | awk '{print $1}')
-if (( $(echo "$MEMORY_USAGE <= 200.0" | bc -l) )); then
+if (( $(awk "BEGIN {print ($MEMORY_USAGE <= 200.0)}") )); then
     print_status "SUCCESS" "Memory usage acceptable: ${MEMORY_USAGE} MB <= 200 MB"
 else
     print_status "ERROR" "Memory usage too high: ${MEMORY_USAGE} MB > 200 MB"

@@ -62,7 +62,7 @@ jobs:
         
         # Test package build
         python -m build --wheel --sdist
-        python -m check_wheel dist/*.whl
+        python -m pip install wheel && wheel check dist/*.whl
     
     - name: Run mutation testing (sample)
       run: |
