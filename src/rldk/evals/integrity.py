@@ -11,6 +11,49 @@ import hashlib
 from collections import defaultdict
 
 
+def _calculate_severity_score(
+    ratio: float, 
+    thresholds: List[Tuple[float, float]], 
+    base_score: float = 0.0
+) -> float:
+    """
+    Calculate severity score based on ratio and thresholds.
+    
+    Args:
+        ratio: The ratio to evaluate (0-1)
+        thresholds: List of (threshold, penalty) tuples in ascending order
+        base_score: Base score to start with
+        
+    Returns:
+        Severity score (higher = more severe)
+    """
+    score = base_score
+    
+    for threshold, penalty in thresholds:
+        if ratio > threshold:
+            score += penalty
+    
+    return min(score, 1.0)  # Cap at 1.0
+
+
+def _normalize_integrity_score(raw_score: float, max_possible: float = 1.0) -> float:
+    """
+    Normalize integrity score to [0, 1] range where 0 = perfect integrity, 1 = severe issues.
+    
+    Args:
+        raw_score: Raw penalty score
+        max_possible: Maximum possible penalty score
+        
+    Returns:
+        Normalized score (0 = good, 1 = bad)
+    """
+    if max_possible <= 0:
+        return 0.5  # Neutral when no penalties possible
+    
+    normalized = raw_score / max_possible
+    return min(normalized, 1.0)
+
+
 def evaluate_prompt_contamination(
     data: pd.DataFrame, seed: int = 42, **kwargs
 ) -> Dict[str, Any]:
@@ -31,7 +74,7 @@ def evaluate_prompt_contamination(
     np.random.seed(seed)
     
     contamination_metrics = []
-    contamination_score = 0.0
+    contamination_penalties = []
     
     # Check for prompt-related columns
     prompt_cols = [col for col in data.columns if any(keyword in col.lower() 
@@ -53,8 +96,12 @@ def evaluate_prompt_contamination(
             duplicate_ratio = duplicates / len(data)
             contamination_metrics.append(("duplicate_prompts", duplicate_ratio))
             
-            if duplicate_ratio > 0.1:  # More than 10% duplicates
-                contamination_score += 0.3
+            # Use principled scoring for duplicate prompts
+            penalty = _calculate_severity_score(
+                duplicate_ratio,
+                [(0.05, 0.1), (0.1, 0.2), (0.2, 0.3)]  # Escalating penalties
+            )
+            contamination_penalties.append(penalty)
     
     # 2. Check for prompt length anomalies (very short/long prompts might indicate issues)
     for col in prompt_cols:
@@ -66,11 +113,21 @@ def evaluate_prompt_contamination(
             # Check for suspicious length patterns
             if length_std < 5:  # Very uniform lengths
                 contamination_metrics.append(("uniform_prompt_lengths", length_std))
-                contamination_score += 0.2
+                # Penalty for uniform lengths (inverse of std)
+                uniformity_penalty = _calculate_severity_score(
+                    max(0, 1 - length_std / 5),  # Normalize std to [0,1]
+                    [(0.5, 0.1), (0.8, 0.2)]
+                )
+                contamination_penalties.append(uniformity_penalty)
             
             if length_mean < 10:  # Very short prompts
                 contamination_metrics.append(("short_prompts", length_mean))
-                contamination_score += 0.2
+                # Penalty for very short prompts
+                shortness_penalty = _calculate_severity_score(
+                    max(0, 1 - length_mean / 10),  # Normalize mean to [0,1]
+                    [(0.5, 0.1), (0.8, 0.2)]
+                )
+                contamination_penalties.append(shortness_penalty)
     
     # 3. Check for suspicious patterns in prompts
     for col in prompt_cols:
@@ -92,8 +149,12 @@ def evaluate_prompt_contamination(
             pattern_ratio = pattern_matches / len(data)
             contamination_metrics.append(("test_patterns", pattern_ratio))
             
-            if pattern_ratio > 0.3:  # More than 30% have test patterns
-                contamination_score += 0.3
+            # Use principled scoring for test patterns
+            pattern_penalty = _calculate_severity_score(
+                pattern_ratio,
+                [(0.1, 0.1), (0.3, 0.2), (0.5, 0.3)]  # Escalating penalties
+            )
+            contamination_penalties.append(pattern_penalty)
     
     # 4. Check for metadata leakage in prompts
     metadata_cols = ['epoch', 'step', 'batch_idx', 'run_id', 'timestamp']
@@ -111,10 +172,20 @@ def evaluate_prompt_contamination(
                     leakage_ratio = leakage_count / len(data)
                     if leakage_ratio > 0.05:  # More than 5% have metadata leakage
                         contamination_metrics.append((f"{meta_col}_leakage", leakage_ratio))
-                        contamination_score += 0.4
+                        # Use principled scoring for metadata leakage
+                        leakage_penalty = _calculate_severity_score(
+                            leakage_ratio,
+                            [(0.05, 0.2), (0.1, 0.3), (0.2, 0.4)]  # Escalating penalties
+                        )
+                        contamination_penalties.append(leakage_penalty)
     
-    # Normalize score to [0, 1] range
-    contamination_score = min(contamination_score, 1.0)
+    # Calculate final contamination score using principled approach
+    if contamination_penalties:
+        total_penalty = sum(contamination_penalties)
+        max_possible_penalty = len(contamination_penalties) * 0.3  # Max penalty per check
+        contamination_score = _normalize_integrity_score(total_penalty, max_possible_penalty)
+    else:
+        contamination_score = 0.0  # No contamination detected
     
     return {
         "score": float(1.0 - contamination_score),  # Higher score = less contamination

@@ -209,15 +209,33 @@ def _calculate_calibration_score(events: List[Event]) -> float:
     # Higher score means more consistent calibration
     calibration_scores = []
 
+    # Calculate expected standard deviation based on reward distribution
+    reward_mean = np.mean(rewards)
+    reward_range = np.max(rewards) - np.min(rewards)
+    
+    # For well-calibrated models, std should be proportional to the reward range
+    # Use empirical relationship: ideal_std ≈ 0.1 * reward_range for normalized rewards
+    # or ideal_std ≈ 0.1 * abs(reward_mean) for centered rewards
+    if reward_range > 0:
+        # For rewards with significant range, use range-based estimation
+        ideal_std = min(0.3, reward_range * 0.2)  # Conservative estimate
+    elif abs(reward_mean) > 0:
+        # For centered rewards, use mean-based estimation
+        ideal_std = min(0.3, abs(reward_mean) * 0.1)
+    else:
+        # Fallback for edge cases
+        ideal_std = 0.1
+
     for i in range(len(rewards)):
         if i < len(reward_stds):
             mean_val = rewards.iloc[i]
             std_val = reward_stds.iloc[i]
 
             if std_val > 0:
-                # Score based on how well std reflects the variability
-                # This is a simplified calibration metric
-                score = 1.0 / (1.0 + abs(std_val - 0.1))  # Assume 0.1 is ideal std
+                # Score based on how well std reflects the expected variability
+                # Use relative error instead of absolute difference
+                relative_error = abs(std_val - ideal_std) / max(ideal_std, 0.01)
+                score = 1.0 / (1.0 + relative_error)
                 calibration_scores.append(score)
 
     if calibration_scores:

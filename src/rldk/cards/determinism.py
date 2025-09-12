@@ -124,22 +124,122 @@ def generate_determinism_card(
 
 
 def _basic_determinism_check(run_path: str) -> Dict[str, Any]:
-    """Perform a basic determinism check for card generation."""
-    # This is a simplified check that doesn't require running multiple replicas
-    # In a real implementation, this would use the full determinism check
-
+    """Perform a comprehensive determinism check."""
     # Check environment variables
     env_vars = {
-        "cudnn_deterministic": os.environ.get("CUDNN_DETERMINISTIC", "false").lower()
-        == "true",
+        "cudnn_deterministic": os.environ.get("CUDNN_DETERMINISTIC", "false").lower() == "true",
         "cudnn_benchmark": os.environ.get("CUDNN_BENCHMARK", "true").lower() == "true",
         "tokenizers_parallelism": os.environ.get("TOKENIZERS_PARALLELISM", "true"),
+        "torch_deterministic": os.environ.get("TORCH_DETERMINISTIC", "false").lower() == "true",
+        "torch_use_deterministic_algorithms": os.environ.get("TORCH_USE_DETERMINISTIC_ALGORITHMS", "false").lower() == "true",
     }
 
-    # Basic pass/fail logic
-    pass_check = env_vars["cudnn_deterministic"] and not env_vars["cudnn_benchmark"]
+    # Check PyTorch backend settings
+    try:
+        import torch
+        env_vars["torch_cudnn_deterministic"] = torch.backends.cudnn.deterministic
+        env_vars["torch_cudnn_benchmark"] = torch.backends.cudnn.benchmark
+        env_vars["torch_use_deterministic_algorithms"] = torch.are_deterministic_algorithms_enabled()
+    except ImportError:
+        env_vars["torch_cudnn_deterministic"] = False
+        env_vars["torch_cudnn_benchmark"] = True
+        env_vars["torch_use_deterministic_algorithms"] = False
 
-    return {"pass": pass_check, "flags": env_vars, "nondeterminism_hints": []}
+    # Check for common non-deterministic patterns in the run path
+    nondeterminism_hints = []
+    
+    # Check for multiple runs that could be compared
+    run_dir = Path(run_path)
+    if run_dir.exists():
+        # Look for multiple run directories that could indicate replicas
+        parent_dir = run_dir.parent
+        if parent_dir.exists():
+            run_dirs = [d for d in parent_dir.iterdir() if d.is_dir() and d.name.startswith("run_")]
+            if len(run_dirs) > 1:
+                # Check if we can compare metrics across runs
+                nondeterminism_hints.append(f"Found {len(run_dirs)} potential replica runs for comparison")
+        
+        # Check for log files that might indicate non-deterministic behavior
+        log_files = list(run_dir.glob("*.log")) + list(run_dir.glob("**/*.log"))
+        
+        # Import settings
+        from ..config.settings import get_settings
+        settings = get_settings()
+        
+        # Limit number of files processed to prevent performance issues
+        max_files = settings.file.max_files_to_process
+        if len(log_files) > max_files:
+            log_files = log_files[:max_files]
+            nondeterminism_hints.append(f"Processing only first {max_files} log files (found {len(log_files)})")
+        
+        for log_file in log_files:
+            try:
+                # Check file size first to avoid reading huge files
+                file_size = log_file.stat().st_size
+                max_file_size = settings.file.max_file_size_mb * 1024 * 1024
+                if file_size > max_file_size:
+                    nondeterminism_hints.append(f"Skipping large log file {log_file.name} ({file_size // (1024*1024)}MB)")
+                    continue
+                
+                # Additional safety checks
+                if not log_file.is_file() or not log_file.exists():
+                    continue
+                
+                # Read file with proper encoding handling and size limits
+                with open(log_file, 'r', encoding=settings.file.encoding, errors='ignore') as f:
+                    # Read only first portion to avoid memory issues
+                    max_read_size = settings.file.max_read_size_kb * 1024
+                    content = f.read(max_read_size).lower()
+                    
+                    # Check for non-deterministic behavior indicators
+                    if "non-deterministic" in content or "nondeterministic" in content:
+                        nondeterminism_hints.append(f"Non-deterministic behavior detected in {log_file.name}")
+                    
+                    # Check for RNG-related warnings
+                    if "warning" in content and ("seed" in content or "random" in content):
+                        nondeterminism_hints.append(f"RNG warnings found in {log_file.name}")
+                        
+            except (OSError, UnicodeDecodeError, MemoryError, PermissionError) as e:
+                # Log the error but continue processing other files
+                error_msg = str(e)[:50] if len(str(e)) > 50 else str(e)
+                nondeterminism_hints.append(f"Could not read log file {log_file.name}: {error_msg}")
+                continue
+            except Exception as e:
+                # Catch any other unexpected errors
+                error_msg = str(e)[:50] if len(str(e)) > 50 else str(e)
+                nondeterminism_hints.append(f"Unexpected error reading {log_file.name}: {error_msg}")
+                continue
+
+    # Comprehensive pass/fail logic
+    deterministic_conditions = [
+        env_vars["cudnn_deterministic"],
+        not env_vars["cudnn_benchmark"],
+        env_vars.get("torch_cudnn_deterministic", False),
+        not env_vars.get("torch_cudnn_benchmark", True),
+        env_vars.get("torch_use_deterministic_algorithms", False),
+    ]
+    
+    pass_check = all(deterministic_conditions)
+    
+    # Add specific hints for failed conditions
+    if not env_vars["cudnn_deterministic"]:
+        nondeterminism_hints.append("CUDNN_DETERMINISTIC not set to true")
+    if env_vars["cudnn_benchmark"]:
+        nondeterminism_hints.append("CUDNN_BENCHMARK is enabled (should be false)")
+    if not env_vars.get("torch_cudnn_deterministic", False):
+        nondeterminism_hints.append("torch.backends.cudnn.deterministic is False")
+    if env_vars.get("torch_cudnn_benchmark", True):
+        nondeterminism_hints.append("torch.backends.cudnn.benchmark is True")
+    if not env_vars.get("torch_use_deterministic_algorithms", False):
+        nondeterminism_hints.append("torch.use_deterministic_algorithms is False")
+
+    return {
+        "pass": pass_check, 
+        "flags": env_vars, 
+        "nondeterminism_hints": nondeterminism_hints,
+        "deterministic_conditions_met": sum(deterministic_conditions),
+        "total_conditions": len(deterministic_conditions)
+    }
 
 
 def _analyze_rng_consistency(events: List[Event]) -> Dict[str, Any]:

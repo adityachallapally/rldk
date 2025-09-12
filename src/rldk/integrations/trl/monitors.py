@@ -429,6 +429,8 @@ class CheckpointMonitor(TrainerCallback):
         enable_parameter_analysis: bool = True,
         enable_gradient_analysis: bool = True,
         run_id: Optional[str] = None,
+        max_parameter_size_mb: int = 50,  # Configurable limit
+        max_total_memory_mb: int = 500,   # Total memory limit
     ):
         """Initialize checkpoint monitor."""
         self.output_dir = Path(output_dir) if output_dir else Path("./rldk_checkpoint_logs")
@@ -438,17 +440,35 @@ class CheckpointMonitor(TrainerCallback):
         self.enable_gradient_analysis = enable_gradient_analysis
         self.run_id = run_id or f"checkpoint_run_{int(time.time())}"
         
+        # Memory management settings
+        self.max_parameter_size_mb = max_parameter_size_mb
+        self.max_total_memory_mb = max_total_memory_mb
+        
         # Metrics storage
         self.checkpoint_metrics_history: List[CheckpointMetrics] = []
         self.previous_weights: Optional[Dict[str, torch.Tensor]] = None
+        self._current_memory_usage_mb = 0
         
         print(f"💾 Checkpoint Monitor initialized - Run ID: {self.run_id}")
+        print(f"📊 Memory limits: {max_parameter_size_mb}MB per param, {max_total_memory_mb}MB total")
+    
+    def __del__(self):
+        """Destructor to ensure cleanup on deletion."""
+        try:
+            self._cleanup_weights()
+        except Exception:
+            # Ignore errors during cleanup in destructor
+            pass
     
     def on_save(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
         """Analyze checkpoint when saved."""
         model = kwargs.get('model')
         if model is None:
             return
+        
+        # Store current model reference for drift calculation (using weak reference)
+        import weakref
+        self._current_model = weakref.ref(model) if model is not None else None
         
         # Create checkpoint metrics
         checkpoint_metrics = CheckpointMetrics(
@@ -470,6 +490,13 @@ class CheckpointMonitor(TrainerCallback):
         
         # Store metrics
         self.checkpoint_metrics_history.append(checkpoint_metrics)
+        
+        # Update previous weights for next comparison (with memory management)
+        new_weights = self._extract_current_weights(model)
+        if new_weights is not None:
+            # Clean up old weights to prevent memory accumulation
+            self._cleanup_weights()
+            self.previous_weights = new_weights
         
         # Save checkpoint analysis
         self._save_checkpoint_analysis(checkpoint_metrics, model, state)
@@ -524,9 +551,24 @@ class CheckpointMonitor(TrainerCallback):
         """Calculate model health indicators."""
         # Parameter drift detection
         if self.previous_weights is not None and len(self.checkpoint_metrics_history) > 0:
-            # This is a simplified drift calculation
-            # In practice, you'd compare with the previous checkpoint's weights
-            metrics.parameter_drift = 0.0  # Placeholder
+            # Calculate actual parameter drift by comparing current weights with previous weights
+            # Note: We need the model to extract current weights, but this method doesn't have access to it
+            # For now, we'll use a simplified approach based on parameter statistics
+            if hasattr(self, '_current_model') and self._current_model is not None:
+                model_ref = self._current_model()  # Get model from weak reference
+                if model_ref is not None:
+                    current_weights = self._extract_current_weights(model_ref)
+                    if current_weights is not None:
+                        drift_score = self._calculate_weight_drift(self.previous_weights, current_weights)
+                        metrics.parameter_drift = drift_score
+                    else:
+                        metrics.parameter_drift = 0.0
+                else:
+                    metrics.parameter_drift = 0.0
+            else:
+                metrics.parameter_drift = 0.0
+        else:
+            metrics.parameter_drift = 0.0
         
         # Gradient flow health
         if metrics.gradient_norm > 0:
@@ -585,6 +627,111 @@ class CheckpointMonitor(TrainerCallback):
             json.dump(report, f, indent=2)
         
         print(f"📋 Checkpoint Report: {report}")
+    
+    def _cleanup_weights(self):
+        """Clean up stored weights to prevent memory leaks."""
+        # Clean up previous weights
+        if hasattr(self, 'previous_weights') and self.previous_weights is not None:
+            # Explicitly delete tensors to free memory
+            for name, tensor in self.previous_weights.items():
+                if hasattr(tensor, 'cpu'):
+                    tensor.cpu()  # Move to CPU before deletion
+                del tensor
+            del self.previous_weights
+            self.previous_weights = None
+        
+        # Clean up current model weak reference
+        if hasattr(self, '_current_model') and self._current_model is not None:
+            # Check if the weak reference is still valid
+            model_ref = self._current_model()
+            if model_ref is None:
+                # Weak reference is dead, clean it up
+                del self._current_model
+                self._current_model = None
+        
+        # Clean up checkpoint metrics history if it gets too large
+        if hasattr(self, 'checkpoint_metrics_history') and len(self.checkpoint_metrics_history) > 100:
+            # Keep only the last 50 checkpoints
+            self.checkpoint_metrics_history = self.checkpoint_metrics_history[-50:]
+        
+        # Force garbage collection
+        import gc
+        gc.collect()
+        
+        # Clear CUDA cache if available
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    
+    def _extract_current_weights(self, model) -> Optional[Dict[str, torch.Tensor]]:
+        """Extract current model weights for drift calculation with memory management."""
+        if model is None:
+            return None
+        
+        weights = {}
+        total_size_mb = 0
+        skipped_params = 0
+        
+        try:
+            for name, param in model.named_parameters():
+                if param.requires_grad:
+                    param_size_mb = (param.numel() * param.element_size()) / (1024 * 1024)
+                    
+                    # Skip parameters that are too large
+                    if param_size_mb > self.max_parameter_size_mb:
+                        skipped_params += 1
+                        continue
+                    
+                    # Check total memory limit
+                    if total_size_mb + param_size_mb > self.max_total_memory_mb:
+                        print(f"Warning: Memory limit reached. Skipping remaining parameters.")
+                        break
+                    
+                    # Clone parameter with proper cleanup
+                    try:
+                        weights[name] = param.data.clone().detach()
+                        total_size_mb += param_size_mb
+                    except RuntimeError as e:
+                        print(f"Warning: Failed to clone parameter {name}: {e}")
+                        continue
+                        
+        except Exception as e:
+            print(f"Warning: Could not extract weights due to error: {e}")
+            return None
+        
+        if skipped_params > 0:
+            print(f"Info: Skipped {skipped_params} parameters due to size limits")
+        
+        self._current_memory_usage_mb = total_size_mb
+        return weights if weights else None
+    
+    def _calculate_weight_drift(self, prev_weights: Dict[str, torch.Tensor], 
+                               curr_weights: Dict[str, torch.Tensor]) -> float:
+        """Calculate parameter drift between two weight sets."""
+        if prev_weights is None or curr_weights is None:
+            return 0.0
+        
+        total_drift = 0.0
+        total_params = 0
+        
+        for name in prev_weights:
+            if name in curr_weights:
+                prev_param = prev_weights[name]
+                curr_param = curr_weights[name]
+                
+                if prev_param.shape == curr_param.shape:
+                    # Calculate relative change
+                    param_diff = torch.abs(curr_param - prev_param)
+                    param_norm = torch.norm(prev_param)
+                    
+                    if param_norm > 0:
+                        relative_drift = torch.norm(param_diff) / param_norm
+                        total_drift += relative_drift.item() * prev_param.numel()
+                        total_params += prev_param.numel()
+        
+        if total_params > 0:
+            return total_drift / total_params
+        else:
+            return 0.0
 
 
 class ComprehensivePPOMonitor(TrainerCallback):
