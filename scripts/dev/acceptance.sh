@@ -198,23 +198,43 @@ echo "==================================="
 
 # Performance checks
 print_status "INFO" "Checking import time..."
-IMPORT_TIME=$(python -c "import time; start=time.time(); import rldk; print(f'{time.time()-start:.2f}')")
-if python -c "import sys; sys.exit(0 if float('$IMPORT_TIME') <= 2.0 else 1)"; then
-    print_status "SUCCESS" "Import time acceptable: ${IMPORT_TIME}s <= 2.0s"
+if python3 -c "
+import time
+import sys
+try:
+    start = time.time()
+    import rldk
+    import_time = time.time() - start
+    print(f'{import_time:.2f}')
+    sys.exit(0 if import_time <= 2.0 else 1)
+except Exception as e:
+    print(f'ERROR: Import check failed: {e}')
+    sys.exit(1)
+"; then
+    print_status "SUCCESS" "Import time acceptable: <= 2.0s"
 else
-    print_status "ERROR" "Import time too slow: ${IMPORT_TIME}s > 2.0s"
+    print_status "ERROR" "Import time too slow: > 2.0s"
     exit 1
 fi
 
 print_status "INFO" "Checking memory usage..."
 # Check if psutil is available, fallback to basic check if not
 if python -c "import psutil" 2>/dev/null; then
-    MEMORY_USAGE=$(python -c "import psutil, rldk; print(f'{psutil.Process().memory_info().rss / 1024 / 1024:.1f}')")
-    # Use Python for portable floating point arithmetic
-    if python -c "import sys; sys.exit(0 if float('$MEMORY_USAGE') <= 200.0 else 1)"; then
-        print_status "SUCCESS" "Memory usage acceptable: ${MEMORY_USAGE} MB <= 200 MB"
+    if python3 -c "
+import psutil
+import rldk
+import sys
+try:
+    memory_mb = psutil.Process().memory_info().rss / 1024 / 1024
+    print(f'{memory_mb:.1f}')
+    sys.exit(0 if memory_mb <= 200.0 else 1)
+except Exception as e:
+    print(f'ERROR: Memory check failed: {e}')
+    sys.exit(1)
+"; then
+        print_status "SUCCESS" "Memory usage acceptable: <= 200 MB"
     else
-        print_status "ERROR" "Memory usage too high: ${MEMORY_USAGE} MB > 200 MB"
+        print_status "ERROR" "Memory usage too high: > 200 MB"
         exit 1
     fi
 else

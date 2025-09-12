@@ -257,13 +257,6 @@ def validate_jsonl_file_streaming(file_path: Union[str, Path],
                     continue
                 
                 line_count += 1
-                if line_count > max_lines:
-                    raise ValidationError(
-                        f"JSONL file has too many lines: {line_count} > {max_lines}",
-                        suggestion=f"File exceeds maximum line limit of {max_lines}",
-                        error_code="TOO_MANY_LINES",
-                        details={"path": str(path), "line_count": line_count, "max_lines": max_lines}
-                    )
                 
                 # Check for extremely long lines that could cause memory issues
                 if len(line) > 1024 * 1024:  # 1MB line limit
@@ -283,7 +276,18 @@ def validate_jsonl_file_streaming(file_path: Union[str, Path],
                             error_code="INVALID_JSONL_STRUCTURE",
                             details={"path": str(path), "line": line_num, "actual_type": type(record).__name__}
                         )
+                    
+                    # Yield immediately for true streaming
                     yield record
+                    
+                    # Check line limit after yielding (allows processing up to limit)
+                    if line_count > max_lines:
+                        raise ValidationError(
+                            f"JSONL file has too many lines: {line_count} > {max_lines}",
+                            suggestion=f"File exceeds maximum line limit of {max_lines}",
+                            error_code="TOO_MANY_LINES",
+                            details={"path": str(path), "line_count": line_count, "max_lines": max_lines}
+                        )
                 except json.JSONDecodeError as e:
                     raise ValidationError(
                         f"Invalid JSON on line {line_num} in file: {path}",

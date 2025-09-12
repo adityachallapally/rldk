@@ -110,3 +110,43 @@ class TestCLIMinirun:
         assert result.returncode == 0
         assert "track" in result.stdout.lower()
 
+    def test_cli_ingest_minirun(self, rldk_cmd, minirun_path):
+        """Test ingesting the minimal run fixture."""
+        result = subprocess.run(
+            rldk_cmd + ["ingest", str(minirun_path), "--adapter", "generic"],
+            capture_output=True,
+            text=True
+        )
+        
+        self._check_cli_result(result, "test_cli_ingest_minirun")
+
+    def test_cli_diff_minirun(self, rldk_cmd, minirun_path):
+        """Test diffing the minimal run fixture with itself."""
+        result = subprocess.run(
+            rldk_cmd + ["diff", str(minirun_path), str(minirun_path)],
+            capture_output=True,
+            text=True
+        )
+        
+        self._check_cli_result(result, "test_cli_diff_minirun")
+
+    def test_cli_replay_minirun(self, rldk_cmd, minirun_path):
+        """Test replaying the minimal run fixture."""
+        result = subprocess.run(
+            rldk_cmd + ["replay", str(minirun_path), "--command", "echo test"],
+            capture_output=True,
+            text=True
+        )
+        
+        self._check_cli_result(result, "test_cli_replay_minirun")
+
+    def test_cli_forensics_minirun(self, rldk_cmd, minirun_path):
+        """Test running forensics on the minimal run fixture."""
+        result = subprocess.run(
+            rldk_cmd + ["forensics", str(minirun_path)],
+            capture_output=True,
+            text=True
+        )
+        
+        self._check_cli_result(result, "test_cli_forensics_minirun")
+

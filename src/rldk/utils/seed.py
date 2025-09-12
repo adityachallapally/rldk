@@ -109,22 +109,22 @@ class SeedManager:
             # Set NumPy seed
             np.random.seed(seed)
             
-            # Set PyTorch seeds
-            if TORCH_AVAILABLE:
-                torch.manual_seed(seed)
-                if torch.cuda.is_available():
-                    torch.cuda.manual_seed(seed)
-                    torch.cuda.manual_seed_all(seed)
-                
-                # Enable deterministic behavior if requested
-                if deterministic:
-                    torch.backends.cudnn.deterministic = True
-                    torch.backends.cudnn.benchmark = False
-            
             # Store current states
             self._store_current_states()
+        
+        # Set PyTorch seeds outside lock to avoid deadlocks
+        if TORCH_AVAILABLE:
+            torch.manual_seed(seed)
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed(seed)
+                torch.cuda.manual_seed_all(seed)
             
-            return seed
+            # Enable deterministic behavior if requested
+            if deterministic:
+                torch.backends.cudnn.deterministic = True
+                torch.backends.cudnn.benchmark = False
+        
+        return seed
     
     def _store_current_states(self):
         """Store current RNG states for later restoration."""

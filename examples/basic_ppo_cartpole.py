@@ -126,9 +126,19 @@ def main():
                 self.value -= self.lr * value_loss * state.reshape(-1, 1)
         
         def compute_advantages(self, rewards, values, dones):
-            """Compute advantages using basic advantage estimation (not GAE)."""
+            """Compute advantages using basic advantage estimation (not GAE).
+            
+            Args:
+                rewards: List of rewards for each timestep
+                values: List of value function estimates (should be len(rewards) + 1)
+                dones: List of done flags for each timestep
+            """
             advantages = []
             returns = []
+            
+            # Ensure values has the correct length (rewards + 1 for terminal state)
+            if len(values) != len(rewards) + 1:
+                raise ValueError(f"Values length {len(values)} should be rewards length {len(rewards)} + 1")
             
             # Compute returns (discounted cumulative rewards)
             returns = [0.0] * len(rewards)
@@ -138,8 +148,7 @@ def main():
                     returns[i] = rewards[i]
                 else:
                     # Non-terminal: bootstrap from next value function
-                    next_value = values[i + 1] if i + 1 < len(values) else 0.0
-                    returns[i] = rewards[i] + self.gamma * next_value
+                    returns[i] = rewards[i] + self.gamma * values[i + 1]
             
             # Compute advantages: A_t = G_t - V(s_t)
             for i in range(len(rewards)):
