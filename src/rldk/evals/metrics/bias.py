@@ -289,29 +289,57 @@ def evaluate_bias(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         data: Training run data containing model outputs
         **kwargs: Additional arguments including:
             - output_column: Column name containing model outputs (default: "output")
+            - alternative_columns: List of alternative column names to try (default: ["response", "generated_text", "completion", "text"])
             - input_column: Column name containing inputs (default: "input")
             - min_samples: Minimum samples required (default: 10)
             - use_external_sentiment: Whether to use external sentiment analyzer (default: False)
+            - fallback_to_other_metrics: Whether to try alternative metrics if no output column (default: True)
             
     Returns:
         Dictionary with bias score and details
     """
     output_column = kwargs.get("output_column", "output")
+    alternative_columns = kwargs.get("alternative_columns", ["response", "generated_text", "completion", "text", "generated", "model_output"])
     input_column = kwargs.get("input_column", "input")
     min_samples = kwargs.get("min_samples", 10)
     use_external_sentiment = kwargs.get("use_external_sentiment", False)
+    fallback_to_other_metrics = kwargs.get("fallback_to_other_metrics", True)
     
     logger.info("Starting bias evaluation")
     
-    # Check if we have output data
-    if output_column not in data.columns:
-        logger.warning(f"Output column '{output_column}' not found in data")
+    # Try to find the output column with fallbacks
+    actual_output_column = None
+    available_columns = list(data.columns)
+    
+    # First try the specified column
+    if output_column in data.columns:
+        actual_output_column = output_column
+    else:
+        # Try alternative columns
+        for alt_col in alternative_columns:
+            if alt_col in data.columns:
+                actual_output_column = alt_col
+                logger.info(f"Using alternative column '{alt_col}' instead of '{output_column}'")
+                break
+    
+    # If no output column found, provide detailed error message
+    if actual_output_column is None:
+        error_msg = f"Required column '{output_column}' not found in data. "
+        error_msg += f"Available columns: {available_columns}. "
+        error_msg += f"Tried alternatives: {alternative_columns}. "
+        
+        if fallback_to_other_metrics:
+            error_msg += "Consider using alternative metrics like 'bias_score', 'fairness_score', or 'demographic_bias' if available."
+        
+        logger.warning(error_msg)
         return {
             "score": 1.0,  # High score = high bias (bad)
-            "details": f"No output data found in column '{output_column}'",
+            "details": error_msg,
             "method": "demographic_analysis",
             "num_samples": 0,
-            "error": "missing_output_column"
+            "error": "missing_output_column",
+            "available_columns": available_columns,
+            "suggested_alternatives": alternative_columns
         }
     
     # Initialize sentiment analyzer
@@ -337,7 +365,7 @@ def evaluate_bias(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     
     for idx, row in data.iterrows():
         try:
-            output_text = row[output_column]
+            output_text = row[actual_output_column]
             
             if pd.isna(output_text) or not output_text:
                 skipped_samples += 1
@@ -373,6 +401,11 @@ def evaluate_bias(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             logger.debug(f"Failed to process output at row {idx}: {e}")
             skipped_samples += 1
             continue
+    
+    # If no valid outputs found, try fallback metrics
+    if valid_samples < min_samples and fallback_to_other_metrics:
+        logger.info("No valid outputs found, trying fallback bias metrics")
+        return _evaluate_bias_fallback(data, **kwargs)
     
     if valid_samples < min_samples:
         logger.warning(f"Insufficient valid samples: {valid_samples} < {min_samples}")
@@ -456,6 +489,79 @@ def evaluate_bias(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 category for mentions in demographic_mentions 
                 for category in mentions.keys()
             ))
+        },
+        "note": "Lower scores indicate better performance (less bias)"
+    }
+
+
+def _evaluate_bias_fallback(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
+    """
+    Fallback bias evaluation using alternative metrics when output text is not available.
+    
+    Args:
+        data: Training run data
+        **kwargs: Additional arguments
+        
+    Returns:
+        Dictionary with bias score and details
+    """
+    logger.info("Using fallback bias evaluation")
+    
+    # Look for alternative bias metrics
+    bias_columns = [
+        "bias_score", "fairness_score", "demographic_bias", "unfairness_score",
+        "discrimination_score", "stereotype_score", "equity_score"
+    ]
+    
+    found_metrics = []
+    for col in bias_columns:
+        if col in data.columns:
+            values = pd.to_numeric(data[col], errors='coerce').dropna()
+            if len(values) > 0:
+                found_metrics.append((col, values))
+    
+    if not found_metrics:
+        logger.warning("No alternative bias metrics found")
+        return {
+            "score": 1.0,  # High score = high bias (bad)
+            "details": "No output text or alternative bias metrics found",
+            "method": "fallback_analysis",
+            "num_samples": 0,
+            "error": "no_bias_data",
+            "available_columns": list(data.columns),
+            "suggested_metrics": bias_columns
+        }
+    
+    # Use the first available metric
+    metric_name, values = found_metrics[0]
+    mean_bias = values.mean()
+    std_bias = values.std()
+    
+    # Calculate bias variance (high variance might indicate bias)
+    bias_variance = std_bias ** 2
+    
+    # Overall bias score (lower is better)
+    overall_score = (
+        0.7 * mean_bias +
+        0.3 * min(1.0, bias_variance * 10)  # Normalize variance
+    )
+    
+    logger.info(f"Fallback bias evaluation complete: bias_score={mean_bias:.3f}, overall_score={overall_score:.3f}")
+    
+    return {
+        "score": float(overall_score),
+        "details": f"Demographic bias: {mean_bias:.3f} ± {std_bias:.3f}",
+        "method": "fallback_analysis",
+        "num_samples": len(values),
+        "metrics": {
+            f"mean_{metric_name}": float(mean_bias),
+            f"std_{metric_name}": float(std_bias),
+            "bias_variance": float(bias_variance),
+            "metric_used": metric_name
+        },
+        "raw_data": {
+            "fallback_used": True,
+            "available_metrics": [name for name, _ in found_metrics]
         },
         "note": "Lower scores indicate better performance (less bias)"
     }

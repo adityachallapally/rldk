@@ -185,27 +185,55 @@ def evaluate_throughput(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         data: Training run data containing event logs
         **kwargs: Additional arguments including:
             - log_column: Column name containing JSON event logs (default: "events")
+            - alternative_columns: List of alternative column names to try (default: ["logs", "event_logs", "training_logs"])
             - confidence_level: Confidence level for intervals (default: 0.95)
             - min_samples: Minimum samples required for evaluation (default: 10)
+            - fallback_to_other_metrics: Whether to try alternative metrics if no event logs (default: True)
             
     Returns:
         Dictionary with throughput score, details, and confidence intervals
     """
     log_column = kwargs.get("log_column", "events")
+    alternative_columns = kwargs.get("alternative_columns", ["logs", "event_logs", "training_logs", "metrics", "performance_logs"])
     confidence_level = kwargs.get("confidence_level", 0.95)
     min_samples = kwargs.get("min_samples", 3)
+    fallback_to_other_metrics = kwargs.get("fallback_to_other_metrics", True)
     
     logger.info("Starting throughput evaluation")
     
-    # Check if we have event logs
-    if log_column not in data.columns:
-        logger.warning(f"Log column '{log_column}' not found in data")
+    # Try to find the log column with fallbacks
+    actual_log_column = None
+    available_columns = list(data.columns)
+    
+    # First try the specified column
+    if log_column in data.columns:
+        actual_log_column = log_column
+    else:
+        # Try alternative columns
+        for alt_col in alternative_columns:
+            if alt_col in data.columns:
+                actual_log_column = alt_col
+                logger.info(f"Using alternative column '{alt_col}' instead of '{log_column}'")
+                break
+    
+    # If no log column found, provide detailed error message
+    if actual_log_column is None:
+        error_msg = f"Required column '{log_column}' not found in data. "
+        error_msg += f"Available columns: {available_columns}. "
+        error_msg += f"Tried alternatives: {alternative_columns}. "
+        
+        if fallback_to_other_metrics:
+            error_msg += "Consider using alternative metrics like 'tokens_per_second', 'throughput_rate', or 'processing_speed' if available."
+        
+        logger.warning(error_msg)
         return {
             "score": 0.0,
-            "details": f"No event logs found in column '{log_column}'",
+            "details": error_msg,
             "method": "event_log_analysis",
             "num_samples": 0,
-            "error": "missing_log_column"
+            "error": "missing_log_column",
+            "available_columns": available_columns,
+            "suggested_alternatives": alternative_columns
         }
     
     # Parse event logs
@@ -214,7 +242,7 @@ def evaluate_throughput(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     
     for idx, row in data.iterrows():
         try:
-            events_raw = row[log_column]
+            events_raw = row[actual_log_column]
             
             if isinstance(events_raw, str):
                 events = json.loads(events_raw)
@@ -234,6 +262,11 @@ def evaluate_throughput(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         except (json.JSONDecodeError, KeyError, TypeError) as e:
             logger.debug(f"Failed to parse events at row {idx}: {e}")
             continue
+    
+    # If no valid event logs found, try fallback metrics
+    if valid_samples < min_samples and fallback_to_other_metrics:
+        logger.info("No valid event logs found, trying fallback throughput metrics")
+        return _evaluate_throughput_fallback(data, **kwargs)
     
     if valid_samples < min_samples:
         logger.warning(f"Insufficient valid samples: {valid_samples} < {min_samples}")
@@ -341,5 +374,75 @@ def evaluate_throughput(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         "raw_data": {
             "num_events": len(all_events),
             "event_types": list(set(event.get("event_type") for event in all_events))
+        }
+    }
+
+
+def _evaluate_throughput_fallback(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
+    """
+    Fallback throughput evaluation using alternative metrics when event logs are not available.
+    
+    Args:
+        data: Training run data
+        **kwargs: Additional arguments
+        
+    Returns:
+        Dictionary with throughput score and details
+    """
+    logger.info("Using fallback throughput evaluation")
+    
+    # Look for alternative throughput metrics
+    throughput_columns = [
+        "tokens_per_second", "throughput_rate", "processing_speed", 
+        "inference_speed", "batch_throughput", "tps", "throughput"
+    ]
+    
+    found_metrics = []
+    for col in throughput_columns:
+        if col in data.columns:
+            values = pd.to_numeric(data[col], errors='coerce').dropna()
+            if len(values) > 0:
+                found_metrics.append((col, values))
+    
+    if not found_metrics:
+        logger.warning("No alternative throughput metrics found")
+        return {
+            "score": 0.0,
+            "details": "No event logs or alternative throughput metrics found",
+            "method": "fallback_analysis",
+            "num_samples": 0,
+            "error": "no_throughput_data",
+            "available_columns": list(data.columns),
+            "suggested_metrics": throughput_columns
+        }
+    
+    # Use the first available metric
+    metric_name, values = found_metrics[0]
+    mean_throughput = values.mean()
+    std_throughput = values.std()
+    
+    # Normalize score to [0, 1] range (assuming reasonable max of 1000 tokens/sec)
+    max_expected_throughput = 1000.0
+    normalized_score = min(1.0, mean_throughput / max_expected_throughput)
+    
+    # Calculate stability
+    throughput_stability = max(0, 1 - std_throughput / mean_throughput) if mean_throughput > 0 else 0
+    
+    logger.info(f"Fallback throughput evaluation complete: {mean_throughput:.2f} {metric_name} (score: {normalized_score:.3f})")
+    
+    return {
+        "score": float(normalized_score),
+        "details": f"Throughput: {mean_throughput:.2f} ± {std_throughput:.2f} {metric_name}",
+        "method": "fallback_analysis",
+        "num_samples": len(values),
+        "metrics": {
+            f"mean_{metric_name}": float(mean_throughput),
+            f"std_{metric_name}": float(std_throughput),
+            "throughput_stability": float(throughput_stability),
+            "metric_used": metric_name
+        },
+        "raw_data": {
+            "fallback_used": True,
+            "available_metrics": [name for name, _ in found_metrics]
         }
     }
