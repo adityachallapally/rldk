@@ -81,6 +81,8 @@ class CustomRLDKCallback(RLDKCallback):
         
         if total_time > 0:
             self.current_metrics.tokens_per_second = total_tokens / total_time
+        else:
+            self.current_metrics.tokens_per_second = 0.0
     
     def _calculate_efficiency_ratio(self) -> float:
         """Calculate overall training efficiency ratio."""

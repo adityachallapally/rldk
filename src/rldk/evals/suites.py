@@ -2,6 +2,7 @@
 
 from typing import Dict, Any, Optional
 import pandas as pd
+import numpy as np
 
 from .probes import (
     evaluate_alignment,
@@ -1110,9 +1111,14 @@ def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         batch_sizes = data["batch_size"].dropna()
         
         if len(batch_times) > 0 and len(batch_sizes) > 0:
-            # Calculate samples per second
-            samples_per_second = batch_sizes / batch_times
-            avg_samples_per_second = samples_per_second.mean()
+            # Calculate samples per second - avoid division by zero
+            batch_times_safe = batch_times.replace(0, np.nan)  # Replace zeros with NaN
+            samples_per_second = batch_sizes / batch_times_safe
+            samples_per_second = samples_per_second.dropna()  # Remove NaN values
+            if len(samples_per_second) > 0:
+                avg_samples_per_second = samples_per_second.mean()
+            else:
+                avg_samples_per_second = 0.0
             
             # Normalize to reasonable range
             batch_speed = min(1.0, avg_samples_per_second / 1000.0)

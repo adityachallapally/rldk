@@ -119,7 +119,7 @@ def calculate_tokens_per_second(events: List[Dict[str, Any]]) -> Tuple[float, fl
                 tokens_this_interval = batch_size / processing_time
                 total_tokens += batch_size
         
-        if tokens_this_interval > 0:
+        if tokens_this_interval > 0 and time_interval > 0:
             token_rate = tokens_this_interval / time_interval
             intervals.append(time_interval)
             token_rates.append(token_rate)
@@ -304,7 +304,7 @@ def evaluate_throughput(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 if processing_time > 0:
                     tokens_this_interval = batch_size / processing_time
             
-            if tokens_this_interval > 0:
+            if tokens_this_interval > 0 and time_interval > 0:
                 token_rate = tokens_this_interval / time_interval
                 token_rates.append(token_rate)
         
