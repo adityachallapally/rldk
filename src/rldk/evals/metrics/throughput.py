@@ -144,19 +144,31 @@ def calculate_confidence_interval(scores: List[float], confidence_level: float =
     Returns:
         Tuple of (lower_bound, upper_bound)
     """
+    if not scores:
+        return (0.0, 0.0)
+    
     if len(scores) < 2:
         score = scores[0] if scores else 0.0
         return (score, score)
     
     try:
         # Use bootstrap method for confidence interval
-        bootstrap_result = stats.bootstrap((scores,), np.mean, confidence_level=confidence_level)
+        # Check if we have enough samples for bootstrap
+        if len(scores) < 3:
+            # Not enough samples for bootstrap, use normal approximation
+            mean_score = np.mean(scores)
+            std_score = np.std(scores, ddof=1) if len(scores) > 1 else 0.0
+            z_score = stats.norm.ppf((1 + confidence_level) / 2)
+            margin_of_error = z_score * std_score / np.sqrt(len(scores))
+            return mean_score - margin_of_error, mean_score + margin_of_error
+        
+        bootstrap_result = stats.bootstrap((scores,), np.mean, confidence_level=confidence_level, n_resamples=min(1000, len(scores) * 10))
         return bootstrap_result.confidence_interval.low, bootstrap_result.confidence_interval.high
     except Exception as e:
         logger.warning(f"Bootstrap failed, using normal approximation: {e}")
         # Fallback to normal approximation
         mean_score = np.mean(scores)
-        std_score = np.std(scores)
+        std_score = np.std(scores, ddof=1) if len(scores) > 1 else 0.0
         z_score = stats.norm.ppf((1 + confidence_level) / 2)
         margin_of_error = z_score * std_score / np.sqrt(len(scores))
         return mean_score - margin_of_error, mean_score + margin_of_error
@@ -181,7 +193,7 @@ def evaluate_throughput(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     """
     log_column = kwargs.get("log_column", "events")
     confidence_level = kwargs.get("confidence_level", 0.95)
-    min_samples = kwargs.get("min_samples", 10)
+    min_samples = kwargs.get("min_samples", 3)
     
     logger.info("Starting throughput evaluation")
     

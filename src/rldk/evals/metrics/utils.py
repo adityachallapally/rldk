@@ -28,15 +28,31 @@ def calculate_confidence_intervals(
             confidence_intervals[metric] = (np.nan, np.nan)
             continue
 
-        # For now, use a simple approach based on sample size
-        # In practice, you might want to bootstrap or use more sophisticated methods
+        # Handle edge cases
+        if sample_size <= 0:
+            confidence_intervals[metric] = (score, score)
+            continue
 
-        # Standard error approximation (assuming score is roughly normal)
-        # This is a simplified approach - in practice you'd want actual sampling data
-        if sample_size > 1:
-            # Use a conservative estimate of standard error
-            # Assuming scores are roughly in [0, 1] range
-            estimated_std = 0.3  # Conservative estimate
+        if sample_size == 1:
+            confidence_intervals[metric] = (score, score)
+            continue
+
+        try:
+            # Use a more robust approach for confidence intervals
+            # Estimate standard error based on the score value and sample size
+            # For scores in [0, 1] range, use a more appropriate standard deviation estimate
+            
+            # Adaptive standard deviation based on score value
+            if score <= 0.1 or score >= 0.9:
+                # For extreme scores, use smaller standard deviation
+                estimated_std = 0.1
+            elif score <= 0.3 or score >= 0.7:
+                # For moderate scores, use medium standard deviation
+                estimated_std = 0.2
+            else:
+                # For central scores, use larger standard deviation
+                estimated_std = 0.25
+
             standard_error = estimated_std / np.sqrt(sample_size)
 
             # Calculate confidence interval using normal approximation
@@ -46,8 +62,14 @@ def calculate_confidence_intervals(
             lower_bound = max(0, score - margin_of_error)
             upper_bound = min(1, score + margin_of_error)
 
-            confidence_intervals[metric] = (lower_bound, upper_bound)
-        else:
+            # Ensure bounds are valid numbers
+            if np.isnan(lower_bound) or np.isnan(upper_bound):
+                confidence_intervals[metric] = (score, score)
+            else:
+                confidence_intervals[metric] = (float(lower_bound), float(upper_bound))
+
+        except (ValueError, ArithmeticError, OverflowError) as e:
+            # Fallback to point estimate if calculation fails
             confidence_intervals[metric] = (score, score)
 
     return confidence_intervals
