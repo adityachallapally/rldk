@@ -1,0 +1,628 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Run at 2 AM UTC daily
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  smoke-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev,test]"
+    
+    - name: Run smoke tests
+      run: |
+        # Test basic CLI functionality
+        python -m rldk --help
+        
+        # Test demo generation
+        rldk demo --out ./smoke_demo --seed 42 --steps 50
+        
+        # Test ingestion
+        rldk ingest ./smoke_demo --adapter demo_jsonl
+        
+        # Test forensics
+        rldk forensics log-scan ./smoke_demo
+        
+        # Test comparison
+        rldk diff --a ./smoke_demo --b ./smoke_demo --signals loss,reward_mean
+        
+        # Test determinism
+        rldk check-determinism --cmd "python -c 'import random; random.seed(42); print(random.random())'" --compare random --replicas 2
+        
+        # Test performance
+        python -c "
+        import time
+        import psutil
+        import os
+        
+        start = time.time()
+        import rldk
+        elapsed = time.time() - start
+        
+        proc = psutil.Process(os.getpid())
+        mem_mb = proc.memory_info().rss / 1024 / 1024
+        
+        print(f'Import time: {elapsed:.2f}s, Memory: {mem_mb:.1f} MB')
+        assert elapsed <= 2.0, f'Import time too high: {elapsed}'
+        assert mem_mb <= 200.0, f'Memory too high: {mem_mb}'
+        "
+        
+        # Test GRPO forensics
+        python -c "
+        from rldk.forensics import ComprehensiveGRPOForensics
+        
+        forensics = ComprehensiveGRPOForensics()
+        
+        # Simulate some GRPO training
+        for i in range(10):
+            forensics.update(
+                step=i,
+                kl=0.05,
+                kl_coef=1.0,
+                entropy=2.0,
+                reward_mean=0.8,
+                reward_std=0.1,
+                pass_rate=0.7,
+                verifier_score=0.85,
+                reward_model_score=0.75
+            )
+        
+        # Check analysis
+        analysis = forensics.get_comprehensive_analysis()
+        assert 'version' in analysis
+        assert 'total_steps' in analysis
+        assert 'gaming_detection_score' in analysis
+        
+        print('GRPO forensics smoke test passed')
+        "
+        
+        # Test seeding utilities
+        python -c "
+        from rldk.utils.seed import set_global_seed, get_global_seed
+        
+        set_global_seed(42)
+        assert get_global_seed() == 42
+        
+        import random
+        import numpy as np
+        
+        # Test reproducibility
+        set_global_seed(123)
+        val1 = random.random()
+        val2 = np.random.random()
+        
+        set_global_seed(123)
+        val3 = random.random()
+        val4 = np.random.random()
+        
+        assert val1 == val3
+        assert val2 == val4
+        
+        print('Seeding utilities smoke test passed')
+        "
+        
+        # Test demo adapter
+        python -c "
+        from rldk.adapters.demo_jsonl import DemoJSONLAdapter
+        import tempfile
+        import json
+        
+        # Create test data
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
+            demo_data = {
+                'step': 1,
+                'reward_mean': 0.5,
+                'reward_std': 0.1,
+                'kl': 0.05,
+                'entropy': 2.0,
+                'loss': 1.0,
+                'policy_grad_norm': 1.0,
+                'value_grad_norm': 0.8,
+                'advantage_mean': 0.0,
+                'advantage_std': 1.0,
+                'pass_rate': 0.4
+            }
+            f.write(json.dumps(demo_data) + '\n')
+            temp_file = f.name
+        
+        try:
+            adapter = DemoJSONLAdapter(temp_file)
+            assert adapter.can_handle()
+            
+            df = adapter.load()
+            assert len(df) == 1
+            assert df['step'].iloc[0] == 1
+            assert df['reward_mean'].iloc[0] == 0.5
+            assert df['pass_rate'].iloc[0] == 0.4
+            
+            print('Demo adapter smoke test passed')
+        finally:
+            import os
+            os.unlink(temp_file)
+        "
+        
+        # Test tracking
+        python -c "
+        from rldk.tracking import ExperimentTracker, TrackingConfig
+        
+        config = TrackingConfig(
+            experiment_name='smoke_test',
+            enable_dataset_tracking=True,
+            enable_model_tracking=True,
+            enable_environment_tracking=True,
+            enable_seed_tracking=True,
+            enable_git_tracking=True,
+            save_to_wandb=False
+        )
+        
+        tracker = ExperimentTracker(config)
+        tracking_data = tracker.start_experiment()
+        
+        assert 'experiment_id' in tracking_data
+        assert 'timestamp' in tracking_data
+        
+        tracker.add_metadata('test_key', 'test_value')
+        
+        summary = tracker.finish_experiment()
+        assert 'experiment_id' in summary
+        assert 'duration' in summary
+        
+        print('Tracking smoke test passed')
+        "
+        
+        # Test ingest with auto-detection
+        python -c "
+        from rldk.ingest import ingest_runs
+        import tempfile
+        import json
+        
+        # Create demo data
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
+            demo_data = {
+                'step': 1,
+                'reward_mean': 0.5,
+                'reward_std': 0.1,
+                'kl': 0.05,
+                'entropy': 2.0,
+                'loss': 1.0,
+                'policy_grad_norm': 1.0,
+                'value_grad_norm': 0.8,
+                'advantage_mean': 0.0,
+                'advantage_std': 1.0,
+                'pass_rate': 0.4
+            }
+            f.write(json.dumps(demo_data) + '\n')
+            temp_file = f.name
+        
+        try:
+            # Test auto-detection
+            df = ingest_runs(temp_file)
+            assert len(df) == 1
+            assert df['step'].iloc[0] == 1
+            
+            # Test with explicit adapter
+            df2 = ingest_runs(temp_file, adapter_hint='demo_jsonl')
+            assert len(df2) == 1
+            assert df2['step'].iloc[0] == 1
+            
+            print('Ingest smoke test passed')
+        finally:
+            import os
+            os.unlink(temp_file)
+        "
+        
+        # Test diff functionality
+        python -c "
+        from rldk.diff import first_divergence
+        import pandas as pd
+        
+        # Create test dataframes
+        df1 = pd.DataFrame({
+            'step': [1, 2, 3, 4, 5],
+            'reward_mean': [0.5, 0.6, 0.7, 0.8, 0.9],
+            'loss': [1.0, 0.9, 0.8, 0.7, 0.6]
+        })
+        
+        df2 = pd.DataFrame({
+            'step': [1, 2, 3, 4, 5],
+            'reward_mean': [0.5, 0.6, 0.7, 0.8, 0.9],
+            'loss': [1.0, 0.9, 0.8, 0.7, 0.6]
+        })
+        
+        # Test identical dataframes
+        result = first_divergence(df1, df2, signals=['reward_mean', 'loss'])
+        assert result['divergence_step'] is None
+        
+        # Test diverging dataframes
+        df3 = pd.DataFrame({
+            'step': [1, 2, 3, 4, 5],
+            'reward_mean': [0.5, 0.6, 0.7, 0.8, 0.9],
+            'loss': [1.0, 0.9, 0.8, 0.7, 0.6]
+        })
+        
+        df4 = pd.DataFrame({
+            'step': [1, 2, 3, 4, 5],
+            'reward_mean': [0.5, 0.6, 0.7, 0.8, 0.9],
+            'loss': [1.0, 0.9, 0.8, 0.7, 0.5]  # Different at step 5
+        })
+        
+        result = first_divergence(df3, df4, signals=['reward_mean', 'loss'])
+        assert result['divergence_step'] == 5
+        assert result['divergence_signal'] == 'loss'
+        
+        print('Diff smoke test passed')
+        "
+        
+        # Test determinism
+        python -c "
+        from rldk.determinism import check
+        import tempfile
+        import os
+        
+        # Create a simple deterministic script
+        script_content = '''
+import json
+import random
+random.seed(42)
+for i in range(5):
+    print(json.dumps({\"step\": i, \"value\": random.random()}))
+'''
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write(script_content)
+            script_path = f.name
+        
+        try:
+            result = check(
+                cmd=f'python {script_path}',
+                compare=['value'],
+                replicas=3
+            )
+            
+            assert result['is_deterministic'] is True
+            assert result['determinism_score'] > 0.9
+            
+            print('Determinism smoke test passed')
+        finally:
+            os.unlink(script_path)
+        "
+        
+        # Test reward health
+        python -c "
+        from rldk.reward import health
+        import pandas as pd
+        
+        # Create test data
+        df = pd.DataFrame({
+            'step': [1, 2, 3, 4, 5],
+            'reward_mean': [0.5, 0.6, 0.7, 0.8, 0.9],
+            'reward_std': [0.1, 0.1, 0.1, 0.1, 0.1]
+        })
+        
+        result = health(df)
+        assert 'health_score' in result
+        assert 'anomalies' in result
+        assert 'summary' in result
+        
+        print('Reward health smoke test passed')
+        "
+        
+        # Test evals
+        python -c "
+        from rldk.evals import run
+        import tempfile
+        import os
+        
+        # Create a simple evaluation script
+        script_content = '''
+import json
+import random
+random.seed(42)
+for i in range(3):
+    print(json.dumps({\"step\": i, \"score\": random.random()}))
+'''
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write(script_content)
+            script_path = f.name
+        
+        try:
+            result = run(
+                cmd=f'python {script_path}',
+                expected_columns=['step', 'score']
+            )
+            
+            assert 'success' in result
+            assert 'data' in result
+            assert len(result['data']) == 3
+            
+            print('Evals smoke test passed')
+        finally:
+            os.unlink(script_path)
+        "
+        
+        # Test replay
+        python -c "
+        from rldk.replay import replay
+        import tempfile
+        import os
+        
+        # Create a simple replay script
+        script_content = '''
+import json
+import random
+random.seed(42)
+for i in range(3):
+    print(json.dumps({\"step\": i, \"value\": random.random()}))
+'''
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write(script_content)
+            script_path = f.name
+        
+        try:
+            result = replay(
+                cmd=f'python {script_path}',
+                expected_columns=['step', 'value']
+            )
+            
+            assert 'success' in result
+            assert 'data' in result
+            assert len(result['data']) == 3
+            
+            print('Replay smoke test passed')
+        finally:
+            os.unlink(script_path)
+        "
+        
+        # Test bisect
+        python -c "
+        from rldk.bisect import bisect_commits
+        import tempfile
+        import os
+        
+        # Create a simple bisect script
+        script_content = '''
+import json
+import random
+random.seed(42)
+for i in range(3):
+    print(json.dumps({\"step\": i, \"value\": random.random()}))
+'''
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write(script_content)
+            script_path = f.name
+        
+        try:
+            result = bisect_commits(
+                cmd=f'python {script_path}',
+                expected_columns=['step', 'value']
+            )
+            
+            assert 'success' in result
+            assert 'data' in result
+            
+            print('Bisect smoke test passed')
+        finally:
+            os.unlink(script_path)
+        "
+        
+        # Test cards
+        python -c "
+        from rldk.cards import generate_determinism_card, generate_drift_card, generate_reward_card
+        import pandas as pd
+        
+        # Create test data
+        df = pd.DataFrame({
+            'step': [1, 2, 3, 4, 5],
+            'reward_mean': [0.5, 0.6, 0.7, 0.8, 0.9],
+            'reward_std': [0.1, 0.1, 0.1, 0.1, 0.1]
+        })
+        
+        # Test card generation
+        determinism_card = generate_determinism_card(df)
+        assert 'title' in determinism_card
+        assert 'content' in determinism_card
+        
+        drift_card = generate_drift_card(df)
+        assert 'title' in drift_card
+        assert 'content' in drift_card
+        
+        reward_card = generate_reward_card(df)
+        assert 'title' in reward_card
+        assert 'content' in reward_card
+        
+        print('Cards smoke test passed')
+        "
+        
+        # Test config
+        python -c "
+        from rldk.config import settings, RLDKSettings, ConfigSchema
+        
+        # Test settings
+        assert isinstance(settings, RLDKSettings)
+        
+        # Test config schema
+        schema = ConfigSchema()
+        assert schema is not None
+        
+        print('Config smoke test passed')
+        "
+        
+        # Test IO utilities
+        python -c "
+        from rldk.io import write_json, write_png, mkdir_reports, validate, read_jsonl
+        import tempfile
+        import os
+        
+        # Test write_json
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            temp_file = f.name
+        
+        try:
+            write_json({'test': 'data'}, temp_file)
+            assert os.path.exists(temp_file)
+            
+            # Test read_jsonl
+            with open(temp_file, 'r') as f:
+                content = f.read()
+                assert 'test' in content
+            
+            print('IO utilities smoke test passed')
+        finally:
+            os.unlink(temp_file)
+        "
+        
+        # Test adapters
+        python -c "
+        from rldk.adapters import (
+            BaseAdapter, TRLAdapter, OpenRLHFAdapter, 
+            WandBAdapter, CustomJSONLAdapter, DemoJSONLAdapter
+        )
+        
+        # Test adapter creation
+        trl_adapter = TRLAdapter('test.jsonl')
+        assert trl_adapter.source == 'test.jsonl'
+        
+        openrlhf_adapter = OpenRLHFAdapter('test.jsonl')
+        assert openrlhf_adapter.source == 'test.jsonl'
+        
+        custom_adapter = CustomJSONLAdapter('test.jsonl')
+        assert custom_adapter.source == 'test.jsonl'
+        
+        demo_adapter = DemoJSONLAdapter('test.jsonl')
+        assert demo_adapter.source == 'test.jsonl'
+        
+        print('Adapters smoke test passed')
+        "
+        
+        # Test forensics
+        python -c "
+        from rldk.forensics import (
+            scan_logs, diff_checkpoints, audit_environment,
+            ComprehensivePPOForensics, ComprehensivePPOMetrics,
+            ComprehensiveGRPOForensics, ComprehensiveGRPOMetrics
+        )
+        
+        # Test PPO forensics
+        ppo_forensics = ComprehensivePPOForensics()
+        assert ppo_forensics is not None
+        
+        # Test GRPO forensics
+        grpo_forensics = ComprehensiveGRPOForensics()
+        assert grpo_forensics is not None
+        
+        print('Forensics smoke test passed')
+        "
+        
+        # Test tracking components
+        python -c "
+        from rldk.tracking import (
+            DatasetTracker, ModelTracker, EnvironmentTracker,
+            SeedTracker, GitTracker
+        )
+        
+        # Test tracker creation
+        dataset_tracker = DatasetTracker()
+        assert dataset_tracker is not None
+        
+        model_tracker = ModelTracker()
+        assert model_tracker is not None
+        
+        environment_tracker = EnvironmentTracker()
+        assert environment_tracker is not None
+        
+        seed_tracker = SeedTracker()
+        assert seed_tracker is not None
+        
+        git_tracker = GitTracker()
+        assert git_tracker is not None
+        
+        print('Tracking components smoke test passed')
+        "
+        
+        # Test utility functions
+        python -c "
+        from rldk.utils.seed import (
+            set_global_seed, get_global_seed, ensure_seeded,
+            seeded_random_state, restore_random_state, DEFAULT_SEED
+        )
+        
+        # Test seeding
+        set_global_seed(42)
+        assert get_global_seed() == 42
+        
+        # Test decorator
+        @ensure_seeded
+        def test_func():
+            return 'test'
+        
+        result = test_func()
+        assert result == 'test'
+        
+        # Test context manager
+        with seeded_random_state(123):
+            import random
+            val = random.random()
+        
+        print('Utility functions smoke test passed')
+        "
+        
+        # Test main package import
+        python -c "
+        import rldk
+        
+        # Test version
+        assert hasattr(rldk, '__version__')
+        assert rldk.__version__ is not None
+        
+        # Test main functions
+        assert hasattr(rldk, 'ingest_runs')
+        assert hasattr(rldk, 'first_divergence')
+        assert hasattr(rldk, 'check')
+        assert hasattr(rldk, 'health')
+        assert hasattr(rldk, 'run')
+        assert hasattr(rldk, 'replay')
+        assert hasattr(rldk, 'bisect_commits')
+        
+        # Test forensics
+        assert hasattr(rldk, 'scan_logs')
+        assert hasattr(rldk, 'ComprehensivePPOForensics')
+        assert hasattr(rldk, 'ComprehensiveGRPOForensics')
+        
+        # Test tracking
+        assert hasattr(rldk, 'ExperimentTracker')
+        assert hasattr(rldk, 'TrackingConfig')
+        
+        # Test adapters
+        assert hasattr(rldk, 'DemoJSONLAdapter')
+        assert hasattr(rldk, 'TRLAdapter')
+        assert hasattr(rldk, 'OpenRLHFAdapter')
+        
+        # Test utilities
+        assert hasattr(rldk, 'set_global_seed')
+        assert hasattr(rldk, 'get_global_seed')
+        
+        print('Main package smoke test passed')
+        "
+        
+        print("✅ All smoke tests passed!")
+    
+    - name: Clean up
+      if: always()
+      run: |
+        rm -rf ./smoke_demo
+        rm -rf ./test_demo

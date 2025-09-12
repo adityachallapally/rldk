@@ -14,7 +14,8 @@ from .replay import replay, ReplayReport
 # Forensics functionality (existing)
 from .forensics import (
     scan_logs, diff_checkpoints, audit_environment,
-    ComprehensivePPOForensics, ComprehensivePPOMetrics
+    ComprehensivePPOForensics, ComprehensivePPOMetrics,
+    ComprehensiveGRPOForensics, ComprehensiveGRPOMetrics
 )
 
 # Tracking functionality (existing)
@@ -31,7 +32,7 @@ from .cards import (
 
 # Adapters (existing)
 from .adapters import (
-    BaseAdapter, TRLAdapter, OpenRLHFAdapter, WandBAdapter, CustomJSONLAdapter
+    BaseAdapter, TRLAdapter, OpenRLHFAdapter, WandBAdapter, CustomJSONLAdapter, DemoJSONLAdapter
 )
 
 # Configuration (existing)
@@ -41,6 +42,12 @@ from .config import settings, RLDKSettings, ConfigSchema
 from .io import (
     write_json, write_png, mkdir_reports, validate,
     read_jsonl, read_reward_head
+)
+
+# Seeding utilities (new)
+from .utils.seed import (
+    set_global_seed, get_global_seed, ensure_seeded,
+    seeded_random_state, restore_random_state, DEFAULT_SEED
 )
 
 __all__ = [
@@ -67,6 +74,8 @@ __all__ = [
     "audit_environment",
     "ComprehensivePPOForensics",
     "ComprehensivePPOMetrics",
+    "ComprehensiveGRPOForensics",
+    "ComprehensiveGRPOMetrics",
     
     # Tracking functionality
     "ExperimentTracker",
@@ -88,6 +97,7 @@ __all__ = [
     "OpenRLHFAdapter",
     "WandBAdapter",
     "CustomJSONLAdapter",
+    "DemoJSONLAdapter",
     
     # Configuration
     "settings",
@@ -101,4 +111,12 @@ __all__ = [
     "validate",
     "read_jsonl",
     "read_reward_head",
+    
+    # Seeding utilities
+    "set_global_seed",
+    "get_global_seed",
+    "ensure_seeded",
+    "seeded_random_state",
+    "restore_random_state",
+    "DEFAULT_SEED",
 ]

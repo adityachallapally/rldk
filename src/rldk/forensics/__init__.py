@@ -4,6 +4,7 @@ from .log_scan import scan_logs
 from .ckpt_diff import diff_checkpoints
 from .env_audit import audit_environment
 from .comprehensive_ppo_forensics import ComprehensivePPOForensics, ComprehensivePPOMetrics
+from .comprehensive_grpo_forensics import ComprehensiveGRPOForensics, ComprehensiveGRPOMetrics
 from .ppo_scan import scan_ppo_events
 from .kl_schedule_tracker import KLScheduleTracker, KLScheduleMetrics
 from .gradient_norms_analyzer import GradientNormsAnalyzer, GradientNormsMetrics
@@ -15,6 +16,8 @@ __all__ = [
     "audit_environment",
     "ComprehensivePPOForensics",
     "ComprehensivePPOMetrics",
+    "ComprehensiveGRPOForensics",
+    "ComprehensiveGRPOMetrics",
     "scan_ppo_events",
     "KLScheduleTracker",
     "KLScheduleMetrics", 

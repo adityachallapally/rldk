@@ -1,0 +1,120 @@
+site_name: RLDK Documentation
+site_description: RL Debug Kit - Library and CLI for debugging reinforcement learning training runs
+site_url: https://github.com/your-org/rldk
+repo_url: https://github.com/your-org/rldk
+repo_name: your-org/rldk
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_root_toc_entry: true
+            show_root_full_path: false
+            show_object_full_path: false
+            show_category_heading: true
+            show_if_no_docstring: false
+            show_signature: true
+            show_signature_annotations: true
+            separate_signature: false
+            line_length: 88
+            merge_init_into_class: true
+            show_bases: true
+            show_submodules: true
+            group_by_category: true
+            heading_level: 2
+            filters: ["!^_"]
+
+nav:
+  - Home: index.md
+  - Quick Start: quickstart.md
+  - User Guide:
+    - Installation: user-guide/installation.md
+    - Configuration: user-guide/configuration.md
+    - CLI Reference: user-guide/cli-reference.md
+  - API Reference:
+    - Core Modules: reference/api.md
+    - CLI Commands: reference/commands.md
+  - Examples:
+    - Basic PPO CartPole: examples/basic_ppo_cartpole.md
+    - GRPO Toy Text: examples/grpo_toy_text.md
+    - Research Workflow: examples/research_repro_workflow.md
+    - Hyperparameter Tuning: examples/hyperparameter_tuning.md
+    - Multi-Run Analysis: examples/multi_run_analysis.md
+    - Production Checklist: examples/production_deployment_checklist.md
+  - Development:
+    - Contributing: development/contributing.md
+    - Testing: development/testing.md
+    - Building: development/building.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+      title: On this page
+      baselevel: 2
+      level: 2-6
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/your-org/rldk
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/rldk/
