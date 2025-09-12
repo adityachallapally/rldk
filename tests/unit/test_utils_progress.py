@@ -4,8 +4,7 @@
 import pytest
 import time
 import threading
-from unittest.mock import patch, MagicMock
-from contextlib import contextmanager
+from unittest.mock import patch
 
 # Import the module under test
 from rldk.utils.progress import (

@@ -565,9 +565,9 @@ if __name__ == "__main__":
     print("   5. Team Collaboration: Share experiment data with your team")
     
     print("\n📚 Additional Resources:")
-    print("   - RLDK Documentation: https://github.com/your-org/rldk")
-    print("   - API Reference: https://github.com/your-org/rldk/blob/main/docs/reference/api.md")
-    print("   - CLI Commands: https://github.com/your-org/rldk/blob/main/docs/reference/commands.md")
+    print("   - RLDK Documentation: https://github.com/adityachallapally/rldk")
+    print("   - API Reference: https://github.com/adityachallapally/rldk/blob/main/docs/reference/api.md")
+    print("   - CLI Commands: https://github.com/adityachallapally/rldk/blob/main/docs/reference/commands.md")
     
     print("\nHappy experimenting! 🎉")
 

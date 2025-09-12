@@ -1959,7 +1959,7 @@ def version():
 
 @app.command(name="seed")
 def seed_cmd(
-    seed: Optional[int] = typer.Option(None, "--seed", "-s", help="Seed value to set"),
+    seed_value: Optional[int] = typer.Option(None, "--seed", "-s", help="Seed value to set"),
     show: bool = typer.Option(False, "--show", help="Show current seed state"),
     deterministic: bool = typer.Option(True, "--deterministic/--non-deterministic", help="Enable deterministic behavior"),
     env: bool = typer.Option(False, "--env", help="Set environment variables for reproducibility"),
@@ -2013,12 +2013,12 @@ def seed_cmd(
             # Set seed
             if env:
                 # Set up reproducible environment
-                actual_seed = set_reproducible_environment(seed)
+                actual_seed = set_reproducible_environment(seed_value)
                 typer.echo(f"🌱 Reproducible environment set with seed: {actual_seed}")
                 typer.echo("  Environment variables configured for maximum reproducibility")
             else:
                 # Just set the seed
-                actual_seed = set_global_seed(seed, deterministic)
+                actual_seed = set_global_seed(seed_value, deterministic)
                 typer.echo(f"🌱 Global seed set to: {actual_seed}")
             
             if deterministic:

@@ -9,6 +9,14 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
 import logging
 
+
+@pytest.fixture
+def temp_dir():
+    """Create a temporary directory for testing."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        yield Path(tmpdir)
+
+
 # Import the module under test
 from rldk.utils.error_handling import (
     RLDKError,
@@ -360,16 +368,17 @@ class TestTimeoutDecorator:
         assert "timed out" in str(error)
         assert error.error_code == "OPERATION_TIMEOUT"
     
+    @pytest.mark.skipif(hasattr(signal, 'SIGALRM') is False, reason="SIGALRM not available on this platform")
     def test_with_timeout_signal_handling(self):
         """Test timeout decorator signal handling."""
         @with_timeout(0.1)
         def slow_func():
             time.sleep(0.2)
             return "success"
-        
+
         # Test that signal is properly restored
         old_handler = signal.signal(signal.SIGALRM, signal.SIG_DFL)
-        
+
         try:
             with pytest.raises(TimeoutError):
                 slow_func()
