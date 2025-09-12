@@ -190,10 +190,31 @@ def _detect_adapter_type(source: Union[str, Path]) -> str:
 
     # Check for WandB directory structure (more specific matching)
     # Look for wandb directory name or wandb subdirectory patterns
+    # Only check for WandB if the path actually looks like a WandB structure
     if (source_path.name == "wandb" or 
         any(part == "wandb" for part in source_path.parts)):
-        wandb_adapter = WandBAdapter(source_path)
-        if wandb_adapter.can_handle():
+        # Check if this looks like a WandB directory structure without instantiating adapter
+        # WandB directories typically contain run-* subdirectories or specific files
+        if source_path.is_dir():
+            # Look for WandB-specific patterns in the directory
+            wandb_indicators = [
+                "run-",  # WandB run directories
+                "config.yaml",  # WandB config file
+                "files",  # WandB files directory
+                "logs"  # WandB logs directory
+            ]
+            
+            # Check if directory contains WandB-specific files/subdirs
+            has_wandb_structure = any(
+                any(item.name.startswith(indicator) for item in source_path.iterdir())
+                for indicator in wandb_indicators
+            )
+            
+            if has_wandb_structure:
+                return "wandb"
+        
+        # Also check if this is a WandB run directory itself (starts with run-)
+        if source_path.name.startswith("run-"):
             return "wandb"
 
     # Check for our custom JSONL format (most specific)
