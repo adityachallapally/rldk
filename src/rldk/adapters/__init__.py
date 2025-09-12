@@ -5,6 +5,7 @@ from .trl import TRLAdapter
 from .openrlhf import OpenRLHFAdapter
 from .wandb import WandBAdapter
 from .custom_jsonl import CustomJSONLAdapter
+from .demo_jsonl import DemoJSONLAdapter
 
 __all__ = [
     "BaseAdapter",
@@ -12,4 +13,5 @@ __all__ = [
     "OpenRLHFAdapter",
     "WandBAdapter",
     "CustomJSONLAdapter",
+    "DemoJSONLAdapter",
 ]

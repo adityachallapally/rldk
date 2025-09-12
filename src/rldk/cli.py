@@ -26,6 +26,7 @@ from rldk.utils.error_handling import (
     print_usage_examples, print_troubleshooting_tips, check_dependencies,
     with_retry, with_timeout, handle_graceful_degradation, safe_operation
 )
+from rldk.utils.seed import set_global_seed, DEFAULT_SEED
 from rldk.utils.progress import (
     progress_bar, spinner, timed_operation, timed_operation_context, print_operation_status
 )
@@ -461,7 +462,7 @@ def reward_health_run(
     scores: str = typer.Option(..., "--scores", help="Path to scores JSONL file"),
     config: Optional[str] = typer.Option(None, "--config", help="Path to health configuration YAML file"),
     out: str = typer.Option(..., "--out", help="Output directory for reports"),
-    adapter: Optional[str] = typer.Option(None, "--adapter", help="Adapter type for data ingestion (custom_jsonl, trl, openrlhf, wandb)"),
+    adapter: Optional[str] = typer.Option(None, "--adapter", help="Adapter type for data ingestion (custom_jsonl, trl, openrlhf, wandb, demo_jsonl)"),
     gate: bool = typer.Option(False, "--gate", help="Enable CI gate mode with exit codes (0=pass, 1=warn, 2=fail). Use 'gate' subcommand for health.json-based gating."),
 ):
     """Run reward health analysis on scores data."""
@@ -979,7 +980,7 @@ def ingest(
         ..., help="Path to runs directory, file, or wandb:// URI"
     ),
     adapter: Optional[str] = typer.Option(
-        None, "--adapter", "-a", help="Adapter type (trl, openrlhf, wandb, custom_jsonl)"
+        None, "--adapter", "-a", help="Adapter type (trl, openrlhf, wandb, custom_jsonl, demo_jsonl)"
     ),
     output: Optional[str] = typer.Option(
         "metrics.jsonl", "--output", "-o", help="Output file path"
@@ -1028,7 +1029,7 @@ def ingest(
             
             # Validate adapter if specified
             if adapter:
-                valid_adapters = ["trl", "openrlhf", "wandb", "custom_jsonl"]
+                valid_adapters = ["trl", "openrlhf", "wandb", "custom_jsonl", "demo_jsonl"]
                 if adapter not in valid_adapters:
                     raise ValidationError(
                         f"Invalid adapter: {adapter}",
@@ -1949,6 +1950,58 @@ def validate_format(
         typer.echo(f"💡 Use 'rldk validate-format {source} --adapter <name>' to test specific adapter")
 
 
+@app.command(name="demo")
+def demo(
+    out: str = typer.Option(
+        "./tracking_demo_output", "--out", "-o", help="Output directory for demo data"
+    ),
+    seed: int = typer.Option(
+        DEFAULT_SEED, "--seed", "-s", help="Random seed for reproducible demo data"
+    ),
+    steps: int = typer.Option(
+        200, "--steps", help="Number of training steps to simulate"
+    ),
+    variants: int = typer.Option(
+        3, "--variants", help="Number of seeded variants to generate"
+    ),
+):
+    """Generate synthetic PPO and GRPO training runs for offline demos and testing."""
+    try:
+        typer.echo(f"Generating demo data with seed: {seed}")
+        typer.echo(f"Output directory: {out}")
+        typer.echo(f"Steps: {steps}")
+        typer.echo(f"Variants: {variants}")
+        
+        # Set global seed
+        set_global_seed(seed)
+        
+        # Create output directory
+        output_path = Path(out)
+        output_path.mkdir(parents=True, exist_ok=True)
+        
+        # Generate PPO demo data
+        typer.echo("\nGenerating PPO demo data...")
+        _generate_ppo_demo(output_path, steps, variants, seed)
+        
+        # Generate GRPO demo data
+        typer.echo("Generating GRPO demo data...")
+        _generate_grpo_demo(output_path, steps, variants, seed)
+        
+        # Generate fixture data
+        typer.echo("Generating fixture data...")
+        _generate_fixture_data(steps, seed)
+        
+        typer.echo(f"\n✅ Demo data generation complete!")
+        typer.echo(f"Files created in {out}:")
+        typer.echo("  - ppo_run_*.jsonl (PPO training logs)")
+        typer.echo("  - grpo_run_*.jsonl (GRPO training logs)")
+        typer.echo("  - tests/fixtures/minirun/run.jsonl (test fixture)")
+        
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
 @app.command(name="version")
 def version():
     """Show version information."""
@@ -2044,6 +2097,140 @@ def card(
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(1)
+
+
+def _generate_ppo_demo(output_path: Path, steps: int, variants: int, base_seed: int) -> None:
+    """Generate synthetic PPO training logs."""
+    import random
+    import numpy as np
+    
+    for variant in range(variants):
+        # Set variant-specific seed
+        variant_seed = base_seed + variant
+        random.seed(variant_seed)
+        np.random.seed(variant_seed)
+        
+        # Generate synthetic PPO data
+        filename = output_path / f"ppo_run_{variant:02d}.jsonl"
+        
+        with open(filename, 'w') as f:
+            for step in range(1, steps + 1):
+                # Simulate PPO training metrics with some realistic patterns
+                reward_mean = 0.5 + 0.001 * step + 0.1 * np.sin(step / 50) + np.random.normal(0, 0.05)
+                reward_std = 0.1 + 0.0001 * step + np.random.normal(0, 0.01)
+                kl = 0.05 + 0.0005 * step + np.random.normal(0, 0.01)
+                entropy = 2.0 - 0.001 * step + np.random.normal(0, 0.05)
+                loss = 1.0 - 0.002 * step + np.random.normal(0, 0.05)
+                policy_grad_norm = 1.0 + np.random.normal(0, 0.1)
+                value_grad_norm = 0.8 + np.random.normal(0, 0.1)
+                advantage_mean = np.random.normal(0, 0.1)
+                advantage_std = 1.0 + np.random.normal(0, 0.1)
+                
+                # Add some anomalies for forensics to detect
+                if step > 100 and step % 50 == 0:
+                    kl *= 2.0  # KL spike
+                if step > 150 and step % 30 == 0:
+                    reward_mean *= 0.5  # Reward drop
+                
+                row = {
+                    "step": step,
+                    "reward_mean": round(reward_mean, 6),
+                    "reward_std": round(reward_std, 6),
+                    "kl": round(kl, 6),
+                    "entropy": round(entropy, 6),
+                    "loss": round(loss, 6),
+                    "policy_grad_norm": round(policy_grad_norm, 6),
+                    "value_grad_norm": round(value_grad_norm, 6),
+                    "advantage_mean": round(advantage_mean, 6),
+                    "advantage_std": round(advantage_std, 6),
+                }
+                f.write(json.dumps(row) + "\n")
+
+
+def _generate_grpo_demo(output_path: Path, steps: int, variants: int, base_seed: int) -> None:
+    """Generate synthetic GRPO training logs."""
+    import random
+    import numpy as np
+    
+    for variant in range(variants):
+        # Set variant-specific seed
+        variant_seed = base_seed + variant + 1000  # Different seed space for GRPO
+        random.seed(variant_seed)
+        np.random.seed(variant_seed)
+        
+        # Generate synthetic GRPO data
+        filename = output_path / f"grpo_run_{variant:02d}.jsonl"
+        
+        with open(filename, 'w') as f:
+            for step in range(1, steps + 1):
+                # Simulate GRPO training metrics
+                reward_mean = 0.6 + 0.0008 * step + 0.05 * np.sin(step / 40) + np.random.normal(0, 0.03)
+                reward_std = 0.08 + 0.0001 * step + np.random.normal(0, 0.01)
+                kl = 0.04 + 0.0003 * step + np.random.normal(0, 0.008)
+                entropy = 1.8 - 0.0008 * step + np.random.normal(0, 0.04)
+                loss = 0.8 - 0.0015 * step + np.random.normal(0, 0.04)
+                policy_grad_norm = 0.9 + np.random.normal(0, 0.08)
+                value_grad_norm = 0.7 + np.random.normal(0, 0.08)
+                advantage_mean = np.random.normal(0, 0.08)
+                advantage_std = 0.9 + np.random.normal(0, 0.08)
+                pass_rate = 0.4 + 0.0008 * step + np.random.normal(0, 0.02)
+                
+                # Add GRPO-specific anomalies
+                if step > 80 and step % 40 == 0:
+                    pass_rate *= 1.5  # Pass rate spike
+                if step > 120 and step % 25 == 0:
+                    kl *= 1.8  # KL spike
+                if step > 160 and step % 35 == 0:
+                    reward_mean *= 0.7  # Reward drop
+                
+                row = {
+                    "step": step,
+                    "reward_mean": round(reward_mean, 6),
+                    "reward_std": round(reward_std, 6),
+                    "kl": round(kl, 6),
+                    "entropy": round(entropy, 6),
+                    "loss": round(loss, 6),
+                    "policy_grad_norm": round(policy_grad_norm, 6),
+                    "value_grad_norm": round(value_grad_norm, 6),
+                    "advantage_mean": round(advantage_mean, 6),
+                    "advantage_std": round(advantage_std, 6),
+                    "pass_rate": round(pass_rate, 6),
+                }
+                f.write(json.dumps(row) + "\n")
+
+
+def _generate_fixture_data(steps: int, seed: int) -> None:
+    """Generate minimal fixture data for tests."""
+    import random
+    import numpy as np
+    
+    # Set seed for fixture
+    random.seed(seed)
+    np.random.seed(seed)
+    
+    # Create fixture directory
+    fixture_dir = Path("tests/fixtures/minirun")
+    fixture_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Generate minimal deterministic fixture
+    filename = fixture_dir / "run.jsonl"
+    
+    with open(filename, 'w') as f:
+        for step in range(1, steps + 1):
+            row = {
+                "step": step,
+                "reward_mean": round(0.5 + 0.001 * step, 6),
+                "reward_std": 0.1,
+                "kl": round(0.05 + 0.0005 * step, 6),
+                "entropy": round(2.0 - 0.001 * step, 6),
+                "loss": round(1.0 - 0.002 * step, 6),
+                "policy_grad_norm": 1.0,
+                "value_grad_norm": 0.8,
+                "advantage_mean": 0.0,
+                "advantage_std": 1.0,
+                "pass_rate": round(0.4 + 0.0008 * step, 6),
+            }
+            f.write(json.dumps(row) + "\n")
 
 
 if __name__ == "__main__":

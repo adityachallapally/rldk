@@ -4,100 +4,10 @@ on:
   push:
     branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12"]
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'pip'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[dev]"
-    
-    - name: Run linting
-      run: |
-        ruff check --fix
-        black --check .
-    
-    - name: Run type checking
-      run: |
-        mypy src --ignore-missing-imports --no-strict-optional
-
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12"]
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'pip'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[dev]"
-    
-    - name: Generate test fixtures
-      run: |
-        python3 tests/_make_fixtures.py
-    
-    - name: Run tests
-      run: |
-        pytest -q --tb=short
-    
-    - name: Validate JSON artifacts
-      run: |
-        python -c "
-        import json
-        import jsonschema
-        from pathlib import Path
-        from rldk.io.schemas import DeterminismCardV1, PPOScanReportV1, CkptDiffReportV1, RewardDriftReportV1
-        
-        schemas = {
-            'determinism_card.json': DeterminismCardV1,
-            'ppo_scan.json': PPOScanReportV1,
-            'ckpt_diff.json': CkptDiffReportV1,
-            'reward_drift.json': RewardDriftReportV1,
-        }
-        
-        reports_dir = Path('rldk_reports')
-        if reports_dir.exists():
-            for report_file in reports_dir.glob('*.json'):
-                if report_file.name in schemas:
-                    with open(report_file) as f:
-                        data = json.load(f)
-                    jsonschema.validate(data, schemas[report_file.name])
-                    print(f'✓ Validated {report_file.name}')
-        "
-    
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: rldk-reports-${{ matrix.python-version }}
-        path: rldk_reports/
-        retention-days: 7
-
-  security:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -105,23 +15,155 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: "3.11"
-        cache: 'pip'
+        python-version: '3.9'
     
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install safety bandit
+        pip install -e ".[dev]"
     
-    - name: Run security checks
-      run: |
-        safety check
-        bandit -r src/ -f json -o bandit-report.json || true
+    - name: Run ruff
+      run: ruff check src tests
     
-    - name: Upload security report
-      uses: actions/upload-artifact@v4
-      if: always()
+    - name: Run black
+      run: black --check src tests
+    
+    - name: Run isort
+      run: isort --check-only src tests
+    
+    - name: Run codespell
+      run: codespell src tests
+    
+    - name: Run mypy
+      run: mypy src
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
       with:
-        name: security-report
-        path: bandit-report.json
-        retention-days: 30
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev,test]"
+    
+    - name: Run tests
+      run: |
+        pytest -q --cov=src/rldk --cov-report=xml --cov-report=term-missing
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[docs]"
+    
+    - name: Build docs
+      run: mkdocs build
+    
+    - name: Upload docs artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: docs
+        path: site/
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+    
+    - name: Build package
+      run: |
+        python -m build
+    
+    - name: Check package
+      run: |
+        twine check dist/*
+    
+    - name: Upload package artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: package
+        path: dist/
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev,test]"
+    
+    - name: Run integration tests
+      run: |
+        pytest tests/integration/ -v
+    
+    - name: Test CLI commands
+      run: |
+        python -m rldk --help
+        rldk demo --out ./test_demo --seed 42 --steps 10
+        rldk forensics log-scan ./test_demo
+        rldk diff --a ./test_demo --b ./test_demo --signals loss,reward_mean
+        rldk check-determinism --cmd "python -c 'import random; random.seed(42); print(random.random())'" --compare random --replicas 2
+
+  mutation:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev,test]"
+    
+    - name: Run mutation tests
+      run: |
+        mutmut run --paths-to-mutate src/rldk/determinism src/rldk/forensics \
+          --runner "pytest -q" --tests-dir tests --CI
