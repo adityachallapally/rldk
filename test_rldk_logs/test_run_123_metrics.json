@@ -1,0 +1,30 @@
+[
+  {
+    "step":1,
+    "epoch":0.0,
+    "learning_rate":0.00001,
+    "loss":0.5,
+    "grad_norm":0.1,
+    "reward_mean":0.0,
+    "reward_std":0.0,
+    "kl_mean":0.0,
+    "kl_std":0.0,
+    "entropy_mean":0.0,
+    "clip_frac":0.0,
+    "value_loss":0.0,
+    "policy_loss":0.0,
+    "gpu_memory_used":0.0,
+    "gpu_memory_allocated":0.0,
+    "cpu_memory_used":0.0,
+    "step_time":0.0,
+    "wall_time":0.0,
+    "tokens_in":0,
+    "tokens_out":0,
+    "training_stability_score":1.0,
+    "convergence_indicator":0.0,
+    "phase":"train",
+    "run_id":"test_run_123",
+    "git_sha":"",
+    "seed":42
+  }
+]
