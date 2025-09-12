@@ -182,7 +182,7 @@ class TRLAdapter(BaseAdapter):
         try:
             if file_path.suffix == ".jsonl":
                 with open(file_path, "r") as f:
-                    for line_num, line in enumerate(f):
+                    for line_num, line in enumerate(f, 1):  # Start line numbering from 1
                         line = line.strip()
                         if not line:
                             continue
@@ -192,12 +192,12 @@ class TRLAdapter(BaseAdapter):
                             if metric:
                                 metrics.append(metric)
                         except json.JSONDecodeError as e:
-                            print(f"Warning: JSON decode error in {file_path} at line {line_num + 1}: {e}")
+                            print(f"Warning: JSON decode error in {file_path} at line {line_num}: {e}")
                             continue
 
             elif file_path.suffix == ".log":
                 with open(file_path, "r") as f:
-                    for line_num, line in enumerate(f):
+                    for line_num, line in enumerate(f, 1):  # Start line numbering from 1
                         metric = self._parse_log_line(line, line_num)
                         if metric:
                             metrics.append(metric)
@@ -338,7 +338,7 @@ class TRLAdapter(BaseAdapter):
         
         try:
             with open(file_path, "r") as f:
-                for line_num, line in enumerate(f):
+                for line_num, line in enumerate(f, 1):  # Start line numbering from 1
                     line = line.strip()
                     if not line:
                         continue
@@ -350,7 +350,8 @@ class TRLAdapter(BaseAdapter):
                             metric = self._extract_metric_lenient(data, line_num)
                             if metric:
                                 metrics.append(metric)
-                    except json.JSONDecodeError:
+                    except json.JSONDecodeError as e:
+                        self.logger.warning(f"JSON decode error in {file_path} at line {line_num}: {e}")
                         continue
         except Exception as e:
             self.logger.warning(f"Error in fallback parsing {file_path}: {e}")

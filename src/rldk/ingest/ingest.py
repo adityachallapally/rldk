@@ -379,13 +379,13 @@ def _analyze_file_format(file_path: Path) -> dict:
                     # Try to parse JSON
                     import json
                     sample_data = []
-                    for line in lines:
+                    for line_num, line in enumerate(lines, 1):  # Start line numbering from 1
                         if line:
                             try:
                                 data = json.loads(line)
                                 sample_data.append(data)
                             except json.JSONDecodeError:
-                                issues.append(f"Invalid JSON on line {len(sample_data) + 1}")
+                                issues.append(f"Invalid JSON on line {line_num}")
                     
                     if sample_data:
                         # Analyze field structure
