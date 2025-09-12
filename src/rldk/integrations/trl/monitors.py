@@ -450,8 +450,9 @@ class CheckpointMonitor(TrainerCallback):
         if model is None:
             return
         
-        # Store current model reference for drift calculation
-        self._current_model = model
+        # Store current model reference for drift calculation (using weak reference)
+        import weakref
+        self._current_model = weakref.ref(model) if model is not None else None
         
         # Create checkpoint metrics
         checkpoint_metrics = CheckpointMetrics(
@@ -474,8 +475,13 @@ class CheckpointMonitor(TrainerCallback):
         # Store metrics
         self.checkpoint_metrics_history.append(checkpoint_metrics)
         
-        # Update previous weights for next comparison
-        self.previous_weights = self._extract_current_weights(model)
+        # Update previous weights for next comparison (with memory management)
+        new_weights = self._extract_current_weights(model)
+        if new_weights is not None:
+            # Clean up old weights to prevent memory accumulation
+            if hasattr(self, 'previous_weights') and self.previous_weights is not None:
+                del self.previous_weights
+            self.previous_weights = new_weights
         
         # Save checkpoint analysis
         self._save_checkpoint_analysis(checkpoint_metrics, model, state)
@@ -534,10 +540,14 @@ class CheckpointMonitor(TrainerCallback):
             # Note: We need the model to extract current weights, but this method doesn't have access to it
             # For now, we'll use a simplified approach based on parameter statistics
             if hasattr(self, '_current_model') and self._current_model is not None:
-                current_weights = self._extract_current_weights(self._current_model)
-                if current_weights is not None:
-                    drift_score = self._calculate_weight_drift(self.previous_weights, current_weights)
-                    metrics.parameter_drift = drift_score
+                model_ref = self._current_model()  # Get model from weak reference
+                if model_ref is not None:
+                    current_weights = self._extract_current_weights(model_ref)
+                    if current_weights is not None:
+                        drift_score = self._calculate_weight_drift(self.previous_weights, current_weights)
+                        metrics.parameter_drift = drift_score
+                    else:
+                        metrics.parameter_drift = 0.0
                 else:
                     metrics.parameter_drift = 0.0
             else:
@@ -609,10 +619,18 @@ class CheckpointMonitor(TrainerCallback):
             return None
         
         weights = {}
-        for name, param in model.named_parameters():
-            if param.requires_grad:
-                # Store a copy of the parameter data
-                weights[name] = param.data.clone().detach()
+        try:
+            for name, param in model.named_parameters():
+                if param.requires_grad:
+                    # Store a copy of the parameter data (only for small models)
+                    param_size = param.numel() * param.element_size()
+                    if param_size > 100 * 1024 * 1024:  # Skip parameters larger than 100MB
+                        continue
+                    weights[name] = param.data.clone().detach()
+        except RuntimeError as e:
+            # Handle out of memory errors gracefully
+            print(f"Warning: Could not extract weights due to memory constraints: {e}")
+            return None
         
         return weights if weights else None
     

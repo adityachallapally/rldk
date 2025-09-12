@@ -54,6 +54,13 @@ def calculate_confidence_intervals(
             else:
                 # Use bootstrap-based estimation when sample data is not available
                 # This is more robust than hardcoded values
+                import warnings
+                warnings.warn(
+                    "Using estimated standard deviation for confidence intervals. "
+                    "For more accurate results, provide sample_data parameter.",
+                    UserWarning,
+                    stacklevel=2
+                )
                 if sample_size >= 30:
                     # For large samples, use normal approximation with conservative std
                     # Based on binomial distribution for binary metrics
@@ -84,6 +91,13 @@ def calculate_confidence_intervals(
 
         except (ValueError, ArithmeticError, OverflowError) as e:
             # Fallback to point estimate if calculation fails
+            import warnings
+            warnings.warn(
+                f"Confidence interval calculation failed for {metric}: {e}. "
+                "Using point estimate.",
+                UserWarning,
+                stacklevel=2
+            )
             confidence_intervals[metric] = (score, score)
 
     return confidence_intervals
@@ -156,6 +170,13 @@ def calculate_effect_sizes(
                     effect_size = (score - baseline) / pooled_std
                     effect_sizes[metric] = float(effect_size)
                 else:
+                    import warnings
+                    warnings.warn(
+                        f"Effect size calculation failed for {metric}: pooled_std is zero. "
+                        "Using zero effect size.",
+                        UserWarning,
+                        stacklevel=2
+                    )
                     effect_sizes[metric] = 0.0
             else:
                 effect_sizes[metric] = np.nan

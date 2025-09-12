@@ -163,13 +163,27 @@ def _basic_determinism_check(run_path: str) -> Dict[str, Any]:
         log_files = list(run_dir.glob("*.log")) + list(run_dir.glob("**/*.log"))
         for log_file in log_files:
             try:
-                with open(log_file, 'r') as f:
-                    content = f.read().lower()
+                # Check file size first to avoid reading huge files
+                file_size = log_file.stat().st_size
+                if file_size > 10 * 1024 * 1024:  # Skip files larger than 10MB
+                    continue
+                
+                # Read file with proper encoding handling and size limits
+                with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
+                    # Read only first 1MB to avoid memory issues
+                    content = f.read(1024 * 1024).lower()
+                    
+                    # Check for non-deterministic behavior indicators
                     if "non-deterministic" in content or "nondeterministic" in content:
                         nondeterminism_hints.append(f"Non-deterministic behavior detected in {log_file.name}")
+                    
+                    # Check for RNG-related warnings
                     if "warning" in content and ("seed" in content or "random" in content):
                         nondeterminism_hints.append(f"RNG warnings found in {log_file.name}")
-            except Exception:
+                        
+            except (OSError, UnicodeDecodeError, MemoryError) as e:
+                # Log the error but continue processing other files
+                nondeterminism_hints.append(f"Could not read log file {log_file.name}: {str(e)[:50]}")
                 continue
 
     # Comprehensive pass/fail logic

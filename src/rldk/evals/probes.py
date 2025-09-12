@@ -41,14 +41,21 @@ def _reward_based_fallback(data: pd.DataFrame, **kwargs) -> float:
         if len(rewards) > 0:
             reward_mean = rewards.mean()
             reward_std = rewards.std()
+            reward_min = rewards.min()
+            reward_max = rewards.max()
             
-            # Normalize rewards to [0, 1] range assuming [-1, 1] input
-            normalized_mean = (reward_mean + 1) / 2
-            normalized_mean = np.clip(normalized_mean, 0, 1)
+            # Detect reward range automatically instead of assuming [-1, 1]
+            reward_range = reward_max - reward_min
+            if reward_range > 0:
+                # Normalize to [0, 1] based on actual range
+                normalized_mean = (reward_mean - reward_min) / reward_range
+            else:
+                # All rewards are the same
+                normalized_mean = 0.5
             
             # Adjust for consistency (lower std = higher score)
-            if reward_mean != 0:
-                cv = reward_std / abs(reward_mean)
+            if reward_mean != 0 and reward_range > 0:
+                cv = reward_std / reward_range  # Use range instead of mean for CV
                 consistency_bonus = max(0, 0.2 * (1 - cv))  # Up to 20% bonus
             else:
                 consistency_bonus = 0

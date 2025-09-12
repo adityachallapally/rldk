@@ -66,8 +66,8 @@ class MetricsSchema(BaseModel):
 # Event Schema for Normalized Training Data
 # ============================================================================
 
-# Import Event class and create_event_from_row function from event_schema to avoid duplication
-from .event_schema import Event, create_event_from_row
+# Import Event class from event_schema to avoid duplication
+from .event_schema import Event
 
 
 # ============================================================================
@@ -685,7 +685,84 @@ def list_artifact_types() -> list:
 # Event Creation Utilities
 # ============================================================================
 
-# create_event_from_row function is now imported from event_schema.py
+def create_event_from_row(
+    row: Dict[str, Any], run_id: str, git_sha: Optional[str] = None
+) -> Event:
+    """
+    Create an Event object from a training data row.
+    
+    This function is duplicated here to avoid circular imports.
+    The canonical version is in event_schema.py.
+
+    Args:
+        row: Dictionary containing training step data
+        run_id: Unique identifier for the training run
+        git_sha: Git commit SHA if available
+
+    Returns:
+        Event object with normalized data
+    """
+    # Extract metrics from the row
+    metrics = {}
+    metric_fields = [
+        "reward_mean", "reward_std", "kl_mean", "entropy_mean", "clip_frac",
+        "grad_norm", "lr", "loss", "network_bandwidth", "network_latency",
+        "bandwidth_mbps", "latency_ms", "bandwidth_upload_mbps", 
+        "bandwidth_download_mbps", "total_bandwidth_mbps", "allreduce_bandwidth",
+        "broadcast_bandwidth", "gather_bandwidth", "scatter_bandwidth",
+        "packet_loss_percent", "network_errors", "dns_resolution_ms",
+    ]
+
+    for field in metric_fields:
+        if field in row and row[field] is not None:
+            metrics[field] = float(row[field])
+
+    # Extract RNG information
+    rng = {
+        "seed": row.get("seed"),
+        "python_hash_seed": row.get("python_hash_seed"),
+        "torch_seed": row.get("torch_seed"),
+        "numpy_seed": row.get("numpy_seed"),
+        "random_seed": row.get("random_seed"),
+    }
+
+    # Extract data slice information
+    data_slice = {
+        "tokens_in": row.get("tokens_in"),
+        "tokens_out": row.get("tokens_out"),
+        "batch_size": row.get("batch_size"),
+        "sequence_length": row.get("sequence_length"),
+    }
+
+    # Extract model information
+    model_info = {
+        "run_id": run_id,
+        "git_sha": git_sha,
+        "phase": row.get("phase", "train"),
+        "model_name": row.get("model_name"),
+        "model_size": row.get("model_size"),
+        "optimizer": row.get("optimizer"),
+        "scheduler": row.get("scheduler"),
+    }
+
+    # Generate notes based on data quality
+    notes = []
+    if row.get("clip_frac", 0) > 0.2:
+        notes.append("High clipping fraction detected")
+    if row.get("grad_norm", 0) > 10.0:
+        notes.append("Large gradient norm detected")
+    if row.get("kl_mean", 0) > 0.2:
+        notes.append("High KL divergence detected")
+
+    return Event(
+        step=int(row["step"]),
+        wall_time=float(row.get("wall_time", 0)),
+        metrics=metrics,
+        rng=rng,
+        data_slice=data_slice,
+        model_info=model_info,
+        notes=notes,
+    )
 
 
 def events_to_dataframe(events: List[Event]) -> pd.DataFrame:
