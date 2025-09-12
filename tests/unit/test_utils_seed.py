@@ -16,7 +16,7 @@ from rldk.utils.seed import (
     get_seed_state_summary,
     set_reproducible_environment,
     validate_seed_consistency,
-    seed_context
+    create_seed_context
 )
 
 
@@ -57,7 +57,7 @@ class TestSeedManagement:
         initial_seed = get_current_seed()
         
         # Use context manager
-        with seed_context(100):
+        with create_seed_context(100):
             assert get_current_seed() == 100
         
         # Should restore original seed
@@ -67,10 +67,10 @@ class TestSeedManagement:
         """Test nested seed context managers."""
         set_global_seed(42)
         
-        with seed_context(100):
+        with create_seed_context(100):
             assert get_current_seed() == 100
             
-            with seed_context(200):
+            with create_seed_context(200):
                 assert get_current_seed() == 200
             
             assert get_current_seed() == 100
@@ -156,7 +156,7 @@ class TestSeedManagement:
         initial_seed = get_current_seed()
         
         try:
-            with seed_context(100):
+            with create_seed_context(100):
                 assert get_current_seed() == 100
                 raise ValueError("Test exception")
         except ValueError:
@@ -169,7 +169,7 @@ class TestSeedManagement:
         """Test seed context with None seed."""
         set_global_seed(42)
         
-        with seed_context(None):
+        with create_seed_context(None):
             # Should generate a random seed
             seed = get_current_seed()
             assert seed is not None
@@ -183,9 +183,9 @@ class TestSeedManagement:
         set_global_seed(42)
         
         # Multiple context managers should stack correctly
-        with seed_context(100):
-            with seed_context(200):
-                with seed_context(300):
+        with create_seed_context(100):
+            with create_seed_context(200):
+                with create_seed_context(300):
                     assert get_current_seed() == 300
                 assert get_current_seed() == 200
             assert get_current_seed() == 100
@@ -249,7 +249,7 @@ class TestSeedManagement:
         """Test seed context with deterministic parameter."""
         set_global_seed(42)
         
-        with seed_context(100, deterministic=False):
+        with create_seed_context(100, deterministic=False):
             assert get_current_seed() == 100
         
         # Should restore original seed
@@ -352,7 +352,7 @@ class TestSeedErrorHandling:
     def test_seed_context_with_invalid_seed(self):
         """Test seed context with invalid seed type."""
         with pytest.raises(TypeError):
-            with seed_context("invalid_seed"):
+            with create_seed_context("invalid_seed"):
                 pass
     
     def test_restore_seed_state_with_none(self):

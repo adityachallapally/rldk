@@ -174,6 +174,9 @@ def run_single_experiment(env_name, hyperparams, episodes=100, seed=42):
             dones = [False] * (len(states) - 1) + [True]
             advantages, returns = agent.compute_advantages(rewards, values, dones)
             
+            # Store old policy parameters before update for KL divergence calculation
+            old_policy = agent.policy.copy()
+            
             # Update policy
             agent.update(states, actions, rewards, log_probs, values, advantages, returns)
             
@@ -182,7 +185,7 @@ def run_single_experiment(env_name, hyperparams, episodes=100, seed=42):
             kl_div = 0.0
             for i, state in enumerate(states):
                 # Get old policy distribution (before update)
-                old_logits = state @ agent.policy
+                old_logits = state @ old_policy
                 old_probs = agent._softmax(old_logits)
                 # Get new policy distribution (after update)
                 new_logits = state @ agent.policy

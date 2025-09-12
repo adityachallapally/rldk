@@ -352,6 +352,9 @@ class BenchmarkSuite:
                         agent.remember(states[i], actions[i], rewards[i], states[i+1], done)
                     agent.replay()
                 else:
+                    # Store old policy parameters before update for KL divergence calculation
+                    old_policy = agent.policy.copy()
+                    
                     # PPO/A2C update
                     if algorithm.__class__.__name__ == 'SimplePPO':
                         # Compute advantages and returns
@@ -371,7 +374,7 @@ class BenchmarkSuite:
                     kl_div = 0.0
                     for i, state in enumerate(states):
                         # Get old policy distribution (before update)
-                        old_logits = state @ agent.policy
+                        old_logits = state @ old_policy
                         old_probs = agent._softmax(old_logits)
                         # Get new policy distribution (after update)
                         new_logits = state @ agent.policy

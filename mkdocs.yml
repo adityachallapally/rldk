@@ -130,40 +130,10 @@ nav:
   - Getting Started:
     - Installation: getting-started/installation.md
     - Quick Start: getting-started/quickstart.md
-    - Configuration: getting-started/configuration.md
-  - User Guide:
-    - Experiment Tracking: user-guide/tracking.md
-    - Forensics Analysis: user-guide/forensics.md
-    - Determinism Checking: user-guide/determinism.md
-    - Reward Analysis: user-guide/reward-analysis.md
-    - Evaluation Suites: user-guide/evaluation.md
-    - Run Comparison: user-guide/run-comparison.md
-    - Seeded Replay: user-guide/replay.md
-  - CLI Reference:
-    - Commands: reference/commands.md
-    - Configuration: reference/config.md
   - API Reference:
     - Core API: reference/api.md
-    - Tracking: reference/tracking-api.md
-    - Forensics: reference/forensics-api.md
-    - Utils: reference/utils-api.md
-  - Examples:
-    - Basic PPO CartPole: examples/basic-ppo-cartpole.md
-    - Custom Environment: examples/custom-environment.md
-    - Distributed Training: examples/distributed-training.md
-    - Hyperparameter Tuning: examples/hyperparameter-tuning.md
-    - Benchmark Comparison: examples/benchmark-comparison.md
-    - Research Workflow: examples/research-workflow.md
-    - Multi-Run Analysis: examples/multi-run-analysis.md
-    - Production Deployment: examples/production-deployment.md
-  - Research Use Cases:
-    - Common Failure Patterns: research/failure-patterns.md
-    - Troubleshooting Guide: research/troubleshooting.md
-    - Best Practices: research/best-practices.md
-  - Development:
-    - Contributing: development/contributing.md
-    - Testing: development/testing.md
-    - CI/CD: development/ci-cd.md
+  - CLI Reference:
+    - Commands: reference/commands.md
 
 # Extra
 extra:

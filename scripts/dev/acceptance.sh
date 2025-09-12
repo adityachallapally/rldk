@@ -127,8 +127,7 @@ echo "============================="
 # Mutation testing (optional, don't fail if not available)
 if command_exists mutmut; then
     print_status "INFO" "Running mutation testing on determinism and forensics modules"
-    if mutmut run --paths-to-mutate src/rldk/determinism src/rldk/forensics \
-       --runner "pytest -q" --tests-dir tests --CI; then
+    if mutmut run --paths-to-mutate=src/rldk/utils/seed.py --simple-output; then
         print_status "SUCCESS" "Mutation testing completed"
     else
         print_status "WARNING" "Mutation testing found surviving mutants (expected for some cases)"

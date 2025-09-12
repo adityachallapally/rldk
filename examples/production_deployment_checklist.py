@@ -425,6 +425,9 @@ class ProductionDeploymentPipeline:
                 dones = [False] * (len(states) - 1) + [True]
                 advantages, returns = self.model.compute_advantages(rewards, values, dones)
                 
+                # Store old policy parameters before update for KL divergence calculation
+                old_policy = self.model.policy.copy()
+                
                 # Update policy
                 self.model.update(states, actions, rewards, log_probs, values, advantages, returns)
                 
@@ -433,11 +436,11 @@ class ProductionDeploymentPipeline:
                 kl_div = 0.0
                 for i, state in enumerate(states):
                     # Get old policy distribution (before update)
-                    old_logits = state @ agent.policy
-                    old_probs = agent._softmax(old_logits)
+                    old_logits = state @ old_policy
+                    old_probs = self.model._softmax(old_logits)
                     # Get new policy distribution (after update)
-                    new_logits = state @ agent.policy
-                    new_probs = agent._softmax(new_logits)
+                    new_logits = state @ self.model.policy
+                    new_probs = self.model._softmax(new_logits)
                     kl_div += np.sum(old_probs * np.log((old_probs + 1e-8) / (new_probs + 1e-8)))
                 kl_div = kl_div / len(states) if states else 0.0
                 entropy = -np.mean([log_prob * np.log(log_prob + 1e-8) for log_prob in log_probs])
