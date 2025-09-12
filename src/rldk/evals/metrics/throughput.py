@@ -91,13 +91,15 @@ def calculate_tokens_per_second(events: List[Dict[str, Any]]) -> Tuple[float, fl
         if isinstance(prev_time, str):
             try:
                 prev_time = datetime.fromisoformat(prev_time.replace('Z', '+00:00')).timestamp()
-            except:
+            except (ValueError, TypeError) as e:
+                logger.debug(f"Failed to parse previous timestamp '{prev_time}': {e}")
                 continue
                 
         if isinstance(curr_time, str):
             try:
                 curr_time = datetime.fromisoformat(curr_time.replace('Z', '+00:00')).timestamp()
-            except:
+            except (ValueError, TypeError) as e:
+                logger.debug(f"Failed to parse current timestamp '{curr_time}': {e}")
                 continue
         
         time_interval = curr_time - prev_time
@@ -282,13 +284,15 @@ def evaluate_throughput(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             if isinstance(prev_time, str):
                 try:
                     prev_time = datetime.fromisoformat(prev_time.replace('Z', '+00:00')).timestamp()
-                except:
+                except (ValueError, TypeError) as e:
+                    logger.debug(f"Failed to parse previous timestamp '{prev_time}': {e}")
                     continue
                     
             if isinstance(curr_time, str):
                 try:
                     curr_time = datetime.fromisoformat(curr_time.replace('Z', '+00:00')).timestamp()
-                except:
+                except (ValueError, TypeError) as e:
+                    logger.debug(f"Failed to parse current timestamp '{curr_time}': {e}")
                     continue
             
             time_interval = curr_time - prev_time
