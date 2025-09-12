@@ -107,17 +107,32 @@ run_with_status "Running tests with pytest" pytest -q --maxfail=1 --disable-warn
 # Coverage check
 print_status "INFO" "Running coverage analysis"
 if pytest -q --cov=src/rldk --cov-report=term-missing --cov-report=xml; then
-    # Check if coverage meets threshold with better error handling
-    COVERAGE=$(coverage report --show-missing | grep "TOTAL" | sed 's/.*[[:space:]]\([0-9]*\)%.*/\1/' || echo "")
-    if [ -z "$COVERAGE" ] || ! python -c "int('$COVERAGE')" 2>/dev/null; then
-        print_status "ERROR" "Could not extract coverage percentage from report"
-        exit 1
-    fi
-    
-    if python -c "import sys; sys.exit(0 if int('$COVERAGE') >= 80 else 1)"; then
-        print_status "SUCCESS" "Coverage threshold met: ${COVERAGE}% >= 80%"
+    # Check if coverage meets threshold using Python for portability
+    if python -c "
+import subprocess
+import re
+try:
+    result = subprocess.run(['coverage', 'report', '--show-missing'], 
+                           capture_output=True, text=True, check=True)
+    match = re.search(r'TOTAL.*?(\d+)%', result.stdout)
+    if match:
+        coverage = int(match.group(1))
+        if coverage >= 80:
+            print(f'SUCCESS: Coverage threshold met: {coverage}% >= 80%')
+            exit(0)
+        else:
+            print(f'ERROR: Coverage below threshold: {coverage}% < 80%')
+            exit(1)
+    else:
+        print('ERROR: Could not extract coverage percentage')
+        exit(1)
+except Exception as e:
+    print(f'ERROR: Coverage check failed: {e}')
+    exit(1)
+"; then
+        print_status "SUCCESS" "Coverage threshold met"
     else
-        print_status "ERROR" "Coverage below threshold: ${COVERAGE}% < 80%"
+        print_status "ERROR" "Coverage below threshold"
         exit 1
     fi
 else

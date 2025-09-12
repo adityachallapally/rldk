@@ -117,15 +117,17 @@ class SimplePPO:
         returns = []
         
         # Compute returns (discounted cumulative rewards)
-        G = 0
+        returns = [0.0] * len(rewards)
         for i in reversed(range(len(rewards))):
             if dones[i]:
-                G = rewards[i]  # Terminal state
+                # Terminal state: return is just the reward
+                returns[i] = rewards[i]
             else:
-                G = rewards[i] + self.gamma * G
-            returns.insert(0, G)
+                # Non-terminal: bootstrap from next value function
+                next_value = values[i + 1] if i + 1 < len(values) else 0.0
+                returns[i] = rewards[i] + self.gamma * next_value
         
-        # Compute advantages: A_t = R_t - V(s_t)
+        # Compute advantages: A_t = G_t - V(s_t)
         for i in range(len(rewards)):
             advantage = returns[i] - values[i]
             advantages.append(advantage)

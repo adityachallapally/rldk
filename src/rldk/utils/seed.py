@@ -45,7 +45,8 @@ class SeedManager:
         self.seed = None
         self.rng_state = {}
         self.deterministic = False
-        self._lock = threading.RLock()  # Use RLock for nested locking
+        # Simple lock for thread safety in multi-threaded ML training scenarios
+        self._lock = threading.Lock()
         
         # Store original states for restoration
         self._original_states = {}

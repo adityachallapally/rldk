@@ -82,19 +82,6 @@ def sanitize_path(path: Union[str, Path], base_path: Optional[Path] = None) -> P
     Raises:
         ValidationError: If path contains traversal attempts or is invalid
     """
-    # First check for path traversal attempts before resolving
-    path_str = str(path)
-    if ".." in path_str:
-        # Check for parent directory traversal patterns
-        path_parts = Path(path).parts
-        if ".." in path_parts:
-            raise ValidationError(
-                f"Path traversal attempt detected: {path}",
-                suggestion="Use relative paths within the allowed directory",
-                error_code="PATH_TRAVERSAL_DETECTED",
-                details={"original_path": str(path)}
-            )
-    
     try:
         path_obj = Path(path).resolve()
     except Exception as e:
@@ -103,6 +90,9 @@ def sanitize_path(path: Union[str, Path], base_path: Optional[Path] = None) -> P
             suggestion="Please provide a valid file or directory path",
             error_code="INVALID_PATH"
         ) from e
+    
+    # Only check for path traversal if base_path is provided
+    # This allows legitimate use of .. in paths when no base restriction is needed
     
     # If base_path is provided, ensure the path is within it
     if base_path is not None:

@@ -130,19 +130,18 @@ def main():
             advantages = []
             returns = []
             
-            # Compute returns (discounted cumulative rewards) efficiently
+            # Compute returns (discounted cumulative rewards)
             returns = [0.0] * len(rewards)
-            G = 0.0
             for i in reversed(range(len(rewards))):
                 if dones[i]:
-                    # Terminal state: no bootstrap from next value
-                    G = rewards[i]
+                    # Terminal state: return is just the reward
+                    returns[i] = rewards[i]
                 else:
-                    # Non-terminal: bootstrap from next value
-                    G = rewards[i] + self.gamma * G
-                returns[i] = G
+                    # Non-terminal: bootstrap from next value function
+                    next_value = values[i + 1] if i + 1 < len(values) else 0.0
+                    returns[i] = rewards[i] + self.gamma * next_value
             
-            # Compute advantages: A_t = R_t - V(s_t)
+            # Compute advantages: A_t = G_t - V(s_t)
             for i in range(len(rewards)):
                 advantage = returns[i] - values[i]
                 advantages.append(advantage)
