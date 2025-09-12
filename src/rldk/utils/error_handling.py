@@ -37,7 +37,7 @@ class EvaluationError(RLDKError):
     pass
 
 
-class TimeoutError(RLDKError):
+class RLDKTimeoutError(RLDKError):
     """Raised when operations timeout."""
     pass
 
@@ -69,17 +69,59 @@ def log_error_with_context(error: Exception, context: str, logger: Optional[logg
     logger.debug(f"Full traceback:\n{traceback.format_exc()}")
 
 
-def validate_file_path(path: Union[str, Path], must_exist: bool = True, 
-                      file_extensions: Optional[List[str]] = None) -> Path:
-    """Validate file path with helpful error messages."""
+def sanitize_path(path: Union[str, Path], base_path: Optional[Path] = None) -> Path:
+    """Sanitize a path to prevent path traversal attacks.
+    
+    Args:
+        path: The path to sanitize
+        base_path: Optional base path to restrict access to
+        
+    Returns:
+        Sanitized Path object
+        
+    Raises:
+        ValidationError: If path contains traversal attempts or is invalid
+    """
+    # Always check for obvious traversal attempts before resolving
+    if '..' in Path(path).parts:
+        raise ValidationError(
+            f"Path traversal attempt detected: {path}",
+            suggestion="Use relative paths within the allowed directory",
+            error_code="PATH_TRAVERSAL_DETECTED",
+            details={"original_path": str(path)}
+        )
+    
     try:
-        path_obj = Path(path)
+        path_obj = Path(path).resolve()
     except Exception as e:
         raise ValidationError(
             f"Invalid path format: {path}",
             suggestion="Please provide a valid file or directory path",
             error_code="INVALID_PATH"
         ) from e
+    
+    # If base_path is provided, ensure the path is within it
+    if base_path is not None:
+        base_path = Path(base_path).resolve()
+        try:
+            path_obj.relative_to(base_path)
+        except ValueError:
+            raise ValidationError(
+                f"Path outside allowed directory: {path}",
+                suggestion=f"Path must be within {base_path}",
+                error_code="PATH_OUTSIDE_BASE",
+                details={"path": str(path_obj), "base_path": str(base_path)}
+            )
+    
+    return path_obj
+
+
+def validate_file_path(path: Union[str, Path], must_exist: bool = True, 
+                      file_extensions: Optional[List[str]] = None,
+                      base_path: Optional[Path] = None) -> Path:
+    """Validate file path with helpful error messages and path sanitization."""
+    # First sanitize the path
+    path_obj = sanitize_path(path, base_path)
     
     if must_exist and not path_obj.exists():
         raise ValidationError(
@@ -174,7 +216,7 @@ def with_timeout(timeout_seconds: float):
             import signal
             
             def timeout_handler(signum, frame):
-                raise TimeoutError(
+                raise RLDKTimeoutError(
                     f"Operation timed out after {timeout_seconds} seconds",
                     suggestion="Try increasing the timeout or optimizing the operation",
                     error_code="OPERATION_TIMEOUT",

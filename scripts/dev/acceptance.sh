@@ -107,12 +107,32 @@ run_with_status "Running tests with pytest" pytest -q --maxfail=1 --disable-warn
 # Coverage check
 print_status "INFO" "Running coverage analysis"
 if pytest -q --cov=src/rldk --cov-report=term-missing --cov-report=xml; then
-    # Check if coverage meets threshold
-    COVERAGE=$(coverage report --show-missing | grep "TOTAL" | awk '{print $4}' | sed 's/%//')
-    if (( $(awk "BEGIN {print ($COVERAGE >= 80)}") )); then
-        print_status "SUCCESS" "Coverage threshold met: ${COVERAGE}% >= 80%"
+    # Check if coverage meets threshold using Python for portability
+    if python -c "
+import subprocess
+import re
+try:
+    result = subprocess.run(['coverage', 'report', '--show-missing'], 
+                           capture_output=True, text=True, check=True)
+    match = re.search(r'TOTAL.*?(\d+)%', result.stdout)
+    if match:
+        coverage = int(match.group(1))
+        if coverage >= 80:
+            print(f'SUCCESS: Coverage threshold met: {coverage}% >= 80%')
+            exit(0)
+        else:
+            print(f'ERROR: Coverage below threshold: {coverage}% < 80%')
+            exit(1)
+    else:
+        print('ERROR: Could not extract coverage percentage')
+        exit(1)
+except Exception as e:
+    print(f'ERROR: Coverage check failed: {e}')
+    exit(1)
+"; then
+        print_status "SUCCESS" "Coverage threshold met"
     else
-        print_status "ERROR" "Coverage below threshold: ${COVERAGE}% < 80%"
+        print_status "ERROR" "Coverage below threshold"
         exit 1
     fi
 else
@@ -178,21 +198,47 @@ echo "==================================="
 
 # Performance checks
 print_status "INFO" "Checking import time..."
-IMPORT_TIME=$(python -c "import time; start=time.time(); import rldk; print(f'Import time: {time.time()-start:.2f}s')" | grep -E "Import time: [0-9]+\.[0-9]+s" | awk -F: '{print $2}' | sed 's/s//' | awk '{print $1}')
-if (( $(awk "BEGIN {print ($IMPORT_TIME <= 2.0)}") )); then
-    print_status "SUCCESS" "Import time acceptable: ${IMPORT_TIME}s <= 2.0s"
+if python -c "
+import time
+import sys
+try:
+    start = time.time()
+    import rldk
+    import_time = time.time() - start
+    print(f'{import_time:.2f}')
+    sys.exit(0 if import_time <= 2.0 else 1)
+except Exception as e:
+    print(f'ERROR: Import check failed: {e}')
+    sys.exit(1)
+"; then
+    print_status "SUCCESS" "Import time acceptable: <= 2.0s"
 else
-    print_status "ERROR" "Import time too slow: ${IMPORT_TIME}s > 2.0s"
+    print_status "ERROR" "Import time too slow: > 2.0s"
     exit 1
 fi
 
 print_status "INFO" "Checking memory usage..."
-MEMORY_USAGE=$(python -c "import psutil, rldk; print(f'Memory usage: {psutil.Process().memory_info().rss / 1024 / 1024:.1f} MB')" | grep -E "Memory usage: [0-9]+\.[0-9]+ MB" | awk -F: '{print $2}' | sed 's/ MB//' | awk '{print $1}')
-if (( $(awk "BEGIN {print ($MEMORY_USAGE <= 200.0)}") )); then
-    print_status "SUCCESS" "Memory usage acceptable: ${MEMORY_USAGE} MB <= 200 MB"
+# Check if psutil is available, fallback to basic check if not
+if python -c "import psutil" 2>/dev/null; then
+    if python -c "
+import psutil
+import rldk
+import sys
+try:
+    memory_mb = psutil.Process().memory_info().rss / 1024 / 1024
+    print(f'{memory_mb:.1f}')
+    sys.exit(0 if memory_mb <= 200.0 else 1)
+except Exception as e:
+    print(f'ERROR: Memory check failed: {e}')
+    sys.exit(1)
+"; then
+        print_status "SUCCESS" "Memory usage acceptable: <= 200 MB"
+    else
+        print_status "ERROR" "Memory usage too high: > 200 MB"
+        exit 1
+    fi
 else
-    print_status "ERROR" "Memory usage too high: ${MEMORY_USAGE} MB > 200 MB"
-    exit 1
+    print_status "WARNING" "psutil not available, skipping memory usage check"
 fi
 
 echo ""

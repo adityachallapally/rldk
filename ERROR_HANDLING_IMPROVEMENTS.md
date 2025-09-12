@@ -41,7 +41,7 @@ RLDKError (base)
 ├── ValidationError (input validation)
 ├── AdapterError (data loading)
 ├── EvaluationError (evaluation failures)
-└── TimeoutError (operation timeouts)
+└── RLDKTimeoutError (operation timeouts)
 ```
 
 ### 2. Error Message Format

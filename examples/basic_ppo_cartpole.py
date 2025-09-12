@@ -91,6 +91,12 @@ def main():
             exp_x = np.exp(x - np.max(x))
             return exp_x / np.sum(exp_x)
         
+        def _log_softmax(self, x):
+            """Log softmax function for numerical stability."""
+            x_max = np.max(x)
+            log_sum_exp = np.log(np.sum(np.exp(x - x_max))) + x_max
+            return x - log_sum_exp
+        
         def update(self, states, actions, rewards, log_probs_old, values_old, advantages, returns):
             """Update policy and value function."""
             # Simple gradient update (simplified from full PPO)
@@ -120,21 +126,34 @@ def main():
                 self.value -= self.lr * value_loss * state.reshape(-1, 1)
         
         def compute_advantages(self, rewards, values, dones):
-            """Compute advantages using GAE."""
+            """Compute advantages using basic advantage estimation (not GAE).
+            
+            Args:
+                rewards: List of rewards for each timestep
+                values: List of value function estimates (should be len(rewards) + 1)
+                dones: List of done flags for each timestep
+            """
             advantages = []
             returns = []
             
-            # Simple advantage computation
-            for i in range(len(rewards)):
-                if i == len(rewards) - 1 or dones[i]:
-                    advantage = rewards[i] - values[i]
-                    return_val = rewards[i]
+            # Ensure values has the correct length (rewards + 1 for terminal state)
+            if len(values) != len(rewards) + 1:
+                raise ValueError(f"Values length {len(values)} should be rewards length {len(rewards)} + 1")
+            
+            # Compute returns (discounted cumulative rewards)
+            returns = [0.0] * len(rewards)
+            for i in reversed(range(len(rewards))):
+                if dones[i]:
+                    # Terminal state: return is just the reward
+                    returns[i] = rewards[i]
                 else:
-                    advantage = rewards[i] + self.gamma * values[i+1] - values[i]
-                    return_val = rewards[i] + self.gamma * values[i+1]
-                
+                    # Non-terminal: bootstrap from next value function
+                    returns[i] = rewards[i] + self.gamma * values[i + 1]
+            
+            # Compute advantages: A_t = G_t - V(s_t)
+            for i in range(len(rewards)):
+                advantage = returns[i] - values[i]
                 advantages.append(advantage)
-                returns.append(return_val)
             
             return np.array(advantages), np.array(returns)
     
@@ -248,7 +267,10 @@ def main():
                     # Get new policy distribution (after update)
                     new_logits = state @ agent.policy
                     new_probs = agent._softmax(new_logits)
-                    kl_div += np.sum(old_probs * np.log((old_probs + 1e-8) / (new_probs + 1e-8)))
+                    # KL divergence: KL(old||new) = Σ old_probs * log(old_probs / new_probs)
+                    # Add small epsilon for numerical stability
+                    eps = 1e-8
+                    kl_div += np.sum(old_probs * (np.log(old_probs + eps) - np.log(new_probs + eps)))
                 kl_div = kl_div / len(states) if states else 0.0
                 entropy = -np.mean([log_prob * np.log(log_prob + 1e-8) for log_prob in log_probs])
                 policy_grad_norm = np.linalg.norm(agent.policy.flatten())

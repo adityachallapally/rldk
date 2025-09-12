@@ -23,6 +23,43 @@ def rldk_cmd():
 
 class TestCLIMinirun:
     """Test CLI functionality against minimal run fixture."""
+    
+    def _check_cli_result(self, result, test_name):
+        """Helper function to check CLI results with proper error reporting."""
+        # Check that CLI doesn't crash with unexpected errors
+        if result.returncode not in [0, 1]:
+            pytest.fail(f"CLI crashed with unexpected return code {result.returncode} in {test_name}. "
+                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+        
+        # If it fails, it should be a known/expected failure, not a crash
+        if result.returncode == 1:
+            # Should not contain Python tracebacks or unexpected errors
+            assert "Traceback" not in result.stderr, f"Unexpected Python traceback in {test_name}: {result.stderr}"
+            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception in {test_name}: {result.stderr}"
+    
+    @pytest.mark.parametrize("command,args", [
+        (["ingest"], ["--adapter", "generic"]),
+        (["diff"], []),
+        (["replay"], ["--command", "echo test"]),
+        (["bisect"], ["--good", "abc123", "--bad", "def456", "--cmd", "echo test"]),
+        (["check-determinism"], ["--cmd", "echo test", "--replicas", "2"]),
+        (["forensics"], []),
+        (["reward", "health"], []),
+        (["evals", "bias"], []),
+        (["evals", "toxicity"], []),
+        (["evals", "throughput"], []),
+        (["track", "start"], []),
+        (["track", "stop"], []),
+        (["track", "status"], []),
+        (["track", "logs"], []),
+        (["track", "export"], []),
+        (["track", "cleanup"], []),
+    ])
+    def test_cli_commands_with_minirun(self, rldk_cmd, minirun_path, command, args):
+        """Test CLI commands that may fail but should not crash."""
+        full_command = rldk_cmd + command + [str(minirun_path)] + args
+        result = subprocess.run(full_command, capture_output=True, text=True)
+        self._check_cli_result(result, f"test_cli_{'_'.join(command)}")
 
     def test_cli_help(self, rldk_cmd):
         """Test that CLI help works."""
@@ -75,14 +112,13 @@ class TestCLIMinirun:
 
     def test_cli_ingest_minirun(self, rldk_cmd, minirun_path):
         """Test ingesting the minimal run fixture."""
-        # Test ingesting the fixture directory
         result = subprocess.run(
             rldk_cmd + ["ingest", str(minirun_path), "--adapter", "generic"],
             capture_output=True,
             text=True
         )
-        # This might fail if the adapter doesn't exist, but CLI should still work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        self._check_cli_result(result, "test_cli_ingest_minirun")
 
     def test_cli_diff_minirun(self, rldk_cmd, minirun_path):
         """Test diffing the minimal run fixture with itself."""
@@ -91,8 +127,8 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if the diff logic doesn't handle self-comparison, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        self._check_cli_result(result, "test_cli_diff_minirun")
 
     def test_cli_replay_minirun(self, rldk_cmd, minirun_path):
         """Test replaying the minimal run fixture."""
@@ -101,28 +137,8 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if replay logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
-
-    def test_cli_bisect_minirun(self, rldk_cmd, minirun_path):
-        """Test bisecting with the minimal run fixture."""
-        result = subprocess.run(
-            rldk_cmd + ["bisect", "--good", "abc123", "--bad", "def456", "--cmd", "echo test"],
-            capture_output=True,
-            text=True
-        )
-        # This might fail if bisect logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
-
-    def test_cli_check_determinism_minirun(self, rldk_cmd, minirun_path):
-        """Test checking determinism with the minimal run fixture."""
-        result = subprocess.run(
-            rldk_cmd + ["check-determinism", "--cmd", "echo test", "--replicas", "2"],
-            capture_output=True,
-            text=True
-        )
-        # This might fail if check-determinism logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        self._check_cli_result(result, "test_cli_replay_minirun")
 
     def test_cli_forensics_minirun(self, rldk_cmd, minirun_path):
         """Test running forensics on the minimal run fixture."""
@@ -131,105 +147,6 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if forensics logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        self._check_cli_result(result, "test_cli_forensics_minirun")
 
-    def test_cli_reward_health_minirun(self, rldk_cmd, minirun_path):
-        """Test running reward health analysis on the minimal run fixture."""
-        result = subprocess.run(
-            rldk_cmd + ["reward", "health", str(minirun_path)],
-            capture_output=True,
-            text=True
-        )
-        # This might fail if reward health logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
-
-    def test_cli_evals_bias_minirun(self, rldk_cmd, minirun_path):
-        """Test running bias evaluation on the minimal run fixture."""
-        result = subprocess.run(
-            rldk_cmd + ["evals", "bias", str(minirun_path)],
-            capture_output=True,
-            text=True
-        )
-        # This might fail if bias evaluation logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
-
-    def test_cli_evals_toxicity_minirun(self, rldk_cmd, minirun_path):
-        """Test running toxicity evaluation on the minimal run fixture."""
-        result = subprocess.run(
-            rldk_cmd + ["evals", "toxicity", str(minirun_path)],
-            capture_output=True,
-            text=True
-        )
-        # This might fail if toxicity evaluation logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
-
-    def test_cli_evals_throughput_minirun(self, rldk_cmd, minirun_path):
-        """Test running throughput evaluation on the minimal run fixture."""
-        result = subprocess.run(
-            rldk_cmd + ["evals", "throughput", str(minirun_path)],
-            capture_output=True,
-            text=True
-        )
-        # This might fail if throughput evaluation logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
-
-    def test_cli_track_start_minirun(self, rldk_cmd, minirun_path):
-        """Test starting tracking with the minimal run fixture."""
-        result = subprocess.run(
-            rldk_cmd + ["track", "start", str(minirun_path)],
-            capture_output=True,
-            text=True
-        )
-        # This might fail if tracking logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
-
-    def test_cli_track_stop_minirun(self, rldk_cmd, minirun_path):
-        """Test stopping tracking with the minimal run fixture."""
-        result = subprocess.run(
-            rldk_cmd + ["track", "stop", str(minirun_path)],
-            capture_output=True,
-            text=True
-        )
-        # This might fail if tracking logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
-
-    def test_cli_track_status_minirun(self, rldk_cmd, minirun_path):
-        """Test checking tracking status with the minimal run fixture."""
-        result = subprocess.run(
-            rldk_cmd + ["track", "status", str(minirun_path)],
-            capture_output=True,
-            text=True
-        )
-        # This might fail if tracking logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
-
-    def test_cli_track_logs_minirun(self, rldk_cmd, minirun_path):
-        """Test viewing tracking logs with the minimal run fixture."""
-        result = subprocess.run(
-            rldk_cmd + ["track", "logs", str(minirun_path)],
-            capture_output=True,
-            text=True
-        )
-        # This might fail if tracking logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
-
-    def test_cli_track_export_minirun(self, rldk_cmd, minirun_path):
-        """Test exporting tracking data with the minimal run fixture."""
-        result = subprocess.run(
-            rldk_cmd + ["track", "export", str(minirun_path)],
-            capture_output=True,
-            text=True
-        )
-        # This might fail if tracking logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
-
-    def test_cli_track_cleanup_minirun(self, rldk_cmd, minirun_path):
-        """Test cleaning up tracking data with the minimal run fixture."""
-        result = subprocess.run(
-            rldk_cmd + ["track", "cleanup", str(minirun_path)],
-            capture_output=True,
-            text=True
-        )
-        # This might fail if tracking logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure

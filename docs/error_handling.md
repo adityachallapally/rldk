@@ -56,7 +56,7 @@ except EvaluationError as e:
     print(format_error_message(e))
 ```
 
-### TimeoutError
+### RLDKTimeoutError
 Raised when operations timeout.
 
 ```python

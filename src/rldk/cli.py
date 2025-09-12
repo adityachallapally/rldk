@@ -20,7 +20,7 @@ from rldk.replay import replay
 from rldk.tracking import ExperimentTracker, TrackingConfig
 from rldk.config import settings
 from rldk.utils.error_handling import (
-    RLDKError, ValidationError, AdapterError, EvaluationError, TimeoutError,
+    RLDKError, ValidationError, AdapterError, EvaluationError, RLDKTimeoutError,
     format_error_message, log_error_with_context, validate_file_path,
     validate_data_format, validate_required_fields, validate_adapter_source,
     print_usage_examples, print_troubleshooting_tips, check_dependencies,
@@ -867,7 +867,7 @@ def evaluate(
             "Try reducing --min-samples if you have limited data"
         ])
         raise typer.Exit(1)
-    except TimeoutError as e:
+    except RLDKTimeoutError as e:
         typer.echo(format_error_message(e), err=True)
         print_troubleshooting_tips([
             "Try increasing the --timeout value",
