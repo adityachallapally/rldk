@@ -78,11 +78,13 @@ Added comprehensive validation:
 
 Enhanced detection logic:
 
-1. **WandB URI Detection**: Checks for `wandb://` prefix first
+1. **WandB URI Detection**: Checks for `wandb://` prefix first (before file existence check)
 2. **WandB Directory Detection**: Looks for wandb directory structure
 3. **Custom JSONL Detection**: Most specific format detection
 4. **TRL/OpenRLHF Detection**: Standard format detection
 5. **Fallback Strategy**: Defaults to appropriate adapter based on file extension
+
+**Bug Fix**: WandB URI detection now happens before file existence check, preventing valid URIs like `wandb://project_name/run_id` from being incorrectly rejected as non-existent files.
 
 ### 5. Sample Data Files ✅
 
@@ -143,10 +145,11 @@ wandb/
 
 **File**: `src/rldk/ingest/ingest.py`
 
-- Added file existence validation
+- Added file existence validation (with WandB URI exception)
 - Improved error messages with format examples
 - Better adapter creation error handling
 - Enhanced validation before processing
+- **Bug Fix**: WandB URI detection before file existence check
 
 ### 2. New Helper Functions
 
@@ -239,6 +242,37 @@ File extension '.txt' is not supported by trl adapter.
 Supported extensions: .jsonl, .log
 ```
 
+## Bug Fixes
+
+### WandB URI Detection Bug ✅
+
+**Problem**: The file existence check was running before WandB URI detection, causing valid WandB URIs like `wandb://project_name/run_id` to fail with `FileNotFoundError` because they're not local filesystem paths.
+
+**Solution**: Moved WandB URI detection before the file existence check, so WandB URIs are properly identified and skip the filesystem validation.
+
+**Before**:
+```python
+# File existence check first
+if not source_path.exists():
+    raise FileNotFoundError(...)
+
+# WandB detection after (too late!)
+if source_str.startswith("wandb://"):
+    adapter_hint = "wandb"
+```
+
+**After**:
+```python
+# WandB detection first
+if source_str.startswith("wandb://"):
+    adapter_hint = "wandb"
+
+# File existence check only for non-WandB URIs
+if not source_str.startswith("wandb://"):
+    if not source_path.exists():
+        raise FileNotFoundError(...)
+```
+
 ## Benefits
 
 1. **Better User Experience**: Clear, actionable error messages
@@ -247,6 +281,7 @@ Supported extensions: .jsonl, .log
 4. **Format Documentation**: Built-in examples and documentation
 5. **Flexible Detection**: Better handling of various input formats
 6. **Comprehensive Testing**: Sample data for all supported formats
+7. **WandB URI Support**: Fixed bug preventing WandB URI usage
 
 ## Future Improvements
 

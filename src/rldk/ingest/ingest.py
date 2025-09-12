@@ -24,14 +24,6 @@ def ingest_runs(
     import logging
     
     source_str = str(source)
-    source_path = Path(source)
-
-    # Validate source exists
-    if not source_path.exists():
-        raise FileNotFoundError(
-            f"Source path does not exist: {source}\n"
-            "Please check the path and ensure the file or directory exists."
-        )
 
     # Try to auto-detect adapter if no hint provided
     if adapter_hint is None:
@@ -40,6 +32,18 @@ def ingest_runs(
         else:
             # Try to detect from file content
             adapter_hint = _detect_adapter_type(source)
+
+    # Validate source exists (skip for WandB URIs)
+    if not source_str.startswith("wandb://"):
+        source_path = Path(source)
+        if not source_path.exists():
+            raise FileNotFoundError(
+                f"Source path does not exist: {source}\n"
+                "Please check the path and ensure the file or directory exists."
+            )
+    else:
+        # For WandB URIs, create a dummy path for compatibility
+        source_path = Path(source)
 
     # Create appropriate adapter with better error messages
     try:
@@ -65,7 +69,14 @@ def ingest_runs(
     # Check if adapter can handle the source
     if not adapter.can_handle():
         # Provide detailed error message based on source type
-        if source_path.is_file():
+        if source_str.startswith("wandb://"):
+            raise ValueError(
+                f"Cannot handle {adapter_hint} format for WandB URI: {source}\n"
+                f"Expected WandB URI format:\n"
+                f"{_get_format_examples('wandb')}\n"
+                "Make sure the WandB URI is valid and accessible."
+            )
+        elif source_path.is_file():
             file_ext = source_path.suffix.lower()
             if file_ext == ".jsonl":
                 raise ValueError(
