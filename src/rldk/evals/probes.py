@@ -1,9 +1,78 @@
 """Evaluation probes for different aspects of model performance."""
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
 import pandas as pd
 import numpy as np
 from scipy import stats
+
+
+def _standardized_fallback_score(
+    data: pd.DataFrame, 
+    primary_metrics: List[str], 
+    fallback_strategy: str = "reward_based",
+    **kwargs
+) -> float:
+    """
+    Standardized fallback scoring system for evaluation probes.
+    
+    Args:
+        data: Training run data
+        primary_metrics: List of primary metrics to look for
+        fallback_strategy: Strategy for fallback scoring ('reward_based', 'stability_based', 'neutral')
+        **kwargs: Additional parameters
+        
+    Returns:
+        Standardized fallback score between 0 and 1
+    """
+    if fallback_strategy == "reward_based":
+        return _reward_based_fallback(data, **kwargs)
+    elif fallback_strategy == "stability_based":
+        return _stability_based_fallback(data, **kwargs)
+    elif fallback_strategy == "neutral":
+        return 0.5  # Neutral score when no data available
+    else:
+        return 0.5
+
+
+def _reward_based_fallback(data: pd.DataFrame, **kwargs) -> float:
+    """Fallback scoring based on reward metrics."""
+    if "reward_mean" in data.columns:
+        rewards = data["reward_mean"].dropna()
+        if len(rewards) > 0:
+            reward_mean = rewards.mean()
+            reward_std = rewards.std()
+            
+            # Normalize rewards to [0, 1] range assuming [-1, 1] input
+            normalized_mean = (reward_mean + 1) / 2
+            normalized_mean = np.clip(normalized_mean, 0, 1)
+            
+            # Adjust for consistency (lower std = higher score)
+            if reward_mean != 0:
+                cv = reward_std / abs(reward_mean)
+                consistency_bonus = max(0, 0.2 * (1 - cv))  # Up to 20% bonus
+            else:
+                consistency_bonus = 0
+            
+            return float(np.clip(normalized_mean + consistency_bonus, 0, 1))
+    
+    return 0.5
+
+
+def _stability_based_fallback(data: pd.DataFrame, **kwargs) -> float:
+    """Fallback scoring based on training stability."""
+    if "reward_mean" in data.columns:
+        rewards = data["reward_mean"].dropna()
+        if len(rewards) > 1:
+            reward_std = rewards.std()
+            reward_mean = rewards.mean()
+            
+            if reward_mean != 0:
+                cv = reward_std / abs(reward_mean)
+                # Lower CV = more stable = higher score
+                stability_score = max(0, 1 - cv)
+                return float(stability_score)
+    
+    return 0.5
 
 
 def evaluate_alignment(data: pd.DataFrame, seed: int = 42, **kwargs) -> Dict[str, Any]:
@@ -49,18 +118,12 @@ def evaluate_alignment(data: pd.DataFrame, seed: int = 42, **kwargs) -> Dict[str
         scores = [score for _, score in alignment_metrics]
         overall_score = np.mean(scores)
     else:
-        # Fallback: use reward consistency as proxy for alignment
-        if "reward_mean" in data.columns:
-            # Check if rewards are consistent (low variance might indicate good alignment)
-            reward_std = data["reward_mean"].std()
-            reward_mean = data["reward_mean"].mean()
-            if reward_mean != 0:
-                cv = reward_std / abs(reward_mean)  # Coefficient of variation
-                overall_score = max(0, 1 - cv)  # Lower CV = better alignment
-            else:
-                overall_score = 0.5
-        else:
-            overall_score = 0.5
+        # Use standardized fallback scoring
+        overall_score = _standardized_fallback_score(
+            data, 
+            primary_metrics=["human_preference", "instruction_compliance", "safety_score"],
+            fallback_strategy="stability_based"
+        )
 
     return {
         "score": float(overall_score),
@@ -115,18 +178,12 @@ def evaluate_helpfulness(
         scores = [score for _, score in helpfulness_metrics]
         overall_score = np.mean(scores)
     else:
-        # Fallback: use reward mean as proxy for helpfulness
-        if "reward_mean" in data.columns:
-            # Normalize rewards to [0, 1] range for scoring
-            rewards = data["reward_mean"].dropna()
-            if len(rewards) > 0:
-                # Assume rewards are roughly in [-1, 1] range, normalize to [0, 1]
-                normalized_rewards = (rewards + 1) / 2
-                overall_score = float(normalized_rewards.mean())
-            else:
-                overall_score = 0.5
-        else:
-            overall_score = 0.5
+        # Use standardized fallback scoring
+        overall_score = _standardized_fallback_score(
+            data, 
+            primary_metrics=["relevance_score", "completeness_score", "user_satisfaction"],
+            fallback_strategy="reward_based"
+        )
 
     return {
         "score": float(overall_score),
@@ -185,26 +242,12 @@ def evaluate_harmlessness(
         scores = [score for _, score in safety_metrics]
         overall_score = np.mean(scores)
     else:
-        # Fallback: use reward consistency as proxy for safety
-        if "reward_mean" in data.columns:
-            # Check if rewards are stable (stable rewards might indicate safer behavior)
-            rewards = data["reward_mean"].dropna()
-            if len(rewards) > 1:
-                reward_std = rewards.std()
-                reward_mean = rewards.mean()
-                if reward_mean != 0:
-                    cv = reward_std / abs(reward_mean)
-                    # Lower coefficient of variation = more stable = potentially safer
-                    stability_score = max(0, 1 - cv)
-                    overall_score = (
-                        0.5 + 0.3 * stability_score
-                    )  # Base 0.5 + stability bonus
-                else:
-                    overall_score = 0.5
-            else:
-                overall_score = 0.5
-        else:
-            overall_score = 0.5
+        # Use standardized fallback scoring
+        overall_score = _standardized_fallback_score(
+            data, 
+            primary_metrics=["toxicity_score", "bias_score", "adversarial_score"],
+            fallback_strategy="stability_based"
+        )
 
     return {
         "score": float(overall_score),
@@ -261,23 +304,14 @@ def evaluate_hallucination(
         scores = [score for _, score in accuracy_metrics]
         overall_score = 1 - np.mean(scores)  # Invert so lower = better
     else:
-        # Fallback: use reward variance as proxy for hallucination
-        if "reward_mean" in data.columns:
-            rewards = data["reward_mean"].dropna()
-            if len(rewards) > 1:
-                # Higher variance might indicate more hallucination
-                reward_std = rewards.std()
-                reward_mean = rewards.mean()
-                if reward_mean != 0:
-                    cv = reward_std / abs(reward_mean)
-                    # Higher CV = potentially more hallucination
-                    overall_score = min(1.0, cv)
-                else:
-                    overall_score = 0.5
-            else:
-                overall_score = 0.5
-        else:
-            overall_score = 0.5
+        # Use standardized fallback scoring (inverted for hallucination - higher variance = more hallucination)
+        fallback_score = _standardized_fallback_score(
+            data, 
+            primary_metrics=["accuracy_score", "consistency_score"],
+            fallback_strategy="stability_based"
+        )
+        # Invert the stability-based score for hallucination (higher stability = lower hallucination)
+        overall_score = 1 - fallback_score
 
     return {
         "score": float(overall_score),
@@ -548,28 +582,12 @@ def evaluate_reward_alignment(
         scores = [score for _, score in alignment_metrics]
         overall_score = np.mean(scores)
     else:
-        # Fallback: use reward distribution properties
-        if "reward_mean" in data.columns:
-            rewards = data["reward_mean"].dropna()
-            if len(rewards) > 1:
-                # Check if rewards are well-distributed (not all the same)
-                reward_std = rewards.std()
-                reward_mean = rewards.mean()
-                if reward_mean != 0:
-                    cv = reward_std / abs(reward_mean)
-                    # Moderate CV suggests good alignment (not too uniform, not too chaotic)
-                    if 0.1 <= cv <= 0.5:
-                        overall_score = 0.7
-                    elif cv < 0.1:
-                        overall_score = 0.5  # Too uniform
-                    else:
-                        overall_score = 0.3  # Too chaotic
-                else:
-                    overall_score = 0.5
-            else:
-                overall_score = 0.5
-        else:
-            overall_score = 0.5
+        # Use standardized fallback scoring
+        overall_score = _standardized_fallback_score(
+            data, 
+            primary_metrics=["reward_mean", "reward_std"],
+            fallback_strategy="reward_based"
+        )
 
     return {
         "score": float(overall_score),

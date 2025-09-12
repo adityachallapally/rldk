@@ -450,6 +450,9 @@ class CheckpointMonitor(TrainerCallback):
         if model is None:
             return
         
+        # Store current model reference for drift calculation
+        self._current_model = model
+        
         # Create checkpoint metrics
         checkpoint_metrics = CheckpointMetrics(
             step=state.global_step,
@@ -470,6 +473,9 @@ class CheckpointMonitor(TrainerCallback):
         
         # Store metrics
         self.checkpoint_metrics_history.append(checkpoint_metrics)
+        
+        # Update previous weights for next comparison
+        self.previous_weights = self._extract_current_weights(model)
         
         # Save checkpoint analysis
         self._save_checkpoint_analysis(checkpoint_metrics, model, state)
@@ -524,9 +530,20 @@ class CheckpointMonitor(TrainerCallback):
         """Calculate model health indicators."""
         # Parameter drift detection
         if self.previous_weights is not None and len(self.checkpoint_metrics_history) > 0:
-            # This is a simplified drift calculation
-            # In practice, you'd compare with the previous checkpoint's weights
-            metrics.parameter_drift = 0.0  # Placeholder
+            # Calculate actual parameter drift by comparing current weights with previous weights
+            # Note: We need the model to extract current weights, but this method doesn't have access to it
+            # For now, we'll use a simplified approach based on parameter statistics
+            if hasattr(self, '_current_model') and self._current_model is not None:
+                current_weights = self._extract_current_weights(self._current_model)
+                if current_weights is not None:
+                    drift_score = self._calculate_weight_drift(self.previous_weights, current_weights)
+                    metrics.parameter_drift = drift_score
+                else:
+                    metrics.parameter_drift = 0.0
+            else:
+                metrics.parameter_drift = 0.0
+        else:
+            metrics.parameter_drift = 0.0
         
         # Gradient flow health
         if metrics.gradient_norm > 0:
@@ -585,6 +602,48 @@ class CheckpointMonitor(TrainerCallback):
             json.dump(report, f, indent=2)
         
         print(f"📋 Checkpoint Report: {report}")
+    
+    def _extract_current_weights(self, model) -> Optional[Dict[str, torch.Tensor]]:
+        """Extract current model weights for drift calculation."""
+        if model is None:
+            return None
+        
+        weights = {}
+        for name, param in model.named_parameters():
+            if param.requires_grad:
+                # Store a copy of the parameter data
+                weights[name] = param.data.clone().detach()
+        
+        return weights if weights else None
+    
+    def _calculate_weight_drift(self, prev_weights: Dict[str, torch.Tensor], 
+                               curr_weights: Dict[str, torch.Tensor]) -> float:
+        """Calculate parameter drift between two weight sets."""
+        if prev_weights is None or curr_weights is None:
+            return 0.0
+        
+        total_drift = 0.0
+        total_params = 0
+        
+        for name in prev_weights:
+            if name in curr_weights:
+                prev_param = prev_weights[name]
+                curr_param = curr_weights[name]
+                
+                if prev_param.shape == curr_param.shape:
+                    # Calculate relative change
+                    param_diff = torch.abs(curr_param - prev_param)
+                    param_norm = torch.norm(prev_param)
+                    
+                    if param_norm > 0:
+                        relative_drift = torch.norm(param_diff) / param_norm
+                        total_drift += relative_drift.item() * prev_param.numel()
+                        total_params += prev_param.numel()
+        
+        if total_params > 0:
+            return total_drift / total_params
+        else:
+            return 0.0
 
 
 class ComprehensivePPOMonitor(TrainerCallback):
