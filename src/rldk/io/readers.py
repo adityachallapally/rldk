@@ -33,19 +33,8 @@ def read_metrics_jsonl(file_path: Union[str, Path]) -> pd.DataFrame:
     return schema.to_dataframe()
 
 
-def write_metrics_jsonl(df: pd.DataFrame, file_path: Union[str, Path]) -> None:
-    """Write metrics DataFrame to JSONL file."""
-    file_path = Path(file_path)
-
-    # Ensure directory exists
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-
-    schema = MetricsSchema.from_dataframe(df)
-
-    with open(file_path, "w") as f:
-        for metric in schema.metrics:
-            json.dump(metric.model_dump(), f)
-            f.write("\n")
+# Note: write_metrics_jsonl function moved to consolidated_writers.py for consistency
+# This function is deprecated - use the one in consolidated_writers.py instead
 
 
 def read_jsonl(path: Union[str, Path]) -> Iterator[Dict[str, Any]]:

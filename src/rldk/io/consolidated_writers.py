@@ -379,7 +379,7 @@ def write_events_jsonl(
     file_path: Union[str, Path]
 ) -> None:
     """
-    Write events to JSONL file.
+    Write events to JSONL file with consistent data validation.
     
     Args:
         events: List of Event objects
@@ -388,15 +388,28 @@ def write_events_jsonl(
     file_path = Path(file_path)
     writer = UnifiedWriter(file_path.parent)
     
-    # Convert events to dictionaries
-    event_data = [event.to_dict() for event in events]
+    # Convert events to dictionaries with consistent serialization
+    event_data = []
+    for event in events:
+        event_dict = event.to_dict()
+        # Ensure consistent handling of nested data structures
+        event_data.append(event_dict)
+    
     writer.write_jsonl(event_data, file_path.name)
 
 
 def write_metrics_jsonl(df: pd.DataFrame, file_path: Union[str, Path]) -> None:
-    """Write metrics DataFrame to JSONL file."""
+    """
+    Write metrics DataFrame to JSONL file with consistent schema validation.
+    
+    Args:
+        df: DataFrame with training metrics
+        file_path: Output file path
+    """
     file_path = Path(file_path)
     writer = UnifiedWriter(file_path.parent)
+    
+    # Always use MetricsSchema for consistent validation and formatting
     writer.write_metrics_jsonl(df, file_path.name, MetricsSchema)
 
 

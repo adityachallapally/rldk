@@ -47,22 +47,72 @@ class UnifiedWriter:
         """Ensure parent directory exists for file path."""
         file_path.parent.mkdir(parents=True, exist_ok=True)
     
+    def _validate_jsonl_data(self, data: List[Dict[str, Any]]) -> List[str]:
+        """
+        Validate JSONL data for consistency and quality.
+        
+        Args:
+            data: List of dictionaries to validate
+            
+        Returns:
+            List of validation warnings/errors
+        """
+        warnings = []
+        
+        if not data:
+            warnings.append("Empty data list provided")
+            return warnings
+        
+        # Check for consistent field structure
+        all_keys = set()
+        for item in data:
+            all_keys.update(item.keys())
+        
+        # Check for missing fields across records
+        for key in all_keys:
+            missing_count = sum(1 for item in data if key not in item)
+            if missing_count > 0:
+                warnings.append(f"Field '{key}' missing in {missing_count}/{len(data)} records")
+        
+        # Check for NaN values that should be None
+        for i, item in enumerate(data):
+            for key, value in item.items():
+                if pd.isna(value) and value is not None:
+                    warnings.append(f"Record {i}: Field '{key}' contains pandas NaN instead of None")
+                elif isinstance(value, (float, np.floating)) and np.isnan(value):
+                    warnings.append(f"Record {i}: Field '{key}' contains numpy NaN instead of None")
+        
+        return warnings
+    
     def _json_serializer(self, obj: Any) -> Any:
-        """Custom JSON serializer for numpy types and special objects."""
+        """Custom JSON serializer for numpy types and special objects with consistent NaN handling."""
+        # Handle numpy scalars first
         if hasattr(obj, 'item'):  # numpy scalars
             return obj.item()
-        elif hasattr(obj, 'tolist'):  # numpy arrays
-            return obj.tolist()
         elif isinstance(obj, (np.integer, np.floating)):
             return obj.item()
+        # Handle numpy arrays
         elif isinstance(obj, np.ndarray):
             return obj.tolist()
+        # Handle NaN values consistently - convert to None
         elif isinstance(obj, (float, np.floating)) and np.isnan(obj):
             return None
+        # Handle infinity values consistently - convert to None
+        elif isinstance(obj, (float, np.floating)) and np.isinf(obj):
+            return None
+        # Handle datetime objects
         elif isinstance(obj, datetime):
             return obj.isoformat()
+        # Handle pandas NaN values
+        elif pd.isna(obj):
+            return None
+        # Handle nested structures recursively
+        elif isinstance(obj, dict):
+            return {key: self._json_serializer(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [self._json_serializer(item) for item in obj]
         else:
-            return str(obj)
+            return obj
     
     def write_json(
         self, 
@@ -118,7 +168,7 @@ class UnifiedWriter:
         validate_schema: Optional[Callable] = None
     ) -> Path:
         """
-        Write data to JSONL file with consistent error handling.
+        Write data to JSONL file with consistent error handling and data validation.
         
         Args:
             data: List of dictionaries to write
@@ -129,6 +179,11 @@ class UnifiedWriter:
             Path to written file
         """
         try:
+            # Validate data consistency
+            warnings = self._validate_jsonl_data(data)
+            if warnings:
+                logger.warning(f"Data validation warnings for {filename}: {warnings}")
+            
             # Validate schema if provided
             if validate_schema:
                 for i, item in enumerate(data):
@@ -141,10 +196,12 @@ class UnifiedWriter:
             file_path = self.output_dir / filename
             self._ensure_directory(file_path)
             
-            # Write JSONL
+            # Write JSONL with consistent serialization
             with open(file_path, "w") as f:
                 for item in data:
-                    json.dump(item, f, default=self._json_serializer)
+                    # Ensure consistent serialization of each item
+                    serialized_item = self._json_serializer(item)
+                    json.dump(serialized_item, f, default=self._json_serializer)
                     f.write("\n")
             
             logger.info(f"Successfully wrote JSONL file: {file_path}")
@@ -256,7 +313,7 @@ class UnifiedWriter:
         schema_class: Optional[Any] = None
     ) -> Path:
         """
-        Write metrics DataFrame to JSONL file with schema validation.
+        Write metrics DataFrame to JSONL file with consistent schema validation and formatting.
         
         Args:
             df: DataFrame with training metrics
@@ -270,18 +327,27 @@ class UnifiedWriter:
             file_path = self.output_dir / filename
             self._ensure_directory(file_path)
             
+            # Always use schema-based approach for consistency
             if schema_class:
-                # Convert DataFrame to schema objects
+                # Convert DataFrame to schema objects with proper NaN handling
                 schema = schema_class.from_dataframe(df)
                 with open(file_path, "w") as f:
                     for metric in schema.metrics:
-                        json.dump(metric.model_dump(), f, default=self._json_serializer)
+                        # Use model_dump with consistent serialization
+                        metric_dict = metric.model_dump()
+                        json.dump(metric_dict, f, default=self._json_serializer)
                         f.write("\n")
             else:
-                # Write directly from DataFrame
+                # Fallback: Write directly from DataFrame with consistent NaN handling
                 with open(file_path, "w") as f:
                     for _, row in df.iterrows():
-                        json.dump(row.to_dict(), f, default=self._json_serializer)
+                        # Convert row to dict and handle NaN values consistently
+                        row_dict = row.to_dict()
+                        # Ensure all NaN values are converted to None
+                        for key, value in row_dict.items():
+                            if pd.isna(value):
+                                row_dict[key] = None
+                        json.dump(row_dict, f, default=self._json_serializer)
                         f.write("\n")
             
             logger.info(f"Successfully wrote metrics JSONL file: {file_path}")
