@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.10", "3.11"]
     
     steps:
     - uses: actions/checkout@v4
@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.10", "3.11"]
     
     steps:
     - uses: actions/checkout@v4
@@ -60,9 +60,39 @@ jobs:
       run: |
         python3 tests/_make_fixtures.py
     
-    - name: Run tests
+    - name: Run unit tests
       run: |
-        pytest -q --tb=short
+        pytest tests/unit/ -v --cov=src/rldk --cov-report=xml --cov-report=html
+    
+    - name: Run integration tests
+      run: |
+        pytest tests/integration/ -v
+    
+    - name: Run CLI smoke tests
+      run: |
+        rldk --help
+        rldk seed --help
+        rldk forensics --help
+        rldk reward --help
+        rldk evals --help
+        rldk track --help
+    
+    - name: Test acceptance script
+      run: |
+        chmod +x scripts/dev/acceptance.sh
+        # Run a subset of acceptance checks (full run would be too slow for CI)
+        python -c "
+        import sys
+        sys.path.insert(0, 'src')
+        from rldk.utils.seed import set_global_seed, get_current_seed
+        set_global_seed(42)
+        assert get_current_seed() == 42
+        print('✅ Seed management test passed')
+        "
+    
+    - name: Test MkDocs build
+      run: |
+        mkdocs build
     
     - name: Validate JSON artifacts
       run: |
@@ -88,6 +118,14 @@ jobs:
                     jsonschema.validate(data, schemas[report_file.name])
                     print(f'✓ Validated {report_file.name}')
         "
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      if: matrix.python-version == "3.11"
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v4

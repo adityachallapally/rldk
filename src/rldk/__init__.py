@@ -43,6 +43,12 @@ from .io import (
     read_jsonl, read_reward_head
 )
 
+# Seed management utilities
+from .utils.seed import (
+    set_global_seed, get_current_seed, restore_seed_state,
+    set_reproducible_environment, validate_seed_consistency
+)
+
 __all__ = [
     # Core functionality
     "ingest_runs",
@@ -101,4 +107,11 @@ __all__ = [
     "validate",
     "read_jsonl",
     "read_reward_head",
+    
+    # Seed management
+    "set_global_seed",
+    "get_current_seed",
+    "restore_seed_state",
+    "set_reproducible_environment",
+    "validate_seed_consistency",
 ]

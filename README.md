@@ -98,6 +98,32 @@ print(f"Issues found: {len(report.mismatches)}")
 print(f"Recommended fixes: {report.fixes}")
 ```
 
+### **Centralized Seed Management**
+Comprehensive seed handling for reproducible experiments:
+
+```python
+from rldk.utils.seed import set_global_seed, get_current_seed, seed_context
+
+# Set global seed for reproducibility
+seed = set_global_seed(42, deterministic=True)
+print(f"Set seed: {seed}")
+
+# Get current seed state
+current_seed = get_current_seed()
+print(f"Current seed: {current_seed}")
+
+# Use seed context manager for temporary seed changes
+with seed_context(123):
+    # Code here uses seed 123
+    pass
+# Seed automatically restored to previous value
+
+# CLI seed management
+# rldk seed --seed 42 --deterministic
+# rldk seed --show
+# rldk seed --env --validate
+```
+
 ### **Reward Model Health Analysis**
 Comprehensive reward model analysis and drift detection:
 
@@ -222,6 +248,11 @@ rldk evals validate-data data.jsonl
 rldk check-determinism --cmd "python train.py" --compare loss,reward_mean
 rldk replay ./run --command "python train.py --seed {seed}" --metrics loss,reward_mean
 rldk bisect --good abc123 --bad def456 --cmd "python train.py"
+
+# Seed management
+rldk seed --seed 42 --deterministic
+rldk seed --show
+rldk seed --env --validate
 
 # Data ingestion
 rldk ingest ./logs --adapter trl --output metrics.jsonl
@@ -350,6 +381,91 @@ rldk evals evaluate data.jsonl --suite quick --output results.json
 
 # Find regression with git bisect
 rldk bisect --good abc123 --bad def456 --cmd "python train.py"
+```
+
+## 📚 **Examples & Tutorials**
+
+RLDK includes comprehensive examples and tutorials to get you started:
+
+### **CPU-Friendly Examples**
+- **`basic_ppo_cartpole.py`** - Basic PPO implementation with RLDK integration
+- **`custom_environment_tutorial.py`** - How to create custom environments with RLDK tracking
+- **`distributed_training_guide.py`** - Multi-GPU and federated learning with RLDK
+- **`hyperparameter_tuning.py`** - Systematic hyperparameter optimization
+- **`benchmark_comparison.py`** - Algorithm comparison and benchmarking
+- **`research_reproducibility_workflow.py`** - Complete research workflow example
+- **`multi_run_analysis.py`** - Analyzing multiple training runs
+- **`production_deployment_checklist.py`** - Production deployment preparation
+
+### **Getting Started with Examples**
+```bash
+# Run a basic PPO example
+python examples/basic_ppo_cartpole.py
+
+# Try hyperparameter tuning
+python examples/hyperparameter_tuning.py
+
+# Explore distributed training
+python examples/distributed_training_guide.py
+```
+
+All examples are designed to run on CPU with minimal dependencies and include comprehensive documentation.
+
+## 🔬 **Research Use Cases**
+
+RLDK addresses common RL training failure patterns and research challenges:
+
+### **Training Instability & Non-Determinism**
+- **KL Divergence Explosions** - Detect when policy updates become too large
+- **Gradient Vanishing/Exploding** - Monitor gradient norms and identify problematic updates
+- **Reward Collapse** - Track reward distribution changes and detect saturation
+- **Seed Sensitivity** - Identify when results depend heavily on random initialization
+- **Environment Non-Determinism** - Detect when environment behavior varies across runs
+
+### **Hyperparameter Sensitivity**
+- **Learning Rate Sensitivity** - Identify when small LR changes cause large performance differences
+- **Batch Size Effects** - Monitor how batch size affects training stability
+- **Entropy Coefficient Tuning** - Track exploration vs exploitation balance
+- **Value Function Overfitting** - Detect when value estimates become unreliable
+
+### **Model Architecture Issues**
+- **Policy Collapse** - Detect when policy becomes too deterministic
+- **Value Function Divergence** - Monitor value function training quality
+- **Advantage Estimation Errors** - Track advantage distribution and bias
+- **Actor-Critic Imbalance** - Identify when policy and value updates are misaligned
+
+### **Data Quality Problems**
+- **Reward Hacking** - Detect when model exploits reward function flaws
+- **Distribution Shift** - Monitor training vs evaluation data differences
+- **Label Noise** - Identify when human feedback contains errors
+- **Data Imbalance** - Detect when certain types of examples are underrepresented
+
+### **Research Reproducibility**
+- **Code Version Drift** - Track when code changes affect results
+- **Dependency Changes** - Monitor when library updates break reproducibility
+- **Hardware Differences** - Detect when results vary across different machines
+- **Random State Management** - Ensure proper seed handling across experiments
+
+### **Performance Analysis**
+- **Convergence Speed** - Compare how quickly different algorithms converge
+- **Sample Efficiency** - Measure data efficiency across different approaches
+- **Computational Cost** - Track training time and resource usage
+- **Memory Usage** - Monitor memory consumption patterns
+
+### **Debugging Workflows**
+```python
+# 1. Detect training anomalies
+forensics = ComprehensivePPOForensics()
+anomalies = forensics.get_anomalies()
+
+# 2. Compare different runs
+divergence = first_divergence(run_a, run_b, signals=["loss", "reward"])
+
+# 3. Verify reproducibility
+determinism_check = check(cmd="python train.py", replicas=5)
+
+# 4. Analyze reward model health
+health_report = reward_health(training_data, reference_data)
 ```
 
 ## 📊 **What You Get**
