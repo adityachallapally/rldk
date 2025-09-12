@@ -80,7 +80,7 @@ def ingest_runs(
             error_code="INVALID_ADAPTER_TYPE"
         )
 
-    # Validate source exists (skip for WandB URIs)
+    # Validate source exists (skip for WandB URIs) - This is our WandB URI fix
     if not source_str.startswith("wandb://"):
         source_path = Path(source)
         if not source_path.exists():
@@ -92,7 +92,7 @@ def ingest_runs(
         # For WandB URIs, create a dummy path for compatibility
         source_path = Path(source)
 
-    # Create appropriate adapter with better error messages
+    # Create appropriate adapter
     try:
         if adapter_hint == "trl":
             adapter = TRLAdapter(source)
@@ -117,7 +117,7 @@ def ingest_runs(
 
     # Check if adapter can handle the source
     if not adapter.can_handle():
-        # Provide detailed error message based on source type
+        # Provide detailed error message based on source type - This is our enhanced error handling
         if source_str.startswith("wandb://"):
             raise AdapterError(
                 f"Adapter '{adapter_hint}' cannot handle WandB URI: {source}",
