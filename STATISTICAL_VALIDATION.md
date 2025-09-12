@@ -3,6 +3,59 @@
 ## Overview
 This document validates the statistical methods used in RL Debug Kit, ensuring they are mathematically sound and appropriate for RL evaluation scenarios.
 
+## ⚠️ CRITICAL ASSUMPTIONS
+
+Before using these methods, understand the following assumptions:
+
+### 1. Binary Metrics Assumption
+**When Applied**: Metrics in the range [0, 1] (accuracy, precision, recall, F1-score)
+**Assumption**: These metrics follow a binomial distribution
+**Formula**: `std = sqrt(p * (1-p))` where p is the proportion
+**Validity**: ✅ Valid for true binary classification metrics
+**Limitations**: ❌ May not apply to continuous metrics scaled to [0,1]
+
+### 2. Continuous Metrics Assumption  
+**When Applied**: Metrics outside [0, 1] range (reward, loss, gradient norm)
+**Assumption**: These metrics have bounded variance relative to their magnitude
+**Formula**: `std = min(0.3, abs(score) * 0.1)`
+**Validity**: ✅ Conservative estimate based on empirical observations
+**Limitations**: ❌ May be inaccurate for metrics with high variance
+
+### 3. Small Sample Assumption
+**When Applied**: Sample sizes < 30
+**Assumption**: Conservative estimates are needed to prevent overly narrow intervals
+**Formula**: `std = 0.3` (conservative fallback)
+**Validity**: ✅ Prevents false precision
+**Limitations**: ❌ May be overly conservative for some metrics
+
+### 4. Normal Distribution Assumption
+**When Applied**: All confidence interval calculations
+**Assumption**: Sample means follow normal distribution (Central Limit Theorem)
+**Validity**: ✅ Generally valid for large samples (n > 30)
+**Limitations**: ❌ May not apply to highly skewed distributions
+
+## 🚫 WHEN NOT TO USE THESE METHODS
+
+### 1. Highly Skewed Distributions
+**Problem**: Normal approximation fails for heavily skewed data
+**Examples**: Reward distributions with long tails, loss distributions with outliers
+**Solution**: Use non-parametric methods or data transformation
+
+### 2. Correlated Samples
+**Problem**: Independence assumption violated
+**Examples**: Time series data, repeated measurements
+**Solution**: Use time series methods or account for correlation
+
+### 3. Small Samples with Unknown Distribution
+**Problem**: Central Limit Theorem doesn't apply
+**Examples**: n < 10, unknown underlying distribution
+**Solution**: Use bootstrap methods or non-parametric tests
+
+### 4. Extreme Values
+**Problem**: Outliers can dominate statistical measures
+**Examples**: Reward spikes, gradient explosions
+**Solution**: Use robust statistics or outlier detection
+
 ## Confidence Intervals
 
 ### Method 1: Data-Driven (Preferred)

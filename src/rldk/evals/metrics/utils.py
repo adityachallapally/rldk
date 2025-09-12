@@ -27,8 +27,12 @@ def calculate_confidence_intervals(
         Dictionary mapping metric names to (lower, upper) confidence intervals
     """
 
-    # Use legacy method if requested (exact old behavior)
-    if use_legacy_method:
+    # Check feature flags
+    from ..config.settings import get_settings
+    settings = get_settings()
+    
+    # Use legacy method if requested or if feature flag is disabled
+    if use_legacy_method or not settings.bug_fixes.use_new_confidence_intervals:
         return _calculate_confidence_intervals_legacy(scores, sample_size, confidence_level)
     
     confidence_intervals = {}
@@ -162,11 +166,43 @@ def _calculate_confidence_intervals_legacy(
     return confidence_intervals
 
 
+def _calculate_effect_sizes_legacy(
+    scores: Dict[str, float], baseline_scores: Dict[str, float]
+) -> Dict[str, float]:
+    """
+    Legacy effect size calculation (exact old behavior).
+    
+    This function maintains the exact behavior of the original implementation
+    for backward compatibility.
+    """
+    effect_sizes = {}
+    
+    for metric, score in scores.items():
+        if np.isnan(score):
+            effect_sizes[metric] = np.nan
+            continue
+            
+        if metric in baseline_scores:
+            baseline = baseline_scores[metric]
+            if not np.isnan(baseline):
+                # Original hardcoded method
+                pooled_std = 0.3  # Hardcoded fallback
+                effect_size = (score - baseline) / pooled_std
+                effect_sizes[metric] = float(effect_size)
+            else:
+                effect_sizes[metric] = np.nan
+        else:
+            effect_sizes[metric] = np.nan
+    
+    return effect_sizes
+
+
 def calculate_effect_sizes(
     scores: Dict[str, float], 
     baseline_scores: Dict[str, float],
     sample_data: Optional[Dict[str, np.ndarray]] = None,
-    baseline_sample_data: Optional[Dict[str, np.ndarray]] = None
+    baseline_sample_data: Optional[Dict[str, np.ndarray]] = None,
+    use_legacy_method: bool = False
 ) -> Dict[str, float]:
     """
     Calculate effect sizes comparing current scores to baseline.
@@ -180,7 +216,14 @@ def calculate_effect_sizes(
     Returns:
         Dictionary mapping metric names to effect sizes (Cohen's d)
     """
-
+    # Check feature flags
+    from ..config.settings import get_settings
+    settings = get_settings()
+    
+    # Use legacy method if requested or if feature flag is disabled
+    if use_legacy_method or not settings.bug_fixes.use_new_effect_sizes:
+        return _calculate_effect_sizes_legacy(scores, baseline_scores)
+    
     effect_sizes = {}
 
     for metric, score in scores.items():

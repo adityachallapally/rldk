@@ -685,7 +685,7 @@ def list_artifact_types() -> list:
 # Event Creation Utilities
 # ============================================================================
 
-# create_event_from_row function is now imported from event_schema.py
+# Event creation utilities are imported from event_schema.py
 
 
 def events_to_dataframe(events: List[Event]) -> pd.DataFrame:

@@ -452,6 +452,14 @@ class CheckpointMonitor(TrainerCallback):
         print(f"💾 Checkpoint Monitor initialized - Run ID: {self.run_id}")
         print(f"📊 Memory limits: {max_parameter_size_mb}MB per param, {max_total_memory_mb}MB total")
     
+    def __del__(self):
+        """Destructor to ensure cleanup on deletion."""
+        try:
+            self._cleanup_weights()
+        except Exception:
+            # Ignore errors during cleanup in destructor
+            pass
+    
     def on_save(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
         """Analyze checkpoint when saved."""
         model = kwargs.get('model')
@@ -622,6 +630,7 @@ class CheckpointMonitor(TrainerCallback):
     
     def _cleanup_weights(self):
         """Clean up stored weights to prevent memory leaks."""
+        # Clean up previous weights
         if hasattr(self, 'previous_weights') and self.previous_weights is not None:
             # Explicitly delete tensors to free memory
             for name, tensor in self.previous_weights.items():
@@ -630,14 +639,28 @@ class CheckpointMonitor(TrainerCallback):
                 del tensor
             del self.previous_weights
             self.previous_weights = None
-            
-            # Force garbage collection
-            import gc
-            gc.collect()
-            
-            # Clear CUDA cache if available
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+        
+        # Clean up current model weak reference
+        if hasattr(self, '_current_model') and self._current_model is not None:
+            # Check if the weak reference is still valid
+            model_ref = self._current_model()
+            if model_ref is None:
+                # Weak reference is dead, clean it up
+                del self._current_model
+                self._current_model = None
+        
+        # Clean up checkpoint metrics history if it gets too large
+        if hasattr(self, 'checkpoint_metrics_history') and len(self.checkpoint_metrics_history) > 100:
+            # Keep only the last 50 checkpoints
+            self.checkpoint_metrics_history = self.checkpoint_metrics_history[-50:]
+        
+        # Force garbage collection
+        import gc
+        gc.collect()
+        
+        # Clear CUDA cache if available
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
     
     def _extract_current_weights(self, model) -> Optional[Dict[str, torch.Tensor]]:
         """Extract current model weights for drift calculation with memory management."""
