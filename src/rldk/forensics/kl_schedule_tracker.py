@@ -5,6 +5,141 @@ from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass
 from collections import deque
 import warnings
+import math
+
+
+def _safe_kl_value(value: Any, default: float = 0.0, max_value: float = 1e6) -> float:
+    """
+    Safely process KL divergence values with comprehensive edge case handling.
+    
+    Args:
+        value: Input value to process
+        default: Default value to use for invalid inputs
+        max_value: Maximum allowed value to prevent overflow
+        
+    Returns:
+        Safe float value for KL divergence
+    """
+    # Handle None values
+    if value is None:
+        return default
+    
+    # Handle string values
+    if isinstance(value, str):
+        try:
+            value = float(value)
+        except (ValueError, TypeError):
+            warnings.warn(f"Could not convert string '{value}' to float, using default {default}")
+            return default
+    
+    # Handle non-numeric types
+    if not isinstance(value, (int, float)):
+        warnings.warn(f"Non-numeric KL value type {type(value)}: {value}, using default {default}")
+        return default
+    
+    # Handle NaN values
+    if math.isnan(value):
+        warnings.warn(f"NaN KL value detected, using default {default}")
+        return default
+    
+    # Handle infinite values
+    if math.isinf(value):
+        if value > 0:
+            warnings.warn(f"Positive infinity KL value detected, capping to {max_value}")
+            return max_value
+        else:
+            warnings.warn(f"Negative infinity KL value detected, using default {default}")
+            return default
+    
+    # Convert to float and validate range
+    try:
+        float_value = float(value)
+        
+        # KL divergence should be non-negative
+        if float_value < 0:
+            warnings.warn(f"Negative KL value {float_value} detected, using default {default}")
+            return default
+        
+        # Cap extremely large values
+        if float_value > max_value:
+            warnings.warn(f"Extremely large KL value {float_value} detected, capping to {max_value}")
+            return max_value
+        
+        return float_value
+        
+    except (ValueError, OverflowError, TypeError):
+        warnings.warn(f"Error processing KL value {value}, using default {default}")
+        return default
+
+
+def _safe_coefficient_value(value: Any, default: float = 1.0, min_value: float = 1e-8, max_value: float = 1e6) -> float:
+    """
+    Safely process KL coefficient values with comprehensive edge case handling.
+    
+    Args:
+        value: Input value to process
+        default: Default value to use for invalid inputs
+        min_value: Minimum allowed value (must be positive)
+        max_value: Maximum allowed value to prevent overflow
+        
+    Returns:
+        Safe float value for KL coefficient
+    """
+    # Handle None values
+    if value is None:
+        return default
+    
+    # Handle string values
+    if isinstance(value, str):
+        try:
+            value = float(value)
+        except (ValueError, TypeError):
+            warnings.warn(f"Could not convert string '{value}' to float, using default {default}")
+            return default
+    
+    # Handle non-numeric types
+    if not isinstance(value, (int, float)):
+        warnings.warn(f"Non-numeric coefficient value type {type(value)}: {value}, using default {default}")
+        return default
+    
+    # Handle NaN values
+    if math.isnan(value):
+        warnings.warn(f"NaN coefficient value detected, using default {default}")
+        return default
+    
+    # Handle infinite values
+    if math.isinf(value):
+        if value > 0:
+            warnings.warn(f"Positive infinity coefficient value detected, capping to {max_value}")
+            return max_value
+        else:
+            warnings.warn(f"Negative infinity coefficient value detected, using default {default}")
+            return default
+    
+    # Convert to float and validate range
+    try:
+        float_value = float(value)
+        
+        # Coefficient should be positive
+        if float_value <= 0:
+            warnings.warn(f"Non-positive coefficient value {float_value} detected, using default {default}")
+            return default
+        
+        # Cap extremely large values
+        if float_value > max_value:
+            warnings.warn(f"Extremely large coefficient value {float_value} detected, capping to {max_value}")
+            return max_value
+        
+        # Ensure minimum value
+        if float_value < min_value:
+            warnings.warn(f"Very small coefficient value {float_value} detected, setting to minimum {min_value}")
+            return min_value
+        
+        return float_value
+        
+    except (ValueError, OverflowError, TypeError):
+        warnings.warn(f"Error processing coefficient value {value}, using default {default}")
+        return default
 
 
 @dataclass
@@ -89,16 +224,20 @@ class KLScheduleTracker:
         
         print(f"🎯 KL Schedule Tracker initialized - Target: {kl_target}±{kl_target_tolerance}")
     
-    def update(self, step: int, kl_value: float, kl_coef: float) -> KLScheduleMetrics:
+    def update(self, step: int, kl_value: Any, kl_coef: Any) -> KLScheduleMetrics:
         """Update tracker with new KL and coefficient values."""
+        # Safely process inputs using robust edge case handling
+        safe_kl_value = _safe_kl_value(kl_value, default=0.0, max_value=1e6)
+        safe_kl_coef = _safe_coefficient_value(kl_coef, default=1.0, min_value=1e-8, max_value=1e6)
+        
         # Store data
-        self.kl_history.append(kl_value)
-        self.kl_coef_history.append(kl_coef)
+        self.kl_history.append(safe_kl_value)
+        self.kl_coef_history.append(safe_kl_coef)
         self.step_history.append(step)
         
         # Update current metrics
-        self.current_metrics.current_kl = kl_value
-        self.current_metrics.current_kl_coef = kl_coef
+        self.current_metrics.current_kl = safe_kl_value
+        self.current_metrics.current_kl_coef = safe_kl_coef
         
         # Perform analysis if we have enough data
         if len(self.kl_history) >= 2:
@@ -123,10 +262,30 @@ class KLScheduleTracker:
         recent_kl = list(self.kl_history)[-self.trend_window:]
         steps = list(range(len(recent_kl)))
         
-        # Calculate linear trend
+        # Calculate linear trend with numerical stability checks
         if len(recent_kl) > 1:
-            trend_slope = np.polyfit(steps, recent_kl, 1)[0]
-            self.current_metrics.kl_trend = trend_slope
+            try:
+                # Check for constant values (no trend)
+                if np.std(recent_kl) < 1e-10:
+                    self.current_metrics.kl_trend = 0.0
+                    return
+                
+                # Use robust polynomial fitting
+                trend_slope = np.polyfit(steps, recent_kl, 1)[0]
+                
+                # Validate the result
+                if np.isnan(trend_slope) or np.isinf(trend_slope):
+                    self.current_metrics.kl_trend = 0.0
+                else:
+                    # Cap extreme trend values
+                    self.current_metrics.kl_trend = max(-1.0, min(1.0, float(trend_slope)))
+            except (np.linalg.LinAlgError, ValueError):
+                # Fallback to simple difference if polyfit fails
+                if len(recent_kl) >= 2:
+                    simple_trend = (recent_kl[-1] - recent_kl[0]) / len(recent_kl)
+                    self.current_metrics.kl_trend = max(-1.0, min(1.0, float(simple_trend)))
+                else:
+                    self.current_metrics.kl_trend = 0.0
     
     def _analyze_kl_volatility(self):
         """Analyze KL divergence volatility."""
@@ -134,7 +293,19 @@ class KLScheduleTracker:
             return
         
         recent_kl = list(self.kl_history)[-10:]
-        self.current_metrics.kl_volatility = float(np.std(recent_kl))
+        
+        try:
+            # Calculate standard deviation with numerical stability
+            volatility = np.std(recent_kl, ddof=1)  # Use sample std dev
+            
+            # Validate result
+            if np.isnan(volatility) or np.isinf(volatility):
+                self.current_metrics.kl_volatility = 0.0
+            else:
+                # Cap extreme volatility values
+                self.current_metrics.kl_volatility = max(0.0, min(1.0, float(volatility)))
+        except (ValueError, RuntimeError):
+            self.current_metrics.kl_volatility = 0.0
     
     def _analyze_target_range_performance(self):
         """Analyze performance within target KL range."""
@@ -166,15 +337,27 @@ class KLScheduleTracker:
         
         # Controller responsiveness: how quickly coefficient changes in response to KL
         if len(recent_kl) > 5:
-            kl_changes = np.diff(recent_kl)
-            coef_changes = np.diff(recent_coef)
-            
-            # Calculate correlation between KL changes and coefficient changes
-            if len(kl_changes) > 1 and np.std(kl_changes) > 0 and np.std(coef_changes) > 0:
-                correlation = np.corrcoef(kl_changes, coef_changes)[0, 1]
-                # Good responsiveness: negative correlation (coef increases when KL is high)
-                self.current_metrics.controller_responsiveness = max(0, -correlation)
-            else:
+            try:
+                kl_changes = np.diff(recent_kl)
+                coef_changes = np.diff(recent_coef)
+                
+                # Calculate correlation between KL changes and coefficient changes
+                if (len(kl_changes) > 1 and 
+                    np.std(kl_changes) > 1e-10 and 
+                    np.std(coef_changes) > 1e-10):
+                    
+                    correlation = np.corrcoef(kl_changes, coef_changes)[0, 1]
+                    
+                    # Validate correlation result
+                    if np.isnan(correlation) or np.isinf(correlation):
+                        self.current_metrics.controller_responsiveness = 0.0
+                    else:
+                        # Good responsiveness: negative correlation (coef increases when KL is high)
+                        responsiveness = max(0, -correlation)
+                        self.current_metrics.controller_responsiveness = min(1.0, responsiveness)
+                else:
+                    self.current_metrics.controller_responsiveness = 0.0
+            except (ValueError, RuntimeError):
                 self.current_metrics.controller_responsiveness = 0.0
         
         # Controller overshoot: tendency to overshoot target
@@ -209,17 +392,37 @@ class KLScheduleTracker:
         self.current_metrics.coef_change_rate = float(np.mean(np.abs(coef_changes)))
         
         # Adaptation quality: how well coefficient changes correlate with KL deviations
-        kl_deviations = [abs(kl - self.kl_target) for kl in recent_kl[:-1]]
-        if len(kl_deviations) > 1 and np.std(kl_deviations) > 0 and np.std(coef_changes) > 0:
-            correlation = np.corrcoef(kl_deviations, coef_changes)[0, 1]
-            # Good adaptation: positive correlation (coef changes more when KL deviates more)
-            self.current_metrics.coef_adaptation_quality = max(0, correlation)
-        else:
+        try:
+            kl_deviations = [abs(kl - self.kl_target) for kl in recent_kl[:-1]]
+            if (len(kl_deviations) > 1 and 
+                np.std(kl_deviations) > 1e-10 and 
+                np.std(coef_changes) > 1e-10):
+                
+                correlation = np.corrcoef(kl_deviations, coef_changes)[0, 1]
+                
+                # Validate correlation result
+                if np.isnan(correlation) or np.isinf(correlation):
+                    self.current_metrics.coef_adaptation_quality = 0.0
+                else:
+                    # Good adaptation: positive correlation (coef changes more when KL deviates more)
+                    adaptation_quality = max(0, correlation)
+                    self.current_metrics.coef_adaptation_quality = min(1.0, adaptation_quality)
+            else:
+                self.current_metrics.coef_adaptation_quality = 0.0
+        except (ValueError, RuntimeError):
             self.current_metrics.coef_adaptation_quality = 0.0
         
         # Coefficient stability
-        coef_std = np.std(recent_coef)
-        self.current_metrics.coef_stability = max(0, 1 - coef_std)
+        try:
+            coef_std = np.std(recent_coef, ddof=1)
+            if np.isnan(coef_std) or np.isinf(coef_std):
+                self.current_metrics.coef_stability = 1.0
+            else:
+                # Cap stability to reasonable range
+                stability = max(0, 1 - min(coef_std, 1.0))
+                self.current_metrics.coef_stability = min(1.0, stability)
+        except (ValueError, RuntimeError):
+            self.current_metrics.coef_stability = 1.0
     
     def _calculate_health_scores(self):
         """Calculate overall health scores."""
