@@ -27,7 +27,7 @@ from rldk.utils.error_handling import (
     with_retry, with_timeout, handle_graceful_degradation, safe_operation
 )
 from rldk.utils.progress import (
-    progress_bar, spinner, timed_operation, print_operation_status
+    progress_bar, spinner, timed_operation, timed_operation_context, print_operation_status
 )
 
 # Import card generation modules
@@ -770,7 +770,7 @@ def evaluate(
         print_operation_status("Input validation", "success")
         
         # Load data with progress indication
-        with timed_operation("Data loading"):
+        with timed_operation_context("Data loading"):
             logging.info(f"Loading data from {input_file}")
             data = load_jsonl_data(input_file)
             
@@ -811,7 +811,7 @@ def evaluate(
                 min_samples=min_samples
             )
         
-        with timed_operation(f"{suite} evaluation suite"):
+        with timed_operation_context(f"{suite} evaluation suite"):
             logging.info(f"Running {suite} evaluation suite")
             results = run_evaluation()
         
@@ -1039,7 +1039,7 @@ def ingest(
             print_operation_status("Input validation", "success")
         
         # Ingest the runs with progress indication
-        with timed_operation("Data ingestion"):
+        with timed_operation_context("Data ingestion"):
             typer.echo(f"Ingesting runs from: {runs}")
             
             if adapter:

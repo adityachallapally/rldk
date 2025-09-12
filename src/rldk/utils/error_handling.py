@@ -214,6 +214,26 @@ def handle_graceful_degradation(operation_name: str, fallback_value: Any = None)
 
 def validate_adapter_source(source: Union[str, Path], expected_formats: List[str]) -> None:
     """Validate that source can be handled by available adapters."""
+    source_str = str(source)
+    
+    # Handle remote URIs (like WandB) separately
+    if source_str.startswith("wandb://"):
+        # Validate WandB URI format
+        try:
+            from .validation import validate_wandb_uri
+            validate_wandb_uri(source_str)
+            return  # WandB URI is valid
+        except ValidationError:
+            raise  # Re-raise WandB validation errors
+        except Exception as e:
+            raise ValidationError(
+                f"Invalid WandB URI: {source_str}",
+                suggestion="Use format: wandb://entity/project/run_id",
+                error_code="INVALID_WANDB_URI",
+                details={"uri": source_str, "error": str(e)}
+            ) from e
+    
+    # Handle local filesystem paths
     source_path = Path(source)
     
     if not source_path.exists():

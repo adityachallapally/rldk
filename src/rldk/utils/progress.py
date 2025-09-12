@@ -184,6 +184,22 @@ def timed_operation(operation_name: str):
     return decorator
 
 
+@contextmanager
+def timed_operation_context(operation_name: str):
+    """Context manager to time operations and show progress."""
+    start_time = time.time()
+    print(f"🔄 Starting {operation_name}...")
+    
+    try:
+        yield
+        elapsed = time.time() - start_time
+        print(f"✅ {operation_name} completed in {elapsed:.2f}s")
+    except Exception as e:
+        elapsed = time.time() - start_time
+        print(f"❌ {operation_name} failed after {elapsed:.2f}s: {e}")
+        raise
+
+
 def estimate_remaining_time(current: int, total: int, start_time: float) -> float:
     """Estimate remaining time based on current progress."""
     if current == 0:

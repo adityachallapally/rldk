@@ -11,7 +11,7 @@ from ..utils.error_handling import (
     AdapterError, ValidationError, format_error_message, 
     validate_file_path, validate_data_format, safe_operation
 )
-from ..utils.progress import progress_bar, spinner
+from ..utils.progress import progress_bar, spinner, timed_operation_context
 
 
 def ingest_runs(
