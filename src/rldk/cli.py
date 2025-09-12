@@ -1826,6 +1826,129 @@ def doctor(
     forensics_doctor(run_or_repo)
 
 
+@app.command(name="format-info")
+def format_info(
+    adapter: Optional[str] = typer.Option(None, "--adapter", "-a", help="Show format info for specific adapter"),
+    examples: bool = typer.Option(False, "--examples", help="Show example data"),
+):
+    """Show data format information for adapters."""
+    from .ingest.ingest import _get_adapter_format_requirements
+    
+    if adapter:
+        # Show info for specific adapter
+        requirements = _get_adapter_format_requirements(adapter)
+        
+        typer.echo(f"📋 Format requirements for '{adapter}' adapter:")
+        typer.echo(f"  Description: {requirements['description']}")
+        typer.echo(f"  File extensions: {', '.join(requirements['file_extensions'])}")
+        typer.echo(f"  Required fields: {', '.join(requirements['required_fields'])}")
+        typer.echo(f"  Optional fields: {', '.join(requirements['optional_fields'])}")
+        typer.echo(f"  Suggestions: {requirements['suggestions']}")
+        
+        if examples and requirements['examples']:
+            typer.echo("\n📝 Examples:")
+            for i, example in enumerate(requirements['examples'], 1):
+                typer.echo(f"  {i}. {example}")
+    else:
+        # Show info for all adapters
+        adapters = ["trl", "openrlhf", "custom_jsonl", "wandb"]
+        
+        typer.echo("📋 Available adapters and their format requirements:")
+        typer.echo()
+        
+        for adapter_name in adapters:
+            requirements = _get_adapter_format_requirements(adapter_name)
+            typer.echo(f"🔧 {adapter_name.upper()}:")
+            typer.echo(f"  Description: {requirements['description']}")
+            typer.echo(f"  File extensions: {', '.join(requirements['file_extensions'])}")
+            typer.echo(f"  Required fields: {', '.join(requirements['required_fields'])}")
+            typer.echo()
+        
+        typer.echo("💡 Use --adapter <name> to see detailed info for a specific adapter")
+        typer.echo("💡 Use --examples to see example data formats")
+
+
+@app.command(name="validate-format")
+def validate_format(
+    source: str = typer.Argument(..., help="Path to data source to validate"),
+    adapter: Optional[str] = typer.Option(None, "--adapter", "-a", help="Adapter type to test"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed analysis"),
+):
+    """Validate data format and suggest appropriate adapter."""
+    from .ingest.ingest import _analyze_source_format, _get_adapter_format_requirements
+    
+    typer.echo(f"🔍 Analyzing data format: {source}")
+    
+    # Analyze the source
+    analysis = _analyze_source_format(source)
+    
+    typer.echo(f"📊 Analysis results:")
+    typer.echo(f"  Type: {analysis['description']}")
+    
+    if analysis.get('files'):
+        typer.echo(f"  Files found: {len(analysis['files'])}")
+        if verbose:
+            for file in analysis['files'][:5]:  # Show first 5 files
+                typer.echo(f"    - {file}")
+    
+    if analysis.get('fields_found'):
+        typer.echo(f"  Fields found: {', '.join(analysis['fields_found'])}")
+    
+    if analysis.get('issues'):
+        typer.echo(f"  Issues detected: {len(analysis['issues'])}")
+        if verbose:
+            for issue in analysis['issues']:
+                typer.echo(f"    - {issue}")
+    
+    # Test specific adapter if provided
+    if adapter:
+        typer.echo(f"\n🧪 Testing with '{adapter}' adapter...")
+        try:
+            from .adapters import TRLAdapter, OpenRLHFAdapter, CustomJSONLAdapter, WandBAdapter
+            
+            if adapter == "trl":
+                adapter_instance = TRLAdapter(source)
+            elif adapter == "openrlhf":
+                adapter_instance = OpenRLHFAdapter(source)
+            elif adapter == "custom_jsonl":
+                adapter_instance = CustomJSONLAdapter(source)
+            elif adapter == "wandb":
+                adapter_instance = WandBAdapter(source)
+            else:
+                typer.echo(f"❌ Unknown adapter: {adapter}")
+                raise typer.Exit(1)
+            
+            if adapter_instance.can_handle():
+                typer.echo(f"✅ '{adapter}' adapter can handle this source")
+            else:
+                typer.echo(f"❌ '{adapter}' adapter cannot handle this source")
+                requirements = _get_adapter_format_requirements(adapter)
+                typer.echo(f"   Expected: {requirements['description']}")
+        except Exception as e:
+            typer.echo(f"❌ Error testing adapter: {e}")
+    else:
+        # Suggest adapters
+        typer.echo(f"\n💡 Adapter suggestions:")
+        
+        if analysis['type'] == 'jsonl':
+            fields = analysis.get('fields_found', [])
+            if any(f in fields for f in ['global_step', 'reward_scalar', 'kl_to_ref']):
+                typer.echo("  - custom_jsonl (has custom field names)")
+            else:
+                typer.echo("  - trl (standard format)")
+                typer.echo("  - openrlhf (standard format)")
+        elif analysis['type'] == 'log':
+            typer.echo("  - trl (for .log files)")
+            typer.echo("  - openrlhf (for .log files)")
+        elif analysis['type'] == 'directory':
+            typer.echo("  - trl (for directories with log files)")
+            typer.echo("  - openrlhf (for directories with log files)")
+            typer.echo("  - custom_jsonl (for directories with custom JSONL files)")
+        
+        typer.echo(f"\n💡 Use 'rldk format-info --adapter <name>' for detailed format requirements")
+        typer.echo(f"💡 Use 'rldk validate-format {source} --adapter <name>' to test specific adapter")
+
+
 @app.command(name="version")
 def version():
     """Show version information."""

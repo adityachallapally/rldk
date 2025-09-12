@@ -26,7 +26,8 @@ class TRLAdapter(BaseAdapter):
                 # Check for common TRL log files including new RLDK JSONL events
                 trl_files = (list(self.source.glob("*.log")) + 
                             list(self.source.glob("trainer_log.jsonl")) +
-                            list(self.source.glob("*_events.jsonl")))
+                            list(self.source.glob("*_events.jsonl")) +
+                            list(self.source.glob("*.jsonl")))  # Be more permissive
                 return len(trl_files) > 0
 
             return False
@@ -50,15 +51,17 @@ class TRLAdapter(BaseAdapter):
                             # Check for new Event schema format
                             if "metrics" in data and "model_info" in data:
                                 return True
-                            # Check for old format
-                            return (
+                            # Check for old format - be more flexible
+                            has_required_fields = all(
+                                key in data
+                                for key in ["step", "phase", "reward_mean", "kl_mean"]
+                            )
+                            has_trl_keywords = (
                                 "trl" in str(data).lower()
                                 or "trainer" in str(data).lower()
-                                or all(
-                                    key in data
-                                    for key in ["step", "phase", "reward_mean", "kl_mean"]
-                                )
                             )
+                            # Accept if it has required fields OR TRL keywords
+                            return has_required_fields or has_trl_keywords
                         else:
                             # For non-dict data, only check string content
                             return (
@@ -122,11 +125,14 @@ class TRLAdapter(BaseAdapter):
                         continue
 
             if not metrics:
-                raise AdapterError(
-                    f"No valid TRL metrics found in {self.source}",
-                    suggestion="Check that the source contains valid TRL training data",
-                    error_code="NO_VALID_METRICS_FOUND"
-                )
+                # Try fallback parsing with more lenient requirements
+                metrics = self._fallback_parse()
+                if not metrics:
+                    raise AdapterError(
+                        f"No valid TRL metrics found in {self.source}",
+                        suggestion="Check that the source contains valid TRL training data. Required fields: step, phase, reward_mean, kl_mean",
+                        error_code="NO_VALID_METRICS_FOUND"
+                    )
 
             # Convert to DataFrame
             df = pd.DataFrame(metrics)
@@ -299,4 +305,83 @@ class TRLAdapter(BaseAdapter):
         if len(metric) > 2:  # More than just step and phase
             return metric
 
+        return None
+
+    def _fallback_parse(self) -> List[Dict[str, Any]]:
+        """Fallback parsing with more lenient requirements."""
+        metrics = []
+        
+        try:
+            if self.source.is_file():
+                metrics = self._fallback_parse_file(self.source)
+            elif self.source.is_dir():
+                # Try all JSONL files with fallback parsing
+                jsonl_files = list(self.source.glob("*.jsonl"))
+                for jsonl_file in jsonl_files:
+                    try:
+                        file_metrics = self._fallback_parse_file(jsonl_file)
+                        metrics.extend(file_metrics)
+                    except Exception as e:
+                        self.logger.warning(f"Fallback parsing failed for {jsonl_file}: {e}")
+                        continue
+        except Exception as e:
+            self.logger.warning(f"Fallback parsing failed: {e}")
+        
+        return metrics
+
+    def _fallback_parse_file(self, file_path: Path) -> List[Dict[str, Any]]:
+        """Fallback parsing for a single file with lenient requirements."""
+        metrics = []
+        
+        if file_path.suffix != ".jsonl":
+            return metrics
+        
+        try:
+            with open(file_path, "r") as f:
+                for line_num, line in enumerate(f):
+                    line = line.strip()
+                    if not line:
+                        continue
+                    
+                    try:
+                        data = json.loads(line)
+                        if isinstance(data, dict):
+                            # More lenient metric extraction
+                            metric = self._extract_metric_lenient(data, line_num)
+                            if metric:
+                                metrics.append(metric)
+                    except json.JSONDecodeError:
+                        continue
+        except Exception as e:
+            self.logger.warning(f"Error in fallback parsing {file_path}: {e}")
+        
+        return metrics
+
+    def _extract_metric_lenient(self, data: Dict[str, Any], line_num: int) -> Dict[str, Any]:
+        """Extract metric with lenient requirements - only need step and some metrics."""
+        # Check if we have at least a step and some meaningful data
+        if "step" not in data:
+            return None
+        
+        # Try to extract any available metrics
+        metric = {
+            "step": data.get("step", line_num),
+            "phase": data.get("phase", "train"),
+        }
+        
+        # Add any available metrics
+        metric_fields = [
+            "reward_mean", "reward_std", "kl_mean", "entropy_mean", 
+            "clip_frac", "grad_norm", "lr", "loss", "tokens_in", 
+            "tokens_out", "wall_time", "seed", "run_id", "git_sha"
+        ]
+        
+        for field in metric_fields:
+            if field in data:
+                metric[field] = data[field]
+        
+        # Only return if we have at least step and one other metric
+        if len(metric) > 2:
+            return metric
+        
         return None
