@@ -317,7 +317,10 @@ class CustomPPO:
             return_val = returns[i]
             
             # Policy update
-            _, log_prob_new = self.get_action(state)
+            # Get log probability for the action that was actually taken
+            logits = state @ self.policy
+            probs = self._softmax(logits)
+            log_prob_new = np.log(probs[action] + 1e-8)
             ratio = np.exp(log_prob_new - log_probs_old[i])
             
             # Clipped objective

@@ -85,8 +85,10 @@ class SimplePPO:
             advantage = advantages[i]
             return_val = returns[i]
             
-            # Policy update
-            _, log_prob_new = self.get_action(state)
+            # Policy update - get log probability for the action that was actually taken
+            logits = state @ self.policy
+            probs = self._softmax(logits)
+            log_prob_new = np.log(probs[action] + 1e-8)
             ratio = np.exp(log_prob_new - log_probs_old[i])
             
             # Clipped objective
@@ -98,8 +100,8 @@ class SimplePPO:
             value_new = self.get_value(state)
             value_loss = self.value_coef * (value_new - return_val) ** 2
             
-            # Entropy bonus
-            entropy = -np.sum(log_prob_new * np.log(log_prob_new + 1e-8))
+            # Entropy bonus - use current policy distribution
+            entropy = -np.sum(probs * np.log(probs + 1e-8))
             entropy_loss = -self.entropy_coef * entropy
             
             # Total loss

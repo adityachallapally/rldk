@@ -9,9 +9,16 @@ import random
 import os
 from typing import Optional, Dict, Any, Union
 import numpy as np
-import torch
 
 from .error_handling import RLDKError
+
+# Conditional PyTorch import
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+    torch = None
 
 
 class SeedManager:
@@ -49,7 +56,7 @@ class SeedManager:
             'numpy': np.random.get_state(),
         }
         
-        if torch.is_available():
+        if TORCH_AVAILABLE and torch.cuda.is_available():
             self._original_states['torch_cpu'] = torch.get_rng_state()
             if torch.cuda.is_available():
                 self._original_states['torch_cuda'] = torch.cuda.get_rng_state()
@@ -84,7 +91,7 @@ class SeedManager:
         if not isinstance(seed, int) or seed < 0:
             raise RLDKError(
                 f"Seed must be a non-negative integer, got: {seed}",
-                suggestion="Use a positive integer seed value",
+                suggestion="Use a non-negative integer seed value",
                 error_code="INVALID_SEED",
                 details={"provided_seed": seed, "type": type(seed).__name__}
             )
@@ -99,7 +106,7 @@ class SeedManager:
         np.random.seed(seed)
         
         # Set PyTorch seeds
-        if torch.is_available():
+        if TORCH_AVAILABLE:
             torch.manual_seed(seed)
             if torch.cuda.is_available():
                 torch.cuda.manual_seed(seed)
@@ -122,7 +129,7 @@ class SeedManager:
             'numpy': np.random.get_state(),
         }
         
-        if torch.is_available():
+        if TORCH_AVAILABLE:
             self.rng_state['torch_cpu'] = torch.get_rng_state()
             if torch.cuda.is_available():
                 self.rng_state['torch_cuda'] = torch.cuda.get_rng_state()
@@ -143,7 +150,7 @@ class SeedManager:
         np.random.set_state(self.rng_state['numpy'])
         
         # Restore PyTorch states
-        if torch.is_available():
+        if TORCH_AVAILABLE:
             torch.set_rng_state(self.rng_state['torch_cpu'])
             if torch.cuda.is_available() and 'torch_cuda' in self.rng_state:
                 torch.cuda.set_rng_state(self.rng_state['torch_cuda'])
@@ -157,7 +164,7 @@ class SeedManager:
         np.random.set_state(self._original_states['numpy'])
         
         # Restore PyTorch states
-        if torch.is_available():
+        if TORCH_AVAILABLE:
             torch.set_rng_state(self._original_states['torch_cpu'])
             if torch.cuda.is_available() and 'torch_cuda' in self._original_states:
                 torch.cuda.set_rng_state(self._original_states['torch_cuda'])
@@ -179,11 +186,11 @@ class SeedManager:
             'seed': self.seed,
             'deterministic': self.deterministic,
             'libraries': list(self.rng_state.keys()),
-            'torch_available': torch.is_available(),
-            'cuda_available': torch.cuda.is_available() if torch.is_available() else False,
+            'torch_available': TORCH_AVAILABLE,
+            'cuda_available': torch.cuda.is_available() if TORCH_AVAILABLE else False,
         }
         
-        if torch.is_available() and self.deterministic:
+        if TORCH_AVAILABLE and self.deterministic:
             summary['cudnn_deterministic'] = torch.backends.cudnn.deterministic
             summary['cudnn_benchmark'] = torch.backends.cudnn.benchmark
         
@@ -219,7 +226,7 @@ class SeedManager:
         os.environ['MKL_NUM_THREADS'] = '1'
         
         # Set CUDA launch blocking for debugging (optional)
-        if torch.is_available() and torch.cuda.is_available():
+        if TORCH_AVAILABLE and torch.cuda.is_available():
             os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 
@@ -370,39 +377,57 @@ def validate_seed_consistency(expected_seed: int, tolerance: float = 1e-6) -> bo
         >>> print(f"Seed consistency: {is_consistent}")
         Seed consistency: True
     """
-    # Generate some test random numbers
-    test_values = {
-        'python': [random.random() for _ in range(3)],
-        'numpy': np.random.random(3).tolist(),
+    # Store original states before any modifications
+    original_states = {
+        'python': random.getstate(),
+        'numpy': np.random.get_state(),
     }
     
-    if torch.is_available():
-        test_values['torch'] = torch.rand(3).tolist()
+    if TORCH_AVAILABLE:
+        original_states['torch_cpu'] = torch.get_rng_state()
+        if torch.cuda.is_available():
+            original_states['torch_cuda'] = torch.cuda.get_rng_state()
     
-    # Store current state
-    _global_seed_manager._store_current_states()
-    
-    # Reset to expected seed and generate same values
-    _global_seed_manager.set_global_seed(expected_seed)
-    
-    expected_values = {
-        'python': [random.random() for _ in range(3)],
-        'numpy': np.random.random(3).tolist(),
-    }
-    
-    if torch.is_available():
-        expected_values['torch'] = torch.rand(3).tolist()
-    
-    # Restore original state
-    _global_seed_manager.restore_states()
-    
-    # Compare values
-    for library in test_values:
-        for i, (actual, expected) in enumerate(zip(test_values[library], expected_values[library])):
-            if abs(actual - expected) > tolerance:
-                return False
-    
-    return True
+    try:
+        # Generate test values with expected seed
+        _global_seed_manager.set_global_seed(expected_seed)
+        
+        expected_values = {
+            'python': [random.random() for _ in range(3)],
+            'numpy': np.random.random(3).tolist(),
+        }
+        
+        if TORCH_AVAILABLE:
+            expected_values['torch'] = torch.rand(3).tolist()
+        
+        # Reset to expected seed again and generate same values
+        _global_seed_manager.set_global_seed(expected_seed)
+        
+        actual_values = {
+            'python': [random.random() for _ in range(3)],
+            'numpy': np.random.random(3).tolist(),
+        }
+        
+        if TORCH_AVAILABLE:
+            actual_values['torch'] = torch.rand(3).tolist()
+        
+        # Compare values
+        for library in expected_values:
+            for i, (actual, expected) in enumerate(zip(actual_values[library], expected_values[library])):
+                if abs(actual - expected) > tolerance:
+                    return False
+        
+        return True
+        
+    finally:
+        # Always restore original states
+        random.setstate(original_states['python'])
+        np.random.set_state(original_states['numpy'])
+        
+        if TORCH_AVAILABLE:
+            torch.set_rng_state(original_states['torch_cpu'])
+            if torch.cuda.is_available() and 'torch_cuda' in original_states:
+                torch.cuda.set_rng_state(original_states['torch_cuda'])
 
 
 def create_seed_context(seed: int, deterministic: bool = True):
