@@ -4,7 +4,7 @@ import pytest
 import pandas as pd
 import numpy as np
 
-from rldk.reward.health import health, RewardHealthReport
+from rldk.reward.health_analysis import health, RewardHealthReport
 from rldk.reward.calibration import analyze_calibration
 from rldk.reward.drift import detect_reward_drift
 

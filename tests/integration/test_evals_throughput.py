@@ -7,7 +7,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from datetime import datetime
 
-from src.rldk.evals.metrics.throughput import (
+from rldk.evals.metrics.throughput import (
     evaluate_throughput,
     parse_event_logs,
     calculate_tokens_per_second,

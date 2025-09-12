@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 # Import tracking components
-from src.rldk.tracking import (
+from rldk.tracking import (
     ExperimentTracker,
     TrackingConfig,
     DatasetTracker,
