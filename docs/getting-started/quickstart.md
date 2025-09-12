@@ -238,10 +238,10 @@ RLDK provides a comprehensive CLI for all operations:
 rldk --help
 
 # Track an experiment
-rldk track "my_experiment" --interactive
+rldk track --name "my_experiment" --interactive
 
 # Run forensics analysis
-rldk forensics log-scan ./my_training_run
+rldk log-scan ./my_training_run
 
 # Check determinism
 rldk check-determinism --cmd "python train.py" --compare loss,reward_mean --replicas 5
