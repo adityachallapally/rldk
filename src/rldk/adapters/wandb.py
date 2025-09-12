@@ -1,5 +1,6 @@
 """Adapter for Weights & Biases (wandb) runs."""
 
+import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 import pandas as pd
@@ -13,6 +14,8 @@ except ImportError:
 
 from .base import BaseAdapter
 from ..config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class WandBAdapter(BaseAdapter):
@@ -97,7 +100,8 @@ class WandBAdapter(BaseAdapter):
             if Path(pattern).exists():
                 try:
                     return pd.read_json(pattern, lines=True)
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Failed to read local export file '{pattern}': {e}")
                     continue
 
         raise ValueError(
