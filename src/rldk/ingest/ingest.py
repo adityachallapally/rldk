@@ -65,10 +65,15 @@ def ingest_runs(
             adapter_hint = _detect_adapter_type(source)
             logger.info(f"Auto-detected adapter: {adapter_hint}")
         except Exception as e:
+            # Provide detailed suggestions for auto-detection failure
+            source_analysis = _analyze_source_format(source)
+            suggestions = _get_auto_detection_suggestions(source_analysis)
+            
             raise AdapterError(
                 f"Failed to auto-detect adapter type: {e}",
-                suggestion="Specify adapter type explicitly with --adapter",
-                error_code="ADAPTER_DETECTION_FAILED"
+                suggestion=f"Could not determine the correct adapter. {suggestions}",
+                error_code="ADAPTER_DETECTION_FAILED",
+                details={"source_analysis": source_analysis}
             ) from e
 
     # Validate adapter type
@@ -105,11 +110,22 @@ def ingest_runs(
 
     # Check if adapter can handle the source
     if not adapter.can_handle():
+        # Get detailed format requirements for better error messages
+        format_requirements = _get_adapter_format_requirements(adapter_hint)
+        source_analysis = _analyze_source_format(source)
+        
         raise AdapterError(
             f"Adapter '{adapter_hint}' cannot handle source: {source}",
-            suggestion=f"Try a different adapter type or check the source format",
+            suggestion=f"Expected format: {format_requirements['description']}\n"
+                      f"Found: {source_analysis['description']}\n"
+                      f"Try: {format_requirements['suggestions']}",
             error_code="ADAPTER_CANNOT_HANDLE_SOURCE",
-            details={"adapter": adapter_hint, "source": str(source)}
+            details={
+                "adapter": adapter_hint, 
+                "source": str(source),
+                "expected_format": format_requirements,
+                "source_analysis": source_analysis
+            }
         )
 
     # Load data with robust error handling
@@ -257,3 +273,260 @@ def _detect_adapter_type(source: Union[str, Path]) -> str:
 
     # Default to TRL if no specific patterns found
     return "trl"
+
+
+def _get_adapter_format_requirements(adapter_type: str) -> dict:
+    """Get detailed format requirements for an adapter type."""
+    requirements = {
+        "trl": {
+            "description": "TRL training logs (JSONL or .log files)",
+            "file_extensions": [".jsonl", ".log"],
+            "required_fields": ["step", "phase", "reward_mean", "kl_mean"],
+            "optional_fields": ["entropy_mean", "clip_frac", "grad_norm", "lr", "loss", "wall_time", "seed", "run_id", "git_sha"],
+            "examples": [
+                '{"step": 0, "phase": "train", "reward_mean": 0.5, "kl_mean": 0.1, "entropy_mean": 0.8}',
+                '{"step": 1, "phase": "train", "reward_mean": 0.6, "kl_mean": 0.12, "loss": 0.4, "lr": 0.001}'
+            ],
+            "suggestions": "Ensure your data contains the required fields. For JSONL files, each line should be a valid JSON object with training metrics."
+        },
+        "openrlhf": {
+            "description": "OpenRLHF training logs (JSONL or .log files)",
+            "file_extensions": [".jsonl", ".log"],
+            "required_fields": ["step", "phase", "reward_mean", "kl_mean"],
+            "optional_fields": ["entropy_mean", "clip_frac", "grad_norm", "lr", "loss", "wall_time", "seed", "run_id", "git_sha"],
+            "examples": [
+                '{"step": 0, "phase": "train", "reward_mean": 0.5, "kl_mean": 0.1, "entropy_mean": 0.8}',
+                '{"step": 1, "phase": "train", "reward_mean": 0.6, "kl_mean": 0.12, "loss": 0.4, "lr": 0.001}'
+            ],
+            "suggestions": "Ensure your data contains the required fields. For JSONL files, each line should be a valid JSON object with training metrics."
+        },
+        "custom_jsonl": {
+            "description": "Custom JSONL format with specific field names",
+            "file_extensions": [".jsonl"],
+            "required_fields": ["global_step", "reward_scalar", "kl_to_ref"],
+            "optional_fields": ["entropy", "clip_frac", "grad_norm", "lr", "loss", "wall_time", "seed", "run_id", "git_sha"],
+            "examples": [
+                '{"global_step": 0, "reward_scalar": 0.5, "kl_to_ref": 0.1, "entropy": 0.8}',
+                '{"global_step": 1, "reward_scalar": 0.6, "kl_to_ref": 0.12, "loss": 0.4, "lr": 0.001}'
+            ],
+            "suggestions": "Use field names like 'global_step', 'reward_scalar', 'kl_to_ref' instead of standard names."
+        },
+        "wandb": {
+            "description": "WandB run URI (wandb://entity/project/run_id)",
+            "file_extensions": [],
+            "required_fields": ["entity", "project", "run_id"],
+            "optional_fields": [],
+            "examples": [
+                "wandb://my-entity/my-project/abc123",
+                "wandb://team/project/run-2024-01-01-12-00-00"
+            ],
+            "suggestions": "Use the format: wandb://entity/project/run_id. Ensure you have WandB access and the run exists."
+        }
+    }
+    
+    return requirements.get(adapter_type, {
+        "description": f"Unknown adapter type: {adapter_type}",
+        "file_extensions": [],
+        "required_fields": [],
+        "optional_fields": [],
+        "examples": [],
+        "suggestions": "Use a valid adapter type: trl, openrlhf, custom_jsonl, wandb"
+    })
+
+
+def _analyze_source_format(source: Union[str, Path]) -> dict:
+    """Analyze the source format and provide detailed information."""
+    source_path = Path(source)
+    
+    if not source_path.exists():
+        return {
+            "description": "Source does not exist",
+            "type": "missing",
+            "files": [],
+            "issues": ["Path does not exist"]
+        }
+    
+    if source_path.is_file():
+        return _analyze_file_format(source_path)
+    elif source_path.is_dir():
+        return _analyze_directory_format(source_path)
+    else:
+        return {
+            "description": "Unknown source type",
+            "type": "unknown",
+            "files": [],
+            "issues": ["Source is neither file nor directory"]
+        }
+
+
+def _analyze_file_format(file_path: Path) -> dict:
+    """Analyze a single file format."""
+    issues = []
+    file_type = "unknown"
+    
+    if file_path.suffix == ".jsonl":
+        file_type = "jsonl"
+        # Try to read first few lines to analyze content
+        try:
+            with open(file_path, 'r') as f:
+                lines = []
+                for i, line in enumerate(f):
+                    if i >= 3:  # Only read first 3 lines
+                        break
+                    lines.append(line.strip())
+                
+                if lines:
+                    # Try to parse JSON
+                    import json
+                    sample_data = []
+                    for line_num, line in enumerate(lines, 1):  # Start line numbering from 1
+                        if line:
+                            try:
+                                data = json.loads(line)
+                                sample_data.append(data)
+                            except json.JSONDecodeError:
+                                issues.append(f"Invalid JSON on line {line_num}")
+                    
+                    if sample_data:
+                        # Analyze field structure
+                        all_fields = set()
+                        for data in sample_data:
+                            if isinstance(data, dict):
+                                all_fields.update(data.keys())
+                        
+                        required_fields = ["step", "phase", "reward_mean", "kl_mean"]
+                        missing_fields = [f for f in required_fields if f not in all_fields]
+                        
+                        if missing_fields:
+                            issues.append(f"Missing required fields: {missing_fields}")
+                        
+                        # Check for custom format indicators
+                        custom_indicators = ["global_step", "reward_scalar", "kl_to_ref"]
+                        has_custom = any(f in all_fields for f in custom_indicators)
+                        
+                        if has_custom:
+                            issues.append("Contains custom format fields - try 'custom_jsonl' adapter")
+                        
+                        return {
+                            "description": f"JSONL file with {len(sample_data)} sample records",
+                            "type": "jsonl",
+                            "files": [str(file_path)],
+                            "fields_found": list(all_fields),
+                            "issues": issues,
+                            "sample_data": sample_data[0] if sample_data else None
+                        }
+                    else:
+                        issues.append("No valid JSON records found")
+                else:
+                    issues.append("File is empty")
+        except Exception as e:
+            issues.append(f"Error reading file: {e}")
+    
+    elif file_path.suffix == ".log":
+        file_type = "log"
+        try:
+            with open(file_path, 'r') as f:
+                content = f.read(1000)  # Read first 1000 chars
+                if not content.strip():
+                    issues.append("Log file is empty")
+                else:
+                    # Check for common patterns
+                    if "trl" in content.lower():
+                        issues.append("Contains TRL keywords - try 'trl' adapter")
+                    elif "openrlhf" in content.lower() or "rlhf" in content.lower():
+                        issues.append("Contains OpenRLHF keywords - try 'openrlhf' adapter")
+        except Exception as e:
+            issues.append(f"Error reading log file: {e}")
+    
+    else:
+        issues.append(f"Unsupported file extension: {file_path.suffix}")
+    
+    return {
+        "description": f"{file_type} file: {file_path.name}",
+        "type": file_type,
+        "files": [str(file_path)],
+        "issues": issues
+    }
+
+
+def _analyze_directory_format(dir_path: Path) -> dict:
+    """Analyze a directory format."""
+    issues = []
+    files_found = []
+    
+    # Look for common log files
+    jsonl_files = list(dir_path.glob("*.jsonl"))
+    log_files = list(dir_path.glob("*.log"))
+    
+    files_found = jsonl_files + log_files
+    
+    if not files_found:
+        issues.append("No .jsonl or .log files found in directory")
+        return {
+            "description": f"Directory with no log files",
+            "type": "directory",
+            "files": [],
+            "issues": issues
+        }
+    
+    # Analyze the first few files
+    sample_issues = []
+    for file_path in files_found[:3]:  # Analyze first 3 files
+        file_analysis = _analyze_file_format(file_path)
+        if file_analysis.get("issues"):
+            sample_issues.extend(file_analysis["issues"])
+    
+    issues.extend(sample_issues)
+    
+    return {
+        "description": f"Directory with {len(files_found)} log files ({len(jsonl_files)} JSONL, {len(log_files)} .log)",
+        "type": "directory",
+        "files": [str(f) for f in files_found],
+        "issues": issues
+    }
+
+
+def _get_auto_detection_suggestions(source_analysis: dict) -> str:
+    """Get suggestions for adapter selection based on source analysis."""
+    suggestions = []
+    
+    if source_analysis["type"] == "missing":
+        suggestions.append("Ensure the source path exists and is accessible.")
+        return " ".join(suggestions)
+    
+    if source_analysis["type"] == "jsonl":
+        fields_found = source_analysis.get("fields_found", [])
+        
+        # Check for custom format indicators
+        custom_indicators = ["global_step", "reward_scalar", "kl_to_ref"]
+        has_custom = any(f in fields_found for f in custom_indicators)
+        
+        if has_custom:
+            suggestions.append("Your data contains custom field names (global_step, reward_scalar, kl_to_ref). Try: --adapter custom_jsonl")
+        else:
+            # Check for standard format
+            standard_fields = ["step", "phase", "reward_mean", "kl_mean"]
+            has_standard = any(f in fields_found for f in standard_fields)
+            
+            if has_standard:
+                suggestions.append("Your data appears to be in standard format. Try: --adapter trl or --adapter openrlhf")
+            else:
+                suggestions.append("Your data doesn't match standard formats. Try: --adapter custom_jsonl")
+    
+    elif source_analysis["type"] == "log":
+        suggestions.append("You have .log files. Try: --adapter trl or --adapter openrlhf")
+    
+    elif source_analysis["type"] == "directory":
+        files = source_analysis.get("files", [])
+        if any(f.endswith('.jsonl') for f in files):
+            suggestions.append("Directory contains JSONL files. Try: --adapter trl, --adapter openrlhf, or --adapter custom_jsonl")
+        elif any(f.endswith('.log') for f in files):
+            suggestions.append("Directory contains .log files. Try: --adapter trl or --adapter openrlhf")
+        else:
+            suggestions.append("Directory doesn't contain recognized log files.")
+    
+    # Add general suggestions
+    suggestions.append("Available adapters: trl, openrlhf, custom_jsonl, wandb")
+    suggestions.append("Use --adapter <type> to specify the adapter explicitly.")
+    
+    return " ".join(suggestions)

@@ -120,7 +120,7 @@ class CustomJSONLAdapter(BaseAdapter):
         try:
             if file_path.suffix == ".jsonl":
                 with open(file_path, "r") as f:
-                    for line_num, line in enumerate(f):
+                    for line_num, line in enumerate(f, 1):  # Start line numbering from 1
                         line = line.strip()
                         if not line:
                             continue
@@ -130,7 +130,7 @@ class CustomJSONLAdapter(BaseAdapter):
                             if metric:
                                 metrics.append(metric)
                         except json.JSONDecodeError as e:
-                            print(f"Warning: JSON decode error in {file_path} at line {line_num + 1}: {e}")
+                            print(f"Warning: JSON decode error in {file_path} at line {line_num}: {e}")
                             continue
         except (OSError, IOError, UnicodeDecodeError) as e:
             print(f"Error parsing {file_path}: {e}")

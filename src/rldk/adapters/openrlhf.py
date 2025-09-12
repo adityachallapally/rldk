@@ -120,7 +120,7 @@ class OpenRLHFAdapter(BaseAdapter):
         try:
             if file_path.suffix == ".jsonl":
                 with open(file_path, "r") as f:
-                    for line_num, line in enumerate(f):
+                    for line_num, line in enumerate(f, 1):  # Start line numbering from 1
                         line = line.strip()
                         if not line:
                             continue
@@ -130,12 +130,12 @@ class OpenRLHFAdapter(BaseAdapter):
                             if metric:
                                 metrics.append(metric)
                         except json.JSONDecodeError as e:
-                            print(f"Warning: JSON decode error in {file_path} at line {line_num + 1}: {e}")
+                            print(f"Warning: JSON decode error in {file_path} at line {line_num}: {e}")
                             continue
 
             elif file_path.suffix == ".log":
                 with open(file_path, "r") as f:
-                    for line_num, line in enumerate(f):
+                    for line_num, line in enumerate(f, 1):  # Start line numbering from 1
                         metric = self._parse_log_line(line, line_num)
                         if metric:
                             metrics.append(metric)
