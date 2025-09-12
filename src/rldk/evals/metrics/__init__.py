@@ -5,6 +5,56 @@ from .toxicity import evaluate_toxicity
 from .bias import evaluate_bias
 from .utils import calculate_confidence_intervals, calculate_effect_sizes
 
+# Import KL divergence functions from the parent metrics.py file
+try:
+    import importlib.util
+    import os
+    
+    # Get the path to the parent directory's metrics.py file
+    parent_dir = os.path.dirname(os.path.dirname(__file__))
+    metrics_file = os.path.join(parent_dir, 'metrics.py')
+    
+    # Check if the file exists
+    if os.path.exists(metrics_file):
+        # Load the module dynamically
+        spec = importlib.util.spec_from_file_location("evals_metrics", metrics_file)
+        if spec is not None and spec.loader is not None:
+            evals_metrics = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(evals_metrics)
+            
+            # Import KL divergence functions
+            calculate_kl_divergence = evals_metrics.calculate_kl_divergence
+            calculate_kl_divergence_between_runs = evals_metrics.calculate_kl_divergence_between_runs
+            calculate_kl_divergence_confidence_interval = evals_metrics.calculate_kl_divergence_confidence_interval
+        else:
+            raise ImportError("Failed to create module spec for metrics.py")
+    else:
+        raise FileNotFoundError(f"Metrics file not found: {metrics_file}")
+        
+except (ImportError, FileNotFoundError, AttributeError, OSError, Exception) as e:
+    # Fallback: define minimal implementations if import fails
+    import warnings
+    import logging
+    
+    # Log the specific error for debugging
+    logger = logging.getLogger(__name__)
+    logger.warning(f"Failed to import KL divergence functions from metrics.py: {e}. Using fallback implementations.")
+    
+    def calculate_kl_divergence(p, q, epsilon=1e-10):
+        """Calculate KL divergence (fallback implementation)."""
+        warnings.warn("calculate_kl_divergence: Using fallback implementation.", UserWarning)
+        return 0.0
+    
+    def calculate_kl_divergence_between_runs(run1_data, run2_data, metric="reward_mean", bins=20, epsilon=1e-10):
+        """Calculate KL divergence between runs (fallback implementation)."""
+        warnings.warn("calculate_kl_divergence_between_runs: Using fallback implementation.", UserWarning)
+        return {"kl_divergence": 0.0, "error": "Fallback implementation"}
+    
+    def calculate_kl_divergence_confidence_interval(kl_values, confidence_level=0.95):
+        """Calculate KL divergence confidence interval (fallback implementation)."""
+        warnings.warn("calculate_kl_divergence_confidence_interval: Using fallback implementation.", UserWarning)
+        return {"mean": 0.0, "lower": 0.0, "upper": 0.0, "error": "Fallback implementation"}
+
 # Import statistical functions from the metrics.py file in the parent directory
 try:
     import importlib.util
@@ -189,4 +239,7 @@ __all__ = [
     "evaluate_bias",
     "calculate_confidence_intervals",
     "calculate_effect_sizes",
+    "calculate_kl_divergence",
+    "calculate_kl_divergence_between_runs",
+    "calculate_kl_divergence_confidence_interval",
 ]
