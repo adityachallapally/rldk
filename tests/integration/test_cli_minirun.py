@@ -36,6 +36,30 @@ class TestCLIMinirun:
             # Should not contain Python tracebacks or unexpected errors
             assert "Traceback" not in result.stderr, f"Unexpected Python traceback in {test_name}: {result.stderr}"
             assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception in {test_name}: {result.stderr}"
+    
+    @pytest.mark.parametrize("command,args", [
+        (["ingest"], ["--adapter", "generic"]),
+        (["diff"], []),
+        (["replay"], ["--command", "echo test"]),
+        (["bisect"], ["--good", "abc123", "--bad", "def456", "--cmd", "echo test"]),
+        (["check-determinism"], ["--cmd", "echo test", "--replicas", "2"]),
+        (["forensics"], []),
+        (["reward", "health"], []),
+        (["evals", "bias"], []),
+        (["evals", "toxicity"], []),
+        (["evals", "throughput"], []),
+        (["track", "start"], []),
+        (["track", "stop"], []),
+        (["track", "status"], []),
+        (["track", "logs"], []),
+        (["track", "export"], []),
+        (["track", "cleanup"], []),
+    ])
+    def test_cli_commands_with_minirun(self, rldk_cmd, minirun_path, command, args):
+        """Test CLI commands that may fail but should not crash."""
+        full_command = rldk_cmd + command + [str(minirun_path)] + args
+        result = subprocess.run(full_command, capture_output=True, text=True)
+        self._check_cli_result(result, f"test_cli_{'_'.join(command)}")
 
     def test_cli_help(self, rldk_cmd):
         """Test that CLI help works."""

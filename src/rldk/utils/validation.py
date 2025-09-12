@@ -249,10 +249,11 @@ def validate_jsonl_file_streaming(file_path: Union[str, Path],
     
     try:
         line_count = 0
-        with open(path, 'r') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             for line_num, line in enumerate(f, 1):
                 line = line.strip()
                 if not line:
+                    # Log empty lines for debugging
                     continue
                 
                 line_count += 1
@@ -262,6 +263,15 @@ def validate_jsonl_file_streaming(file_path: Union[str, Path],
                         suggestion=f"File exceeds maximum line limit of {max_lines}",
                         error_code="TOO_MANY_LINES",
                         details={"path": str(path), "line_count": line_count, "max_lines": max_lines}
+                    )
+                
+                # Check for extremely long lines that could cause memory issues
+                if len(line) > 1024 * 1024:  # 1MB line limit
+                    raise ValidationError(
+                        f"JSONL line {line_num} too long: {len(line)} characters > 1MB",
+                        suggestion="Split large records into smaller chunks",
+                        error_code="LINE_TOO_LONG",
+                        details={"path": str(path), "line": line_num, "line_length": len(line)}
                     )
                 
                 try:

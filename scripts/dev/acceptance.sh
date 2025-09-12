@@ -107,8 +107,13 @@ run_with_status "Running tests with pytest" pytest -q --maxfail=1 --disable-warn
 # Coverage check
 print_status "INFO" "Running coverage analysis"
 if pytest -q --cov=src/rldk --cov-report=term-missing --cov-report=xml; then
-    # Check if coverage meets threshold
-    COVERAGE=$(coverage report --show-missing | grep "TOTAL" | sed 's/.*[[:space:]]\([0-9]*\)%.*/\1/')
+    # Check if coverage meets threshold with better error handling
+    COVERAGE=$(coverage report --show-missing | grep "TOTAL" | sed 's/.*[[:space:]]\([0-9]*\)%.*/\1/' || echo "")
+    if [ -z "$COVERAGE" ] || ! python -c "int('$COVERAGE')" 2>/dev/null; then
+        print_status "ERROR" "Could not extract coverage percentage from report"
+        exit 1
+    fi
+    
     if python -c "import sys; sys.exit(0 if int('$COVERAGE') >= 80 else 1)"; then
         print_status "SUCCESS" "Coverage threshold met: ${COVERAGE}% >= 80%"
     else

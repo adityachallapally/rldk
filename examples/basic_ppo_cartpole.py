@@ -126,21 +126,26 @@ def main():
                 self.value -= self.lr * value_loss * state.reshape(-1, 1)
         
         def compute_advantages(self, rewards, values, dones):
-            """Compute advantages using GAE."""
+            """Compute advantages using basic advantage estimation (not GAE)."""
             advantages = []
             returns = []
             
-            # Simple advantage computation
-            for i in range(len(rewards)):
-                if i == len(rewards) - 1 or dones[i]:
-                    advantage = rewards[i] - values[i]
-                    return_val = rewards[i]
+            # Compute returns (discounted cumulative rewards) efficiently
+            returns = [0.0] * len(rewards)
+            G = 0.0
+            for i in reversed(range(len(rewards))):
+                if dones[i]:
+                    # Terminal state: no bootstrap from next value
+                    G = rewards[i]
                 else:
-                    advantage = rewards[i] + self.gamma * values[i+1] - values[i]
-                    return_val = rewards[i] + self.gamma * values[i+1]
-                
+                    # Non-terminal: bootstrap from next value
+                    G = rewards[i] + self.gamma * G
+                returns[i] = G
+            
+            # Compute advantages: A_t = R_t - V(s_t)
+            for i in range(len(rewards)):
+                advantage = returns[i] - values[i]
                 advantages.append(advantage)
-                returns.append(return_val)
             
             return np.array(advantages), np.array(returns)
     

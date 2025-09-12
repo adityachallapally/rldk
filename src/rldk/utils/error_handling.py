@@ -42,10 +42,6 @@ class RLDKTimeoutError(RLDKError):
     pass
 
 
-# Backward compatibility alias
-TimeoutError = RLDKTimeoutError
-
-
 def format_error_message(error: Exception, context: Optional[str] = None) -> str:
     """Format a user-friendly error message with suggestions."""
     if isinstance(error, RLDKError):
@@ -86,6 +82,19 @@ def sanitize_path(path: Union[str, Path], base_path: Optional[Path] = None) -> P
     Raises:
         ValidationError: If path contains traversal attempts or is invalid
     """
+    # First check for path traversal attempts before resolving
+    path_str = str(path)
+    if ".." in path_str:
+        # Check for parent directory traversal patterns
+        path_parts = Path(path).parts
+        if ".." in path_parts:
+            raise ValidationError(
+                f"Path traversal attempt detected: {path}",
+                suggestion="Use relative paths within the allowed directory",
+                error_code="PATH_TRAVERSAL_DETECTED",
+                details={"original_path": str(path)}
+            )
+    
     try:
         path_obj = Path(path).resolve()
     except Exception as e:
@@ -94,30 +103,6 @@ def sanitize_path(path: Union[str, Path], base_path: Optional[Path] = None) -> P
             suggestion="Please provide a valid file or directory path",
             error_code="INVALID_PATH"
         ) from e
-    
-    # Check for path traversal attempts (more sophisticated check)
-    path_str = str(path_obj)
-    
-    # Check for parent directory traversal patterns
-    path_parts = path_obj.parts
-    if ".." in path_parts:
-        raise ValidationError(
-            f"Path traversal attempt detected: {path}",
-            suggestion="Use relative paths within the allowed directory",
-            error_code="PATH_TRAVERSAL_DETECTED",
-            details={"original_path": str(path), "resolved_path": path_str}
-        )
-    
-    # Check for suspicious patterns that might indicate traversal
-    if ".." in path_str and not path_str.endswith(".."):
-        # Allow ".." at the end (like "parent..") but not in the middle
-        if ".." in path_str[:-2]:  # Check if ".." appears before the last 2 characters
-            raise ValidationError(
-                f"Path traversal attempt detected: {path}",
-                suggestion="Use relative paths within the allowed directory",
-                error_code="PATH_TRAVERSAL_DETECTED",
-                details={"original_path": str(path), "resolved_path": path_str}
-            )
     
     # If base_path is provided, ensure the path is within it
     if base_path is not None:
