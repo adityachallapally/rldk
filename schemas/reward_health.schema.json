@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "required": ["pass", "drift", "signals"],
+  "properties": {
+    "pass": {
+      "type": "boolean",
+      "description": "Whether the reward health check passed"
+    },
+    "drift": {
+      "type": "number",
+      "description": "Drift score between reward distributions"
+    },
+    "signals": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "List of detected health signals"
+    }
+  }
+}

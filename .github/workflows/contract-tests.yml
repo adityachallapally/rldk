@@ -1,0 +1,70 @@
+name: Contract Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-contracts:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e . --break-system-packages
+        pip install pytest pyyaml --break-system-packages
+    
+    - name: Run baseline contract tests
+      run: |
+        python -m pytest tests/test_contract_baseline.py::test_generate_baseline_contract -v
+    
+    - name: Run diff test
+      run: |
+        python tests/test_contract_v1_diff.py
+    
+    - name: Run no-docs test
+      run: |
+        python -m pytest tests/test_no_docs_in_contract.py -v
+    
+    - name: Upload contract artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: api-contracts
+        path: |
+          api_contract.baseline.yaml
+          api_contract.v1.yaml
+          artifacts/api_contract.diff.txt
+          schemas/*.schema.json
+    
+    - name: Comment PR with diff
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const diff = fs.readFileSync('artifacts/api_contract.diff.txt', 'utf8');
+          
+          const comment = `## API Contract Diff
+          
+          \`\`\`
+          ${diff}
+          \`\`\`
+          
+          This diff shows the difference between the current baseline API contract and the target v1 contract.`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
