@@ -129,10 +129,10 @@ def validate_json_file(file_path: Union[str, Path], context: str = "JSON file") 
         ) from e
 
 
-def validate_json_file_streaming(file_path: Union[str, Path], 
-                                context: str = "JSON file",
-                                max_size_mb: float = 100.0) -> Dict[str, Any]:
-    """Validate JSON file with streaming support and size limits."""
+def validate_json_file_with_size_check(file_path: Union[str, Path], 
+                                       context: str = "JSON file",
+                                       max_size_mb: float = 100.0) -> Dict[str, Any]:
+    """Validate JSON file with size limits (loads entire file into memory)."""
     path = validate_file_exists(file_path, context)
     
     # Check file size
@@ -277,10 +277,7 @@ def validate_jsonl_file_streaming(file_path: Union[str, Path],
                             details={"path": str(path), "line": line_num, "actual_type": type(record).__name__}
                         )
                     
-                    # Yield immediately for true streaming
-                    yield record
-                    
-                    # Check line limit after yielding (allows processing up to limit)
+                    # Check line limit before yielding to prevent processing over-limit data
                     if line_count > max_lines:
                         raise ValidationError(
                             f"JSONL file has too many lines: {line_count} > {max_lines}",
@@ -288,6 +285,9 @@ def validate_jsonl_file_streaming(file_path: Union[str, Path],
                             error_code="TOO_MANY_LINES",
                             details={"path": str(path), "line_count": line_count, "max_lines": max_lines}
                         )
+                    
+                    # Yield immediately for true streaming
+                    yield record
                 except json.JSONDecodeError as e:
                     raise ValidationError(
                         f"Invalid JSON on line {line_num} in file: {path}",

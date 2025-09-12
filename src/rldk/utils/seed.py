@@ -127,17 +127,19 @@ class SeedManager:
         return seed
     
     def _store_current_states(self):
-        """Store current RNG states for later restoration."""
-        with self._lock:
-            self.rng_state = {
-                'python': random.getstate(),
-                'numpy': np.random.get_state(),
-            }
-            
-            if TORCH_AVAILABLE:
-                self.rng_state['torch_cpu'] = torch.get_rng_state()
-                if torch.cuda.is_available():
-                    self.rng_state['torch_cuda'] = torch.cuda.get_rng_state()
+        """Store current RNG states for later restoration.
+        
+        Note: This method should be called within a lock context.
+        """
+        self.rng_state = {
+            'python': random.getstate(),
+            'numpy': np.random.get_state(),
+        }
+        
+        if TORCH_AVAILABLE:
+            self.rng_state['torch_cpu'] = torch.get_rng_state()
+            if torch.cuda.is_available():
+                self.rng_state['torch_cuda'] = torch.cuda.get_rng_state()
     
     def restore_states(self):
         """Restore RNG states to their current checkpoint."""

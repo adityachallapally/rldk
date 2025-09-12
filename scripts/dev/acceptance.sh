@@ -198,7 +198,7 @@ echo "==================================="
 
 # Performance checks
 print_status "INFO" "Checking import time..."
-if python3 -c "
+if python -c "
 import time
 import sys
 try:
@@ -220,7 +220,7 @@ fi
 print_status "INFO" "Checking memory usage..."
 # Check if psutil is available, fallback to basic check if not
 if python -c "import psutil" 2>/dev/null; then
-    if python3 -c "
+    if python -c "
 import psutil
 import rldk
 import sys
