@@ -2,11 +2,11 @@
 
 import os
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments
+from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments, GenerationConfig
 from datasets import Dataset
 
 # Import RLDK components
-from rldk.integrations.trl import RLDKCallback, PPOMonitor, CheckpointMonitor
+from rldk.integrations.trl import RLDKCallback, PPOMonitor, CheckpointMonitor, prepare_models_for_ppo, check_trl_compatibility
 
 try:
     from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead
@@ -49,6 +49,17 @@ def test_basic_ppo_integration():
     
     print("🚀 Testing Basic PPO Integration with RLDK")
     
+    # Check TRL compatibility and show warnings
+    compatibility = check_trl_compatibility()
+    if compatibility["warnings"]:
+        print("⚠️  TRL Compatibility Warnings:")
+        for warning in compatibility["warnings"]:
+            print(f"   - {warning}")
+    if compatibility["recommendations"]:
+        print("💡 Recommendations:")
+        for rec in compatibility["recommendations"]:
+            print(f"   - {rec}")
+    
     # Create output directory
     output_dir = "./test_ppo_output"
     os.makedirs(output_dir, exist_ok=True)
@@ -81,12 +92,6 @@ def test_basic_ppo_integration():
         print("✅ Example structure validated without model download")
         return True
     
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    tokenizer.pad_token = tokenizer.eos_token
-    
-    # Create model with value head for PPO
-    model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
-    
     # Create sample dataset
     dataset = create_sample_dataset()
     
@@ -107,14 +112,9 @@ def test_basic_ppo_integration():
         fp16=False,  # Disable fp16 for compatibility
     )
     
-    # Create reference model (required in TRL v0.22.2+)
-    ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
-    
-    # Create reward model (required in TRL v0.22.2+)
-    reward_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
-    
-    # Create value model (required in TRL v0.22.2+)
-    value_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    # Use utility function to prepare all models with proper generation_config
+    # This fixes the AttributeError: 'AutoModelForCausalLMWithValueHead' object has no attribute 'generation_config'
+    model, ref_model, reward_model, value_model, tokenizer = prepare_models_for_ppo(model_name)
     
     # Create PPO trainer with new API
     trainer = PPOTrainer(
