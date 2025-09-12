@@ -3,7 +3,7 @@
 import os
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Callable
+from typing import Any, Dict, List, Optional, Union, Callable, Iterator
 import pandas as pd
 import numpy as np
 
@@ -129,6 +129,54 @@ def validate_json_file(file_path: Union[str, Path], context: str = "JSON file") 
         ) from e
 
 
+def validate_json_file_streaming(file_path: Union[str, Path], 
+                                context: str = "JSON file",
+                                max_size_mb: float = 100.0) -> Dict[str, Any]:
+    """Validate JSON file with streaming support and size limits."""
+    path = validate_file_exists(file_path, context)
+    
+    # Check file size
+    file_size = path.stat().st_size
+    max_size_bytes = max_size_mb * 1024 * 1024
+    
+    if file_size > max_size_bytes:
+        raise ValidationError(
+            f"JSON file too large: {file_size / 1024 / 1024:.1f} MB > {max_size_mb} MB",
+            suggestion=f"File exceeds maximum size limit of {max_size_mb} MB",
+            error_code="FILE_TOO_LARGE",
+            details={"path": str(path), "file_size_mb": file_size / 1024 / 1024, "max_size_mb": max_size_mb}
+        )
+    
+    try:
+        with open(path, 'r') as f:
+            data = json.load(f)
+        
+        if not isinstance(data, dict):
+            raise ValidationError(
+                f"JSON file does not contain a dictionary: {path}",
+                suggestion="Ensure the JSON file contains a valid JSON object",
+                error_code="INVALID_JSON_STRUCTURE",
+                details={"path": str(path), "actual_type": type(data).__name__}
+            )
+        
+        return data
+    
+    except json.JSONDecodeError as e:
+        raise ValidationError(
+            f"Invalid JSON in file: {path}",
+            suggestion="Check that the file contains valid JSON syntax",
+            error_code="INVALID_JSON",
+            details={"path": str(path), "error": str(e)}
+        ) from e
+    except Exception as e:
+        raise ValidationError(
+            f"Failed to read JSON file: {path}",
+            suggestion="Check file permissions and encoding",
+            error_code="JSON_READ_ERROR",
+            details={"path": str(path), "error": str(e)}
+        ) from e
+
+
 def validate_jsonl_file(file_path: Union[str, Path], context: str = "JSONL file") -> List[Dict[str, Any]]:
     """Validate that a file contains valid JSONL."""
     path = validate_file_exists(file_path, context)
@@ -180,7 +228,80 @@ def validate_jsonl_file(file_path: Union[str, Path], context: str = "JSONL file"
         ) from e
 
 
-def validate_dataframe(df: pd.DataFrame, 
+def validate_jsonl_file_streaming(file_path: Union[str, Path], 
+                                 context: str = "JSONL file",
+                                 max_size_mb: float = 100.0,
+                                 max_lines: int = 1000000) -> Iterator[Dict[str, Any]]:
+    """Validate JSONL file with streaming support and size/line limits."""
+    path = validate_file_exists(file_path, context)
+    
+    # Check file size
+    file_size = path.stat().st_size
+    max_size_bytes = max_size_mb * 1024 * 1024
+    
+    if file_size > max_size_bytes:
+        raise ValidationError(
+            f"JSONL file too large: {file_size / 1024 / 1024:.1f} MB > {max_size_mb} MB",
+            suggestion=f"File exceeds maximum size limit of {max_size_mb} MB",
+            error_code="FILE_TOO_LARGE",
+            details={"path": str(path), "file_size_mb": file_size / 1024 / 1024, "max_size_mb": max_size_mb}
+        )
+    
+    try:
+        line_count = 0
+        with open(path, 'r') as f:
+            for line_num, line in enumerate(f, 1):
+                line = line.strip()
+                if not line:
+                    continue
+                
+                line_count += 1
+                if line_count > max_lines:
+                    raise ValidationError(
+                        f"JSONL file has too many lines: {line_count} > {max_lines}",
+                        suggestion=f"File exceeds maximum line limit of {max_lines}",
+                        error_code="TOO_MANY_LINES",
+                        details={"path": str(path), "line_count": line_count, "max_lines": max_lines}
+                    )
+                
+                try:
+                    record = json.loads(line)
+                    if not isinstance(record, dict):
+                        raise ValidationError(
+                            f"JSONL line {line_num} is not a dictionary: {path}",
+                            suggestion="Ensure each line contains a valid JSON object",
+                            error_code="INVALID_JSONL_STRUCTURE",
+                            details={"path": str(path), "line": line_num, "actual_type": type(record).__name__}
+                        )
+                    yield record
+                except json.JSONDecodeError as e:
+                    raise ValidationError(
+                        f"Invalid JSON on line {line_num} in file: {path}",
+                        suggestion="Check that each line contains valid JSON",
+                        error_code="INVALID_JSONL_LINE",
+                        details={"path": str(path), "line": line_num, "error": str(e)}
+                    ) from e
+        
+        if line_count == 0:
+            raise ValidationError(
+                f"No valid JSON records found in file: {path}",
+                suggestion="Ensure the file contains at least one valid JSON object",
+                error_code="EMPTY_JSONL_FILE",
+                details={"path": str(path)}
+            )
+    
+    except ValidationError:
+        raise
+    except Exception as e:
+        raise ValidationError(
+            f"Failed to read JSONL file: {path}",
+            suggestion="Check file permissions and encoding",
+            error_code="JSONL_READ_ERROR",
+            details={"path": str(path), "error": str(e)}
+        ) from e
+
+
+def validate_dataframe(df: pd.DataFrame,
                       required_columns: Optional[List[str]] = None,
                       min_rows: int = 1,
                       context: str = "DataFrame") -> pd.DataFrame:

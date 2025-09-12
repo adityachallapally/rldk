@@ -81,8 +81,17 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if the adapter doesn't exist, but CLI should still work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        # Check that CLI doesn't crash with unexpected errors
+        if result.returncode not in [0, 1]:
+            pytest.fail(f"CLI crashed with unexpected return code {result.returncode}. "
+                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+        
+        # If it fails, it should be a known/expected failure, not a crash
+        if result.returncode == 1:
+            # Should not contain Python tracebacks or unexpected errors
+            assert "Traceback" not in result.stderr, f"Unexpected Python traceback: {result.stderr}"
+            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception: {result.stderr}"
 
     def test_cli_diff_minirun(self, rldk_cmd, minirun_path):
         """Test diffing the minimal run fixture with itself."""
@@ -91,8 +100,17 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if the diff logic doesn't handle self-comparison, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        # Check that CLI doesn't crash with unexpected errors
+        if result.returncode not in [0, 1]:
+            pytest.fail(f"CLI crashed with unexpected return code {result.returncode}. "
+                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+        
+        # If it fails, it should be a known/expected failure, not a crash
+        if result.returncode == 1:
+            # Should not contain Python tracebacks or unexpected errors
+            assert "Traceback" not in result.stderr, f"Unexpected Python traceback: {result.stderr}"
+            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception: {result.stderr}"
 
     def test_cli_replay_minirun(self, rldk_cmd, minirun_path):
         """Test replaying the minimal run fixture."""
@@ -101,8 +119,17 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if replay logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        # Check that CLI doesn't crash with unexpected errors
+        if result.returncode not in [0, 1]:
+            pytest.fail(f"CLI crashed with unexpected return code {result.returncode}. "
+                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+        
+        # If it fails, it should be a known/expected failure, not a crash
+        if result.returncode == 1:
+            # Should not contain Python tracebacks or unexpected errors
+            assert "Traceback" not in result.stderr, f"Unexpected Python traceback: {result.stderr}"
+            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception: {result.stderr}"
 
     def test_cli_bisect_minirun(self, rldk_cmd, minirun_path):
         """Test bisecting with the minimal run fixture."""
@@ -111,8 +138,17 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if bisect logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        # Check that CLI doesn't crash with unexpected errors
+        if result.returncode not in [0, 1]:
+            pytest.fail(f"CLI crashed with unexpected return code {result.returncode}. "
+                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+        
+        # If it fails, it should be a known/expected failure, not a crash
+        if result.returncode == 1:
+            # Should not contain Python tracebacks or unexpected errors
+            assert "Traceback" not in result.stderr, f"Unexpected Python traceback: {result.stderr}"
+            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception: {result.stderr}"
 
     def test_cli_check_determinism_minirun(self, rldk_cmd, minirun_path):
         """Test checking determinism with the minimal run fixture."""
@@ -121,8 +157,17 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if check-determinism logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        # Check that CLI doesn't crash with unexpected errors
+        if result.returncode not in [0, 1]:
+            pytest.fail(f"CLI crashed with unexpected return code {result.returncode}. "
+                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+        
+        # If it fails, it should be a known/expected failure, not a crash
+        if result.returncode == 1:
+            # Should not contain Python tracebacks or unexpected errors
+            assert "Traceback" not in result.stderr, f"Unexpected Python traceback: {result.stderr}"
+            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception: {result.stderr}"
 
     def test_cli_forensics_minirun(self, rldk_cmd, minirun_path):
         """Test running forensics on the minimal run fixture."""
@@ -131,8 +176,17 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if forensics logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        # Check that CLI doesn't crash with unexpected errors
+        if result.returncode not in [0, 1]:
+            pytest.fail(f"CLI crashed with unexpected return code {result.returncode}. "
+                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+        
+        # If it fails, it should be a known/expected failure, not a crash
+        if result.returncode == 1:
+            # Should not contain Python tracebacks or unexpected errors
+            assert "Traceback" not in result.stderr, f"Unexpected Python traceback: {result.stderr}"
+            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception: {result.stderr}"
 
     def test_cli_reward_health_minirun(self, rldk_cmd, minirun_path):
         """Test running reward health analysis on the minimal run fixture."""
@@ -141,8 +195,17 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if reward health logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        # Check that CLI doesn't crash with unexpected errors
+        if result.returncode not in [0, 1]:
+            pytest.fail(f"CLI crashed with unexpected return code {result.returncode}. "
+                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+        
+        # If it fails, it should be a known/expected failure, not a crash
+        if result.returncode == 1:
+            # Should not contain Python tracebacks or unexpected errors
+            assert "Traceback" not in result.stderr, f"Unexpected Python traceback: {result.stderr}"
+            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception: {result.stderr}"
 
     def test_cli_evals_bias_minirun(self, rldk_cmd, minirun_path):
         """Test running bias evaluation on the minimal run fixture."""
@@ -151,8 +214,17 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if bias evaluation logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        # Check that CLI doesn't crash with unexpected errors
+        if result.returncode not in [0, 1]:
+            pytest.fail(f"CLI crashed with unexpected return code {result.returncode}. "
+                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+        
+        # If it fails, it should be a known/expected failure, not a crash
+        if result.returncode == 1:
+            # Should not contain Python tracebacks or unexpected errors
+            assert "Traceback" not in result.stderr, f"Unexpected Python traceback: {result.stderr}"
+            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception: {result.stderr}"
 
     def test_cli_evals_toxicity_minirun(self, rldk_cmd, minirun_path):
         """Test running toxicity evaluation on the minimal run fixture."""
@@ -161,8 +233,17 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if toxicity evaluation logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        # Check that CLI doesn't crash with unexpected errors
+        if result.returncode not in [0, 1]:
+            pytest.fail(f"CLI crashed with unexpected return code {result.returncode}. "
+                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+        
+        # If it fails, it should be a known/expected failure, not a crash
+        if result.returncode == 1:
+            # Should not contain Python tracebacks or unexpected errors
+            assert "Traceback" not in result.stderr, f"Unexpected Python traceback: {result.stderr}"
+            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception: {result.stderr}"
 
     def test_cli_evals_throughput_minirun(self, rldk_cmd, minirun_path):
         """Test running throughput evaluation on the minimal run fixture."""
@@ -171,8 +252,17 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if throughput evaluation logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        # Check that CLI doesn't crash with unexpected errors
+        if result.returncode not in [0, 1]:
+            pytest.fail(f"CLI crashed with unexpected return code {result.returncode}. "
+                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+        
+        # If it fails, it should be a known/expected failure, not a crash
+        if result.returncode == 1:
+            # Should not contain Python tracebacks or unexpected errors
+            assert "Traceback" not in result.stderr, f"Unexpected Python traceback: {result.stderr}"
+            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception: {result.stderr}"
 
     def test_cli_track_start_minirun(self, rldk_cmd, minirun_path):
         """Test starting tracking with the minimal run fixture."""
@@ -181,8 +271,17 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if tracking logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        # Check that CLI doesn't crash with unexpected errors
+        if result.returncode not in [0, 1]:
+            pytest.fail(f"CLI crashed with unexpected return code {result.returncode}. "
+                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+        
+        # If it fails, it should be a known/expected failure, not a crash
+        if result.returncode == 1:
+            # Should not contain Python tracebacks or unexpected errors
+            assert "Traceback" not in result.stderr, f"Unexpected Python traceback: {result.stderr}"
+            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception: {result.stderr}"
 
     def test_cli_track_stop_minirun(self, rldk_cmd, minirun_path):
         """Test stopping tracking with the minimal run fixture."""
@@ -191,8 +290,17 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if tracking logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        # Check that CLI doesn't crash with unexpected errors
+        if result.returncode not in [0, 1]:
+            pytest.fail(f"CLI crashed with unexpected return code {result.returncode}. "
+                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+        
+        # If it fails, it should be a known/expected failure, not a crash
+        if result.returncode == 1:
+            # Should not contain Python tracebacks or unexpected errors
+            assert "Traceback" not in result.stderr, f"Unexpected Python traceback: {result.stderr}"
+            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception: {result.stderr}"
 
     def test_cli_track_status_minirun(self, rldk_cmd, minirun_path):
         """Test checking tracking status with the minimal run fixture."""
@@ -201,8 +309,17 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if tracking logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        # Check that CLI doesn't crash with unexpected errors
+        if result.returncode not in [0, 1]:
+            pytest.fail(f"CLI crashed with unexpected return code {result.returncode}. "
+                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+        
+        # If it fails, it should be a known/expected failure, not a crash
+        if result.returncode == 1:
+            # Should not contain Python tracebacks or unexpected errors
+            assert "Traceback" not in result.stderr, f"Unexpected Python traceback: {result.stderr}"
+            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception: {result.stderr}"
 
     def test_cli_track_logs_minirun(self, rldk_cmd, minirun_path):
         """Test viewing tracking logs with the minimal run fixture."""
@@ -211,8 +328,17 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if tracking logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        # Check that CLI doesn't crash with unexpected errors
+        if result.returncode not in [0, 1]:
+            pytest.fail(f"CLI crashed with unexpected return code {result.returncode}. "
+                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+        
+        # If it fails, it should be a known/expected failure, not a crash
+        if result.returncode == 1:
+            # Should not contain Python tracebacks or unexpected errors
+            assert "Traceback" not in result.stderr, f"Unexpected Python traceback: {result.stderr}"
+            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception: {result.stderr}"
 
     def test_cli_track_export_minirun(self, rldk_cmd, minirun_path):
         """Test exporting tracking data with the minimal run fixture."""
@@ -221,8 +347,17 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if tracking logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        # Check that CLI doesn't crash with unexpected errors
+        if result.returncode not in [0, 1]:
+            pytest.fail(f"CLI crashed with unexpected return code {result.returncode}. "
+                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+        
+        # If it fails, it should be a known/expected failure, not a crash
+        if result.returncode == 1:
+            # Should not contain Python tracebacks or unexpected errors
+            assert "Traceback" not in result.stderr, f"Unexpected Python traceback: {result.stderr}"
+            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception: {result.stderr}"
 
     def test_cli_track_cleanup_minirun(self, rldk_cmd, minirun_path):
         """Test cleaning up tracking data with the minimal run fixture."""
@@ -231,5 +366,14 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        # This might fail if tracking logic doesn't exist, but CLI should work
-        assert result.returncode in [0, 1]  # 0 for success, 1 for expected failure
+        
+        # Check that CLI doesn't crash with unexpected errors
+        if result.returncode not in [0, 1]:
+            pytest.fail(f"CLI crashed with unexpected return code {result.returncode}. "
+                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+        
+        # If it fails, it should be a known/expected failure, not a crash
+        if result.returncode == 1:
+            # Should not contain Python tracebacks or unexpected errors
+            assert "Traceback" not in result.stderr, f"Unexpected Python traceback: {result.stderr}"
+            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception: {result.stderr}"

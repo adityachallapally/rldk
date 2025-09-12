@@ -71,6 +71,12 @@ class SimplePPO:
         exp_x = np.exp(x - np.max(x))
         return exp_x / np.sum(exp_x)
     
+    def _log_softmax(self, x):
+        """Log softmax function for numerical stability."""
+        x_max = np.max(x)
+        log_sum_exp = np.log(np.sum(np.exp(x - x_max))) + x_max
+        return x - log_sum_exp
+    
     def update(self, states, actions, rewards, log_probs_old, values_old, advantages, returns):
         """Update policy and value function."""
         for i, state in enumerate(states):
@@ -106,20 +112,23 @@ class SimplePPO:
             self.value -= self.lr * value_loss * state.reshape(-1, 1)
     
     def compute_advantages(self, rewards, values, dones):
-        """Compute advantages using GAE."""
+        """Compute advantages using GAE (Generalized Advantage Estimation)."""
         advantages = []
         returns = []
         
-        for i in range(len(rewards)):
-            if i == len(rewards) - 1 or dones[i]:
-                advantage = rewards[i] - values[i]
-                return_val = rewards[i]
+        # Compute returns (discounted cumulative rewards)
+        G = 0
+        for i in reversed(range(len(rewards))):
+            if dones[i]:
+                G = rewards[i]  # Terminal state
             else:
-                advantage = rewards[i] + self.gamma * values[i+1] - values[i]
-                return_val = rewards[i] + self.gamma * values[i+1]
-            
+                G = rewards[i] + self.gamma * G
+            returns.insert(0, G)
+        
+        # Compute advantages: A_t = R_t - V(s_t)
+        for i in range(len(rewards)):
+            advantage = returns[i] - values[i]
             advantages.append(advantage)
-            returns.append(return_val)
         
         return np.array(advantages), np.array(returns)
 
@@ -197,17 +206,19 @@ def train_single_run(env_name, hyperparams, episodes=50, seed=42):
             agent.update(states, actions, rewards, log_probs, values, advantages, returns)
             
             # Compute training metrics for forensics
-                # Calculate KL divergence between old and new policy distributions
-                kl_div = 0.0
-                for i, state in enumerate(states):
-                    # Get old policy distribution (before update)
-                    old_logits = state @ old_policy
-                    old_probs = agent._softmax(old_logits)
-                    # Get new policy distribution (after update)
-                    new_logits = state @ agent.policy
-                    new_probs = agent._softmax(new_logits)
-                    kl_div += np.sum(old_probs * np.log((old_probs + 1e-8) / (new_probs + 1e-8)))
-                kl_div = kl_div / len(states) if states else 0.0
+            # Calculate KL divergence between old and new policy distributions
+            kl_div = 0.0
+            for i, state in enumerate(states):
+                # Get old policy distribution (before update)
+                old_logits = state @ old_policy
+                old_log_probs = agent._log_softmax(old_logits)
+                # Get new policy distribution (after update)
+                new_logits = state @ agent.policy
+                new_log_probs = agent._log_softmax(new_logits)
+                # KL divergence: KL(old||new) = Σ old_probs * (log_old - log_new)
+                old_probs = agent._softmax(old_logits)
+                kl_div += np.sum(old_probs * (old_log_probs - new_log_probs))
+            kl_div = kl_div / len(states) if states else 0.0
             entropy = -np.mean([log_prob * np.log(log_prob + 1e-8) for log_prob in log_probs])
             policy_grad_norm = np.linalg.norm(agent.policy.flatten())
             value_grad_norm = np.linalg.norm(agent.value.flatten())

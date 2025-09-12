@@ -5,6 +5,7 @@ import pytest
 import tempfile
 import time
 import signal
+import json
 from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
 import logging
@@ -23,10 +24,11 @@ from rldk.utils.error_handling import (
     ValidationError,
     AdapterError,
     EvaluationError,
-    TimeoutError,
+    RLDKTimeoutError,
     format_error_message,
     log_error_with_context,
     validate_file_path,
+    sanitize_path,
     validate_data_format,
     validate_required_fields,
     progress_indicator,
@@ -38,6 +40,11 @@ from rldk.utils.error_handling import (
     print_troubleshooting_tips,
     check_dependencies,
     safe_operation
+)
+
+from rldk.utils.validation import (
+    validate_json_file_streaming,
+    validate_jsonl_file_streaming,
 )
 
 
@@ -86,8 +93,8 @@ class TestExceptionClasses:
         assert str(error) == "Evaluation failed"
     
     def test_timeout_error(self):
-        """Test TimeoutError inheritance."""
-        error = TimeoutError("Operation timed out")
+        """Test RLDKTimeoutError inheritance."""
+        error = RLDKTimeoutError("Operation timed out")
         assert isinstance(error, RLDKError)
         assert str(error) == "Operation timed out"
 
@@ -211,6 +218,134 @@ class TestFilePathValidation:
         error = exc_info.value
         assert "unsupported extension" in str(error)
         assert error.error_code == "UNSUPPORTED_EXTENSION"
+
+
+class TestPathSanitization:
+    """Test path sanitization functions."""
+    
+    def test_sanitize_path_success(self, temp_dir):
+        """Test successful path sanitization."""
+        test_file = temp_dir / "test.txt"
+        test_file.write_text("test content")
+        
+        result = sanitize_path(test_file)
+        assert result == test_file.resolve()
+        assert isinstance(result, Path)
+    
+    def test_sanitize_path_traversal_detected(self):
+        """Test path sanitization detects traversal attempts."""
+        with pytest.raises(ValidationError) as exc_info:
+            sanitize_path("../etc/passwd")
+        
+        error = exc_info.value
+        assert "path traversal attempt" in str(error).lower()
+        assert error.error_code == "PATH_TRAVERSAL_DETECTED"
+    
+    def test_sanitize_path_absolute_path_detected(self):
+        """Test path sanitization detects absolute paths."""
+        with pytest.raises(ValidationError) as exc_info:
+            sanitize_path("/etc/passwd")
+        
+        error = exc_info.value
+        assert "path traversal attempt" in str(error).lower()
+        assert error.error_code == "PATH_TRAVERSAL_DETECTED"
+    
+    def test_sanitize_path_with_base_path_success(self, temp_dir):
+        """Test path sanitization with base path restriction."""
+        test_file = temp_dir / "test.txt"
+        test_file.write_text("test content")
+        
+        result = sanitize_path(test_file, base_path=temp_dir)
+        assert result == test_file.resolve()
+    
+    def test_sanitize_path_outside_base_path(self, temp_dir):
+        """Test path sanitization rejects paths outside base path."""
+        outside_file = temp_dir.parent / "outside.txt"
+        
+        with pytest.raises(ValidationError) as exc_info:
+            sanitize_path(outside_file, base_path=temp_dir)
+        
+        error = exc_info.value
+        assert "path outside allowed directory" in str(error).lower()
+        assert error.error_code == "PATH_OUTSIDE_BASE"
+    
+    def test_validate_file_path_with_sanitization(self, temp_dir):
+        """Test validate_file_path uses sanitization."""
+        test_file = temp_dir / "test.txt"
+        test_file.write_text("test content")
+        
+        # Should work with valid path
+        result = validate_file_path(test_file, base_path=temp_dir)
+        assert result == test_file.resolve()
+        
+        # Should reject traversal attempts
+        with pytest.raises(ValidationError) as exc_info:
+            validate_file_path("../etc/passwd", base_path=temp_dir)
+        
+        error = exc_info.value
+        assert error.error_code == "PATH_TRAVERSAL_DETECTED"
+
+
+class TestStreamingValidation:
+    """Test streaming validation functions."""
+    
+    def test_validate_json_file_streaming_success(self, temp_dir):
+        """Test successful JSON file streaming validation."""
+        test_file = temp_dir / "test.json"
+        test_data = {"key": "value", "number": 42}
+        test_file.write_text(json.dumps(test_data))
+        
+        result = validate_json_file_streaming(test_file)
+        assert result == test_data
+    
+    def test_validate_json_file_streaming_too_large(self, temp_dir):
+        """Test JSON file streaming validation with size limit."""
+        test_file = temp_dir / "large.json"
+        # Create a large JSON file (simulate)
+        large_data = {"data": "x" * 1024 * 1024}  # 1MB of data
+        test_file.write_text(json.dumps(large_data))
+        
+        with pytest.raises(ValidationError) as exc_info:
+            validate_json_file_streaming(test_file, max_size_mb=0.5)  # 0.5MB limit
+        
+        error = exc_info.value
+        assert "file too large" in str(error).lower()
+        assert error.error_code == "FILE_TOO_LARGE"
+    
+    def test_validate_jsonl_file_streaming_success(self, temp_dir):
+        """Test successful JSONL file streaming validation."""
+        test_file = temp_dir / "test.jsonl"
+        test_data = [{"id": 1, "name": "test1"}, {"id": 2, "name": "test2"}]
+        test_file.write_text("\n".join(json.dumps(record) for record in test_data))
+        
+        result = list(validate_jsonl_file_streaming(test_file))
+        assert result == test_data
+    
+    def test_validate_jsonl_file_streaming_too_many_lines(self, temp_dir):
+        """Test JSONL file streaming validation with line limit."""
+        test_file = temp_dir / "large.jsonl"
+        # Create a file with many lines
+        lines = [json.dumps({"id": i}) for i in range(1000001)]  # 1M+ lines
+        test_file.write_text("\n".join(lines))
+        
+        with pytest.raises(ValidationError) as exc_info:
+            list(validate_jsonl_file_streaming(test_file, max_lines=1000000))
+        
+        error = exc_info.value
+        assert "too many lines" in str(error).lower()
+        assert error.error_code == "TOO_MANY_LINES"
+    
+    def test_validate_jsonl_file_streaming_empty_file(self, temp_dir):
+        """Test JSONL file streaming validation with empty file."""
+        test_file = temp_dir / "empty.jsonl"
+        test_file.write_text("")
+        
+        with pytest.raises(ValidationError) as exc_info:
+            list(validate_jsonl_file_streaming(test_file))
+        
+        error = exc_info.value
+        assert "no valid json records" in str(error).lower()
+        assert error.error_code == "EMPTY_JSONL_FILE"
 
 
 class TestDataValidation:
@@ -361,7 +496,7 @@ class TestTimeoutDecorator:
             time.sleep(0.2)
             return "success"
         
-        with pytest.raises(TimeoutError) as exc_info:
+        with pytest.raises(RLDKTimeoutError) as exc_info:
             slow_func()
         
         error = exc_info.value
@@ -380,7 +515,7 @@ class TestTimeoutDecorator:
         old_handler = signal.signal(signal.SIGALRM, signal.SIG_DFL)
 
         try:
-            with pytest.raises(TimeoutError):
+            with pytest.raises(RLDKTimeoutError):
                 slow_func()
         finally:
             # Restore original handler

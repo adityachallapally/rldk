@@ -91,6 +91,12 @@ def main():
             exp_x = np.exp(x - np.max(x))
             return exp_x / np.sum(exp_x)
         
+        def _log_softmax(self, x):
+            """Log softmax function for numerical stability."""
+            x_max = np.max(x)
+            log_sum_exp = np.log(np.sum(np.exp(x - x_max))) + x_max
+            return x - log_sum_exp
+        
         def update(self, states, actions, rewards, log_probs_old, values_old, advantages, returns):
             """Update policy and value function."""
             # Simple gradient update (simplified from full PPO)
@@ -244,11 +250,13 @@ def main():
                 for i, state in enumerate(states):
                     # Get old policy distribution (before update)
                     old_logits = state @ old_policy
-                    old_probs = agent._softmax(old_logits)
+                    old_log_probs = agent._log_softmax(old_logits)
                     # Get new policy distribution (after update)
                     new_logits = state @ agent.policy
-                    new_probs = agent._softmax(new_logits)
-                    kl_div += np.sum(old_probs * np.log((old_probs + 1e-8) / (new_probs + 1e-8)))
+                    new_log_probs = agent._log_softmax(new_logits)
+                    # KL divergence: KL(old||new) = Σ old_probs * (log_old - log_new)
+                    old_probs = agent._softmax(old_logits)
+                    kl_div += np.sum(old_probs * (old_log_probs - new_log_probs))
                 kl_div = kl_div / len(states) if states else 0.0
                 entropy = -np.mean([log_prob * np.log(log_prob + 1e-8) for log_prob in log_probs])
                 policy_grad_norm = np.linalg.norm(agent.policy.flatten())

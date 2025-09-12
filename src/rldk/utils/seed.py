@@ -7,6 +7,7 @@ and CUDA random number generators.
 
 import random
 import os
+import threading
 from typing import Optional, Dict, Any, Union
 import numpy as np
 
@@ -44,6 +45,7 @@ class SeedManager:
         self.seed = None
         self.rng_state = {}
         self.deterministic = False
+        self._lock = threading.Lock()
         
         # Store original states for restoration
         self._original_states = {}
@@ -84,43 +86,44 @@ class SeedManager:
             >>> print(actual_seed)
             42
         """
-        if seed is None:
-            seed = self.default_seed
-        
-        # Validate seed
-        if not isinstance(seed, int) or seed < 0:
-            raise RLDKError(
-                f"Seed must be a non-negative integer, got: {seed}",
-                suggestion="Use a non-negative integer seed value",
-                error_code="INVALID_SEED",
-                details={"provided_seed": seed, "type": type(seed).__name__}
-            )
-        
-        self.seed = seed
-        self.deterministic = deterministic
-        
-        # Set Python random seed
-        random.seed(seed)
-        
-        # Set NumPy seed
-        np.random.seed(seed)
-        
-        # Set PyTorch seeds
-        if TORCH_AVAILABLE:
-            torch.manual_seed(seed)
-            if torch.cuda.is_available():
-                torch.cuda.manual_seed(seed)
-                torch.cuda.manual_seed_all(seed)
+        with self._lock:
+            if seed is None:
+                seed = self.default_seed
             
-            # Enable deterministic behavior if requested
-            if deterministic:
-                torch.backends.cudnn.deterministic = True
-                torch.backends.cudnn.benchmark = False
-        
-        # Store current states
-        self._store_current_states()
-        
-        return seed
+            # Validate seed
+            if not isinstance(seed, int) or seed < 0:
+                raise RLDKError(
+                    f"Seed must be a non-negative integer, got: {seed}",
+                    suggestion="Use a non-negative integer seed value",
+                    error_code="INVALID_SEED",
+                    details={"provided_seed": seed, "type": type(seed).__name__}
+                )
+            
+            self.seed = seed
+            self.deterministic = deterministic
+            
+            # Set Python random seed
+            random.seed(seed)
+            
+            # Set NumPy seed
+            np.random.seed(seed)
+            
+            # Set PyTorch seeds
+            if TORCH_AVAILABLE:
+                torch.manual_seed(seed)
+                if torch.cuda.is_available():
+                    torch.cuda.manual_seed(seed)
+                    torch.cuda.manual_seed_all(seed)
+                
+                # Enable deterministic behavior if requested
+                if deterministic:
+                    torch.backends.cudnn.deterministic = True
+                    torch.backends.cudnn.benchmark = False
+            
+            # Store current states
+            self._store_current_states()
+            
+            return seed
     
     def _store_current_states(self):
         """Store current RNG states for later restoration."""
@@ -136,38 +139,40 @@ class SeedManager:
     
     def restore_states(self):
         """Restore RNG states to their current checkpoint."""
-        if not self.rng_state:
-            raise RLDKError(
-                "No RNG states to restore",
-                suggestion="Call set_global_seed() first to create a checkpoint",
-                error_code="NO_STATES_TO_RESTORE"
-            )
-        
-        # Restore Python random state
-        random.setstate(self.rng_state['python'])
-        
-        # Restore NumPy state
-        np.random.set_state(self.rng_state['numpy'])
-        
-        # Restore PyTorch states
-        if TORCH_AVAILABLE:
-            torch.set_rng_state(self.rng_state['torch_cpu'])
-            if torch.cuda.is_available() and 'torch_cuda' in self.rng_state:
-                torch.cuda.set_rng_state(self.rng_state['torch_cuda'])
+        with self._lock:
+            if not self.rng_state:
+                raise RLDKError(
+                    "No RNG states to restore",
+                    suggestion="Call set_global_seed() first to create a checkpoint",
+                    error_code="NO_STATES_TO_RESTORE"
+                )
+            
+            # Restore Python random state
+            random.setstate(self.rng_state['python'])
+            
+            # Restore NumPy state
+            np.random.set_state(self.rng_state['numpy'])
+            
+            # Restore PyTorch states
+            if TORCH_AVAILABLE:
+                torch.set_rng_state(self.rng_state['torch_cpu'])
+                if torch.cuda.is_available() and 'torch_cuda' in self.rng_state:
+                    torch.cuda.set_rng_state(self.rng_state['torch_cuda'])
     
     def restore_original_states(self):
         """Restore RNG states to their original values (before any seed setting)."""
-        # Restore Python random state
-        random.setstate(self._original_states['python'])
-        
-        # Restore NumPy state
-        np.random.set_state(self._original_states['numpy'])
-        
-        # Restore PyTorch states
-        if TORCH_AVAILABLE:
-            torch.set_rng_state(self._original_states['torch_cpu'])
-            if torch.cuda.is_available() and 'torch_cuda' in self._original_states:
-                torch.cuda.set_rng_state(self._original_states['torch_cuda'])
+        with self._lock:
+            # Restore Python random state
+            random.setstate(self._original_states['python'])
+            
+            # Restore NumPy state
+            np.random.set_state(self._original_states['numpy'])
+            
+            # Restore PyTorch states
+            if TORCH_AVAILABLE:
+                torch.set_rng_state(self._original_states['torch_cpu'])
+                if torch.cuda.is_available() and 'torch_cuda' in self._original_states:
+                    torch.cuda.set_rng_state(self._original_states['torch_cuda'])
     
     def get_state_summary(self) -> Dict[str, Any]:
         """Get a summary of current RNG states.
