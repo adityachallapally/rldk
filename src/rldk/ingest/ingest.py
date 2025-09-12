@@ -182,15 +182,16 @@ def _detect_adapter_type(source: Union[str, Path]) -> str:
     """Auto-detect adapter type from source content."""
     source_path = Path(source)
 
+    # Note: WandB URIs are handled in ingest_runs() before this function is called
+    # This function only handles local file/directory detection
+
     if not source_path.exists():
         return "trl"  # Default fallback
 
-    # Check for WandB URI first
-    if str(source).startswith("wandb://"):
-        return "wandb"
-
-    # Check for WandB directory structure
-    if source_path.name == "wandb" or "wandb" in str(source_path):
+    # Check for WandB directory structure (more specific matching)
+    # Look for wandb directory name or wandb subdirectory patterns
+    if (source_path.name == "wandb" or 
+        any(part == "wandb" for part in source_path.parts)):
         wandb_adapter = WandBAdapter(source_path)
         if wandb_adapter.can_handle():
             return "wandb"
