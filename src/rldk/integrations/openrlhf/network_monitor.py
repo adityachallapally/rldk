@@ -12,6 +12,7 @@ import struct
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, field
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from collections import deque
 import numpy as np
 
 try:
@@ -589,8 +590,9 @@ class NetworkInterfaceMonitor:
                           If None, will auto-detect the primary interface
         """
         self.interface_name = interface_name or self._detect_primary_interface()
-        self.last_stats = None
-        self.last_time = None
+        self._lock = threading.RLock()  # Reentrant lock for thread safety
+        self._last_stats = None
+        self._last_time = None
         
     def _detect_primary_interface(self) -> str:
         """Detect the primary network interface."""
@@ -618,61 +620,62 @@ class NetworkInterfaceMonitor:
     
     def get_interface_stats(self) -> Dict[str, float]:
         """Get current network interface statistics."""
-        try:
-            # Get current network I/O counters
-            net_io = psutil.net_io_counters(pernic=True)
-            
-            if self.interface_name not in net_io:
-                # Try to find an available interface
-                available_interfaces = list(net_io.keys())
-                if available_interfaces:
-                    self.interface_name = available_interfaces[0]
-                else:
+        with self._lock:  # Thread-safe access to shared state
+            try:
+                # Get current network I/O counters
+                net_io = psutil.net_io_counters(pernic=True)
+                
+                if self.interface_name not in net_io:
+                    # Try to find an available interface
+                    available_interfaces = list(net_io.keys())
+                    if available_interfaces:
+                        self.interface_name = available_interfaces[0]
+                    else:
+                        return self._empty_stats()
+                
+                current_stats = net_io[self.interface_name]
+                current_time = time.time()
+                
+                if self._last_stats is None:
+                    # First measurement
+                    self._last_stats = current_stats
+                    self._last_time = current_time
                     return self._empty_stats()
-            
-            current_stats = net_io[self.interface_name]
-            current_time = time.time()
-            
-            if self.last_stats is None:
-                # First measurement
-                self.last_stats = current_stats
-                self.last_time = current_time
+                
+                # Calculate rates
+                time_diff = current_time - self._last_time
+                if time_diff <= 0:
+                    return self._empty_stats()
+                
+                bytes_in_rate = (current_stats.bytes_recv - self._last_stats.bytes_recv) / time_diff
+                bytes_out_rate = (current_stats.bytes_sent - self._last_stats.bytes_sent) / time_diff
+                packets_in_rate = (current_stats.packets_recv - self._last_stats.packets_recv) / time_diff
+                packets_out_rate = (current_stats.packets_sent - self._last_stats.packets_sent) / time_diff
+                
+                # Update last stats atomically
+                self._last_stats = current_stats
+                self._last_time = current_time
+                
+                return {
+                    'bytes_in_per_sec': bytes_in_rate,
+                    'bytes_out_per_sec': bytes_out_rate,
+                    'packets_in_per_sec': packets_in_rate,
+                    'packets_out_per_sec': packets_out_rate,
+                    'bytes_in_mbps': (bytes_in_rate * 8) / 1_000_000,  # Convert to Mbps
+                    'bytes_out_mbps': (bytes_out_rate * 8) / 1_000_000,  # Convert to Mbps
+                    'total_bytes_recv': current_stats.bytes_recv,
+                    'total_bytes_sent': current_stats.bytes_sent,
+                    'total_packets_recv': current_stats.packets_recv,
+                    'total_packets_sent': current_stats.packets_sent,
+                    'dropin': current_stats.dropin,
+                    'dropout': current_stats.dropout,
+                    'errin': current_stats.errin,
+                    'errout': current_stats.errout,
+                }
+                
+            except Exception as e:
+                print(f"Error getting interface stats: {e}")
                 return self._empty_stats()
-            
-            # Calculate rates
-            time_diff = current_time - self.last_time
-            if time_diff <= 0:
-                return self._empty_stats()
-            
-            bytes_in_rate = (current_stats.bytes_recv - self.last_stats.bytes_recv) / time_diff
-            bytes_out_rate = (current_stats.bytes_sent - self.last_stats.bytes_sent) / time_diff
-            packets_in_rate = (current_stats.packets_recv - self.last_stats.packets_recv) / time_diff
-            packets_out_rate = (current_stats.packets_sent - self.last_stats.packets_sent) / time_diff
-            
-            # Update last stats
-            self.last_stats = current_stats
-            self.last_time = current_time
-            
-            return {
-                'bytes_in_per_sec': bytes_in_rate,
-                'bytes_out_per_sec': bytes_out_rate,
-                'packets_in_per_sec': packets_in_rate,
-                'packets_out_per_sec': packets_out_rate,
-                'bytes_in_mbps': (bytes_in_rate * 8) / 1_000_000,  # Convert to Mbps
-                'bytes_out_mbps': (bytes_out_rate * 8) / 1_000_000,  # Convert to Mbps
-                'total_bytes_recv': current_stats.bytes_recv,
-                'total_bytes_sent': current_stats.bytes_sent,
-                'total_packets_recv': current_stats.packets_recv,
-                'total_packets_sent': current_stats.packets_sent,
-                'dropin': current_stats.dropin,
-                'dropout': current_stats.dropout,
-                'errin': current_stats.errin,
-                'errout': current_stats.errout,
-            }
-            
-        except Exception as e:
-            print(f"Error getting interface stats: {e}")
-            return self._empty_stats()
     
     def _empty_stats(self) -> Dict[str, float]:
         """Return empty statistics."""
@@ -708,7 +711,11 @@ class NetworkLatencyMonitor:
             '1.1.1.1',  # Cloudflare DNS
             '208.67.222.222',  # OpenDNS
         ]
-        self.latency_history: Dict[str, List[float]] = {host: [] for host in self.target_hosts}
+        self._lock = threading.RLock()  # Thread-safe access to history
+        # Use deque for thread-safe operations with maxlen
+        self.latency_history: Dict[str, deque] = {
+            host: deque(maxlen=100) for host in self.target_hosts
+        }
         self.max_history_size = 100
     
     def measure_latency(self) -> Dict[str, float]:
@@ -727,10 +734,9 @@ class NetworkLatencyMonitor:
                     latency = future.result()
                     results[host] = latency
                     
-                    # Update history
-                    self.latency_history[host].append(latency)
-                    if len(self.latency_history[host]) > self.max_history_size:
-                        self.latency_history[host].pop(0)
+                    # Thread-safe update of history
+                    with self._lock:
+                        self.latency_history[host].append(latency)
                         
                 except Exception as e:
                     print(f"Error measuring latency to {host}: {e}")
@@ -755,42 +761,44 @@ class NetworkLatencyMonitor:
     
     def get_average_latency(self) -> float:
         """Get average latency across all hosts."""
-        all_latencies = []
-        for host_latencies in self.latency_history.values():
-            if host_latencies:
-                # Filter out infinite latencies
-                valid_latencies = [lat for lat in host_latencies if lat != float('inf')]
-                if valid_latencies:
-                    all_latencies.extend(valid_latencies)
-        
-        if all_latencies:
-            return np.mean(all_latencies)
-        else:
-            return 0.0
+        with self._lock:
+            all_latencies = []
+            for host_latencies in self.latency_history.values():
+                if host_latencies:
+                    # Filter out infinite latencies
+                    valid_latencies = [lat for lat in host_latencies if lat != float('inf')]
+                    if valid_latencies:
+                        all_latencies.extend(valid_latencies)
+            
+            if all_latencies:
+                return np.mean(all_latencies)
+            else:
+                return 0.0
     
     def get_latency_stats(self) -> Dict[str, float]:
         """Get latency statistics."""
-        all_latencies = []
-        for host_latencies in self.latency_history.values():
-            valid_latencies = [lat for lat in host_latencies if lat != float('inf')]
-            all_latencies.extend(valid_latencies)
-        
-        if not all_latencies:
+        with self._lock:
+            all_latencies = []
+            for host_latencies in self.latency_history.values():
+                valid_latencies = [lat for lat in host_latencies if lat != float('inf')]
+                all_latencies.extend(valid_latencies)
+            
+            if not all_latencies:
+                return {
+                    'mean': 0.0,
+                    'std': 0.0,
+                    'min': 0.0,
+                    'max': 0.0,
+                    'median': 0.0,
+                }
+            
             return {
-                'mean': 0.0,
-                'std': 0.0,
-                'min': 0.0,
-                'max': 0.0,
-                'median': 0.0,
+                'mean': np.mean(all_latencies),
+                'std': np.std(all_latencies),
+                'min': np.min(all_latencies),
+                'max': np.max(all_latencies),
+                'median': np.median(all_latencies),
             }
-        
-        return {
-            'mean': np.mean(all_latencies),
-            'std': np.std(all_latencies),
-            'min': np.min(all_latencies),
-            'max': np.max(all_latencies),
-            'median': np.median(all_latencies),
-        }
 
 
 class NetworkBandwidthMonitor:
@@ -798,42 +806,41 @@ class NetworkBandwidthMonitor:
     
     def __init__(self):
         """Initialize bandwidth monitor."""
-        self.bandwidth_history: List[float] = []
+        self._lock = threading.RLock()  # Thread-safe access to shared state
+        self.bandwidth_history: deque = deque(maxlen=100)
         self.max_history_size = 100
-        self.last_measurement = 0.0
+        self._last_measurement = 0.0
         self.measurement_interval = 10.0  # seconds
     
     def measure_bandwidth(self) -> float:
         """Measure network bandwidth in Mbps."""
-        current_time = time.time()
-        
-        # Only measure if enough time has passed
-        if current_time - self.last_measurement < self.measurement_interval:
-            return self.bandwidth_history[-1] if self.bandwidth_history else 0.0
-        
-        try:
-            # Method 1: Use speedtest-cli if available
-            bandwidth = self._measure_with_speedtest()
+        with self._lock:
+            current_time = time.time()
             
-            # Method 2: Use iperf if available
-            if bandwidth == 0.0:
-                bandwidth = self._measure_with_iperf()
+            # Only measure if enough time has passed
+            if current_time - self._last_measurement < self.measurement_interval:
+                return self.bandwidth_history[-1] if self.bandwidth_history else 0.0
             
-            # Method 3: Estimate from interface statistics
-            if bandwidth == 0.0:
-                bandwidth = self._estimate_from_interface()
-            
-            # Update history
-            self.bandwidth_history.append(bandwidth)
-            if len(self.bandwidth_history) > self.max_history_size:
-                self.bandwidth_history.pop(0)
-            
-            self.last_measurement = current_time
-            return bandwidth
-            
-        except Exception as e:
-            print(f"Error measuring bandwidth: {e}")
-            return 0.0
+            try:
+                # Method 1: Use speedtest-cli if available
+                bandwidth = self._measure_with_speedtest()
+                
+                # Method 2: Use iperf if available
+                if bandwidth == 0.0:
+                    bandwidth = self._measure_with_iperf()
+                
+                # Method 3: Estimate from interface statistics
+                if bandwidth == 0.0:
+                    bandwidth = self._estimate_from_interface()
+                
+                # Thread-safe update of history
+                self.bandwidth_history.append(bandwidth)
+                self._last_measurement = current_time
+                return bandwidth
+                
+            except Exception as e:
+                print(f"Error measuring bandwidth: {e}")
+                return 0.0
     
     def _measure_with_speedtest(self) -> float:
         """Measure bandwidth using speedtest-cli."""
@@ -892,22 +899,23 @@ class NetworkBandwidthMonitor:
     
     def get_bandwidth_stats(self) -> Dict[str, float]:
         """Get bandwidth statistics."""
-        if not self.bandwidth_history:
+        with self._lock:
+            if not self.bandwidth_history:
+                return {
+                    'mean': 0.0,
+                    'std': 0.0,
+                    'min': 0.0,
+                    'max': 0.0,
+                    'median': 0.0,
+                }
+            
             return {
-                'mean': 0.0,
-                'std': 0.0,
-                'min': 0.0,
-                'max': 0.0,
-                'median': 0.0,
+                'mean': np.mean(self.bandwidth_history),
+                'std': np.std(self.bandwidth_history),
+                'min': np.min(self.bandwidth_history),
+                'max': np.max(self.bandwidth_history),
+                'median': np.median(self.bandwidth_history),
             }
-        
-        return {
-            'mean': np.mean(self.bandwidth_history),
-            'std': np.std(self.bandwidth_history),
-            'min': np.min(self.bandwidth_history),
-            'max': np.max(self.bandwidth_history),
-            'median': np.median(self.bandwidth_history),
-        }
 
 
 class DistributedNetworkMonitor:
@@ -932,14 +940,17 @@ class DistributedNetworkMonitor:
         self.latency_monitor = NetworkLatencyMonitor()
         self.bandwidth_monitor = NetworkBandwidthMonitor()
         
-        # Distributed training metrics
-        self.allreduce_times: List[float] = []
-        self.broadcast_times: List[float] = []
-        self.gather_times: List[float] = []
-        self.scatter_times: List[float] = []
+        # Thread safety for distributed metrics
+        self._distributed_lock = threading.RLock()
         
-        # Performance history
-        self.performance_history: List[NetworkMetrics] = []
+        # Distributed training metrics (thread-safe with deque)
+        self.allreduce_times: deque = deque(maxlen=100)
+        self.broadcast_times: deque = deque(maxlen=100)
+        self.gather_times: deque = deque(maxlen=100)
+        self.scatter_times: deque = deque(maxlen=100)
+        
+        # Performance history (thread-safe with deque)
+        self.performance_history: deque = deque(maxlen=1000)
         self.max_history_size = 1000
     
     def measure_distributed_metrics(self) -> NetworkMetrics:
@@ -996,10 +1007,9 @@ class DistributedNetworkMonitor:
             metrics.gather_bandwidth = 0.0
             metrics.scatter_bandwidth = 0.0
         
-        # Update history
-        self.performance_history.append(metrics)
-        if len(self.performance_history) > self.max_history_size:
-            self.performance_history.pop(0)
+        # Thread-safe update of history
+        with self._distributed_lock:
+            self.performance_history.append(metrics)
         
         return metrics
     
@@ -1026,7 +1036,8 @@ class DistributedNetworkMonitor:
             if allreduce_time <= 0.001:  # Less than 1ms, likely measurement error
                 return 0.0
             
-            self.allreduce_times.append(allreduce_time)
+            with self._distributed_lock:
+                self.allreduce_times.append(allreduce_time)
             
             # Calculate bandwidth (tensor size / time)
             tensor_size_bytes = test_tensor.numel() * test_tensor.element_size()
@@ -1059,7 +1070,8 @@ class DistributedNetworkMonitor:
             if broadcast_time <= 0.001:  # Less than 1ms, likely measurement error
                 return 0.0
             
-            self.broadcast_times.append(broadcast_time)
+            with self._distributed_lock:
+                self.broadcast_times.append(broadcast_time)
             
             tensor_size_bytes = test_tensor.numel() * test_tensor.element_size()
             bandwidth_mbps = (tensor_size_bytes * 8) / (broadcast_time * 1_000_000)
@@ -1092,7 +1104,8 @@ class DistributedNetworkMonitor:
             if gather_time <= 0.001:  # Less than 1ms, likely measurement error
                 return 0.0
             
-            self.gather_times.append(gather_time)
+            with self._distributed_lock:
+                self.gather_times.append(gather_time)
             
             total_size_bytes = sum(t.numel() * t.element_size() for t in gathered_tensors)
             bandwidth_mbps = (total_size_bytes * 8) / (gather_time * 1_000_000)
@@ -1133,7 +1146,8 @@ class DistributedNetworkMonitor:
             if scatter_time <= 0.001:  # Less than 1ms, likely measurement error
                 return 0.0
             
-            self.scatter_times.append(scatter_time)
+            with self._distributed_lock:
+                self.scatter_times.append(scatter_time)
             
             # Calculate bandwidth based on rank
             if self.rank == 0:
@@ -1154,44 +1168,46 @@ class DistributedNetworkMonitor:
     
     def get_performance_summary(self) -> Dict[str, Any]:
         """Get a summary of network performance."""
-        if not self.performance_history:
-            return {
-                'total_measurements': 0,
-                'avg_bandwidth': 0.0,
-                'avg_latency': 0.0,
-                'avg_packet_loss': 0.0,
-                'distributed_metrics': {},
+        with self._distributed_lock:
+            if not self.performance_history:
+                return {
+                    'total_measurements': 0,
+                    'avg_bandwidth': 0.0,
+                    'avg_latency': 0.0,
+                    'avg_packet_loss': 0.0,
+                    'distributed_metrics': {},
+                }
+            
+            recent_metrics = list(self.performance_history)[-100:]  # Last 100 measurements
+            
+            summary = {
+                'total_measurements': len(self.performance_history),
+                'avg_bandwidth': np.mean([m.bandwidth_mbps for m in recent_metrics]),
+                'avg_latency': np.mean([m.latency_ms for m in recent_metrics]),
+                'avg_packet_loss': np.mean([m.packet_loss_percent for m in recent_metrics]),
+                'max_bandwidth': np.max([m.bandwidth_mbps for m in recent_metrics]),
+                'min_latency': np.min([m.latency_ms for m in recent_metrics if m.latency_ms > 0]),
+                'distributed_metrics': {
+                    'avg_allreduce_bandwidth': np.mean([m.allreduce_bandwidth for m in recent_metrics]),
+                    'avg_broadcast_bandwidth': np.mean([m.broadcast_bandwidth for m in recent_metrics]),
+                    'avg_gather_bandwidth': np.mean([m.gather_bandwidth for m in recent_metrics]),
+                    'avg_scatter_bandwidth': np.mean([m.scatter_bandwidth for m in recent_metrics]),
+                }
             }
-        
-        recent_metrics = self.performance_history[-100:]  # Last 100 measurements
-        
-        summary = {
-            'total_measurements': len(self.performance_history),
-            'avg_bandwidth': np.mean([m.bandwidth_mbps for m in recent_metrics]),
-            'avg_latency': np.mean([m.latency_ms for m in recent_metrics]),
-            'avg_packet_loss': np.mean([m.packet_loss_percent for m in recent_metrics]),
-            'max_bandwidth': np.max([m.bandwidth_mbps for m in recent_metrics]),
-            'min_latency': np.min([m.latency_ms for m in recent_metrics if m.latency_ms > 0]),
-            'distributed_metrics': {
-                'avg_allreduce_bandwidth': np.mean([m.allreduce_bandwidth for m in recent_metrics]),
-                'avg_broadcast_bandwidth': np.mean([m.broadcast_bandwidth for m in recent_metrics]),
-                'avg_gather_bandwidth': np.mean([m.gather_bandwidth for m in recent_metrics]),
-                'avg_scatter_bandwidth': np.mean([m.scatter_bandwidth for m in recent_metrics]),
-            }
-        }
-        
-        return summary
+            
+            return summary
     
     def get_metrics_dataframe(self) -> 'pd.DataFrame':
         """Get all metrics as a DataFrame."""
         try:
             import pandas as pd
             
-            if not self.performance_history:
-                return pd.DataFrame()
-            
-            metrics_data = [m.to_dict() for m in self.performance_history]
-            return pd.DataFrame(metrics_data)
+            with self._distributed_lock:
+                if not self.performance_history:
+                    return pd.DataFrame()
+                
+                metrics_data = [m.to_dict() for m in self.performance_history]
+                return pd.DataFrame(metrics_data)
             
         except ImportError:
             print("pandas not available for DataFrame export")
@@ -1234,70 +1250,68 @@ class RealNetworkMonitor:
             except Exception as e:
                 print(f"Failed to initialize distributed monitor: {e}")
         
-        # Performance history
-        self.bandwidth_history = []
-        self.latency_history = []
-        self.last_measurement = 0.0
+        # Thread safety for performance history
+        self._history_lock = threading.RLock()
+        
+        # Performance history (thread-safe with deque)
+        self.bandwidth_history: deque = deque(maxlen=100)
+        self.latency_history: deque = deque(maxlen=100)
+        self._last_measurement = 0.0
         self.measurement_interval = 5.0  # seconds
     
     def get_current_metrics(self) -> Dict[str, float]:
         """Get current network metrics."""
-        current_time = time.time()
-        
-        # Only measure if enough time has passed
-        if current_time - self.last_measurement < self.measurement_interval:
+        with self._history_lock:
+            current_time = time.time()
+            
+            # Only measure if enough time has passed
+            if current_time - self._last_measurement < self.measurement_interval:
+                return {
+                    'bandwidth': self.bandwidth_history[-1] if self.bandwidth_history else 0.0,
+                    'latency': self.latency_history[-1] if self.latency_history else 0.0,
+                }
+            
+            # Get comprehensive metrics
+            if self.distributed_monitor:
+                metrics = self.distributed_monitor.measure_distributed_metrics()
+                bandwidth = metrics.bandwidth_mbps
+                latency = metrics.latency_ms
+            else:
+                # Fallback to basic measurements
+                bandwidth = self.bandwidth_monitor.measure_bandwidth()
+                latency = self.latency_monitor.get_average_latency()
+            
+            # Thread-safe update of history
+            self.bandwidth_history.append(bandwidth)
+            self.latency_history.append(latency)
+            self._last_measurement = current_time
+            
             return {
-                'bandwidth': self.bandwidth_history[-1] if self.bandwidth_history else 0.0,
-                'latency': self.latency_history[-1] if self.latency_history else 0.0,
+                'bandwidth': bandwidth,
+                'latency': latency,
             }
-        
-        # Get comprehensive metrics
-        if self.distributed_monitor:
-            metrics = self.distributed_monitor.measure_distributed_metrics()
-            bandwidth = metrics.bandwidth_mbps
-            latency = metrics.latency_ms
-        else:
-            # Fallback to basic measurements
-            bandwidth = self.bandwidth_monitor.measure_bandwidth()
-            latency = self.latency_monitor.get_average_latency()
-        
-        # Update history
-        self.bandwidth_history.append(bandwidth)
-        self.latency_history.append(latency)
-        
-        # Keep only last 100 measurements
-        if len(self.bandwidth_history) > 100:
-            self.bandwidth_history.pop(0)
-        if len(self.latency_history) > 100:
-            self.latency_history.pop(0)
-        
-        self.last_measurement = current_time
-        
-        return {
-            'bandwidth': bandwidth,
-            'latency': latency,
-        }
     
     def get_network_stats(self) -> Dict[str, float]:
         """Get network performance statistics."""
-        if not self.bandwidth_history or not self.latency_history:
+        with self._history_lock:
+            if not self.bandwidth_history or not self.latency_history:
+                return {
+                    'avg_bandwidth': 0.0,
+                    'avg_latency': 0.0,
+                    'max_bandwidth': 0.0,
+                    'max_latency': 0.0,
+                    'min_bandwidth': 0.0,
+                    'min_latency': 0.0,
+                }
+            
             return {
-                'avg_bandwidth': 0.0,
-                'avg_latency': 0.0,
-                'max_bandwidth': 0.0,
-                'max_latency': 0.0,
-                'min_bandwidth': 0.0,
-                'min_latency': 0.0,
+                'avg_bandwidth': np.mean(self.bandwidth_history),
+                'avg_latency': np.mean(self.latency_history),
+                'max_bandwidth': np.max(self.bandwidth_history),
+                'max_latency': np.max(self.latency_history),
+                'min_bandwidth': np.min(self.bandwidth_history),
+                'min_latency': np.min(self.latency_history),
             }
-        
-        return {
-            'avg_bandwidth': np.mean(self.bandwidth_history),
-            'avg_latency': np.mean(self.latency_history),
-            'max_bandwidth': np.max(self.bandwidth_history),
-            'max_latency': np.max(self.latency_history),
-            'min_bandwidth': np.min(self.bandwidth_history),
-            'min_latency': np.min(self.latency_history),
-        }
     
     def get_comprehensive_metrics(self) -> NetworkMetrics:
         """Get comprehensive network metrics."""
