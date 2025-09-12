@@ -429,7 +429,15 @@ class ProductionDeploymentPipeline:
                 self.model.update(states, actions, rewards, log_probs, values, advantages, returns)
                 
                 # Compute training metrics for forensics
-                kl_div = np.mean([abs(log_probs[i] - log_prob) for i, log_prob in enumerate(log_probs)])
+                # Calculate KL divergence between old and new policy distributions
+                kl_div = 0.0
+                for i, state in enumerate(states):
+                    old_logits = state @ self.policy  # This should be old policy, but for simplicity using current
+                    old_probs = self._softmax(old_logits)
+                    new_logits = state @ self.policy
+                    new_probs = self._softmax(new_logits)
+                    kl_div += np.sum(old_probs * np.log((old_probs + 1e-8) / (new_probs + 1e-8)))
+                kl_div = kl_div / len(states) if states else 0.0
                 entropy = -np.mean([log_prob * np.log(log_prob + 1e-8) for log_prob in log_probs])
                 policy_grad_norm = np.linalg.norm(self.model.policy.flatten())
                 value_grad_norm = np.linalg.norm(self.model.value.flatten())

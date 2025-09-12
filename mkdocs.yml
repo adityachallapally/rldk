@@ -1,11 +1,11 @@
 site_name: RLDK Documentation
 site_description: RL Debug Kit - Library and CLI for debugging reinforcement learning training runs
 site_author: RLDK Contributors
-site_url: https://github.com/your-org/rldk
+site_url: https://github.com/adityachallapally/rldk
 
 # Repository
-repo_name: your-org/rldk
-repo_url: https://github.com/your-org/rldk
+repo_name: adityachallapally/rldk
+repo_url: https://github.com/adityachallapally/rldk
 edit_uri: edit/main/docs/
 
 # Configuration
@@ -65,23 +65,6 @@ plugins:
             show_signature_return_annotations: true
             show_bases: true
             show_root_members_full_path: false
-            show_root_heading: true
-            show_signature: true
-            separate_signature: true
-            line_length: 88
-            merge_init_into_class: true
-            show_submodules: true
-            show_source: true
-            show_root_heading: true
-            show_root_toc_entry: true
-            show_object_full_path: true
-            show_category_heading: true
-            show_if_no_docstring: true
-            show_signature_annotations: true
-            show_signature_return_annotations: true
-            show_bases: true
-            show_root_members_full_path: false
-            show_root_heading: true
             show_signature: true
             separate_signature: true
             line_length: 88
@@ -122,7 +105,7 @@ markdown_extensions:
   - pymdownx.magiclink:
       normalize_issue_symbols: true
       repo_url_shorthand: true
-      user: your-org
+      user: adityachallapally
       repo: rldk
   - pymdownx.mark
   - pymdownx.smartsymbols
@@ -188,7 +171,7 @@ extra:
     provider: mike
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/your-org/rldk
+      link: https://github.com/adityachallapally/rldk
     - icon: fontawesome/brands/python
       link: https://pypi.org/project/rldk/
   analytics:

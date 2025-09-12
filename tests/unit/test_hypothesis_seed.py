@@ -4,6 +4,7 @@ Hypothesis tests for seed management and reproducibility.
 
 import sys
 from pathlib import Path
+from typing import List
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from hypothesis import given, strategies as st, assume

@@ -80,15 +80,38 @@ def check_coverage_by_module():
         "src/rldk/cli.py"
     ]
     
+    coverage_issues = False
+    
     for module in modules:
         if Path(module).exists():
             print(f"\n📊 Coverage for {module}:")
+            
+            # Find the corresponding test file (handle different naming conventions)
+            module_name = Path(module).stem
+            test_file_patterns = [
+                f"tests/unit/test_{module_name}.py",
+                f"tests/unit/test_utils_{module_name}.py",
+                f"tests/unit/test_{module_name.replace('_', '')}.py"
+            ]
+            
+            test_file = None
+            for pattern in test_file_patterns:
+                if Path(pattern).exists():
+                    test_file = pattern
+                    break
+            
+            if test_file is None:
+                print(f"⚠️ No test file found for {module}")
+                coverage_issues = True
+                continue
+            
             try:
                 result = subprocess.run([
                     sys.executable, "-m", "pytest",
-                    f"tests/unit/test_{Path(module).stem}.py",
-                    "--cov={module}",
+                    test_file,
+                    f"--cov={module}",
                     "--cov-report=term-missing",
+                    "--cov-fail-under=80",
                     "-v"
                 ], capture_output=True, text=True)
                 
@@ -97,11 +120,16 @@ def check_coverage_by_module():
                 else:
                     print(f"⚠️ {module} coverage issues")
                     print(result.stdout)
+                    coverage_issues = True
                     
             except Exception as e:
                 print(f"❌ Error checking {module}: {e}")
+                coverage_issues = True
         else:
             print(f"⚠️ Module not found: {module}")
+            coverage_issues = True
+    
+    return not coverage_issues
 
 
 def main():
@@ -110,16 +138,20 @@ def main():
     print("=" * 50)
     
     # Check overall coverage
-    success = check_coverage()
+    overall_success = check_coverage()
     
     # Check coverage by module
-    check_coverage_by_module()
+    module_success = check_coverage_by_module()
     
-    if success:
+    if overall_success and module_success:
         print("\n🎉 All coverage checks passed!")
         sys.exit(0)
     else:
         print("\n💥 Some coverage checks failed!")
+        if not overall_success:
+            print("   - Overall coverage below 80%")
+        if not module_success:
+            print("   - Module-specific coverage issues detected")
         sys.exit(1)
 
 

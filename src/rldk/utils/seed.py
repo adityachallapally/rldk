@@ -357,22 +357,20 @@ def set_reproducible_environment(seed: Optional[int] = None):
 
 
 def validate_seed_consistency(expected_seed: int, tolerance: float = 1e-6) -> bool:
-    """Validate that the current seed produces expected random values.
+    """Validate that a seed produces consistent random values across runs.
     
-    This function generates a few random numbers and checks if they match
-    expected values for the given seed. This is useful for testing seed
-    consistency across different runs.
+    This function tests if the same seed produces identical random sequences
+    across multiple runs, which is essential for reproducibility.
     
     Args:
-        expected_seed: The seed that should produce the expected values
+        expected_seed: The seed to validate
         tolerance: Tolerance for floating-point comparisons
         
     Returns:
-        True if the seed produces expected values, False otherwise
+        True if the seed produces consistent values, False otherwise
         
     Example:
         >>> import rldk
-        >>> rldk.set_global_seed(42)
         >>> is_consistent = rldk.validate_seed_consistency(42)
         >>> print(f"Seed consistency: {is_consistent}")
         Seed consistency: True
@@ -389,32 +387,32 @@ def validate_seed_consistency(expected_seed: int, tolerance: float = 1e-6) -> bo
             original_states['torch_cuda'] = torch.cuda.get_rng_state()
     
     try:
-        # Generate test values with expected seed
+        # Generate first set of values with the seed
         _global_seed_manager.set_global_seed(expected_seed)
         
-        expected_values = {
+        first_run_values = {
             'python': [random.random() for _ in range(3)],
             'numpy': np.random.random(3).tolist(),
         }
         
         if TORCH_AVAILABLE:
-            expected_values['torch'] = torch.rand(3).tolist()
+            first_run_values['torch'] = torch.rand(3).tolist()
         
-        # Reset to expected seed again and generate same values
+        # Generate second set of values with the same seed
         _global_seed_manager.set_global_seed(expected_seed)
         
-        actual_values = {
+        second_run_values = {
             'python': [random.random() for _ in range(3)],
             'numpy': np.random.random(3).tolist(),
         }
         
         if TORCH_AVAILABLE:
-            actual_values['torch'] = torch.rand(3).tolist()
+            second_run_values['torch'] = torch.rand(3).tolist()
         
-        # Compare values
-        for library in expected_values:
-            for i, (actual, expected) in enumerate(zip(actual_values[library], expected_values[library])):
-                if abs(actual - expected) > tolerance:
+        # Compare values - they should be identical
+        for library in first_run_values:
+            for i, (first, second) in enumerate(zip(first_run_values[library], second_run_values[library])):
+                if abs(first - second) > tolerance:
                     return False
         
         return True
@@ -458,11 +456,21 @@ def create_seed_context(seed: int, deterministic: bool = True):
         def __init__(self, seed: int, deterministic: bool):
             self.seed = seed
             self.deterministic = deterministic
+            self.original_seed = None
             self.original_states = None
         
         def __enter__(self):
-            # Store current states
-            self.original_states = _global_seed_manager.rng_state.copy()
+            # Store current seed and states
+            self.original_seed = _global_seed_manager.seed
+            self.original_states = {
+                'python': random.getstate(),
+                'numpy': np.random.get_state(),
+            }
+            
+            if TORCH_AVAILABLE:
+                self.original_states['torch_cpu'] = torch.get_rng_state()
+                if torch.cuda.is_available():
+                    self.original_states['torch_cuda'] = torch.cuda.get_rng_state()
             
             # Set new seed
             _global_seed_manager.set_global_seed(self.seed, self.deterministic)
@@ -472,7 +480,15 @@ def create_seed_context(seed: int, deterministic: bool = True):
         def __exit__(self, exc_type, exc_val, exc_tb):
             # Restore original states
             if self.original_states:
-                _global_seed_manager.rng_state = self.original_states
-                _global_seed_manager.restore_states()
+                random.setstate(self.original_states['python'])
+                np.random.set_state(self.original_states['numpy'])
+                
+                if TORCH_AVAILABLE:
+                    torch.set_rng_state(self.original_states['torch_cpu'])
+                    if torch.cuda.is_available() and 'torch_cuda' in self.original_states:
+                        torch.cuda.set_rng_state(self.original_states['torch_cuda'])
+                
+                # Restore original seed
+                _global_seed_manager.seed = self.original_seed
     
     return SeedContext(seed, deterministic)

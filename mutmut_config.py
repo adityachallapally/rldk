@@ -14,7 +14,7 @@ def pre_mutation(context):
         if line.strip().startswith('#'):
             return False
         # Skip mutations in string literals
-        if '"""' in line or "'''" in line or line.strip().startswith('"') or line.strip().startswith("'"):
+        if line.strip().startswith('"') or line.strip().startswith("'"):
             return False
     return True
 

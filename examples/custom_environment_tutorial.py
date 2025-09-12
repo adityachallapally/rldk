@@ -213,9 +213,16 @@ class CustomGridWorld(gym.Env):
         terminated = np.array_equal(self.agent_pos, self.goal_pos)
         truncated = self.time_step >= self.max_steps
         
+        # Check if agent hit an obstacle
+        hit_obstacle = False
+        for obstacle in self.obstacles:
+            if np.array_equal(self.agent_pos, obstacle):
+                hit_obstacle = True
+                break
+        
         # Additional info
         info = {
-            "hit_obstacle": np.array_equal(new_pos, self.agent_pos) and not np.array_equal(new_pos, self.goal_pos),
+            "hit_obstacle": hit_obstacle,
             "time_step": self.time_step,
             "distance_to_goal": np.linalg.norm(self.goal_pos - self.agent_pos)
         }
@@ -538,7 +545,15 @@ def main():
                 agent.update(states, actions, rewards, log_probs, values, advantages, returns, info_list)
                 
                 # Compute training metrics
-                kl_div = np.mean([abs(log_probs[i] - log_prob) for i, log_prob in enumerate(log_probs)])
+                # Calculate KL divergence between old and new policy distributions
+                kl_div = 0.0
+                for i, state in enumerate(states):
+                    old_logits = state @ self.policy  # This should be old policy, but for simplicity using current
+                    old_probs = self._softmax(old_logits)
+                    new_logits = state @ self.policy
+                    new_probs = self._softmax(new_logits)
+                    kl_div += np.sum(old_probs * np.log((old_probs + 1e-8) / (new_probs + 1e-8)))
+                kl_div = kl_div / len(states) if states else 0.0
                 entropy = -np.mean([log_prob * np.log(log_prob + 1e-8) for log_prob in log_probs])
                 policy_grad_norm = np.linalg.norm(agent.policy.flatten())
                 value_grad_norm = np.linalg.norm(agent.value.flatten())

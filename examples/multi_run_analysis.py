@@ -178,7 +178,15 @@ def run_single_experiment(env_name, hyperparams, episodes=100, seed=42):
             agent.update(states, actions, rewards, log_probs, values, advantages, returns)
             
             # Compute training metrics for forensics
-            kl_div = np.mean([abs(log_probs[i] - log_prob) for i, log_prob in enumerate(log_probs)])
+            # Calculate KL divergence between old and new policy distributions
+            kl_div = 0.0
+            for i, state in enumerate(states):
+                old_logits = state @ self.policy  # This should be old policy, but for simplicity using current
+                old_probs = self._softmax(old_logits)
+                new_logits = state @ self.policy
+                new_probs = self._softmax(new_logits)
+                kl_div += np.sum(old_probs * np.log((old_probs + 1e-8) / (new_probs + 1e-8)))
+            kl_div = kl_div / len(states) if states else 0.0
             entropy = -np.mean([log_prob * np.log(log_prob + 1e-8) for log_prob in log_probs])
             policy_grad_norm = np.linalg.norm(agent.policy.flatten())
             value_grad_norm = np.linalg.norm(agent.value.flatten())
@@ -252,7 +260,7 @@ def run_multiple_experiments(env_name, hyperparams_list, episodes=100, seeds=Non
                 results.append(result)
                 
                 # Calculate summary metrics
-                final_avg_reward = np.mean(result['episode_rewards'][-10:])
+                final_avg_reward = np.mean(result['episode_rewards'][-min(10, len(result['episode_rewards'])):]) if result['episode_rewards'] else 0
                 total_anomalies = len(result['anomalies'])
                 health_score = result['health_summary'].get('overall_health', 0)
                 
@@ -287,7 +295,7 @@ def analyze_multiple_runs(results):
     for i, result in enumerate(results):
         if 'error' not in result:
             # Calculate summary metrics
-            final_avg_reward = np.mean(result['episode_rewards'][-10:])
+            final_avg_reward = np.mean(result['episode_rewards'][-min(10, len(result['episode_rewards'])):]) if result['episode_rewards'] else 0
             total_anomalies = len(result['anomalies'])
             health_score = result['health_summary'].get('overall_health', 0)
             
