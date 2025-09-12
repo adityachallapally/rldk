@@ -7,6 +7,7 @@ from typing import Dict, Any, List
 import pandas as pd
 
 from .base import BaseAdapter
+from ..utils.error_handling import AdapterError, ValidationError
 
 
 class TRLAdapter(BaseAdapter):
@@ -14,24 +15,30 @@ class TRLAdapter(BaseAdapter):
 
     def can_handle(self) -> bool:
         """Check if source contains TRL logs."""
-        if not self.source.exists():
+        try:
+            if not self.source.exists():
+                return False
+
+            # Look for TRL-specific files or patterns
+            if self.source.is_file():
+                return self._is_trl_file(self.source)
+            elif self.source.is_dir():
+                # Check for common TRL log files including new RLDK JSONL events
+                trl_files = (list(self.source.glob("*.log")) + 
+                            list(self.source.glob("trainer_log.jsonl")) +
+                            list(self.source.glob("*_events.jsonl")))
+                return len(trl_files) > 0
+
             return False
-
-        # Look for TRL-specific files or patterns
-        if self.source.is_file():
-            return self._is_trl_file(self.source)
-        elif self.source.is_dir():
-            # Check for common TRL log files including new RLDK JSONL events
-            trl_files = (list(self.source.glob("*.log")) + 
-                        list(self.source.glob("trainer_log.jsonl")) +
-                        list(self.source.glob("*_events.jsonl")))
-            return len(trl_files) > 0
-
-        return False
+        except Exception as e:
+            self.logger.warning(f"Error checking if source can be handled: {e}")
+            return False
 
     def _is_trl_file(self, file_path: Path) -> bool:
         """Check if a file contains TRL logs."""
         try:
+            self._handle_file_error(file_path, "read")
+            
             if file_path.suffix == ".jsonl":
                 with open(file_path, "r") as f:
                     first_line = f.readline().strip()
@@ -64,62 +71,103 @@ class TRLAdapter(BaseAdapter):
                     return "trl" in content.lower() or "trainer" in content.lower()
         except (OSError, IOError, UnicodeDecodeError, TypeError) as e:
             # Log the specific error for debugging but don't fail the check
-            print(f"Warning: Error checking if file {file_path} is TRL format: {e}")
+            self.logger.warning(f"Error checking if file {file_path} is TRL format: {e}")
             return False
         except json.JSONDecodeError as e:
             # Log JSON decode error but don't fail the check
-            print(f"Warning: JSON decode error in {file_path}: {e}")
+            self.logger.warning(f"JSON decode error in {file_path}: {e}")
+            return False
+        except AdapterError:
+            # Re-raise adapter errors
+            raise
+        except Exception as e:
+            self.logger.warning(f"Unexpected error checking TRL file {file_path}: {e}")
             return False
         return False
 
     def load(self) -> pd.DataFrame:
         """Load TRL logs and convert to standard format."""
         if not self.can_handle():
-            raise ValueError(f"Cannot handle source: {self.source}")
+            raise AdapterError(
+                f"Cannot handle source: {self.source}",
+                suggestion="Check that the source contains TRL training logs",
+                error_code="CANNOT_HANDLE_SOURCE"
+            )
+
+        self._log_operation("Loading TRL data", {"source": str(self.source)})
 
         metrics = []
 
-        if self.source.is_file():
-            metrics = self._parse_file(self.source)
-        elif self.source.is_dir():
-            # Find and parse all TRL log files
-            log_files = list(self.source.glob("*.log")) + list(
-                self.source.glob("*.jsonl")
-            )
-            for log_file in log_files:
-                metrics.extend(self._parse_file(log_file))
+        try:
+            if self.source.is_file():
+                metrics = self._parse_file(self.source)
+            elif self.source.is_dir():
+                # Find and parse all TRL log files
+                log_files = list(self.source.glob("*.log")) + list(
+                    self.source.glob("*.jsonl")
+                )
+                if not log_files:
+                    raise AdapterError(
+                        f"No log files found in directory: {self.source}",
+                        suggestion="Ensure the directory contains .log or .jsonl files",
+                        error_code="NO_LOG_FILES_FOUND"
+                    )
+                
+                for log_file in log_files:
+                    try:
+                        file_metrics = self._parse_file(log_file)
+                        metrics.extend(file_metrics)
+                    except Exception as e:
+                        self.logger.warning(f"Failed to parse {log_file}: {e}")
+                        continue
 
-        if not metrics:
-            raise ValueError(f"No valid TRL metrics found in {self.source}")
+            if not metrics:
+                raise AdapterError(
+                    f"No valid TRL metrics found in {self.source}",
+                    suggestion="Check that the source contains valid TRL training data",
+                    error_code="NO_VALID_METRICS_FOUND"
+                )
 
-        # Convert to DataFrame
-        df = pd.DataFrame(metrics)
+            # Convert to DataFrame
+            df = pd.DataFrame(metrics)
+            df = self._validate_dataframe(df)
 
-        # Ensure required columns exist
-        required_cols = [
-            "step",
-            "phase",
-            "reward_mean",
-            "reward_std",
-            "kl_mean",
-            "entropy_mean",
-            "clip_frac",
-            "grad_norm",
-            "lr",
-            "loss",
-            "tokens_in",
-            "tokens_out",
-            "wall_time",
-            "seed",
-            "run_id",
-            "git_sha",
-        ]
+            # Ensure required columns exist
+            required_cols = [
+                "step",
+                "phase",
+                "reward_mean",
+                "reward_std",
+                "kl_mean",
+                "entropy_mean",
+                "clip_frac",
+                "grad_norm",
+                "lr",
+                "loss",
+                "tokens_in",
+                "tokens_out",
+                "wall_time",
+                "seed",
+                "run_id",
+                "git_sha",
+            ]
 
-        for col in required_cols:
-            if col not in df.columns:
-                df[col] = None
+            for col in required_cols:
+                if col not in df.columns:
+                    df[col] = None
 
-        return df[required_cols]
+            self._log_operation("TRL data loaded successfully", {"records": len(df)})
+            return df[required_cols]
+
+        except AdapterError:
+            raise
+        except Exception as e:
+            raise AdapterError(
+                f"Failed to load TRL data: {e}",
+                suggestion="Check that the source contains valid TRL training logs",
+                error_code="LOAD_FAILED",
+                details={"source": str(self.source)}
+            ) from e
 
     def _parse_file(self, file_path: Path) -> List[Dict[str, Any]]:
         """Parse a single TRL log file."""

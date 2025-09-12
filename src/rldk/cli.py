@@ -19,6 +19,16 @@ from rldk.evals import run
 from rldk.replay import replay
 from rldk.tracking import ExperimentTracker, TrackingConfig
 from rldk.config import settings
+from rldk.utils.error_handling import (
+    RLDKError, ValidationError, AdapterError, EvaluationError, TimeoutError,
+    format_error_message, log_error_with_context, validate_file_path,
+    validate_data_format, validate_required_fields, validate_adapter_source,
+    print_usage_examples, print_troubleshooting_tips, check_dependencies,
+    with_retry, with_timeout, handle_graceful_degradation, safe_operation
+)
+from rldk.utils.progress import (
+    progress_bar, spinner, timed_operation, timed_operation_context, print_operation_status
+)
 
 # Import card generation modules
 from rldk.cards import (
@@ -718,60 +728,165 @@ def evaluate(
     output_column: str = typer.Option("output", "--output-column", help="Column name containing model outputs"),
     events_column: str = typer.Option("events", "--events-column", help="Column name containing event logs"),
     min_samples: int = typer.Option(10, "--min-samples", help="Minimum samples required for evaluation"),
+    timeout: int = typer.Option(300, "--timeout", help="Timeout in seconds for evaluation"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging")
 ):
     """
     Run evaluation suite on JSONL data.
     
-    Example:
+    Examples:
         rldk evals evaluate data.jsonl --suite comprehensive --output results.json
+        rldk evals evaluate data.jsonl --suite quick --min-samples 50 --verbose
+        rldk evals evaluate data.jsonl --suite safety --timeout 600
     """
     # Setup logging
     log_level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(level=log_level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     
     try:
-        # Load data
-        logging.info(f"Loading data from {input_file}")
-        data = load_jsonl_data(input_file)
-        logging.info(f"Loaded {len(data)} records")
+        # Validate input
+        print_operation_status("Validating input", "start")
         
-        # Run evaluation
-        logging.info(f"Running {suite} evaluation suite")
-        results = run_evaluation_suite(
-            data=data,
-            suite_name=suite,
-            output_column=output_column,
-            events_column=events_column,
-            min_samples=min_samples
-        )
+        # Validate input file
+        input_path = validate_file_path(input_file, must_exist=True, file_extensions=[".jsonl"])
+        
+        # Validate suite
+        valid_suites = ["quick", "comprehensive", "safety"]
+        if suite not in valid_suites:
+            raise ValidationError(
+                f"Invalid evaluation suite: {suite}",
+                suggestion=f"Use one of: {', '.join(valid_suites)}",
+                error_code="INVALID_SUITE"
+            )
+        
+        # Validate min_samples
+        if min_samples < 1:
+            raise ValidationError(
+                f"Minimum samples must be at least 1, got: {min_samples}",
+                suggestion="Use a positive integer for minimum samples",
+                error_code="INVALID_MIN_SAMPLES"
+            )
+        
+        print_operation_status("Input validation", "success")
+        
+        # Load data with progress indication
+        with timed_operation_context("Data loading"):
+            logging.info(f"Loading data from {input_file}")
+            data = load_jsonl_data(input_file)
+            
+            if data.empty:
+                raise ValidationError(
+                    "No data found in input file",
+                    suggestion="Ensure the JSONL file contains valid data",
+                    error_code="NO_DATA_FOUND"
+                )
+            
+            logging.info(f"Loaded {len(data)} records")
+        
+        # Validate data has required columns
+        required_columns = [output_column, events_column]
+        missing_columns = [col for col in required_columns if col not in data.columns]
+        if missing_columns:
+            print_operation_status("Data validation", "warning", f"Missing columns: {missing_columns}")
+            # Add missing columns with default values
+            for col in missing_columns:
+                if col == output_column:
+                    data[col] = "No output data available"
+                elif col == events_column:
+                    data[col] = "[]"
+        
+        # Check if we have enough samples
+        if len(data) < min_samples:
+            print_operation_status("Sample validation", "warning", 
+                                 f"Only {len(data)} samples available, minimum is {min_samples}")
+        
+        # Run evaluation with timeout and progress indication
+        @with_timeout(timeout)
+        def run_evaluation():
+            return run_evaluation_suite(
+                data=data,
+                suite_name=suite,
+                output_column=output_column,
+                events_column=events_column,
+                min_samples=min_samples
+            )
+        
+        with timed_operation_context(f"{suite} evaluation suite"):
+            logging.info(f"Running {suite} evaluation suite")
+            results = run_evaluation()
         
         # Output results
         if output_file:
-            logging.info(f"Writing results to {output_file}")
-            with open(output_file, 'w') as f:
-                json.dump(results, f, indent=2)
+            print_operation_status("Saving results", "start")
+            try:
+                with open(output_file, 'w') as f:
+                    json.dump(results, f, indent=2)
+                print_operation_status("Saving results", "success", f"Saved to {output_file}")
+            except Exception as e:
+                raise ValidationError(
+                    f"Failed to save output file: {e}",
+                    suggestion="Check write permissions and disk space",
+                    error_code="SAVE_FAILED"
+                ) from e
         else:
             # Print to stdout
             print(json.dumps(results, indent=2))
         
         # Print summary
         summary = results["summary"]
-        logging.info(f"Evaluation complete: {summary['successful_evaluations']}/{summary['total_evaluations']} successful")
-        logging.info(f"Overall score: {summary['overall_score']:.3f}")
+        print_operation_status("Evaluation", "success", 
+                             f"{summary['successful_evaluations']}/{summary['total_evaluations']} successful")
+        
+        typer.echo(f"\n📊 Evaluation Results:")
+        typer.echo(f"  Suite: {suite}")
+        typer.echo(f"  Samples: {len(data)}")
+        typer.echo(f"  Successful: {summary['successful_evaluations']}")
+        typer.echo(f"  Failed: {summary['failed_evaluations']}")
+        typer.echo(f"  Overall Score: {summary['overall_score']:.3f}")
         
         if summary["errors"]:
-            logging.warning(f"{summary['failed_evaluations']} evaluations failed")
+            typer.echo(f"\n⚠️  Failed Evaluations:")
             for error in summary["errors"]:
-                logging.warning(f"  {error['evaluation']}: {error['error']}")
+                typer.echo(f"  - {error['evaluation']}: {error['error']}")
         
         # Exit with error code if any evaluations failed
         if summary["failed_evaluations"] > 0:
-            sys.exit(1)
+            raise typer.Exit(1)
     
+    except ValidationError as e:
+        typer.echo(format_error_message(e), err=True)
+        print_usage_examples("evaluate", [
+            "rldk evals evaluate data.jsonl --suite comprehensive --output results.json",
+            "rldk evals evaluate data.jsonl --suite quick --min-samples 50 --verbose",
+            "rldk evals evaluate data.jsonl --suite safety --timeout 600"
+        ])
+        print_troubleshooting_tips([
+            "Ensure the input file is a valid JSONL file",
+            "Check that the specified columns exist in your data",
+            "Use --verbose flag for detailed output",
+            "Try reducing --min-samples if you have limited data"
+        ])
+        raise typer.Exit(1)
+    except TimeoutError as e:
+        typer.echo(format_error_message(e), err=True)
+        print_troubleshooting_tips([
+            "Try increasing the --timeout value",
+            "Use a smaller dataset or --min-samples",
+            "Check system resources and performance"
+        ])
+        raise typer.Exit(1)
+    except EvaluationError as e:
+        typer.echo(format_error_message(e), err=True)
+        print_troubleshooting_tips([
+            "Check that your data contains the required columns",
+            "Ensure the evaluation suite is appropriate for your data",
+            "Use --verbose flag to see detailed error information"
+        ])
+        raise typer.Exit(1)
     except Exception as e:
-        logging.error(f"Evaluation failed: {e}")
-        sys.exit(1)
+        log_error_with_context(e, "evaluate command")
+        typer.echo(format_error_message(e, "Evaluation failed"), err=True)
+        raise typer.Exit(1)
 
 
 @evals_app.command()
@@ -864,37 +979,131 @@ def ingest(
         ..., help="Path to runs directory, file, or wandb:// URI"
     ),
     adapter: Optional[str] = typer.Option(
-        None, "--adapter", "-a", help="Adapter type (trl, openrlhf, wandb)"
+        None, "--adapter", "-a", help="Adapter type (trl, openrlhf, wandb, custom_jsonl)"
     ),
     output: Optional[str] = typer.Option(
         "metrics.jsonl", "--output", "-o", help="Output file path"
     ),
+    validate: bool = typer.Option(
+        True, "--validate/--no-validate", help="Validate input data before processing"
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose output"
+    ),
 ):
-    """Ingest training runs from various sources."""
+    """Ingest training runs from various sources.
+    
+    Examples:
+        rldk ingest /path/to/logs --adapter trl
+        rldk ingest wandb://entity/project/run_id --adapter wandb
+        rldk ingest data.jsonl --adapter custom_jsonl --output results.jsonl
+    """
     try:
+        # Setup logging
+        if verbose:
+            logging.basicConfig(level=logging.DEBUG)
+        
         ensure_config_initialized()
-        typer.echo(f"Ingesting runs from: {runs}")
-
-        # Ingest the runs
-        df = ingest_runs(runs, adapter)
+        
+        # Validate input
+        if validate:
+            print_operation_status("Validating input", "start")
+            
+            # Check if source exists and is accessible
+            if runs.startswith("wandb://"):
+                validate_adapter_source(runs, ["wandb:// URI"])
+            else:
+                source_path = validate_file_path(runs, must_exist=True)
+                if source_path.is_file():
+                    validate_file_path(runs, file_extensions=[".jsonl", ".log"])
+                elif source_path.is_dir():
+                    # Check if directory contains valid log files
+                    log_files = list(source_path.glob("*.jsonl")) + list(source_path.glob("*.log"))
+                    if not log_files:
+                        raise ValidationError(
+                            f"No log files found in directory: {source_path}",
+                            suggestion="Ensure the directory contains .jsonl or .log files",
+                            error_code="NO_LOG_FILES_FOUND"
+                        )
+            
+            # Validate adapter if specified
+            if adapter:
+                valid_adapters = ["trl", "openrlhf", "wandb", "custom_jsonl"]
+                if adapter not in valid_adapters:
+                    raise ValidationError(
+                        f"Invalid adapter: {adapter}",
+                        suggestion=f"Use one of: {', '.join(valid_adapters)}",
+                        error_code="INVALID_ADAPTER"
+                    )
+            
+            print_operation_status("Input validation", "success")
+        
+        # Ingest the runs with progress indication
+        with timed_operation_context("Data ingestion"):
+            typer.echo(f"Ingesting runs from: {runs}")
+            
+            if adapter:
+                typer.echo(f"Using adapter: {adapter}")
+            
+            df = ingest_runs(runs, adapter)
+            
+            if df.empty:
+                raise ValidationError(
+                    "No data found in source",
+                    suggestion="Check that the source contains valid training data",
+                    error_code="NO_DATA_FOUND"
+                )
 
         # Save to output file
         if output:
-            df.to_json(output, orient="records", lines=True)
-            typer.echo(f"Saved {len(df)} records to {output}")
+            print_operation_status("Saving results", "start")
+            try:
+                df.to_json(output, orient="records", lines=True)
+                print_operation_status("Saving results", "success", f"Saved to {output}")
+            except Exception as e:
+                raise ValidationError(
+                    f"Failed to save output file: {e}",
+                    suggestion="Check write permissions and disk space",
+                    error_code="SAVE_FAILED"
+                ) from e
 
         # Display summary
-        typer.echo(f"\nIngested {len(df)} training steps")
-        typer.echo(f"Columns: {', '.join(df.columns)}")
-        typer.echo(f"Steps range: {df['step'].min()} to {df['step'].max()}")
-
+        typer.echo(f"\n📊 Ingestion Summary:")
+        typer.echo(f"  Records: {len(df)}")
+        typer.echo(f"  Columns: {', '.join(df.columns)}")
+        if not df.empty and 'step' in df.columns:
+            typer.echo(f"  Steps range: {df['step'].min()} to {df['step'].max()}")
+        
         # Show sample data
-        if not df.empty:
-            typer.echo("\nSample data:")
+        if not df.empty and verbose:
+            typer.echo("\n📋 Sample data:")
             typer.echo(df.head().to_string())
 
+    except ValidationError as e:
+        typer.echo(format_error_message(e), err=True)
+        print_usage_examples("ingest", [
+            "rldk ingest /path/to/logs --adapter trl",
+            "rldk ingest wandb://entity/project/run_id --adapter wandb",
+            "rldk ingest data.jsonl --adapter custom_jsonl --output results.jsonl"
+        ])
+        print_troubleshooting_tips([
+            "Ensure the source path exists and is accessible",
+            "Check that the adapter matches your data format",
+            "Use --verbose flag for detailed output",
+            "Try auto-detection by omitting --adapter"
+        ])
+        raise typer.Exit(1)
+    except AdapterError as e:
+        typer.echo(format_error_message(e), err=True)
+        print_troubleshooting_tips([
+            "Check that the data format matches the specified adapter",
+            "Try different adapter types: trl, openrlhf, wandb, custom_jsonl",
+            "Use --verbose flag to see detailed error information"
+        ])
+        raise typer.Exit(1)
     except Exception as e:
-        typer.echo(f"Error: {e}", err=True)
+        log_error_with_context(e, "ingest command")
+        typer.echo(format_error_message(e, "Ingestion failed"), err=True)
         raise typer.Exit(1)
 
 

@@ -6,9 +6,15 @@ import pandas as pd
 import numpy as np
 import json
 from pathlib import Path
+import logging
 
 from .suites import get_eval_suite
 from .metrics import calculate_confidence_intervals, calculate_effect_sizes
+from ..utils.error_handling import (
+    EvaluationError, ValidationError, format_error_message,
+    handle_graceful_degradation, safe_operation
+)
+from ..utils.progress import progress_bar, spinner
 
 
 @dataclass
@@ -44,7 +50,27 @@ def run(
 
     Returns:
         EvalResult with comprehensive evaluation metrics
+        
+    Raises:
+        ValidationError: If input validation fails
+        EvaluationError: If evaluation fails
     """
+    logger = logging.getLogger(__name__)
+    
+    # Validate inputs
+    if run_data is None or not isinstance(run_data, pd.DataFrame):
+        raise ValidationError(
+            "run_data must be a pandas DataFrame",
+            suggestion="Ensure you're passing a valid DataFrame",
+            error_code="INVALID_RUN_DATA"
+        )
+    
+    if run_data.empty:
+        raise ValidationError(
+            "run_data is empty",
+            suggestion="Ensure the DataFrame contains data to evaluate",
+            error_code="EMPTY_RUN_DATA"
+        )
 
     # Set random seed for reproducibility
     np.random.seed(seed)
@@ -52,7 +78,13 @@ def run(
     # Get evaluation suite
     eval_suite = get_eval_suite(suite)
     if eval_suite is None:
-        raise ValueError(f"Unknown evaluation suite: {suite}")
+        raise ValidationError(
+            f"Unknown evaluation suite: {suite}",
+            suggestion=f"Use one of: {', '.join(['quick', 'comprehensive', 'safety'])}",
+            error_code="UNKNOWN_SUITE"
+        )
+
+    logger.info(f"Running {suite} evaluation suite on {len(run_data)} records")
 
     # Determine sample size - use actual data size for empty or small datasets
     if sample_size is None:
@@ -68,15 +100,18 @@ def run(
         sampled_data = run_data.sample(n=sample_size, random_state=seed).reset_index(
             drop=True
         )
+        logger.info(f"Sampled {sample_size} records from {len(run_data)} total")
     else:
         sampled_data = run_data.copy()
 
-    # Run evaluations
+    # Run evaluations with progress indication
     raw_results = []
     scores = {}
+    failed_evaluations = []
 
     # If no data, return empty results
     if sample_size == 0:
+        logger.warning("No data available for evaluation")
         for eval_name in eval_suite["evaluations"].keys():
             raw_results.append(
                 {
@@ -90,40 +125,69 @@ def run(
             )
             scores[eval_name] = np.nan
     else:
-        for eval_name, eval_func in eval_suite["evaluations"].items():
-            try:
-                result = eval_func(sampled_data, seed=seed)
-                raw_results.append(
-                    {
-                        "evaluation": eval_name,
-                        "result": result,
-                        "timestamp": pd.Timestamp.now().isoformat(),
-                    }
-                )
+        # Run evaluations with progress tracking
+        evaluations = list(eval_suite["evaluations"].items())
+        
+        with progress_bar(len(evaluations), f"Running {suite} evaluations") as bar:
+            for eval_name, eval_func in evaluations:
+                try:
+                    logger.debug(f"Running evaluation: {eval_name}")
+                    result = eval_func(sampled_data, seed=seed)
+                    
+                    raw_results.append(
+                        {
+                            "evaluation": eval_name,
+                            "result": result,
+                            "timestamp": pd.Timestamp.now().isoformat(),
+                        }
+                    )
 
-                # Extract score if available
-                if isinstance(result, dict) and "score" in result:
-                    scores[eval_name] = result["score"]
-                elif isinstance(result, (int, float)):
-                    scores[eval_name] = float(result)
-                else:
+                    # Extract score if available
+                    if isinstance(result, dict) and "score" in result:
+                        scores[eval_name] = result["score"]
+                    elif isinstance(result, (int, float)):
+                        scores[eval_name] = float(result)
+                    else:
+                        scores[eval_name] = np.nan
+                        logger.warning(f"Could not extract score from {eval_name} result")
+
+                except Exception as e:
+                    logger.error(f"Evaluation {eval_name} failed: {e}")
+                    failed_evaluations.append(eval_name)
+                    
+                    raw_results.append(
+                        {
+                            "evaluation": eval_name,
+                            "error": str(e),
+                            "timestamp": pd.Timestamp.now().isoformat(),
+                        }
+                    )
                     scores[eval_name] = np.nan
+                
+                bar.update(1)
 
-            except Exception as e:
-                raw_results.append(
-                    {
-                        "evaluation": eval_name,
-                        "error": str(e),
-                        "timestamp": pd.Timestamp.now().isoformat(),
-                    }
-                )
-                scores[eval_name] = np.nan
+    # Check if too many evaluations failed
+    if len(failed_evaluations) > len(evaluations) * 0.5:  # More than 50% failed
+        raise EvaluationError(
+            f"Too many evaluations failed: {len(failed_evaluations)}/{len(evaluations)}",
+            suggestion="Check your data format and evaluation requirements",
+            error_code="TOO_MANY_FAILURES",
+            details={"failed_evaluations": failed_evaluations}
+        )
 
-    # Calculate confidence intervals
-    confidence_intervals = calculate_confidence_intervals(scores, sample_size)
+    # Calculate confidence intervals with error handling
+    try:
+        confidence_intervals = calculate_confidence_intervals(scores, sample_size)
+    except Exception as e:
+        logger.warning(f"Failed to calculate confidence intervals: {e}")
+        confidence_intervals = {}
 
-    # Calculate effect sizes (compared to baseline if available)
-    effect_sizes = calculate_effect_sizes(scores, eval_suite.get("baseline_scores", {}))
+    # Calculate effect sizes with error handling
+    try:
+        effect_sizes = calculate_effect_sizes(scores, eval_suite.get("baseline_scores", {}))
+    except Exception as e:
+        logger.warning(f"Failed to calculate effect sizes: {e}")
+        effect_sizes = {}
 
     # Create result object
     result = EvalResult(
@@ -138,14 +202,21 @@ def run(
             "run_data_shape": run_data.shape,
             "sampled_data_shape": sampled_data.shape,
             "evaluation_count": len(eval_suite["evaluations"]),
+            "failed_evaluations": failed_evaluations,
         },
         raw_results=raw_results,
     )
 
     # Save results if output directory specified
     if output_dir:
-        save_eval_results(result, output_dir)
+        try:
+            save_eval_results(result, output_dir)
+            logger.info(f"Results saved to {output_dir}")
+        except Exception as e:
+            logger.error(f"Failed to save results: {e}")
+            # Don't fail the entire operation if saving fails
 
+    logger.info(f"Evaluation completed: {len(scores)} metrics calculated")
     return result
 
 
