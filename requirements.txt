@@ -34,6 +34,7 @@ nltk==3.8.1
 tokenizers==0.15.0
 jsonschema==4.20.0
 pyyaml==6.0.1
+packaging==23.2
 
 # Web framework
 flask==3.0.0
