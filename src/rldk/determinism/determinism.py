@@ -11,6 +11,17 @@ import pandas as pd
 from ..io import read_metrics_jsonl
 
 
+def _deduplicate_deterministic(items: List[str]) -> List[str]:
+    """Remove duplicates from a list while preserving order deterministically."""
+    unique_items = []
+    seen = set()
+    for item in items:
+        if item not in seen:
+            unique_items.append(item)
+            seen.add(item)
+    return unique_items
+
+
 @dataclass
 class DeterminismReport:
     """Report of determinism check results."""
@@ -102,6 +113,7 @@ def _get_deterministic_env(device: str) -> Dict[str, str]:
     env["PYTHONPATH"] = f"{env.get('PYTHONPATH', '')}:{os.getcwd()}"
 
     # Python hash seed for deterministic behavior
+    # This prevents hash randomization from affecting set/dict operations
     env["PYTHONHASHSEED"] = "42"
 
     # PyTorch deterministic settings
@@ -325,4 +337,4 @@ def _parse_nondeterministic_ops(stderr: str) -> tuple[Optional[str], List[str]]:
         ]
     )
 
-    return culprit, list(set(fixes))  # Remove duplicates
+    return culprit, _deduplicate_deterministic(fixes)

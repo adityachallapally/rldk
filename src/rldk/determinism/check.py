@@ -14,6 +14,17 @@ import numpy as np
 from ..io import read_metrics_jsonl
 
 
+def _deduplicate_deterministic(items: List[str]) -> List[str]:
+    """Remove duplicates from a list while preserving order deterministically."""
+    unique_items = []
+    seen = set()
+    for item in items:
+        if item not in seen:
+            unique_items.append(item)
+            seen.add(item)
+    return unique_items
+
+
 def _log_determinism_warning(message: str) -> None:
     """Log a determinism warning if not silenced."""
     if os.getenv("RLDK_SILENCE_DETERMINISM_WARN", "0") != "1":
@@ -192,6 +203,8 @@ def _get_deterministic_env(device: str) -> Dict[str, str]:
     env = os.environ.copy()
 
     # Set Python deterministic settings (only once)
+    # PYTHONHASHSEED ensures consistent hash values across runs
+    # This prevents hash randomization from affecting set/dict operations
     env.update(
         {
             "PYTHONHASHSEED": "42",
@@ -505,7 +518,10 @@ def _detect_dataloader_issues(
                 # This is a simple heuristic - identical early steps might indicate same data order
                 if len(ref_df) >= 3 and len(rep_df) >= 3:
                     # Use common columns between the two dataframes
-                    common_cols = list(set(ref_df.columns) & set(rep_df.columns))
+                    # Get common columns deterministically (sorted for consistency)
+                    ref_cols = sorted(ref_df.columns)
+                    rep_cols = sorted(rep_df.columns)
+                    common_cols = [col for col in ref_cols if col in rep_cols]
                     # Filter out non-numeric columns
                     numeric_cols = [
                         col

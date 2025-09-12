@@ -11,6 +11,18 @@ from datetime import datetime
 
 from ..io.event_schema import Event
 
+
+def _deduplicate_deterministic(items: List[str]) -> List[str]:
+    """Remove duplicates from a list while preserving order deterministically."""
+    unique_items = []
+    seen = set()
+    for item in items:
+        if item not in seen:
+            unique_items.append(item)
+            seen.add(item)
+    return unique_items
+
+
 # Import removed - using simplified check instead
 
 
@@ -55,11 +67,8 @@ def generate_determinism_card(
         "passed": bool(determinism_result["pass"]),
         "replicas": int(
             len(
-                set(
-                    event.rng.get("seed")
-                    for event in events
-                    if event.rng.get("seed") is not None
-                )
+                # Count unique seeds deterministically
+                _get_unique_seeds_deterministic(events)
             )
         ),
         "metrics_compared": list(events[0].metrics.keys()) if events else [],
@@ -194,7 +203,7 @@ def _detect_nondeterminism_patterns(events: List[Event]) -> List[str]:
             if "detected" in note.lower():
                 hints.append(note)
 
-    return list(set(hints))  # Remove duplicates
+    return _deduplicate_deterministic(hints)
 
 
 def _calculate_replica_variance(events: List[Event]) -> Dict[str, float]:
@@ -277,7 +286,24 @@ def _generate_determinism_fixes(
         ]
     )
 
-    return list(set(fixes))  # Remove duplicates
+    return _deduplicate_deterministic(fixes)
+
+
+def _get_unique_seeds_deterministic(events: List[Event]) -> List[Any]:
+    """Get unique seeds deterministically (sorted for consistency)."""
+    seeds = [
+        event.rng.get("seed")
+        for event in events
+        if event.rng.get("seed") is not None
+    ]
+    # Sort seeds for deterministic ordering, then remove duplicates
+    unique_seeds = []
+    seen = set()
+    for seed in sorted(seeds):
+        if seed not in seen:
+            unique_seeds.append(seed)
+            seen.add(seed)
+    return unique_seeds
 
 
 def _generate_determinism_visualization(
