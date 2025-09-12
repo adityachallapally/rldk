@@ -1957,6 +1957,80 @@ def version():
     typer.echo(f"RL Debug Kit version {__version__}")
 
 
+@app.command(name="seed")
+def seed_cmd(
+    seed: Optional[int] = typer.Option(None, "--seed", "-s", help="Seed value to set"),
+    show: bool = typer.Option(False, "--show", help="Show current seed state"),
+    deterministic: bool = typer.Option(True, "--deterministic/--non-deterministic", help="Enable deterministic behavior"),
+    env: bool = typer.Option(False, "--env", help="Set environment variables for reproducibility"),
+    validate: bool = typer.Option(False, "--validate", help="Validate seed consistency"),
+):
+    """Manage global seed for reproducible experiments.
+    
+    Examples:
+        rldk seed --seed 42                    # Set seed to 42
+        rldk seed --show                       # Show current seed state
+        rldk seed --seed 1337 --env            # Set seed and environment variables
+        rldk seed --validate                   # Validate current seed consistency
+    """
+    try:
+        from rldk.utils.seed import (
+            set_global_seed, get_current_seed, get_seed_state_summary,
+            set_reproducible_environment, validate_seed_consistency
+        )
+        
+        if show:
+            # Show current seed state
+            summary = get_seed_state_summary()
+            typer.echo("🌱 Current seed state:")
+            typer.echo(f"  Seed: {summary['seed']}")
+            typer.echo(f"  Deterministic: {summary['deterministic']}")
+            typer.echo(f"  Libraries: {', '.join(summary['libraries'])}")
+            typer.echo(f"  PyTorch available: {summary['torch_available']}")
+            typer.echo(f"  CUDA available: {summary['cuda_available']}")
+            
+            if summary['torch_available'] and summary['deterministic']:
+                typer.echo(f"  CUDNN deterministic: {summary.get('cudnn_deterministic', False)}")
+                typer.echo(f"  CUDNN benchmark: {summary.get('cudnn_benchmark', True)}")
+        
+        elif validate:
+            # Validate seed consistency
+            current_seed = get_current_seed()
+            if current_seed is None:
+                typer.echo("❌ No seed has been set")
+                raise typer.Exit(1)
+            
+            typer.echo(f"🔍 Validating seed consistency for seed: {current_seed}")
+            is_consistent = validate_seed_consistency(current_seed)
+            
+            if is_consistent:
+                typer.echo("✅ Seed consistency validated successfully")
+            else:
+                typer.echo("❌ Seed consistency validation failed")
+                raise typer.Exit(1)
+        
+        else:
+            # Set seed
+            if env:
+                # Set up reproducible environment
+                actual_seed = set_reproducible_environment(seed)
+                typer.echo(f"🌱 Reproducible environment set with seed: {actual_seed}")
+                typer.echo("  Environment variables configured for maximum reproducibility")
+            else:
+                # Just set the seed
+                actual_seed = set_global_seed(seed, deterministic)
+                typer.echo(f"🌱 Global seed set to: {actual_seed}")
+            
+            if deterministic:
+                typer.echo("  Deterministic behavior enabled")
+            else:
+                typer.echo("  Non-deterministic behavior enabled")
+    
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
 # Card generation commands
 @app.command(name="card")
 def card(

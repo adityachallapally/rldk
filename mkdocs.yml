@@ -1,0 +1,206 @@
+site_name: RLDK Documentation
+site_description: RL Debug Kit - Library and CLI for debugging reinforcement learning training runs
+site_author: RLDK Contributors
+site_url: https://github.com/your-org/rldk
+
+# Repository
+repo_name: your-org/rldk
+repo_url: https://github.com/your-org/rldk
+edit_uri: edit/main/docs/
+
+# Configuration
+theme:
+  name: material
+  palette:
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+  logo: assets/logo.png
+  favicon: assets/favicon.png
+
+# Plugins
+plugins:
+  - search:
+      lang: en
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_root_toc_entry: true
+            show_object_full_path: true
+            show_category_heading: true
+            show_if_no_docstring: true
+            show_signature_annotations: true
+            show_signature_return_annotations: true
+            show_bases: true
+            show_root_members_full_path: false
+            show_root_heading: true
+            show_signature: true
+            separate_signature: true
+            line_length: 88
+            merge_init_into_class: true
+            show_submodules: true
+            show_source: true
+            show_root_heading: true
+            show_root_toc_entry: true
+            show_object_full_path: true
+            show_category_heading: true
+            show_if_no_docstring: true
+            show_signature_annotations: true
+            show_signature_return_annotations: true
+            show_bases: true
+            show_root_members_full_path: false
+            show_root_heading: true
+            show_signature: true
+            separate_signature: true
+            line_length: 88
+            merge_init_into_class: true
+            show_submodules: true
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: timeago
+  - minify:
+      minify_html: true
+
+# Extensions
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+      title: On this page
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      normalize_issue_symbols: true
+      repo_url_shorthand: true
+      user: your-org
+      repo: rldk
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Page tree
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - Configuration: getting-started/configuration.md
+  - User Guide:
+    - Experiment Tracking: user-guide/tracking.md
+    - Forensics Analysis: user-guide/forensics.md
+    - Determinism Checking: user-guide/determinism.md
+    - Reward Analysis: user-guide/reward-analysis.md
+    - Evaluation Suites: user-guide/evaluation.md
+    - Run Comparison: user-guide/run-comparison.md
+    - Seeded Replay: user-guide/replay.md
+  - CLI Reference:
+    - Commands: reference/commands.md
+    - Configuration: reference/config.md
+  - API Reference:
+    - Core API: reference/api.md
+    - Tracking: reference/tracking-api.md
+    - Forensics: reference/forensics-api.md
+    - Utils: reference/utils-api.md
+  - Examples:
+    - Basic PPO CartPole: examples/basic-ppo-cartpole.md
+    - Custom Environment: examples/custom-environment.md
+    - Distributed Training: examples/distributed-training.md
+    - Hyperparameter Tuning: examples/hyperparameter-tuning.md
+    - Benchmark Comparison: examples/benchmark-comparison.md
+    - Research Workflow: examples/research-workflow.md
+    - Multi-Run Analysis: examples/multi-run-analysis.md
+    - Production Deployment: examples/production-deployment.md
+  - Research Use Cases:
+    - Common Failure Patterns: research/failure-patterns.md
+    - Troubleshooting Guide: research/troubleshooting.md
+    - Best Practices: research/best-practices.md
+  - Development:
+    - Contributing: development/contributing.md
+    - Testing: development/testing.md
+    - CI/CD: development/ci-cd.md
+
+# Extra
+extra:
+  version:
+    provider: mike
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/your-org/rldk
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/rldk/
+  analytics:
+    provider: google
+    property: G-XXXXXXXXXX
+  consent:
+    title: Cookie consent
+    description: >- # this is a description
+      We use cookies to recognize your repeated visits and preferences, as well
+      as to measure the effectiveness of our documentation and whether users
+      find what they're searching for. With your consent, you're helping us to
+      make our documentation better.
+
+# Copyright
+copyright: Copyright &copy; 2024 RLDK Contributors
