@@ -72,14 +72,21 @@ from .utils import (
 
 ## Key Features of the Fix
 
-### 1. **Automatic Model Preparation**
+### 1. **Semantic Version Comparison**
+The fix now uses proper semantic versioning with the `packaging` library instead of string comparison:
+- ✅ Correctly handles version ranges (e.g., 0.20.0-0.21.x)
+- ✅ Properly compares versions like 0.23.0 vs 0.7.0
+- ✅ Handles pre-release versions and complex version strings
+- ✅ Follows PEP 440 semantic versioning standards
+
+### 2. **Automatic Model Preparation**
 The `prepare_models_for_ppo()` function handles all the complexity:
 - Loads tokenizer with proper pad token setup
 - Creates all required models
 - Automatically sets `generation_config` on all models
 - Returns everything ready for PPOTrainer
 
-### 2. **Robust Generation Config**
+### 3. **Robust Generation Config**
 The utility creates a comprehensive `GenerationConfig`:
 ```python
 generation_config = GenerationConfig(
@@ -93,13 +100,13 @@ generation_config = GenerationConfig(
 )
 ```
 
-### 3. **Compatibility Checking**
+### 4. **Compatibility Checking**
 - Detects TRL version
 - Warns about known issues
 - Provides specific recommendations
 - Works even when TRL is not installed
 
-### 4. **Validation Tools**
+### 5. **Validation Tools**
 - Validates complete PPO setup
 - Checks for missing attributes
 - Provides detailed error reporting
@@ -156,10 +163,14 @@ model = fix_generation_config(model, tokenizer, custom_config)
 2. **`/workspace/src/rldk/integrations/trl/utils.py`** (new file)
    - Complete utility functions for TRL integration
    - Handles generation_config issues
-   - Provides compatibility checking
+   - Provides compatibility checking with semantic versioning
+   - Uses `packaging.version` for proper version comparison
 
 3. **`/workspace/src/rldk/integrations/trl/__init__.py`**
    - Added exports for new utility functions
+
+4. **`/workspace/requirements.txt`** and **`/workspace/pyproject.toml`**
+   - Added `packaging>=23.2` dependency for semantic versioning
 
 ## Testing
 
@@ -168,6 +179,9 @@ The fix has been validated with comprehensive tests:
 - ✅ Import functionality
 - ✅ Utility function availability
 - ✅ Integration example correctness
+- ✅ Semantic version comparison logic
+- ✅ Version range handling (0.20.0-0.21.x, 0.23.0+, etc.)
+- ✅ Edge case testing (pre-releases, complex versions)
 
 ## Benefits
 
@@ -176,6 +190,8 @@ The fix has been validated with comprehensive tests:
 3. **Improves Reliability**: Comprehensive validation and error checking
 4. **Future-Proof**: Handles TRL version differences automatically
 5. **Better UX**: Clear warnings and recommendations
+6. **Semantic Versioning**: Proper version comparison following PEP 440 standards
+7. **Accurate Compatibility**: Correctly identifies problematic version ranges
 
 ## Backward Compatibility
 

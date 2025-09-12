@@ -2,6 +2,7 @@
 
 import warnings
 from typing import Optional, Union
+from packaging import version
 
 from transformers import AutoTokenizer, GenerationConfig
 
@@ -127,8 +128,10 @@ def check_trl_compatibility() -> dict:
         warnings_list = []
         recommendations = []
         
-        # Check for known issues
-        if version >= "0.23.0":
+        # Check for known issues using proper semantic versioning
+        trl_version_obj = version.parse(version)
+        
+        if trl_version_obj >= version.parse("0.23.0"):
             warnings_list.append(
                 "TRL 0.23.0+ has known issues with AutoModelForCausalLMWithValueHead.generation_config. "
                 "Use fix_generation_config() utility function."
@@ -137,9 +140,24 @@ def check_trl_compatibility() -> dict:
                 "Use prepare_models_for_ppo() or fix_generation_config() to avoid AttributeError"
             )
         
-        if version < "0.7.0":
+        if trl_version_obj < version.parse("0.7.0"):
             warnings_list.append("TRL version is quite old. Consider upgrading to 0.7.0+")
             recommendations.append("Upgrade TRL: pip install --upgrade trl")
+        
+        # Check for very recent versions that might have breaking changes
+        if trl_version_obj >= version.parse("0.25.0"):
+            warnings_list.append(
+                "Using a very recent TRL version. Some features may not be fully tested. "
+                "Report any issues if they occur."
+            )
+        
+        # Check for specific problematic versions
+        if version.parse("0.20.0") <= trl_version_obj < version.parse("0.22.0"):
+            warnings_list.append(
+                "TRL versions 0.20.0-0.21.x have known stability issues. "
+                "Consider upgrading to 0.22.0+ or downgrading to 0.19.x"
+            )
+            recommendations.append("Upgrade TRL: pip install --upgrade trl>=0.22.0")
         
         return {
             "trl_available": True,
