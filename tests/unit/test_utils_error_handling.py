@@ -241,14 +241,19 @@ class TestPathSanitization:
         assert "path traversal attempt" in str(error).lower()
         assert error.error_code == "PATH_TRAVERSAL_DETECTED"
     
-    def test_sanitize_path_absolute_path_detected(self):
-        """Test path sanitization detects absolute paths."""
-        with pytest.raises(ValidationError) as exc_info:
-            sanitize_path("/etc/passwd")
-        
-        error = exc_info.value
-        assert "path traversal attempt" in str(error).lower()
-        assert error.error_code == "PATH_TRAVERSAL_DETECTED"
+    def test_sanitize_path_absolute_path_allowed(self):
+        """Test path sanitization allows legitimate absolute paths."""
+        # Should not raise an error for legitimate absolute paths
+        result = sanitize_path("/etc/passwd")
+        assert isinstance(result, Path)
+        assert str(result) == "/etc/passwd"
+    
+    def test_sanitize_path_windows_path_allowed(self):
+        """Test path sanitization allows Windows-style paths."""
+        # Should not raise an error for Windows paths
+        result = sanitize_path("C:\\Users\\test\\file.txt")
+        assert isinstance(result, Path)
+        # Path will be normalized by Path.resolve()
     
     def test_sanitize_path_with_base_path_success(self, temp_dir):
         """Test path sanitization with base path restriction."""

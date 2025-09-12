@@ -250,13 +250,14 @@ def main():
                 for i, state in enumerate(states):
                     # Get old policy distribution (before update)
                     old_logits = state @ old_policy
-                    old_log_probs = agent._log_softmax(old_logits)
+                    old_probs = agent._softmax(old_logits)
                     # Get new policy distribution (after update)
                     new_logits = state @ agent.policy
-                    new_log_probs = agent._log_softmax(new_logits)
-                    # KL divergence: KL(old||new) = Σ old_probs * (log_old - log_new)
-                    old_probs = agent._softmax(old_logits)
-                    kl_div += np.sum(old_probs * (old_log_probs - new_log_probs))
+                    new_probs = agent._softmax(new_logits)
+                    # KL divergence: KL(old||new) = Σ old_probs * log(old_probs / new_probs)
+                    # Add small epsilon for numerical stability
+                    eps = 1e-8
+                    kl_div += np.sum(old_probs * (np.log(old_probs + eps) - np.log(new_probs + eps)))
                 kl_div = kl_div / len(states) if states else 0.0
                 entropy = -np.mean([log_prob * np.log(log_prob + 1e-8) for log_prob in log_probs])
                 policy_grad_norm = np.linalg.norm(agent.policy.flatten())

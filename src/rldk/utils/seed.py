@@ -45,7 +45,7 @@ class SeedManager:
         self.seed = None
         self.rng_state = {}
         self.deterministic = False
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()  # Use RLock for nested locking
         
         # Store original states for restoration
         self._original_states = {}
@@ -187,13 +187,14 @@ class SeedManager:
             >>> print(summary['seed'])
             42
         """
-        summary = {
-            'seed': self.seed,
-            'deterministic': self.deterministic,
-            'libraries': list(self.rng_state.keys()),
-            'torch_available': TORCH_AVAILABLE,
-            'cuda_available': torch.cuda.is_available() if TORCH_AVAILABLE else False,
-        }
+        with self._lock:
+            summary = {
+                'seed': self.seed,
+                'deterministic': self.deterministic,
+                'libraries': list(self.rng_state.keys()),
+                'torch_available': TORCH_AVAILABLE,
+                'cuda_available': torch.cuda.is_available() if TORCH_AVAILABLE else False,
+            }
         
         if TORCH_AVAILABLE and self.deterministic:
             summary['cudnn_deterministic'] = torch.backends.cudnn.deterministic

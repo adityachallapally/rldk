@@ -23,6 +23,19 @@ def rldk_cmd():
 
 class TestCLIMinirun:
     """Test CLI functionality against minimal run fixture."""
+    
+    def _check_cli_result(self, result, test_name):
+        """Helper function to check CLI results with proper error reporting."""
+        # Check that CLI doesn't crash with unexpected errors
+        if result.returncode not in [0, 1]:
+            pytest.fail(f"CLI crashed with unexpected return code {result.returncode} in {test_name}. "
+                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+        
+        # If it fails, it should be a known/expected failure, not a crash
+        if result.returncode == 1:
+            # Should not contain Python tracebacks or unexpected errors
+            assert "Traceback" not in result.stderr, f"Unexpected Python traceback in {test_name}: {result.stderr}"
+            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception in {test_name}: {result.stderr}"
 
     def test_cli_help(self, rldk_cmd):
         """Test that CLI help works."""
@@ -82,16 +95,7 @@ class TestCLIMinirun:
             text=True
         )
         
-        # Check that CLI doesn't crash with unexpected errors
-        if result.returncode not in [0, 1]:
-            pytest.fail(f"CLI crashed with unexpected return code {result.returncode}. "
-                       f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
-        
-        # If it fails, it should be a known/expected failure, not a crash
-        if result.returncode == 1:
-            # Should not contain Python tracebacks or unexpected errors
-            assert "Traceback" not in result.stderr, f"Unexpected Python traceback: {result.stderr}"
-            assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception: {result.stderr}"
+        self._check_cli_result(result, "test_cli_ingest_minirun")
 
     def test_cli_diff_minirun(self, rldk_cmd, minirun_path):
         """Test diffing the minimal run fixture with itself."""
