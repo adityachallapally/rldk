@@ -61,7 +61,7 @@ def main():
             "--seed", str(config['seed']), 
             "--steps", str(config['steps']), 
             "--variants", "1"
-        ], capture_output=True, text=True, cwd="/workspace")
+        ], capture_output=True, text=True)
         
         if result.returncode == 0:
             print(f"    ✅ Run '{config['name']}' generated successfully")

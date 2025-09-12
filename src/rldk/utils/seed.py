@@ -13,7 +13,9 @@ Example:
 
 import random
 import os
-from typing import Optional
+from typing import Optional, Callable, Any
+from functools import wraps
+from contextlib import contextmanager
 
 import numpy as np
 import torch
@@ -26,7 +28,7 @@ DEFAULT_SEED = 1337
 _global_seed: Optional[int] = None
 
 
-def set_global_seed(seed: int = DEFAULT_SEED) -> None:
+def set_global_seed(seed: Optional[int] = DEFAULT_SEED) -> None:
     """
     Set the global seed for all RLDK operations.
     
@@ -34,27 +36,29 @@ def set_global_seed(seed: int = DEFAULT_SEED) -> None:
     to ensure reproducible behavior across RLDK operations.
     
     Args:
-        seed: The seed value to use. Defaults to DEFAULT_SEED (1337).
+        seed: The seed value to use. If None, no seeding is performed.
+              Defaults to DEFAULT_SEED (1337).
     """
     global _global_seed
     _global_seed = seed
     
-    # Set Python random seed
-    random.seed(seed)
-    
-    # Set NumPy seed
-    np.random.seed(seed)
-    
-    # Set PyTorch seed
-    torch.manual_seed(seed)
-    
-    # Set CUDA seed if available
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
-    
-    # Set environment variable for additional reproducibility
-    os.environ["PYTHONHASHSEED"] = str(seed)
+    if seed is not None:
+        # Set Python random seed
+        random.seed(seed)
+        
+        # Set NumPy seed
+        np.random.seed(seed)
+        
+        # Set PyTorch seed
+        torch.manual_seed(seed)
+        
+        # Set CUDA seed if available
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+        
+        # Set environment variable for additional reproducibility
+        os.environ["PYTHONHASHSEED"] = str(seed)
 
 
 def get_global_seed() -> Optional[int]:
@@ -67,24 +71,56 @@ def get_global_seed() -> Optional[int]:
     return _global_seed
 
 
-def ensure_seeded() -> None:
+def ensure_seeded(func: Optional[Callable] = None) -> Any:
     """
     Ensure that a global seed is set.
     
+    Can be used as a decorator or called directly.
     If no global seed has been set, this function will set the default seed.
+    
+    Args:
+        func: Optional function to decorate. If provided, returns a decorated function.
+              If None, sets the seed immediately.
     """
-    if _global_seed is None:
-        set_global_seed()
+    if func is None:
+        # Called directly
+        if _global_seed is None:
+            set_global_seed()
+        return None
+    
+    # Used as decorator
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # Save current state
+        python_state = random.getstate()
+        numpy_state = np.random.get_state()
+        torch_state = torch.get_rng_state()
+        
+        try:
+            if _global_seed is None:
+                set_global_seed()
+            return func(*args, **kwargs)
+        finally:
+            # Restore original state
+            random.setstate(python_state)
+            np.random.set_state(numpy_state)
+            torch.set_rng_state(torch_state)
+    
+    return wrapper
 
 
-def seeded_random_state(seed: Optional[int] = None) -> tuple:
+@contextmanager
+def seeded_random_state(seed: Optional[int] = None):
     """
-    Get a seeded random state for reproducible operations.
+    Context manager for seeded random state operations.
+    
+    Temporarily sets a specific seed for reproducible operations within the context.
+    The original random state is restored when exiting the context.
     
     Args:
         seed: Optional seed value. If None, uses the global seed.
         
-    Returns:
+    Yields:
         A tuple containing (python_random_state, numpy_random_state, torch_random_state)
     """
     if seed is None:
@@ -95,33 +131,44 @@ def seeded_random_state(seed: Optional[int] = None) -> tuple:
     numpy_state = np.random.get_state()
     torch_state = torch.get_rng_state()
     
-    # Set new seed
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
+    try:
+        # Set new seed
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        
+        # Get new states
+        new_python_state = random.getstate()
+        new_numpy_state = np.random.get_state()
+        new_torch_state = torch.get_rng_state()
+        
+        yield (new_python_state, new_numpy_state, new_torch_state)
     
-    # Get new states
-    new_python_state = random.getstate()
-    new_numpy_state = np.random.get_state()
-    new_torch_state = torch.get_rng_state()
-    
-    # Restore original states
-    random.setstate(python_state)
-    np.random.set_state(numpy_state)
-    torch.set_rng_state(torch_state)
-    
-    return (new_python_state, new_numpy_state, new_torch_state)
+    finally:
+        # Restore original states
+        random.setstate(python_state)
+        np.random.set_state(numpy_state)
+        torch.set_rng_state(torch_state)
 
 
-def restore_random_state(states: tuple) -> None:
+def restore_random_state(states) -> None:
     """
     Restore random states from a previous seeded_random_state call.
     
     Args:
-        states: Tuple of (python_state, numpy_state, torch_state) from seeded_random_state
+        states: Either a tuple of (python_state, numpy_state, torch_state) from seeded_random_state
+                or a dict with keys 'random', 'numpy', 'torch'
     """
-    python_state, numpy_state, torch_state = states
+    if isinstance(states, dict):
+        python_state = states.get('random')
+        numpy_state = states.get('numpy')
+        torch_state = states.get('torch')
+    else:
+        python_state, numpy_state, torch_state = states
     
-    random.setstate(python_state)
-    np.random.set_state(numpy_state)
-    torch.set_rng_state(torch_state)
+    if python_state is not None:
+        random.setstate(python_state)
+    if numpy_state is not None:
+        np.random.set_state(numpy_state)
+    if torch_state is not None:
+        torch.set_rng_state(torch_state)
