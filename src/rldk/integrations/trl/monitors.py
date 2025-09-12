@@ -429,6 +429,8 @@ class CheckpointMonitor(TrainerCallback):
         enable_parameter_analysis: bool = True,
         enable_gradient_analysis: bool = True,
         run_id: Optional[str] = None,
+        max_parameter_size_mb: int = 50,  # Configurable limit
+        max_total_memory_mb: int = 500,   # Total memory limit
     ):
         """Initialize checkpoint monitor."""
         self.output_dir = Path(output_dir) if output_dir else Path("./rldk_checkpoint_logs")
@@ -438,11 +440,17 @@ class CheckpointMonitor(TrainerCallback):
         self.enable_gradient_analysis = enable_gradient_analysis
         self.run_id = run_id or f"checkpoint_run_{int(time.time())}"
         
+        # Memory management settings
+        self.max_parameter_size_mb = max_parameter_size_mb
+        self.max_total_memory_mb = max_total_memory_mb
+        
         # Metrics storage
         self.checkpoint_metrics_history: List[CheckpointMetrics] = []
         self.previous_weights: Optional[Dict[str, torch.Tensor]] = None
+        self._current_memory_usage_mb = 0
         
         print(f"💾 Checkpoint Monitor initialized - Run ID: {self.run_id}")
+        print(f"📊 Memory limits: {max_parameter_size_mb}MB per param, {max_total_memory_mb}MB total")
     
     def on_save(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
         """Analyze checkpoint when saved."""
@@ -479,8 +487,7 @@ class CheckpointMonitor(TrainerCallback):
         new_weights = self._extract_current_weights(model)
         if new_weights is not None:
             # Clean up old weights to prevent memory accumulation
-            if hasattr(self, 'previous_weights') and self.previous_weights is not None:
-                del self.previous_weights
+            self._cleanup_weights()
             self.previous_weights = new_weights
         
         # Save checkpoint analysis
@@ -613,25 +620,65 @@ class CheckpointMonitor(TrainerCallback):
         
         print(f"📋 Checkpoint Report: {report}")
     
+    def _cleanup_weights(self):
+        """Clean up stored weights to prevent memory leaks."""
+        if hasattr(self, 'previous_weights') and self.previous_weights is not None:
+            # Explicitly delete tensors to free memory
+            for name, tensor in self.previous_weights.items():
+                if hasattr(tensor, 'cpu'):
+                    tensor.cpu()  # Move to CPU before deletion
+                del tensor
+            del self.previous_weights
+            self.previous_weights = None
+            
+            # Force garbage collection
+            import gc
+            gc.collect()
+            
+            # Clear CUDA cache if available
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+    
     def _extract_current_weights(self, model) -> Optional[Dict[str, torch.Tensor]]:
-        """Extract current model weights for drift calculation."""
+        """Extract current model weights for drift calculation with memory management."""
         if model is None:
             return None
         
         weights = {}
+        total_size_mb = 0
+        skipped_params = 0
+        
         try:
             for name, param in model.named_parameters():
                 if param.requires_grad:
-                    # Store a copy of the parameter data (only for small models)
-                    param_size = param.numel() * param.element_size()
-                    if param_size > 100 * 1024 * 1024:  # Skip parameters larger than 100MB
+                    param_size_mb = (param.numel() * param.element_size()) / (1024 * 1024)
+                    
+                    # Skip parameters that are too large
+                    if param_size_mb > self.max_parameter_size_mb:
+                        skipped_params += 1
                         continue
-                    weights[name] = param.data.clone().detach()
-        except RuntimeError as e:
-            # Handle out of memory errors gracefully
-            print(f"Warning: Could not extract weights due to memory constraints: {e}")
+                    
+                    # Check total memory limit
+                    if total_size_mb + param_size_mb > self.max_total_memory_mb:
+                        print(f"Warning: Memory limit reached. Skipping remaining parameters.")
+                        break
+                    
+                    # Clone parameter with proper cleanup
+                    try:
+                        weights[name] = param.data.clone().detach()
+                        total_size_mb += param_size_mb
+                    except RuntimeError as e:
+                        print(f"Warning: Failed to clone parameter {name}: {e}")
+                        continue
+                        
+        except Exception as e:
+            print(f"Warning: Could not extract weights due to error: {e}")
             return None
         
+        if skipped_params > 0:
+            print(f"Info: Skipped {skipped_params} parameters due to size limits")
+        
+        self._current_memory_usage_mb = total_size_mb
         return weights if weights else None
     
     def _calculate_weight_drift(self, prev_weights: Dict[str, torch.Tensor], 

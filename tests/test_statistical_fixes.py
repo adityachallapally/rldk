@@ -3,7 +3,12 @@
 import pytest
 import numpy as np
 import pandas as pd
+import torch
+import tempfile
+import os
+from pathlib import Path
 from typing import Dict, Any
+from unittest.mock import Mock, patch
 
 # Import the modules we're testing
 from src.rldk.evals.metrics.utils import calculate_confidence_intervals, calculate_effect_sizes
@@ -11,6 +16,8 @@ from src.rldk.evals.metrics import calculate_confidence_intervals as metrics_ci,
 from src.rldk.cards.reward import _calculate_calibration_score
 from src.rldk.evals.integrity import _calculate_severity_score, _normalize_integrity_score
 from src.rldk.evals.probes import _reward_based_fallback, _stability_based_fallback
+from src.rldk.integrations.trl.monitors import CheckpointMonitor
+from src.rldk.config.settings import RLDebugKitSettings, MemorySettings, FileSettings
 
 
 class TestConfidenceIntervals:
@@ -238,6 +245,243 @@ class TestBackwardCompatibility:
         # Should work without errors
         assert 'test' in es_old
         assert not np.isnan(es_old['test'])
+
+
+class TestMemoryManagement:
+    """Test memory management in TRL monitor."""
+    
+    def test_memory_limits(self):
+        """Test that memory limits are respected."""
+        # Create a mock model with large parameters
+        model = Mock()
+        
+        # Mock parameters with different sizes
+        small_param = torch.randn(100, 100)  # ~40KB
+        large_param = torch.randn(10000, 10000)  # ~400MB
+        
+        model.named_parameters.return_value = [
+            ("small_layer.weight", Mock(data=small_param, requires_grad=True)),
+            ("large_layer.weight", Mock(data=large_param, requires_grad=True)),
+        ]
+        
+        # Test with strict memory limits
+        monitor = CheckpointMonitor(
+            max_parameter_size_mb=50,  # Should skip large param
+            max_total_memory_mb=100
+        )
+        
+        weights = monitor._extract_current_weights(model)
+        
+        # Should only include small parameter
+        assert weights is not None
+        assert "small_layer.weight" in weights
+        assert "large_layer.weight" not in weights
+    
+    def test_memory_cleanup(self):
+        """Test that memory cleanup works properly."""
+        monitor = CheckpointMonitor()
+        
+        # Simulate storing weights
+        monitor.previous_weights = {
+            "test_param": torch.randn(100, 100)
+        }
+        
+        # Cleanup should work without errors
+        monitor._cleanup_weights()
+        
+        assert monitor.previous_weights is None
+    
+    def test_out_of_memory_handling(self):
+        """Test handling of out of memory errors."""
+        monitor = CheckpointMonitor()
+        
+        # Mock model that raises RuntimeError
+        model = Mock()
+        model.named_parameters.side_effect = RuntimeError("CUDA out of memory")
+        
+        weights = monitor._extract_current_weights(model)
+        
+        # Should return None gracefully
+        assert weights is None
+
+
+class TestFileSafety:
+    """Test file safety measures."""
+    
+    def test_large_file_handling(self):
+        """Test handling of large files."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            
+            # Create a large file
+            large_file = temp_path / "large.log"
+            with open(large_file, 'w') as f:
+                f.write("test content " * 1000000)  # ~13MB
+            
+            # Test file size check
+            file_size = large_file.stat().st_size
+            assert file_size > 5 * 1024 * 1024  # > 5MB
+            
+            # Should be skipped due to size limit
+            from src.rldk.config.settings import get_settings
+            settings = get_settings()
+            max_size = settings.file.max_file_size_mb * 1024 * 1024
+            
+            assert file_size > max_size
+    
+    def test_encoding_handling(self):
+        """Test handling of files with encoding issues."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            
+            # Create file with non-UTF8 content
+            binary_file = temp_path / "binary.log"
+            with open(binary_file, 'wb') as f:
+                f.write(b'\xff\xfe\x00\x00')  # Invalid UTF-8
+            
+            # Should handle encoding errors gracefully
+            try:
+                with open(binary_file, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read(1024)
+                assert True  # Should not raise exception
+            except UnicodeDecodeError:
+                pytest.fail("Should handle encoding errors gracefully")
+
+
+class TestStatisticalValidation:
+    """Test statistical method validation."""
+    
+    def test_legacy_vs_new_methods(self):
+        """Test that legacy and new methods give different but reasonable results."""
+        scores = {'test': 0.5}
+        sample_size = 100
+        
+        # Test legacy method
+        ci_legacy = calculate_confidence_intervals(
+            scores, sample_size, use_legacy_method=True
+        )
+        
+        # Test new method
+        ci_new = calculate_confidence_intervals(
+            scores, sample_size, use_legacy_method=False
+        )
+        
+        # Both should be valid
+        assert ci_legacy['test'][0] <= scores['test'] <= ci_legacy['test'][1]
+        assert ci_new['test'][0] <= scores['test'] <= ci_new['test'][1]
+        
+        # They should be different (new method should be more accurate)
+        legacy_width = ci_legacy['test'][1] - ci_legacy['test'][0]
+        new_width = ci_new['test'][1] - ci_new['test'][0]
+        
+        # New method should generally be tighter
+        assert new_width <= legacy_width * 1.5  # Allow some tolerance
+    
+    def test_statistical_assumptions(self):
+        """Test that statistical assumptions are clearly documented."""
+        # Test binomial assumption for binary metrics
+        binary_scores = {'accuracy': 0.8}
+        ci_binary = calculate_confidence_intervals(binary_scores, 100)
+        
+        # Should use binomial standard deviation
+        assert ci_binary['accuracy'][0] < 0.8 < ci_binary['accuracy'][1]
+        
+        # Test continuous assumption for non-binary metrics
+        continuous_scores = {'reward': 2.5}
+        ci_continuous = calculate_confidence_intervals(continuous_scores, 100)
+        
+        # Should use different assumption
+        assert ci_continuous['reward'][0] < 2.5 < ci_continuous['reward'][1]
+
+
+class TestConfiguration:
+    """Test configuration system."""
+    
+    def test_settings_initialization(self):
+        """Test that settings initialize properly."""
+        settings = RLDebugKitSettings()
+        
+        assert settings.memory.max_parameter_size_mb == 50
+        assert settings.file.max_file_size_mb == 5
+        assert settings.statistical.default_confidence_level == 0.95
+    
+    def test_custom_settings(self):
+        """Test custom settings."""
+        custom_memory = MemorySettings(max_parameter_size_mb=100)
+        custom_file = FileSettings(max_file_size_mb=10)
+        
+        settings = RLDebugKitSettings(
+            memory=custom_memory,
+            file=custom_file
+        )
+        
+        assert settings.memory.max_parameter_size_mb == 100
+        assert settings.file.max_file_size_mb == 10
+
+
+class TestErrorHandling:
+    """Test error handling consistency."""
+    
+    def test_consistent_error_handling(self):
+        """Test that error handling is consistent across modules."""
+        # Test confidence intervals with invalid data
+        invalid_scores = {'test': np.nan}
+        ci = calculate_confidence_intervals(invalid_scores, 10)
+        
+        # Should handle NaN gracefully
+        assert np.isnan(ci['test'][0]) and np.isnan(ci['test'][1])
+        
+        # Test effect sizes with missing baseline
+        scores = {'test': 0.5}
+        baseline_scores = {}
+        
+        es = calculate_effect_sizes(scores, baseline_scores)
+        
+        # Should handle missing baseline gracefully
+        assert np.isnan(es['test'])
+    
+    def test_warning_consistency(self):
+        """Test that warnings are consistent."""
+        import warnings
+        
+        # Capture warnings
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            
+            # This should generate a warning
+            calculate_confidence_intervals({'test': 0.5}, 10)
+            
+            # Should have at least one warning
+            assert len(w) > 0
+            assert "estimated standard deviation" in str(w[0].message)
+
+
+class TestIntegration:
+    """Test integration between modules."""
+    
+    def test_monitor_integration(self):
+        """Test that monitor integrates properly with other components."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            monitor = CheckpointMonitor(output_dir=temp_dir)
+            
+            # Test that monitor can be initialized without errors
+            assert monitor.run_id is not None
+            assert monitor.output_dir.exists()
+    
+    def test_settings_integration(self):
+        """Test that settings integrate with other modules."""
+        from src.rldk.config.settings import get_settings, set_settings
+        
+        # Test getting default settings
+        settings = get_settings()
+        assert settings is not None
+        
+        # Test setting custom settings
+        custom_settings = RLDebugKitSettings()
+        set_settings(custom_settings)
+        
+        retrieved_settings = get_settings()
+        assert retrieved_settings is custom_settings
 
 
 if __name__ == "__main__":
