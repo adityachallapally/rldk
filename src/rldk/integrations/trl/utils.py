@@ -123,13 +123,13 @@ def check_trl_compatibility() -> dict:
     
     try:
         import trl
-        version = trl.__version__
+        trl_version_str = trl.__version__
         
         warnings_list = []
         recommendations = []
         
         # Check for known issues using proper semantic versioning
-        trl_version_obj = version.parse(version)
+        trl_version_obj = version.parse(trl_version_str)
         
         if trl_version_obj >= version.parse("0.23.0"):
             warnings_list.append(
@@ -161,7 +161,7 @@ def check_trl_compatibility() -> dict:
         
         return {
             "trl_available": True,
-            "version": version,
+            "version": trl_version_str,
             "warnings": warnings_list,
             "recommendations": recommendations
         }

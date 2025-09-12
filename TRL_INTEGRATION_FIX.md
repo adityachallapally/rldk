@@ -2,13 +2,15 @@
 
 ## Problem Description
 
-**Error**: `AttributeError: 'AutoModelForCausalLMWithValueHead' object has no attribute 'generation_config'`
+**Primary Error**: `AttributeError: 'AutoModelForCausalLMWithValueHead' object has no attribute 'generation_config'`
 
 **Location**: `/workspace/examples/trl_integration/basic_ppo_integration.py` line 120
 
 **TRL Version**: 0.23.0
 
 **Root Cause**: The `AutoModelForCausalLMWithValueHead` class in TRL 0.23.0+ doesn't include a `generation_config` attribute by default, but the `PPOTrainer` initialization tries to access `self.policy_model.generation_config.eos_token_id`.
+
+**Secondary Issue**: Variable shadowing in `check_trl_compatibility()` function where the `version` variable shadowed the imported `packaging.version` module, causing `AttributeError` when calling `version.parse()`.
 
 ## Solution Implemented
 
@@ -78,6 +80,7 @@ The fix now uses proper semantic versioning with the `packaging` library instead
 - ✅ Properly compares versions like 0.23.0 vs 0.7.0
 - ✅ Handles pre-release versions and complex version strings
 - ✅ Follows PEP 440 semantic versioning standards
+- ✅ Fixed variable shadowing issue (`version` → `trl_version_str`)
 
 ### 2. **Automatic Model Preparation**
 The `prepare_models_for_ppo()` function handles all the complexity:
@@ -165,6 +168,7 @@ model = fix_generation_config(model, tokenizer, custom_config)
    - Handles generation_config issues
    - Provides compatibility checking with semantic versioning
    - Uses `packaging.version` for proper version comparison
+   - Fixed variable shadowing issue in `check_trl_compatibility()`
 
 3. **`/workspace/src/rldk/integrations/trl/__init__.py`**
    - Added exports for new utility functions
@@ -182,6 +186,8 @@ The fix has been validated with comprehensive tests:
 - ✅ Semantic version comparison logic
 - ✅ Version range handling (0.20.0-0.21.x, 0.23.0+, etc.)
 - ✅ Edge case testing (pre-releases, complex versions)
+- ✅ Variable shadowing fix validation
+- ✅ Function correctness testing
 
 ## Benefits
 
@@ -192,6 +198,7 @@ The fix has been validated with comprehensive tests:
 5. **Better UX**: Clear warnings and recommendations
 6. **Semantic Versioning**: Proper version comparison following PEP 440 standards
 7. **Accurate Compatibility**: Correctly identifies problematic version ranges
+8. **No Variable Shadowing**: Fixed function-level variable conflicts
 
 ## Backward Compatibility
 
