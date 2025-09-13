@@ -8,6 +8,8 @@ import numpy as np
 from scipy import stats
 from datetime import datetime
 
+from ...utils.error_handling import safe_divide, safe_rate_calculation
+
 logger = logging.getLogger(__name__)
 
 
@@ -118,13 +120,14 @@ def calculate_tokens_per_second(events: List[Dict[str, Any]]) -> Tuple[float, fl
             batch_size = curr_event["batch_size"]
             processing_time = curr_event["processing_time"]
             if processing_time > 0:
-                tokens_this_interval = batch_size / processing_time
+                tokens_this_interval = safe_rate_calculation(batch_size, processing_time, 0.0)
                 total_tokens += batch_size
         
         if tokens_this_interval > 0 and time_interval > 0:
-            token_rate = tokens_this_interval / time_interval
-            intervals.append(time_interval)
-            token_rates.append(token_rate)
+            token_rate = safe_rate_calculation(tokens_this_interval, time_interval, 0.0)
+            if token_rate > 0:  # Only add valid rates
+                intervals.append(time_interval)
+                token_rates.append(token_rate)
     
     if not token_rates:
         return 0.0, 0.0, total_tokens
@@ -161,7 +164,7 @@ def calculate_confidence_interval(scores: List[float], confidence_level: float =
             mean_score = np.mean(scores)
             std_score = np.std(scores, ddof=1) if len(scores) > 1 else 0.0
             z_score = stats.norm.ppf((1 + confidence_level) / 2)
-            margin_of_error = z_score * std_score / np.sqrt(len(scores))
+            margin_of_error = safe_divide(z_score * std_score, np.sqrt(len(scores)), 0.0)
             return mean_score - margin_of_error, mean_score + margin_of_error
         
         bootstrap_result = stats.bootstrap((scores,), np.mean, confidence_level=confidence_level, n_resamples=min(1000, len(scores) * 10))
@@ -172,7 +175,7 @@ def calculate_confidence_interval(scores: List[float], confidence_level: float =
         mean_score = np.mean(scores)
         std_score = np.std(scores, ddof=1) if len(scores) > 1 else 0.0
         z_score = stats.norm.ppf((1 + confidence_level) / 2)
-        margin_of_error = z_score * std_score / np.sqrt(len(scores))
+        margin_of_error = safe_divide(z_score * std_score, np.sqrt(len(scores)), 0.0)
         return mean_score - margin_of_error, mean_score + margin_of_error
 
 
@@ -262,7 +265,7 @@ def evaluate_throughput(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     
     # Normalize score to [0, 1] range (assuming reasonable max of 1000 tokens/sec)
     max_expected_throughput = 1000.0
-    normalized_score = min(1.0, mean_tokens_per_sec / max_expected_throughput)
+    normalized_score = min(1.0, safe_divide(mean_tokens_per_sec, max_expected_throughput, 0.0))
     
     # Calculate confidence interval
     if len(all_events) >= 2:
@@ -305,24 +308,24 @@ def evaluate_throughput(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             elif "batch_size" in curr_event and "processing_time" in curr_event:
                 batch_size = curr_event["batch_size"]
                 processing_time = curr_event["processing_time"]
-                if processing_time > 0:
-                    tokens_this_interval = batch_size / processing_time
+                tokens_this_interval = safe_rate_calculation(batch_size, processing_time, 0.0)
             
             if tokens_this_interval > 0 and time_interval > 0:
-                token_rate = tokens_this_interval / time_interval
-                token_rates.append(token_rate)
+                token_rate = safe_rate_calculation(tokens_this_interval, time_interval, 0.0)
+                if token_rate > 0:  # Only add valid rates
+                    token_rates.append(token_rate)
         
         if token_rates:
             ci_lower, ci_upper = calculate_confidence_interval(token_rates, confidence_level)
-            ci_lower_norm = min(1.0, ci_lower / max_expected_throughput)
-            ci_upper_norm = min(1.0, ci_upper / max_expected_throughput)
+            ci_lower_norm = min(1.0, safe_divide(ci_lower, max_expected_throughput, 0.0))
+            ci_upper_norm = min(1.0, safe_divide(ci_upper, max_expected_throughput, 0.0))
         else:
             ci_lower_norm = ci_upper_norm = normalized_score
     else:
         ci_lower_norm = ci_upper_norm = normalized_score
     
     # Calculate additional metrics
-    throughput_stability = max(0, 1 - std_tokens_per_sec / mean_tokens_per_sec) if mean_tokens_per_sec > 0 else 0
+    throughput_stability = max(0, 1 - safe_divide(std_tokens_per_sec, mean_tokens_per_sec, 0.0)) if mean_tokens_per_sec > 0 else 0
     
     logger.info(f"Throughput evaluation complete: {mean_tokens_per_sec:.2f} tokens/sec (score: {normalized_score:.3f})")
     

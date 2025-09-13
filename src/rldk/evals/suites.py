@@ -4,6 +4,8 @@ from typing import Dict, Any, Optional
 import pandas as pd
 import numpy as np
 
+from ..utils.error_handling import safe_divide, safe_rate_calculation, safe_percentage
+
 from .probes import (
     evaluate_alignment,
     evaluate_helpfulness,
@@ -302,7 +304,7 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             reward_std = rewards.std()
             reward_mean = rewards.mean()
             if reward_mean != 0:
-                cv = reward_std / abs(reward_mean)
+                cv = safe_divide(reward_std, abs(reward_mean), 0.0)
                 # Convert to consistency score (lower CV = higher consistency)
                 consistency_score = max(0, 1 - cv)
                 consistency_metrics.append(("reward_consistency", consistency_score))
@@ -312,7 +314,7 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 if len(steps) > 1:
                     slope = np.polyfit(steps, rewards, 1)[0]
                     # Convert slope to stability score
-                    stability_score = max(0, 1 - abs(slope) / abs(reward_mean) if reward_mean != 0 else 0)
+                    stability_score = max(0, 1 - safe_divide(abs(slope), abs(reward_mean), 0.0) if reward_mean != 0 else 0)
                     consistency_metrics.append(("reward_stability", stability_score))
     
     # 2. Check response consistency for similar inputs
@@ -362,7 +364,7 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                             group_std = group_rewards.std()
                             group_mean = group_rewards.mean()
                             if group_mean != 0:
-                                group_cv = group_std / abs(group_mean)
+                                group_cv = safe_divide(group_std, abs(group_mean), 0.0)
                                 group_consistency = max(0, 1 - group_cv)
                                 group_consistencies.append(group_consistency)
                     else:
@@ -377,7 +379,7 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                                 group_std = group_values.std()
                                 group_mean = group_values.mean()
                                 if group_mean != 0:
-                                    group_cv = group_std / abs(group_mean)
+                                    group_cv = safe_divide(group_std, abs(group_mean), 0.0)
                                     group_consistency = max(0, 1 - group_cv)
                                     group_consistencies.append(group_consistency)
             
@@ -397,7 +399,7 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 metric_std = values.std()
                 metric_mean = values.mean()
                 if metric_mean != 0:
-                    metric_cv = metric_std / abs(metric_mean)
+                    metric_cv = safe_divide(metric_std, abs(metric_mean), 0.0)
                     metric_consistency = max(0, 1 - metric_cv)
                     consistency_metrics.append((f"{metric_col}_consistency", metric_consistency))
     
@@ -433,7 +435,7 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 reward_std = rewards.std()
                 reward_mean = rewards.mean()
                 if reward_mean != 0:
-                    cv = reward_std / abs(reward_mean)
+                    cv = safe_divide(reward_std, abs(reward_mean), 0.0)
                     overall_score = max(0, 1 - cv)
                 else:
                     overall_score = 0.5
@@ -495,7 +497,7 @@ def evaluate_robustness(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             
             if reward_mean != 0:
                 # Coefficient of variation (lower = more robust)
-                cv = reward_std / abs(reward_mean)
+                cv = safe_divide(reward_std, abs(reward_mean), 0.0)
                 stability_score = max(0, 1 - cv)
                 robustness_metrics.append(("reward_stability", stability_score))
                 
@@ -508,7 +510,7 @@ def evaluate_robustness(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 outlier_threshold_high = Q3 + 1.5 * IQR
                 
                 outliers = np.sum((rewards < outlier_threshold_low) | (rewards > outlier_threshold_high))
-                outlier_ratio = outliers / len(rewards)
+                outlier_ratio = safe_divide(outliers, len(rewards), 0.0)
                 
                 # Lower outlier ratio = more robust
                 outlier_resistance = max(0, 1 - outlier_ratio)
@@ -604,7 +606,7 @@ def evaluate_robustness(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 reward_std = rewards.std()
                 reward_mean = rewards.mean()
                 if reward_mean != 0:
-                    cv = reward_std / abs(reward_mean)
+                    cv = safe_divide(reward_std, abs(reward_mean), 0.0)
                     overall_score = max(0, 1 - cv)
                 else:
                     overall_score = 0.5
@@ -649,9 +651,9 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         total_steps = data["step"].max() - data["step"].min()
         
         if total_time > 0 and total_steps > 0:
-            steps_per_second = total_steps / total_time
+            steps_per_second = safe_rate_calculation(total_steps, total_time, 0.0)
             # Normalize to a reasonable range (0-1000 steps/sec)
-            speed_score = min(1.0, steps_per_second / 1000.0)
+            speed_score = min(1.0, safe_divide(steps_per_second, 1000.0, 0.0))
             efficiency_metrics.append(("training_speed", speed_score))
     
     # 2. Check for memory efficiency
@@ -666,7 +668,7 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             if avg_memory < 8.0:  # Less than 8GB average
                 memory_efficiency = 1.0
             else:
-                memory_efficiency = max(0, 1 - (avg_memory - 8.0) / 8.0)
+                memory_efficiency = max(0, 1 - safe_divide(avg_memory - 8.0, 8.0, 0.0))
             
             efficiency_metrics.append(("memory_efficiency", memory_efficiency))
             
@@ -675,7 +677,7 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             if memory_std < 1.0:  # Stable memory usage
                 memory_stability = 1.0
             else:
-                memory_stability = max(0, 1 - memory_std / 4.0)
+                memory_stability = max(0, 1 - safe_divide(memory_std, 4.0, 0.0))
             
             efficiency_metrics.append(("memory_stability", memory_stability))
     
@@ -886,7 +888,7 @@ def evaluate_adversarial(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             
             if reward_mean != 0:
                 # Coefficient of variation (lower = more robust)
-                cv = reward_std / abs(reward_mean)
+                cv = safe_divide(reward_std, abs(reward_mean), 0.0)
                 stability_score = max(0, 1 - cv)
                 adversarial_metrics.append(("reward_stability", stability_score))
                 
@@ -899,7 +901,7 @@ def evaluate_adversarial(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 outlier_threshold_high = Q3 + 1.5 * IQR
                 
                 outliers = np.sum((rewards < outlier_threshold_low) | (rewards > outlier_threshold_high))
-                outlier_ratio = outliers / len(rewards)
+                outlier_ratio = safe_divide(outliers, len(rewards), 0.0)
                 
                 # Lower outlier ratio = more robust
                 outlier_resistance = max(0, 1 - outlier_ratio)
@@ -1010,7 +1012,7 @@ def evaluate_adversarial(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 reward_std = rewards.std()
                 reward_mean = rewards.mean()
                 if reward_mean != 0:
-                    cv = reward_std / abs(reward_mean)
+                    cv = safe_divide(reward_std, abs(reward_mean), 0.0)
                     overall_score = max(0, 1 - cv)
                 else:
                     overall_score = 0.5
@@ -1077,9 +1079,9 @@ def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         total_steps = data["step"].max() - data["step"].min()
         
         if total_time > 0 and total_steps > 0:
-            steps_per_second = total_steps / total_time
+            steps_per_second = safe_rate_calculation(total_steps, total_time, 0.0)
             # Normalize to reasonable range (0-1000 steps/sec)
-            training_speed = min(1.0, steps_per_second / 1000.0)
+            training_speed = min(1.0, safe_divide(steps_per_second, 1000.0, 0.0))
             speed_metrics.append(("training_speed", training_speed))
     
     # 3. Check for throughput metrics
@@ -1089,7 +1091,7 @@ def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             avg_throughput = throughput_values.mean()
             # Higher throughput = better speed
             # Normalize to reasonable range (0-1000 samples/sec)
-            normalized_throughput = min(1.0, avg_throughput / 1000.0)
+            normalized_throughput = min(1.0, safe_divide(avg_throughput, 1000.0, 0.0))
             speed_metrics.append(("throughput_speed", normalized_throughput))
     
     # 4. Check for latency metrics
@@ -1112,16 +1114,19 @@ def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         
         if len(batch_times) > 0 and len(batch_sizes) > 0:
             # Calculate samples per second - avoid division by zero
-            batch_times_safe = batch_times.replace(0, np.nan)  # Replace zeros with NaN
-            samples_per_second = batch_sizes / batch_times_safe
-            samples_per_second = samples_per_second.dropna()  # Remove NaN values
+            samples_per_second = []
+            for batch_size, batch_time in zip(batch_sizes, batch_times):
+                rate = safe_rate_calculation(batch_size, batch_time, 0.0)
+                if rate > 0:
+                    samples_per_second.append(rate)
+            samples_per_second = pd.Series(samples_per_second)
             if len(samples_per_second) > 0:
                 avg_samples_per_second = samples_per_second.mean()
             else:
                 avg_samples_per_second = 0.0
             
             # Normalize to reasonable range
-            batch_speed = min(1.0, avg_samples_per_second / 1000.0)
+            batch_speed = min(1.0, safe_divide(avg_samples_per_second, 1000.0, 0.0))
             speed_metrics.append(("batch_speed", batch_speed))
     
     # 6. Check for convergence speed (how quickly model improves)
@@ -1141,7 +1146,7 @@ def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 
                 if improvement > 0 and steps_taken > 0:
                     # Improvement per step
-                    improvement_rate = improvement / steps_taken
+                    improvement_rate = safe_divide(improvement, steps_taken, 0.0)
                     # Normalize to reasonable range
                     convergence_speed = min(1.0, improvement_rate * 1000)
                     speed_metrics.append(("convergence_speed", convergence_speed))
@@ -1235,7 +1240,7 @@ def evaluate_memory(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             if memory_std < 1.0:  # Very stable
                 memory_stability = 1.0
             else:
-                memory_stability = max(0, 1 - memory_std / 4.0)
+                memory_stability = max(0, 1 - safe_divide(memory_std, 4.0, 0.0))
             
             memory_metrics.append(("memory_stability", memory_stability))
             
