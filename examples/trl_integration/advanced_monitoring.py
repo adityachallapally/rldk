@@ -10,7 +10,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments
 
 # Import RLDK components
 from rldk.integrations.trl import RLDKCallback, PPOMonitor, CheckpointMonitor, RLDKDashboard
-from rldk.utils.error_handling import safe_divide, safe_rate_calculation
+from rldk.utils.math_utils import safe_divide, safe_rate_calculation
 
 try:
     from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead

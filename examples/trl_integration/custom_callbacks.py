@@ -9,7 +9,7 @@ from typing import Dict, Any, List, Optional
 from transformers import TrainerCallback, TrainerControl, TrainerState, TrainingArguments
 
 from rldk.integrations.trl import RLDKCallback, PPOMonitor
-from rldk.utils.error_handling import safe_divide, safe_rate_calculation
+from rldk.utils.math_utils import safe_divide, safe_rate_calculation
 
 
 class RewardModelMonitor(TrainerCallback):

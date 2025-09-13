@@ -8,7 +8,7 @@ import numpy as np
 from scipy import stats
 from datetime import datetime
 
-from ...utils.error_handling import safe_divide, safe_rate_calculation
+from ...utils.math_utils import safe_divide, safe_rate_calculation
 
 logger = logging.getLogger(__name__)
 

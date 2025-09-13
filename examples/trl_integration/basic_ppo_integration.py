@@ -7,7 +7,7 @@ from datasets import Dataset
 
 # Import RLDK components
 from rldk.integrations.trl import RLDKCallback, PPOMonitor, CheckpointMonitor, prepare_models_for_ppo, check_trl_compatibility
-from rldk.utils.error_handling import safe_divide
+from rldk.utils.math_utils import safe_divide
 
 try:
     from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead

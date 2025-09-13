@@ -4,7 +4,7 @@ from typing import Dict, Any, Optional
 import pandas as pd
 import numpy as np
 
-from ..utils.error_handling import safe_divide, safe_rate_calculation, safe_percentage
+from ..utils.math_utils import safe_divide, safe_rate_calculation, safe_percentage
 
 from .probes import (
     evaluate_alignment,

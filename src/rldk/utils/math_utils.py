@@ -1,15 +1,10 @@
-"""Mathematical utility functions for RLDK."""
+"""Mathematical utilities for safe operations in RLDK."""
 
 from typing import Union
-import math
 
 
-def try_divide(numerator: Union[int, float], denominator: Union[int, float], 
-               fallback: Union[int, float] = 0.0) -> Union[int, float]:
+def safe_divide(numerator: Union[int, float], denominator: Union[int, float], fallback: float = 0.0) -> float:
     """Safely divide two numbers, avoiding division by zero and negative denominators.
-    
-    This function is consistent with safe_percentage and safe_rate_calculation
-    in that it explicitly skips negative denominators, returning the fallback value.
     
     Args:
         numerator: The number to divide
@@ -18,66 +13,49 @@ def try_divide(numerator: Union[int, float], denominator: Union[int, float],
         
     Returns:
         The result of division or fallback value
-        
-    Examples:
-        >>> try_divide(10, 2)
-        5.0
-        >>> try_divide(10, 0)
-        0.0
-        >>> try_divide(10, -2)
-        0.0
-        >>> try_divide(-10, 2)
-        -5.0
     """
-    # Skip negative denominators (consistent with safe_percentage and safe_rate_calculation)
     if denominator <= 0:
         return fallback
     return numerator / denominator
 
 
-def safe_divide_with_negative_support(numerator: Union[int, float], 
-                                    denominator: Union[int, float], 
-                                    fallback: Union[int, float] = 0.0) -> Union[int, float]:
-    """Safely divide two numbers, avoiding division by zero but allowing negative denominators.
-    
-    This is an alternative implementation that allows negative denominators,
-    which differs from try_divide, safe_percentage, and safe_rate_calculation.
+def safe_rate_calculation(count: Union[int, float], time_interval: Union[int, float], fallback: float = 0.0) -> float:
+    """Safely calculate rate (count per unit time), avoiding division by zero and negative denominators.
     
     Args:
-        numerator: The number to divide
-        denominator: The number to divide by
-        fallback: Value to return if denominator is zero
+        count: The count or amount
+        time_interval: The time interval
+        fallback: Value to return if time_interval is zero or negative
         
     Returns:
-        The result of division or fallback value
+        The rate or fallback value
     """
-    if denominator == 0:
-        return fallback
-    return numerator / denominator
+    return safe_divide(count, time_interval, fallback)
 
 
-def is_finite_number(value: Union[int, float]) -> bool:
-    """Check if a number is finite (not NaN or infinity).
+def safe_percentage(numerator: Union[int, float], denominator: Union[int, float], fallback: float = 0.0) -> float:
+    """Safely calculate percentage, avoiding division by zero and negative denominators.
     
     Args:
-        value: The number to check
+        numerator: The numerator
+        denominator: The denominator
+        fallback: Value to return if denominator is zero or negative
         
     Returns:
-        True if the number is finite, False otherwise
+        The percentage or fallback value
     """
-    return math.isfinite(value)
+    return safe_divide(numerator * 100, denominator, fallback)
 
 
-def clamp(value: Union[int, float], min_val: Union[int, float], 
-          max_val: Union[int, float]) -> Union[int, float]:
-    """Clamp a value between min and max bounds.
+def safe_ratio(numerator: Union[int, float], denominator: Union[int, float], fallback: float = 0.0) -> float:
+    """Safely calculate ratio, avoiding division by zero and negative denominators.
     
     Args:
-        value: The value to clamp
-        min_val: Minimum allowed value
-        max_val: Maximum allowed value
+        numerator: The numerator
+        denominator: The denominator
+        fallback: Value to return if denominator is zero or negative
         
     Returns:
-        The clamped value
+        The ratio or fallback value
     """
-    return max(min_val, min(value, max_val))
+    return safe_divide(numerator, denominator, fallback)
