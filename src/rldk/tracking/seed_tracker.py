@@ -183,11 +183,15 @@ class SeedTracker:
     
     def save_seed_state(self, output_path: str) -> str:
         """Save current seed state to file."""
+        # Get numpy state and convert to JSON-serializable format
+        np_state = np.random.get_state()
+        np_state_serializable = (np_state[0], np_state[1].tolist(), np_state[2], np_state[3], np_state[4])
+        
         seed_state = {
             "timestamp": self._get_timestamp(),
             "seed_info": self.seed_info,
             "python_state": random.getstate(),
-            "numpy_state": np.random.get_state(),
+            "numpy_state": np_state_serializable,
             "torch_state": torch.get_rng_state().tolist(),
             "cuda_state": torch.cuda.get_rng_state().tolist() if torch.cuda.is_available() else None
         }
@@ -202,14 +206,25 @@ class SeedTracker:
         with open(input_path, 'r') as f:
             seed_state = json.load(f)
         
-        # Restore states
-        random.setstate(tuple(seed_state["python_state"]))
-        np.random.set_state(tuple(seed_state["numpy_state"]))
-        # Fix: Use uint8 dtype for torch RNG state
+        # Restore Python state - convert list back to proper tuple structure
+        python_state = seed_state["python_state"]
+        if isinstance(python_state, list):
+            # Convert back to proper Python random state format
+            python_state = (python_state[0], tuple(python_state[1]), python_state[2])
+        random.setstate(python_state)
+        
+        # Restore numpy state - need to handle the tuple structure properly
+        np_state = seed_state["numpy_state"]
+        if isinstance(np_state, list):
+            # Convert back to proper numpy state format
+            np_state = (np_state[0], np.array(np_state[1], dtype=np.uint32), np_state[2], np_state[3], np_state[4])
+        np.random.set_state(np_state)
+        
+        # Restore torch RNG state with uint8 dtype
         torch.set_rng_state(torch.tensor(seed_state["torch_state"], dtype=torch.uint8))
         
+        # Restore CUDA RNG state with uint8 dtype if available
         if seed_state["cuda_state"] is not None and torch.cuda.is_available():
-            # Fix: Use uint8 dtype for CUDA RNG state
             torch.cuda.set_rng_state(torch.tensor(seed_state["cuda_state"], dtype=torch.uint8))
         
         self.seed_info = seed_state["seed_info"]
@@ -243,7 +258,7 @@ class SeedTracker:
     
     def create_reproducible_environment(self, seed: int) -> Dict[str, Any]:
         """
-        Create a fully reproducible environment by setting all seeds.
+        Create a fully reproducible environment by setting all seeds and deterministic flags.
         
         Args:
             seed: The seed value to use
@@ -257,12 +272,12 @@ class SeedTracker:
         # Set all seeds
         seed_info = self.set_seeds(seed)
         
-        # Additional PyTorch settings for reproducibility
+        # Set deterministic cuDNN flags for reproducibility
         if torch.cuda.is_available():
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
         
-        # Set PyTorch to deterministic mode
+        # Turn on deterministic algorithms with warn_only=True
         torch.use_deterministic_algorithms(True, warn_only=True)
         
         seed_info["reproducibility_settings"] = {
