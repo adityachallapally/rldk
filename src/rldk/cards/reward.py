@@ -7,8 +7,93 @@ from typing import Dict, Any, List, Optional
 import pandas as pd
 import numpy as np
 from datetime import datetime
+import logging
 
 from ..io.event_schema import Event
+
+# Set up logging
+logger = logging.getLogger(__name__)
+
+
+def _find_reward_column(df: "pd.DataFrame") -> Optional[str]:
+    """Find reward column with flexible naming conventions."""
+    # Common reward column names to try in order of preference
+    reward_candidates = [
+        "reward_mean",
+        "reward",
+        "rewards",
+        "reward_value",
+        "mean_reward",
+        "avg_reward",
+        "reward_avg",
+        "total_reward",
+        "cumulative_reward",
+    ]
+    
+    for candidate in reward_candidates:
+        if candidate in df.columns:
+            logger.debug(f"Found reward column: {candidate}")
+            return candidate
+    
+    # If no exact match, look for columns containing "reward"
+    reward_cols = [col for col in df.columns if "reward" in col.lower()]
+    if reward_cols:
+        logger.debug(f"Found reward column by pattern: {reward_cols[0]}")
+        return reward_cols[0]  # Return first match
+    
+    logger.warning(f"No reward column found. Available columns: {list(df.columns)}")
+    return None
+
+
+def _find_kl_column(df: "pd.DataFrame") -> Optional[str]:
+    """Find KL divergence column with flexible naming conventions."""
+    kl_candidates = [
+        "kl_mean",
+        "kl_divergence",
+        "kl",
+        "kl_div",
+        "kl_mean_value",
+        "kl_avg",
+    ]
+    
+    for candidate in kl_candidates:
+        if candidate in df.columns:
+            logger.debug(f"Found KL column: {candidate}")
+            return candidate
+    
+    # If no exact match, look for columns containing "kl"
+    kl_cols = [col for col in df.columns if "kl" in col.lower()]
+    if kl_cols:
+        logger.debug(f"Found KL column by pattern: {kl_cols[0]}")
+        return kl_cols[0]
+    
+    logger.debug("No KL column found")
+    return None
+
+
+def _find_reward_std_column(df: "pd.DataFrame") -> Optional[str]:
+    """Find reward standard deviation column with flexible naming conventions."""
+    std_candidates = [
+        "reward_std",
+        "reward_stddev",
+        "reward_standard_deviation",
+        "reward_variance",
+        "reward_var",
+    ]
+    
+    for candidate in std_candidates:
+        if candidate in df.columns:
+            logger.debug(f"Found reward std column: {candidate}")
+            return candidate
+    
+    # If no exact match, look for columns containing "reward" and "std"
+    std_cols = [col for col in df.columns if "reward" in col.lower() and "std" in col.lower()]
+    if std_cols:
+        logger.debug(f"Found reward std column by pattern: {std_cols[0]}")
+        return std_cols[0]
+    
+    logger.debug("No reward std column found")
+    return None
 
 
 def generate_reward_card(
@@ -37,6 +122,21 @@ def generate_reward_card(
 
     # Analyze reward health
     reward_analysis = _analyze_reward_health(events)
+    
+    # Check if we have any reward data to work with
+    if not reward_analysis:
+        logger.warning(f"No reward data found for run {run_id}. Analysis will be limited.")
+        # Create a minimal analysis with default values
+        reward_analysis = {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "trend": 0.0,
+            "correlation": 0.0,
+            "mae": 0.0,
+            "l2_distance": 0.0,
+        }
 
     # Detect drift patterns
     drift_detected = _detect_reward_drift(events)
@@ -119,28 +219,33 @@ def _analyze_reward_health(events: List[Event]) -> Dict[str, float]:
     # Calculate basic statistics
     analysis = {}
 
-    if "reward_mean" in df.columns:
-        rewards = df["reward_mean"].dropna()
-        if len(rewards) > 0:
-            analysis["mean"] = float(rewards.mean())
-            analysis["std"] = float(rewards.std())
-            analysis["min"] = float(rewards.min())
-            analysis["max"] = float(rewards.max())
+    # Find reward column with flexible naming
+    reward_col = _find_reward_column(df)
+    if reward_col is None:
+        return analysis
 
-            # Calculate trend
-            if len(rewards) > 1:
-                x = np.arange(len(rewards))
-                slope = np.polyfit(x, rewards, 1)[0]
-                analysis["trend"] = float(slope)
+    rewards = df[reward_col].dropna()
+    if len(rewards) > 0:
+        analysis["mean"] = float(rewards.mean())
+        analysis["std"] = float(rewards.std())
+        analysis["min"] = float(rewards.min())
+        analysis["max"] = float(rewards.max())
+
+        # Calculate trend
+        if len(rewards) > 1:
+            x = np.arange(len(rewards))
+            slope = np.polyfit(x, rewards, 1)[0]
+            analysis["trend"] = float(slope)
 
     # Calculate correlation with other metrics
-    if "reward_mean" in df.columns and "kl_mean" in df.columns:
-        corr = df["reward_mean"].corr(df["kl_mean"])
+    kl_col = _find_kl_column(df)
+    if reward_col and kl_col:
+        corr = df[reward_col].corr(df[kl_col])
         analysis["correlation"] = float(corr) if not pd.isna(corr) else 0.0
 
     # Calculate MAE and L2 distance (assuming some baseline)
-    if "reward_mean" in df.columns:
-        rewards = df["reward_mean"].dropna()
+    if reward_col:
+        rewards = df[reward_col].dropna()
         if len(rewards) > 0:
             # Use first value as baseline for comparison
             baseline = rewards.iloc[0]
@@ -162,10 +267,11 @@ def _detect_reward_drift(events: List[Event]) -> bool:
 
     df = events_to_dataframe(events)
 
-    if "reward_mean" not in df.columns:
+    reward_col = _find_reward_column(df)
+    if reward_col is None:
         return False
 
-    rewards = df["reward_mean"].dropna()
+    rewards = df[reward_col].dropna()
     if len(rewards) < 10:
         return False
 
@@ -196,11 +302,14 @@ def _calculate_calibration_score(events: List[Event]) -> float:
 
     df = events_to_dataframe(events)
 
-    if "reward_mean" not in df.columns or "reward_std" not in df.columns:
+    reward_col = _find_reward_column(df)
+    reward_std_col = _find_reward_std_column(df)
+    
+    if reward_col is None or reward_std_col is None:
         return 0.0
 
-    rewards = df["reward_mean"].dropna()
-    reward_stds = df["reward_std"].dropna()
+    rewards = df[reward_col].dropna()
+    reward_stds = df[reward_std_col].dropna()
 
     if len(rewards) == 0 or len(reward_stds) == 0:
         return 0.0
@@ -236,10 +345,11 @@ def _detect_reward_saturation(events: List[Event]) -> bool:
 
     df = events_to_dataframe(events)
 
-    if "reward_mean" not in df.columns:
+    reward_col = _find_reward_column(df)
+    if reward_col is None:
         return False
 
-    rewards = df["reward_mean"].dropna()
+    rewards = df[reward_col].dropna()
     if len(rewards) < 10:
         return False
 
@@ -266,9 +376,12 @@ def _detect_shortcut_signals(events: List[Event]) -> List[str]:
     df = events_to_dataframe(events)
 
     # Check for reward hacking patterns
-    if "reward_mean" in df.columns and "kl_mean" in df.columns:
-        rewards = df["reward_mean"].dropna()
-        kl_divs = df["kl_mean"].dropna()
+    reward_col = _find_reward_column(df)
+    kl_col = _find_kl_column(df)
+    
+    if reward_col and kl_col:
+        rewards = df[reward_col].dropna()
+        kl_divs = df[kl_col].dropna()
 
         if len(rewards) > 0 and len(kl_divs) > 0:
             # Check for negative correlation (reward up, KL down)
@@ -305,10 +418,11 @@ def _estimate_label_noise(events: List[Event]) -> float:
 
     df = events_to_dataframe(events)
 
-    if "reward_std" not in df.columns:
+    reward_std_col = _find_reward_std_column(df)
+    if reward_std_col is None:
         return 0.0
 
-    reward_stds = df["reward_std"].dropna()
+    reward_stds = df[reward_std_col].dropna()
     if len(reward_stds) == 0:
         return 0.0
 
@@ -331,14 +445,15 @@ def _perform_slice_analysis(events: List[Event]) -> Dict[str, Dict[str, Any]]:
 
     df = events_to_dataframe(events)
 
-    if "reward_mean" not in df.columns:
+    reward_col = _find_reward_column(df)
+    if reward_col is None:
         return slice_analysis
 
     # Analyze different phases
     if "phase" in df.columns:
         for phase in df["phase"].unique():
             if pd.notna(phase):
-                phase_data = df[df["phase"] == phase]["reward_mean"].dropna()
+                phase_data = df[df["phase"] == phase][reward_col].dropna()
                 if len(phase_data) > 0:
                     slice_analysis[phase] = {
                         "delta_mean": float(phase_data.mean()),
@@ -347,8 +462,8 @@ def _perform_slice_analysis(events: List[Event]) -> Dict[str, Dict[str, Any]]:
 
     # Analyze by step ranges
     if len(df) > 20:
-        early_data = df.head(10)["reward_mean"].dropna()
-        late_data = df.tail(10)["reward_mean"].dropna()
+        early_data = df.head(10)[reward_col].dropna()
+        late_data = df.tail(10)[reward_col].dropna()
 
         if len(early_data) > 0 and len(late_data) > 0:
             slice_analysis["early_vs_late"] = {
@@ -358,7 +473,7 @@ def _perform_slice_analysis(events: List[Event]) -> Dict[str, Dict[str, Any]]:
 
     # Add some default slices if none exist
     if not slice_analysis:
-        rewards = df["reward_mean"].dropna()
+        rewards = df[reward_col].dropna()
         if len(rewards) > 0:
             slice_analysis["overall"] = {
                 "delta_mean": float(rewards.mean()),
@@ -378,6 +493,13 @@ def _generate_reward_recommendations(
 ) -> List[str]:
     """Generate recommendations based on reward analysis."""
     recommendations = []
+
+    # Check if we have meaningful reward data
+    if reward_analysis.get("mean", 0) == 0.0 and reward_analysis.get("std", 0) == 0.0:
+        recommendations.append("No reward data found - check data collection and column naming")
+        recommendations.append("Ensure reward metrics are being logged with standard column names")
+        recommendations.append("Consider using 'reward_mean', 'reward', or 'rewards' as column names")
+        return recommendations
 
     # Calibration recommendations
     if calibration_score < 0.7:
@@ -417,6 +539,11 @@ def _evaluate_reward_health(
     reward_analysis: Dict[str, float], drift_detected: bool, calibration_score: float
 ) -> bool:
     """Evaluate overall reward health."""
+    # Check if we have meaningful reward data
+    if reward_analysis.get("mean", 0) == 0.0 and reward_analysis.get("std", 0) == 0.0:
+        logger.warning("Cannot evaluate reward health - no reward data available")
+        return False
+
     # Consider healthy if:
     # - No significant drift
     # - Good calibration score
