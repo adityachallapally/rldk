@@ -6,9 +6,13 @@ import random
 import os
 import hashlib
 import json
-from typing import Dict, Any, Optional, List
+import logging
+from typing import Dict, Any, Optional
 import numpy as np
 import torch
+
+# Set up logging for reproducibility debugging
+logger = logging.getLogger(__name__)
 
 
 class SeedTracker:
@@ -81,6 +85,8 @@ class SeedTracker:
         Returns:
             Dictionary containing seed setting information
         """
+        logger.info(f"Setting seeds to {seed} (python={track_python}, numpy={track_numpy}, torch={track_torch}, cuda={track_cuda})")
+        
         seed_info = {
             "timestamp": self._get_timestamp(),
             "set_seed": seed,
@@ -89,18 +95,26 @@ class SeedTracker:
         
         if track_python:
             seed_info["seeds"]["python"] = self._set_python_seed(seed)
+            logger.debug(f"Python seed set to {seed}")
         
         if track_numpy:
             seed_info["seeds"]["numpy"] = self._set_numpy_seed(seed)
+            logger.debug(f"NumPy seed set to {seed}")
         
         if track_torch:
             seed_info["seeds"]["torch"] = self._set_torch_seed(seed)
+            logger.debug(f"PyTorch seed set to {seed}")
         
         if track_cuda:
             seed_info["seeds"]["cuda"] = self._set_cuda_seed(seed)
+            if seed_info["seeds"]["cuda"].get("available", True):
+                logger.debug(f"CUDA seed set to {seed}")
+            else:
+                logger.debug("CUDA not available, skipping CUDA seed setting")
         
         # Compute seed fingerprint
         seed_info["seed_checksum"] = self._compute_seed_checksum(seed_info["seeds"])
+        logger.debug(f"Seed checksum computed: {seed_info['seed_checksum']}")
         
         self.seed_info = seed_info
         return seed_info
@@ -183,37 +197,95 @@ class SeedTracker:
     
     def save_seed_state(self, output_path: str) -> str:
         """Save current seed state to file."""
-        seed_state = {
-            "timestamp": self._get_timestamp(),
-            "seed_info": self.seed_info,
-            "python_state": random.getstate(),
-            "numpy_state": np.random.get_state(),
-            "torch_state": torch.get_rng_state().tolist(),
-            "cuda_state": torch.cuda.get_rng_state().tolist() if torch.cuda.is_available() else None
-        }
-        
-        with open(output_path, 'w') as f:
-            json.dump(seed_state, f, indent=2, default=str)
-        
-        return output_path
+        try:
+            logger.info(f"Saving seed state to {output_path}")
+            
+            # Get numpy state and convert to JSON-serializable format
+            np_state = np.random.get_state()
+            np_state_serializable = (np_state[0], np_state[1].tolist(), np_state[2], np_state[3], np_state[4])
+            
+            seed_state = {
+                "timestamp": self._get_timestamp(),
+                "seed_info": self.seed_info,
+                "python_state": random.getstate(),
+                "numpy_state": np_state_serializable,
+                "torch_state": torch.get_rng_state().tolist(),
+                "cuda_state": torch.cuda.get_rng_state().tolist() if torch.cuda.is_available() else None
+            }
+            
+            with open(output_path, 'w') as f:
+                json.dump(seed_state, f, indent=2, default=str)
+            
+            logger.debug(f"Seed state saved successfully to {output_path}")
+            return output_path
+        except Exception as e:
+            logger.error(f"Failed to save seed state to {output_path}: {str(e)}")
+            raise RuntimeError(f"Failed to save seed state to {output_path}: {str(e)}")
     
     def load_seed_state(self, input_path: str) -> Dict[str, Any]:
         """Load seed state from file and restore it."""
-        with open(input_path, 'r') as f:
-            seed_state = json.load(f)
-        
-        # Restore states
-        random.setstate(tuple(seed_state["python_state"]))
-        np.random.set_state(tuple(seed_state["numpy_state"]))
-        # Fix: Use uint8 dtype for torch RNG state
-        torch.set_rng_state(torch.tensor(seed_state["torch_state"], dtype=torch.uint8))
-        
-        if seed_state["cuda_state"] is not None and torch.cuda.is_available():
-            # Fix: Use uint8 dtype for CUDA RNG state
-            torch.cuda.set_rng_state(torch.tensor(seed_state["cuda_state"], dtype=torch.uint8))
-        
-        self.seed_info = seed_state["seed_info"]
-        return seed_state
+        try:
+            logger.info(f"Loading seed state from {input_path}")
+            
+            with open(input_path, 'r') as f:
+                seed_state = json.load(f)
+            
+            # Validate required fields
+            required_fields = ["python_state", "numpy_state", "torch_state", "seed_info"]
+            for field in required_fields:
+                if field not in seed_state:
+                    raise ValueError(f"Missing required field '{field}' in seed state file")
+            
+            # Restore Python state - convert list back to proper tuple structure
+            python_state = seed_state["python_state"]
+            if isinstance(python_state, list) and len(python_state) >= 3:
+                # Convert back to proper Python random state format
+                python_state = (python_state[0], tuple(python_state[1]), python_state[2])
+            elif not isinstance(python_state, tuple):
+                raise ValueError("Invalid Python state format")
+            random.setstate(python_state)
+            logger.debug("Python random state restored")
+            
+            # Restore numpy state - need to handle the tuple structure properly
+            np_state = seed_state["numpy_state"]
+            if isinstance(np_state, list) and len(np_state) >= 5:
+                # Convert back to proper numpy state format
+                np_state = (np_state[0], np.array(np_state[1], dtype=np.uint32), np_state[2], np_state[3], np_state[4])
+            elif not isinstance(np_state, tuple):
+                raise ValueError("Invalid numpy state format")
+            np.random.set_state(np_state)
+            logger.debug("NumPy random state restored")
+            
+            # Restore torch RNG state with uint8 dtype
+            torch_state = seed_state["torch_state"]
+            if not isinstance(torch_state, list):
+                raise ValueError("Invalid torch state format")
+            torch.set_rng_state(torch.tensor(torch_state, dtype=torch.uint8))
+            logger.debug("PyTorch random state restored")
+            
+            # Restore CUDA RNG state with uint8 dtype if available
+            if seed_state.get("cuda_state") is not None and torch.cuda.is_available():
+                cuda_state = seed_state["cuda_state"]
+                if not isinstance(cuda_state, list):
+                    raise ValueError("Invalid CUDA state format")
+                torch.cuda.set_rng_state(torch.tensor(cuda_state, dtype=torch.uint8))
+                logger.debug("CUDA random state restored")
+            else:
+                logger.debug("CUDA state not available or not present, skipping CUDA restoration")
+            
+            self.seed_info = seed_state["seed_info"]
+            logger.info(f"Seed state loaded successfully from {input_path}")
+            return seed_state
+            
+        except FileNotFoundError:
+            logger.error(f"Seed state file not found: {input_path}")
+            raise FileNotFoundError(f"Seed state file not found: {input_path}")
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in seed state file: {str(e)}")
+            raise ValueError(f"Invalid JSON in seed state file: {str(e)}")
+        except Exception as e:
+            logger.error(f"Failed to load seed state from {input_path}: {str(e)}")
+            raise RuntimeError(f"Failed to load seed state from {input_path}: {str(e)}")
     
     def _compute_seed_checksum(self, seeds: Dict[str, Any]) -> str:
         """Compute checksum of seed information."""
@@ -243,7 +315,7 @@ class SeedTracker:
     
     def create_reproducible_environment(self, seed: int) -> Dict[str, Any]:
         """
-        Create a fully reproducible environment by setting all seeds.
+        Create a fully reproducible environment by setting all seeds and deterministic flags.
         
         Args:
             seed: The seed value to use
@@ -257,12 +329,12 @@ class SeedTracker:
         # Set all seeds
         seed_info = self.set_seeds(seed)
         
-        # Additional PyTorch settings for reproducibility
+        # Set deterministic cuDNN flags for reproducibility
         if torch.cuda.is_available():
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
         
-        # Set PyTorch to deterministic mode
+        # Turn on deterministic algorithms with warn_only=True
         torch.use_deterministic_algorithms(True, warn_only=True)
         
         seed_info["reproducibility_settings"] = {

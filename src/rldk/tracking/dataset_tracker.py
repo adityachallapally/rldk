@@ -6,7 +6,7 @@ import hashlib
 import json
 import pickle
 from pathlib import Path
-from typing import Dict, Any, Optional, Union, List
+from typing import Dict, Any, Optional, Union
 import numpy as np
 import pandas as pd
 from datasets import Dataset, DatasetDict
@@ -156,21 +156,27 @@ class DatasetTracker:
         return hash_obj.hexdigest()
     
     def _compute_directory_checksum(self, dir_path: Path) -> str:
-        """Compute checksum of a directory by hashing all files."""
+        """Compute checksum of a directory by hashing sorted list of relative paths plus file contents."""
         hash_obj = hashlib.new(self.algorithm)
         
-        # Sort files for consistent ordering
-        files = sorted(dir_path.rglob("*"))
-        for file_path in files:
+        # Get all files and sort by relative path for deterministic ordering
+        all_files = []
+        for file_path in dir_path.rglob("*"):
             if file_path.is_file():
-                # Include relative path in hash
                 rel_path = file_path.relative_to(dir_path)
-                hash_obj.update(str(rel_path).encode())
-                
-                # Include file content
-                with open(file_path, 'rb') as f:
-                    for chunk in iter(lambda: f.read(4096), b""):
-                        hash_obj.update(chunk)
+                all_files.append((str(rel_path), file_path))
+        
+        # Sort by relative path for consistent ordering
+        all_files.sort(key=lambda x: x[0])
+        
+        for rel_path_str, file_path in all_files:
+            # Include relative path in hash
+            hash_obj.update(rel_path_str.encode())
+            
+            # Include file content
+            with open(file_path, 'rb') as f:
+                for chunk in iter(lambda: f.read(4096), b""):
+                    hash_obj.update(chunk)
         
         return hash_obj.hexdigest()
     
@@ -184,12 +190,20 @@ class DatasetTracker:
                 hash_obj.update(split_name.encode())
                 hash_obj.update(self._compute_dataset_checksum(split_dataset).encode())
         else:
-            # Sample a subset for large datasets using deterministic sampling
+            # Sample a subset for large datasets using deterministic sampling by stride
             sample_size = min(1000, len(dataset))
             if len(dataset) > sample_size:
-                # Use deterministic sampling: take every nth element
-                step = len(dataset) // sample_size
-                sample_indices = list(range(0, len(dataset), step))[:sample_size]
+                # Use deterministic sampling: take every nth element by stride
+                # Ensure we get exactly sample_size items
+                step = max(1, len(dataset) // sample_size)
+                sample_indices = []
+                for i in range(0, len(dataset), step):
+                    if len(sample_indices) >= sample_size:
+                        break
+                    sample_indices.append(i)
+                # If we still need more samples, fill from the end
+                while len(sample_indices) < sample_size and len(sample_indices) < len(dataset):
+                    sample_indices.append(len(dataset) - 1 - len(sample_indices))
             else:
                 # Use all indices if dataset is small
                 sample_indices = list(range(len(dataset)))
@@ -206,12 +220,20 @@ class DatasetTracker:
         """Compute checksum of a PyTorch dataset."""
         hash_obj = hashlib.new(self.algorithm)
         
-        # Sample a subset for large datasets using deterministic sampling
+        # Sample a subset for large datasets using deterministic sampling by stride
         sample_size = min(100, len(dataset))
         if len(dataset) > sample_size:
-            # Use deterministic sampling: take every nth element
-            step = len(dataset) // sample_size
-            sample_indices = list(range(0, len(dataset), step))[:sample_size]
+            # Use deterministic sampling: take every nth element by stride
+            # Ensure we get exactly sample_size items
+            step = max(1, len(dataset) // sample_size)
+            sample_indices = []
+            for i in range(0, len(dataset), step):
+                if len(sample_indices) >= sample_size:
+                    break
+                sample_indices.append(i)
+            # If we still need more samples, fill from the end
+            while len(sample_indices) < sample_size and len(sample_indices) < len(dataset):
+                sample_indices.append(len(dataset) - 1 - len(sample_indices))
         else:
             # Use all indices if dataset is small
             sample_indices = list(range(len(dataset)))
@@ -234,13 +256,21 @@ class DatasetTracker:
     
     def _compute_numpy_checksum(self, dataset: np.ndarray) -> str:
         """Compute checksum of a NumPy array."""
-        # For large arrays, sample a subset deterministically
+        # For large arrays, sample a subset deterministically by stride
         if dataset.size > 1000000:  # 1M elements
             flat = dataset.flatten()
             sample_size = min(100000, len(flat))
-            # Use deterministic sampling: take every nth element
-            step = len(flat) // sample_size
-            sample_indices = list(range(0, len(flat), step))[:sample_size]
+            # Use deterministic sampling: take every nth element by stride
+            # Ensure we get exactly sample_size items
+            step = max(1, len(flat) // sample_size)
+            sample_indices = []
+            for i in range(0, len(flat), step):
+                if len(sample_indices) >= sample_size:
+                    break
+                sample_indices.append(i)
+            # If we still need more samples, fill from the end
+            while len(sample_indices) < sample_size and len(sample_indices) < len(flat):
+                sample_indices.append(len(flat) - 1 - len(sample_indices))
             sample = flat[sample_indices]
         else:
             sample = dataset.flatten()
@@ -249,8 +279,34 @@ class DatasetTracker:
     
     def _compute_pandas_checksum(self, dataset: pd.DataFrame) -> str:
         """Compute checksum of a Pandas DataFrame."""
-        # Convert to string representation and hash
-        df_str = dataset.to_string()
+        # For large DataFrames, sample a subset deterministically by stride
+        if len(dataset) > 10000:
+            sample_size = min(1000, len(dataset))
+            # Use deterministic sampling: take every nth element by stride
+            # Ensure we get exactly sample_size items
+            step = max(1, len(dataset) // sample_size)
+            sample_indices = []
+            for i in range(0, len(dataset), step):
+                if len(sample_indices) >= sample_size:
+                    break
+                sample_indices.append(i)
+            # If we still need more samples, fill from the end
+            while len(sample_indices) < sample_size and len(sample_indices) < len(dataset):
+                sample_indices.append(len(dataset) - 1 - len(sample_indices))
+            sample_df = dataset.iloc[sample_indices]
+        else:
+            sample_df = dataset
+        
+        # Use deterministic JSON serialization instead of to_string()
+        # This ensures consistent representation across pandas versions
+        try:
+            # Convert to dict with sorted columns for deterministic ordering
+            df_dict = sample_df.to_dict('records')
+            df_str = json.dumps(df_dict, sort_keys=True, default=str)
+        except Exception:
+            # Fallback to to_string() if JSON serialization fails
+            df_str = sample_df.to_string()
+        
         return hashlib.sha256(df_str.encode()).hexdigest()
     
     def _get_file_size(self, path: Path) -> int:
