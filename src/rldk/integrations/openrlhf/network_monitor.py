@@ -79,8 +79,12 @@ class NetworkMetrics:
 class NetworkDiagnostics:
     """Comprehensive network diagnostics for distributed training environments."""
     
-    def __init__(self):
-        """Initialize network diagnostics."""
+    def __init__(self, sampling_frequency: int = 1):
+        """Initialize network diagnostics.
+        
+        Args:
+            sampling_frequency: Only run diagnostics every N invocations (default: 1)
+        """
         self.test_hosts = [
             '8.8.8.8',      # Google DNS
             '1.1.1.1',      # Cloudflare DNS
@@ -98,8 +102,25 @@ class NetworkDiagnostics:
         
         self.port_tests = [80, 443, 22, 53]  # HTTP, HTTPS, SSH, DNS
         
+        # Thread safety and sampling control
+        self._lock = threading.RLock()
+        self.sampling_frequency = sampling_frequency
+        self._invocation_count = 0
+        
     def run_comprehensive_diagnostics(self) -> Dict[str, Any]:
         """Run comprehensive network diagnostics."""
+        with self._lock:
+            self._invocation_count += 1
+            
+            # Only run diagnostics if sampling frequency allows
+            if self._invocation_count % self.sampling_frequency != 0:
+                return {
+                    'timestamp': time.time(),
+                    'skipped': True,
+                    'invocation_count': self._invocation_count,
+                    'sampling_frequency': self.sampling_frequency,
+                }
+        
         diagnostics = {
             'timestamp': time.time(),
             'ping_tests': {},
@@ -582,17 +603,20 @@ class NetworkDiagnostics:
 class NetworkInterfaceMonitor:
     """Monitor network interface statistics."""
     
-    def __init__(self, interface_name: Optional[str] = None):
+    def __init__(self, interface_name: Optional[str] = None, sampling_frequency: int = 1):
         """Initialize network interface monitor.
         
         Args:
             interface_name: Specific interface to monitor (e.g., 'eth0', 'en0')
                           If None, will auto-detect the primary interface
+            sampling_frequency: Only collect metrics every N invocations (default: 1)
         """
         self.interface_name = interface_name or self._detect_primary_interface()
         self._lock = threading.RLock()  # Reentrant lock for thread safety
         self._last_stats = None
         self._last_time = None
+        self.sampling_frequency = sampling_frequency
+        self._invocation_count = 0
         
     def _detect_primary_interface(self) -> str:
         """Detect the primary network interface."""
@@ -621,6 +645,12 @@ class NetworkInterfaceMonitor:
     def get_interface_stats(self) -> Dict[str, float]:
         """Get current network interface statistics."""
         with self._lock:  # Thread-safe access to shared state
+            self._invocation_count += 1
+            
+            # Only collect metrics if sampling frequency allows
+            if self._invocation_count % self.sampling_frequency != 0:
+                return self._empty_stats()
+            
             try:
                 # Get current network I/O counters
                 net_io = psutil.net_io_counters(pernic=True)
@@ -700,11 +730,12 @@ class NetworkInterfaceMonitor:
 class NetworkLatencyMonitor:
     """Monitor network latency using various methods."""
     
-    def __init__(self, target_hosts: Optional[List[str]] = None):
+    def __init__(self, target_hosts: Optional[List[str]] = None, sampling_frequency: int = 1):
         """Initialize latency monitor.
         
         Args:
             target_hosts: List of hosts to ping for latency measurement
+            sampling_frequency: Only collect metrics every N invocations (default: 1)
         """
         self.target_hosts = target_hosts or [
             '8.8.8.8',  # Google DNS
@@ -717,32 +748,42 @@ class NetworkLatencyMonitor:
             host: deque(maxlen=100) for host in self.target_hosts
         }
         self.max_history_size = 100
+        self.sampling_frequency = sampling_frequency
+        self._invocation_count = 0
     
     def measure_latency(self) -> Dict[str, float]:
         """Measure latency to multiple hosts."""
-        results = {}
-        
-        with ThreadPoolExecutor(max_workers=len(self.target_hosts)) as executor:
-            future_to_host = {
-                executor.submit(self._ping_host, host): host 
-                for host in self.target_hosts
-            }
+        with self._lock:
+            self._invocation_count += 1
             
-            for future in as_completed(future_to_host, timeout=5.0):
-                host = future_to_host[future]
-                try:
-                    latency = future.result()
-                    results[host] = latency
-                    
-                    # Thread-safe update of history
-                    with self._lock:
-                        self.latency_history[host].append(latency)
+            # Only collect metrics if sampling frequency allows
+            if self._invocation_count % self.sampling_frequency != 0:
+                # Return cached results or empty results
+                return {host: 0.0 for host in self.target_hosts}
+            
+            # Keep lock during expensive operations to prevent race conditions
+            results = {}
+            
+            with ThreadPoolExecutor(max_workers=len(self.target_hosts)) as executor:
+                future_to_host = {
+                    executor.submit(self._ping_host, host): host 
+                    for host in self.target_hosts
+                }
+                
+                for future in as_completed(future_to_host, timeout=5.0):
+                    host = future_to_host[future]
+                    try:
+                        latency = future.result()
+                        results[host] = latency
                         
-                except Exception as e:
-                    print(f"Error measuring latency to {host}: {e}")
-                    results[host] = float('inf')
-        
-        return results
+                        # Thread-safe update of history
+                        self.latency_history[host].append(latency)
+                            
+                    except Exception as e:
+                        print(f"Error measuring latency to {host}: {e}")
+                        results[host] = float('inf')
+            
+            return results
     
     def _ping_host(self, host: str) -> float:
         """Ping a specific host and return latency in milliseconds."""
@@ -804,21 +845,29 @@ class NetworkLatencyMonitor:
 class NetworkBandwidthMonitor:
     """Monitor network bandwidth using various methods."""
     
-    def __init__(self):
-        """Initialize bandwidth monitor."""
+    def __init__(self, sampling_frequency: int = 1):
+        """Initialize bandwidth monitor.
+        
+        Args:
+            sampling_frequency: Only collect metrics every N invocations (default: 1)
+        """
         self._lock = threading.RLock()  # Thread-safe access to shared state
         self.bandwidth_history: deque = deque(maxlen=100)
         self.max_history_size = 100
         self._last_measurement = 0.0
         self.measurement_interval = 10.0  # seconds
+        self.sampling_frequency = sampling_frequency
+        self._invocation_count = 0
     
     def measure_bandwidth(self) -> float:
         """Measure network bandwidth in Mbps."""
         with self._lock:
+            self._invocation_count += 1
             current_time = time.time()
             
-            # Only measure if enough time has passed
-            if current_time - self._last_measurement < self.measurement_interval:
+            # Only measure if enough time has passed and sampling frequency allows
+            if (current_time - self._last_measurement < self.measurement_interval or 
+                self._invocation_count % self.sampling_frequency != 0):
                 return self.bandwidth_history[-1] if self.bandwidth_history else 0.0
             
             try:
@@ -921,7 +970,7 @@ class NetworkBandwidthMonitor:
 class DistributedNetworkMonitor:
     """Monitor network performance specifically for distributed training."""
     
-    def __init__(self, world_size: int = 1, rank: int = 0, enable_distributed_measurements: bool = False):
+    def __init__(self, world_size: int = 1, rank: int = 0, enable_distributed_measurements: bool = False, sampling_frequency: int = 1):
         """Initialize distributed network monitor.
         
         Args:
@@ -930,15 +979,18 @@ class DistributedNetworkMonitor:
             enable_distributed_measurements: Whether to perform active distributed measurements
                                           (can interfere with actual training if True)
                                           Defaults to False for safety.
+            sampling_frequency: Only collect metrics every N invocations (default: 1)
         """
         self.world_size = world_size
         self.rank = rank
         self.enable_distributed_measurements = enable_distributed_measurements
+        self.sampling_frequency = sampling_frequency
+        self._invocation_count = 0
         
-        # Initialize monitors
-        self.interface_monitor = NetworkInterfaceMonitor()
-        self.latency_monitor = NetworkLatencyMonitor()
-        self.bandwidth_monitor = NetworkBandwidthMonitor()
+        # Initialize monitors without sampling frequency (parent controls sampling)
+        self.interface_monitor = NetworkInterfaceMonitor(sampling_frequency=1)
+        self.latency_monitor = NetworkLatencyMonitor(sampling_frequency=1)
+        self.bandwidth_monitor = NetworkBandwidthMonitor(sampling_frequency=1)
         
         # Thread safety for distributed metrics
         self._distributed_lock = threading.RLock()
@@ -955,63 +1007,75 @@ class DistributedNetworkMonitor:
     
     def measure_distributed_metrics(self) -> NetworkMetrics:
         """Measure comprehensive network metrics for distributed training."""
-        metrics = NetworkMetrics(
-            timestamp=time.time(),
-            world_size=self.world_size,
-            rank=self.rank
-        )
-        
-        # Basic network metrics
-        interface_stats = self.interface_monitor.get_interface_stats()
-        latency_results = self.latency_monitor.measure_latency()
-        bandwidth = self.bandwidth_monitor.measure_bandwidth()
-        
-        # Update metrics
-        metrics.bandwidth_mbps = bandwidth
-        metrics.latency_ms = self.latency_monitor.get_average_latency()
-        metrics.bandwidth_in_mbps = interface_stats['bytes_in_mbps']
-        metrics.bandwidth_out_mbps = interface_stats['bytes_out_mbps']
-        metrics.packets_in_per_sec = interface_stats['packets_in_per_sec']
-        metrics.packets_out_per_sec = interface_stats['packets_out_per_sec']
-        metrics.bytes_in_per_sec = interface_stats['bytes_in_per_sec']
-        metrics.bytes_out_per_sec = interface_stats['bytes_out_per_sec']
-        
-        # Connection metrics
-        try:
-            connections = psutil.net_connections()
-            metrics.tcp_connections = len([c for c in connections if c.status == 'ESTABLISHED' and c.type == socket.SOCK_STREAM])
-            metrics.udp_connections = len([c for c in connections if c.type == socket.SOCK_DGRAM])
-            metrics.active_connections = len([c for c in connections if c.status == 'ESTABLISHED'])
-        except Exception:
-            pass
-        
-        # Error metrics
-        metrics.network_errors = int(interface_stats['errin'] + interface_stats['errout'])
-        metrics.dropped_packets = int(interface_stats['dropin'] + interface_stats['dropout'])
-        
-        # Calculate packet loss percentage
-        total_packets = interface_stats['total_packets_recv'] + interface_stats['total_packets_sent']
-        if total_packets > 0:
-            metrics.packet_loss_percent = (metrics.dropped_packets / total_packets) * 100
-        
-        # Distributed training specific metrics
-        if DIST_AVAILABLE and dist.is_initialized() and self.enable_distributed_measurements:
-            metrics.allreduce_bandwidth = self._measure_allreduce_bandwidth()
-            metrics.broadcast_bandwidth = self._measure_broadcast_bandwidth()
-            metrics.gather_bandwidth = self._measure_gather_bandwidth()
-            metrics.scatter_bandwidth = self._measure_scatter_bandwidth()
-        else:
-            # Set to 0 if distributed measurements are disabled or not available
-            metrics.allreduce_bandwidth = 0.0
-            metrics.broadcast_bandwidth = 0.0
-            metrics.gather_bandwidth = 0.0
-            metrics.scatter_bandwidth = 0.0
-        
-        # Thread-safe update of history
         with self._distributed_lock:
+            self._invocation_count += 1
+            
+            # Only collect metrics if sampling frequency allows
+            if self._invocation_count % self.sampling_frequency != 0:
+                # Return cached metrics or empty metrics
+                return NetworkMetrics(
+                    timestamp=time.time(),
+                    world_size=self.world_size,
+                    rank=self.rank
+                )
+            
+            # Keep lock during expensive operations to prevent race conditions
+            metrics = NetworkMetrics(
+                timestamp=time.time(),
+                world_size=self.world_size,
+                rank=self.rank
+            )
+            
+            # Basic network metrics
+            interface_stats = self.interface_monitor.get_interface_stats()
+            latency_results = self.latency_monitor.measure_latency()
+            bandwidth = self.bandwidth_monitor.measure_bandwidth()
+            
+            # Update metrics
+            metrics.bandwidth_mbps = bandwidth
+            metrics.latency_ms = self.latency_monitor.get_average_latency()
+            metrics.bandwidth_in_mbps = interface_stats['bytes_in_mbps']
+            metrics.bandwidth_out_mbps = interface_stats['bytes_out_mbps']
+            metrics.packets_in_per_sec = interface_stats['packets_in_per_sec']
+            metrics.packets_out_per_sec = interface_stats['packets_out_per_sec']
+            metrics.bytes_in_per_sec = interface_stats['bytes_in_per_sec']
+            metrics.bytes_out_per_sec = interface_stats['bytes_out_per_sec']
+            
+            # Connection metrics
+            try:
+                connections = psutil.net_connections()
+                metrics.tcp_connections = len([c for c in connections if c.status == 'ESTABLISHED' and c.type == socket.SOCK_STREAM])
+                metrics.udp_connections = len([c for c in connections if c.type == socket.SOCK_DGRAM])
+                metrics.active_connections = len([c for c in connections if c.status == 'ESTABLISHED'])
+            except Exception:
+                pass
+            
+            # Error metrics
+            metrics.network_errors = int(interface_stats['errin'] + interface_stats['errout'])
+            metrics.dropped_packets = int(interface_stats['dropin'] + interface_stats['dropout'])
+            
+            # Calculate packet loss percentage
+            total_packets = interface_stats['total_packets_recv'] + interface_stats['total_packets_sent']
+            if total_packets > 0:
+                metrics.packet_loss_percent = (metrics.dropped_packets / total_packets) * 100
+            
+            # Distributed training specific metrics
+            if DIST_AVAILABLE and dist.is_initialized() and self.enable_distributed_measurements:
+                metrics.allreduce_bandwidth = self._measure_allreduce_bandwidth()
+                metrics.broadcast_bandwidth = self._measure_broadcast_bandwidth()
+                metrics.gather_bandwidth = self._measure_gather_bandwidth()
+                metrics.scatter_bandwidth = self._measure_scatter_bandwidth()
+            else:
+                # Set to 0 if distributed measurements are disabled or not available
+                metrics.allreduce_bandwidth = 0.0
+                metrics.broadcast_bandwidth = 0.0
+                metrics.gather_bandwidth = 0.0
+                metrics.scatter_bandwidth = 0.0
+            
+            # Thread-safe update of history
             self.performance_history.append(metrics)
-        
-        return metrics
+            
+            return metrics
     
     def _measure_allreduce_bandwidth(self) -> float:
         """Measure bandwidth during allreduce operations."""
@@ -1217,7 +1281,7 @@ class DistributedNetworkMonitor:
 class RealNetworkMonitor:
     """Enhanced network monitor with real measurements for OpenRLHF."""
     
-    def __init__(self, enable_distributed_monitoring: bool = True, enable_distributed_measurements: bool = False):
+    def __init__(self, enable_distributed_monitoring: bool = True, enable_distributed_measurements: bool = False, sampling_frequency: int = 1):
         """Initialize real network monitor.
         
         Args:
@@ -1225,17 +1289,20 @@ class RealNetworkMonitor:
             enable_distributed_measurements: Whether to perform active distributed measurements
                                           (can interfere with actual training if True)
                                           Defaults to False for safety.
+            sampling_frequency: Only collect metrics every N invocations (default: 1)
         """
         self.enable_distributed_monitoring = enable_distributed_monitoring
         self.enable_distributed_measurements = enable_distributed_measurements
+        self.sampling_frequency = sampling_frequency
+        self._invocation_count = 0
         
-        # Initialize monitors
-        self.interface_monitor = NetworkInterfaceMonitor()
-        self.latency_monitor = NetworkLatencyMonitor()
-        self.bandwidth_monitor = NetworkBandwidthMonitor()
+        # Initialize monitors without sampling frequency (parent controls sampling)
+        self.interface_monitor = NetworkInterfaceMonitor(sampling_frequency=1)
+        self.latency_monitor = NetworkLatencyMonitor(sampling_frequency=1)
+        self.bandwidth_monitor = NetworkBandwidthMonitor(sampling_frequency=1)
         
         # Initialize comprehensive diagnostics
-        self.network_diagnostics = NetworkDiagnostics()
+        self.network_diagnostics = NetworkDiagnostics(sampling_frequency=1)
         
         # Distributed monitor
         self.distributed_monitor = None
@@ -1245,7 +1312,8 @@ class RealNetworkMonitor:
                 rank = dist.get_rank() if dist.is_initialized() else 0
                 self.distributed_monitor = DistributedNetworkMonitor(
                     world_size, rank, 
-                    enable_distributed_measurements=self.enable_distributed_measurements
+                    enable_distributed_measurements=self.enable_distributed_measurements,
+                    sampling_frequency=sampling_frequency
                 )
             except Exception as e:
                 print(f"Failed to initialize distributed monitor: {e}")
@@ -1262,15 +1330,18 @@ class RealNetworkMonitor:
     def get_current_metrics(self) -> Dict[str, float]:
         """Get current network metrics."""
         with self._history_lock:
+            self._invocation_count += 1
             current_time = time.time()
             
-            # Only measure if enough time has passed
-            if current_time - self._last_measurement < self.measurement_interval:
+            # Only measure if enough time has passed and sampling frequency allows
+            if (current_time - self._last_measurement < self.measurement_interval or 
+                self._invocation_count % self.sampling_frequency != 0):
                 return {
                     'bandwidth': self.bandwidth_history[-1] if self.bandwidth_history else 0.0,
                     'latency': self.latency_history[-1] if self.latency_history else 0.0,
                 }
             
+            # Keep lock during expensive operations to prevent race conditions
             # Get comprehensive metrics
             if self.distributed_monitor:
                 metrics = self.distributed_monitor.measure_distributed_metrics()
