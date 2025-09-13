@@ -25,7 +25,7 @@ def polyfit(x, y, degree):
     """
     Linear regression implementation with validation.
     
-    Returns [slope, intercept] for degree=1 linear fitting.
+    Returns [intercept, slope] for degree=1 linear fitting.
     Validates input and handles edge cases for numerical stability.
     """
     if degree != 1 or len(x) != len(y) or len(x) < 2:
@@ -471,20 +471,15 @@ class GradientNormsAnalyzer:
         if len(self.total_grad_history) < 20:
             return
         
-        # Establish baseline if not done yet - FIXED: prevent infinite loop
+        # Establish baseline if not done yet - FIXED: remove redundant condition
         if not self.baseline_established:
-            if len(self.total_grad_history) >= 20:
-                self._establish_baseline()
-            else:
-                # Not enough data yet, skip adaptive detection
-                self.current_metrics.adaptive_explosion_risk = 0.0
-                return
+            self._establish_baseline()
         
         # Use only recent data for efficiency
         recent_norms = self._get_recent_values(self.total_grad_history, 10)
         
-        # Cache threshold calculations
-        if not hasattr(self, '_cached_threshold'):
+        # Cache threshold calculations - FIXED: handle None cache properly
+        if not hasattr(self, '_cached_threshold') or self._cached_threshold is None:
             baseline_mean = self.adaptive_thresholds.get('mean', 1.0)
             baseline_std = self.adaptive_thresholds.get('std', 0.5)
             baseline_p95 = self.adaptive_thresholds.get('p95', 5.0)
@@ -499,7 +494,7 @@ class GradientNormsAnalyzer:
         # Update thresholds less frequently for performance
         if len(self.total_grad_history) % 100 == 0:  # Reduced frequency
             self._update_adaptive_thresholds()
-            self._cached_threshold = None  # Invalidate cache
+            self._cached_threshold = None  # Invalidate cache - will be rebuilt on next call
     
     def _establish_baseline(self):
         """Establish baseline statistics for adaptive threshold detection."""
