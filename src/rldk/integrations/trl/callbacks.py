@@ -227,36 +227,37 @@ class RLDKCallback(TrainerCallback):
         self.current_metrics.epoch = state.epoch
     
     def on_step_end(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
-        """Called at the end of each training step."""
+        """Called at the end of each training step.
+        
+        NOTE: This method is called BEFORE on_log and should only collect resource snapshots.
+        Do not update metrics from logs here as on_log will be called after this with the
+        actual concrete values from the training step.
+        """
         # Calculate step timing
         step_time = time.time() - self.step_start_time
         self.current_metrics.step_time = step_time
         self.current_metrics.wall_time = time.time() - self.run_start_time
         
-        # Update learning rate
-        if hasattr(state, 'log_history') and state.log_history:
-            latest_log = state.log_history[-1]
-            self.current_metrics.learning_rate = latest_log.get('learning_rate', self.current_metrics.learning_rate)
-            self.current_metrics.loss = latest_log.get('train_loss', self.current_metrics.loss)
-            self.current_metrics.grad_norm = latest_log.get('grad_norm', self.current_metrics.grad_norm)
-        
-        # Monitor resources if enabled
+        # Monitor resources if enabled - this is safe to do here as it's just resource snapshots
         if self.enable_resource_monitoring:
             self._monitor_resources()
         
-        # Collect PPO-specific metrics if available
+        # Collect PPO-specific metrics if available - this is also safe as it's internal state
         self._collect_ppo_metrics(kwargs)
         
-        # Note: We don't store metrics here because on_log is called after on_step_end
-        # and contains the actual logged values. We'll store metrics in on_log instead.
-        
-        # Log detailed metrics at intervals
-        if state.global_step % self.log_interval == 0:
-            self._log_detailed_metrics()
+        # NOTE: We deliberately do NOT update metrics from state.log_history here because:
+        # 1. on_log fires after on_step_end and contains the concrete values
+        # 2. We want to ensure metrics are stored only after logs carry real values
+        # 3. The actual metric updates and history appending happens in on_log
     
     def on_log(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, logs: Dict[str, float], **kwargs):
-        """Called when logs are generated."""
-        # Update current metrics with log data
+        """Called when logs are generated.
+        
+        NOTE: This method is called AFTER on_step_end and contains concrete values from the
+        training step. This is where we update metrics from logs, append to history, write
+        JSONL if enabled, run alert checks, and perform detailed logging.
+        """
+        # Step 1: Update current_metrics from the logs (concrete values)
         if 'train_loss' in logs:
             self.current_metrics.loss = logs['train_loss']
         if 'learning_rate' in logs:
@@ -314,20 +315,24 @@ class RLDKCallback(TrainerCallback):
         if 'ppo/advantages/std' in logs:
             self.current_metrics.advantage_std = logs['ppo/advantages/std']
         
-        # Real-time analysis
+        # Step 2: Analyze logs and update derived metrics BEFORE storing
         self._analyze_logs(logs, state)
         
-        # Store metrics AFTER log values are applied
+        # Step 3: Append a copy of current_metrics to history (only after logs carry real values)
         self.metrics_history.append(RLDKMetrics(**self.current_metrics.to_dict()))
         
-        # Log JSONL event at specified intervals
+        # Step 4: Write JSONL if enabled
         if (self.enable_jsonl_logging and 
             self.jsonl_log_interval > 0 and 
             state.global_step % self.jsonl_log_interval == 0):
             self._log_jsonl_event(state, logs)
         
-        # Check for alerts AFTER metrics are stored
+        # Step 5: Run alert checks
         self._check_alerts()
+        
+        # Step 6: Log detailed metrics at intervals
+        if state.global_step % self.log_interval == 0:
+            self._log_detailed_metrics()
     
     def on_save(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
         """Called when a checkpoint is saved."""
