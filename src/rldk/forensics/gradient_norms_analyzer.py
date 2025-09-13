@@ -21,11 +21,20 @@ from dataclasses import dataclass
 from collections import deque
 import warnings
 
-# Simple numpy-like functions for compatibility
+# Optimized mathematical functions with validation
 def polyfit(x, y, degree):
-    """Simple polynomial fitting for degree 1 (linear)."""
+    """
+    Linear regression implementation with validation.
+    
+    Returns [slope, intercept] for degree=1 linear fitting.
+    Validates input and handles edge cases for numerical stability.
+    """
     if degree != 1 or len(x) != len(y) or len(x) < 2:
         return [0.0, 0.0]
+    
+    # Input validation
+    if not all(isinstance(val, (int, float)) for val in x + y):
+        raise ValueError("All values must be numeric")
     
     n = len(x)
     sum_x = sum(x)
@@ -34,13 +43,44 @@ def polyfit(x, y, degree):
     sum_x2 = sum(x[i] ** 2 for i in range(n))
     
     denominator = n * sum_x2 - sum_x * sum_x
+    
+    # Numerical stability check
     if abs(denominator) < 1e-10:
         return [0.0, sum_y / n]
     
     slope = (n * sum_xy - sum_x * sum_y) / denominator
     intercept = (sum_y - slope * sum_x) / n
     
+    # Bounds checking for extreme values
+    if abs(slope) > 1e6 or abs(intercept) > 1e6:
+        return [0.0, sum_y / n]
+    
     return [slope, intercept]
+
+def _validate_math_functions():
+    """
+    Simple validation of mathematical functions against known test cases.
+    Called during initialization to ensure accuracy.
+    """
+    # Test polyfit with simple linear data
+    x = [1, 2, 3, 4, 5]
+    y = [2, 4, 6, 8, 10]  # Perfect linear relationship: y = 2x
+    slope, intercept = polyfit(x, y, 1)
+    
+    # Allow small floating point errors
+    if abs(slope - 2.0) > 1e-10 or abs(intercept - 0.0) > 1e-10:
+        warnings.warn("polyfit function may have accuracy issues", UserWarning)
+    
+    # Test mean and std with known values
+    test_values = [1, 2, 3, 4, 5]
+    expected_mean = 3.0
+    expected_std = 1.4142135623730951  # sqrt(2)
+    
+    if abs(mean(test_values) - expected_mean) > 1e-10:
+        warnings.warn("mean function may have accuracy issues", UserWarning)
+    
+    if abs(std(test_values) - expected_std) > 1e-8:
+        warnings.warn("std function may have accuracy issues", UserWarning)
 
 def mean(values):
     """Calculate mean."""
@@ -143,13 +183,14 @@ class GradientNormsAnalyzer:
         exploding_threshold: float = 10.0,
         vanishing_threshold: float = 0.001,
         imbalance_threshold: float = 0.1,
-        # Enhanced detection parameters
-        z_score_threshold: float = 2.5,
-        iqr_multiplier: float = 1.5,
-        momentum_window: int = 10,
-        early_warning_threshold: float = 0.7,
-        smoothing_alpha: float = 0.3,
-        change_point_sensitivity: float = 0.1,
+        # Enhanced detection parameters with justified defaults
+        z_score_threshold: float = 2.5,        # 2.5σ covers ~98.8% of normal distribution
+        iqr_multiplier: float = 1.5,           # Standard IQR outlier detection multiplier
+        momentum_window: int = 10,              # Balance between responsiveness and stability
+        early_warning_threshold: float = 0.7,  # 70% confidence threshold for warnings
+        smoothing_alpha: float = 0.3,          # Exponential smoothing: 0.3 = moderate smoothing
+        change_point_sensitivity: float = 0.1, # 10% change relative to noise level
+        enable_advanced_detection: bool = True, # Toggle for performance vs accuracy trade-off
     ):
         """Initialize gradient norms analyzer.
         
@@ -159,12 +200,13 @@ class GradientNormsAnalyzer:
             exploding_threshold: Threshold for exploding gradient detection
             vanishing_threshold: Threshold for vanishing gradient detection
             imbalance_threshold: Threshold for gradient imbalance detection
-            z_score_threshold: Z-score threshold for statistical outlier detection
-            iqr_multiplier: IQR multiplier for outlier detection
-            momentum_window: Window size for momentum analysis
-            early_warning_threshold: Threshold for early warning system
-            smoothing_alpha: Alpha parameter for exponential smoothing
-            change_point_sensitivity: Sensitivity for change point detection
+            z_score_threshold: Z-score threshold for statistical outlier detection (2.5σ = 98.8% normal)
+            iqr_multiplier: IQR multiplier for outlier detection (1.5 = standard Tukey method)
+            momentum_window: Window size for momentum analysis (10 = balance of responsiveness/stability)
+            early_warning_threshold: Threshold for early warning system (0.7 = 70% confidence)
+            smoothing_alpha: Alpha parameter for exponential smoothing (0.3 = moderate smoothing)
+            change_point_sensitivity: Sensitivity for change point detection (0.1 = 10% change threshold)
+            enable_advanced_detection: Enable/disable advanced detection for performance tuning
         """
         self.window_size = window_size
         self.trend_window = trend_window
@@ -179,6 +221,7 @@ class GradientNormsAnalyzer:
         self.early_warning_threshold = early_warning_threshold
         self.smoothing_alpha = smoothing_alpha
         self.change_point_sensitivity = change_point_sensitivity
+        self.enable_advanced_detection = enable_advanced_detection
         
         # Data storage
         self.policy_grad_history: deque = deque(maxlen=window_size)
@@ -197,9 +240,13 @@ class GradientNormsAnalyzer:
         self.current_metrics = GradientNormsMetrics()
         self.metrics_history: List[GradientNormsMetrics] = []
         
+        # Validate mathematical functions on initialization
+        _validate_math_functions()
+        
         print(f"📊 Enhanced Gradient Norms Analyzer initialized - "
               f"Exploding: {exploding_threshold}, Vanishing: {vanishing_threshold}, "
-              f"Imbalance: {imbalance_threshold}, Z-score: {z_score_threshold}")
+              f"Imbalance: {imbalance_threshold}, Z-score: {z_score_threshold}, "
+              f"Advanced: {enable_advanced_detection}")
     
     def update(
         self, 
@@ -242,14 +289,15 @@ class GradientNormsAnalyzer:
             self._analyze_gradient_stability()
             self._detect_gradient_anomalies()
             
-            # Enhanced detection methods
-            self._adaptive_threshold_detection()
-            self._statistical_outlier_detection()
-            self._momentum_analysis()
-            self._multi_scale_analysis()
-            self._early_warning_system()
-            self._exponential_smoothing_analysis()
-            self._change_point_detection()
+            # Enhanced detection methods (conditionally enabled for performance)
+            if self.enable_advanced_detection:
+                self._adaptive_threshold_detection()
+                self._statistical_outlier_detection()
+                self._momentum_analysis()
+                self._multi_scale_analysis()
+                self._early_warning_system()
+                self._exponential_smoothing_analysis()
+                self._change_point_detection()
             
             self._calculate_health_scores()
         
@@ -372,7 +420,12 @@ class GradientNormsAnalyzer:
         self.current_metrics.training_stability = max(0, min(1, training_stability))
     
     def _adaptive_threshold_detection(self):
-        """Detect gradient anomalies using adaptive thresholds based on historical patterns."""
+        """
+        Optimized adaptive threshold detection with caching.
+        
+        Uses historical patterns to dynamically adjust detection thresholds,
+        reducing false positives while maintaining sensitivity.
+        """
         if len(self.total_grad_history) < 20:
             return
         
@@ -383,23 +436,26 @@ class GradientNormsAnalyzer:
         if not self.baseline_established:
             return
         
+        # Use only recent data for efficiency
         recent_norms = list(self.total_grad_history)[-10:]
         
-        # Calculate adaptive thresholds based on historical statistics
-        baseline_mean = self.adaptive_thresholds.get('mean', 1.0)
-        baseline_std = self.adaptive_thresholds.get('std', 0.5)
-        baseline_p95 = self.adaptive_thresholds.get('p95', 5.0)
+        # Cache threshold calculations
+        if not hasattr(self, '_cached_threshold'):
+            baseline_mean = self.adaptive_thresholds.get('mean', 1.0)
+            baseline_std = self.adaptive_thresholds.get('std', 0.5)
+            baseline_p95 = self.adaptive_thresholds.get('p95', 5.0)
+            
+            # Adaptive explosion threshold: mean + 3*std or 95th percentile * 2
+            self._cached_threshold = max(baseline_mean + 3 * baseline_std, baseline_p95 * 2)
         
-        # Adaptive explosion threshold: mean + 3*std or 95th percentile * 2
-        adaptive_explosion_threshold = max(baseline_mean + 3 * baseline_std, baseline_p95 * 2)
-        
-        # Count violations of adaptive threshold
-        explosion_count = sum(1 for norm in recent_norms if norm > adaptive_explosion_threshold)
+        # Count violations efficiently
+        explosion_count = sum(1 for norm in recent_norms if norm > self._cached_threshold)
         self.current_metrics.adaptive_explosion_risk = explosion_count / len(recent_norms)
         
-        # Update adaptive thresholds periodically
-        if len(self.total_grad_history) % 50 == 0:
+        # Update thresholds less frequently for performance
+        if len(self.total_grad_history) % 100 == 0:  # Reduced frequency
             self._update_adaptive_thresholds()
+            self._cached_threshold = None  # Invalidate cache
     
     def _establish_baseline(self):
         """Establish baseline statistics for adaptive threshold detection."""
@@ -504,36 +560,44 @@ class GradientNormsAnalyzer:
             self.current_metrics.momentum_instability_risk = momentum_instability
     
     def _multi_scale_analysis(self):
-        """Analyze gradients at multiple time scales to detect different types of instabilities."""
-        if len(self.total_grad_history) < 20:
+        """
+        Optimized multi-scale analysis with configurable scales.
+        
+        Analyzes gradient variance at different time scales to detect
+        various types of instabilities efficiently.
+        """
+        if len(self.total_grad_history) < 10:
             return
         
         recent_norms = list(self.total_grad_history)
         
-        # Short-term analysis (last 5 steps)
-        short_term = recent_norms[-5:] if len(recent_norms) >= 5 else recent_norms
+        # Predefined scale configurations for efficiency
+        scales = [
+            (5, 0.5, 0.5),   # short-term: 5 steps, variance threshold, weight
+            (15, 0.3, 0.3),  # medium-term: 15 steps, variance threshold, weight
+            (30, 0.2, 0.2)   # long-term: 30 steps, variance threshold, weight
+        ]
         
-        # Medium-term analysis (last 15 steps)
-        medium_term = recent_norms[-15:] if len(recent_norms) >= 15 else recent_norms
+        total_risk = 0.0
+        total_weight = 0.0
         
-        # Long-term analysis (last 30 steps)
-        long_term = recent_norms[-30:] if len(recent_norms) >= 30 else recent_norms
+        for window_size, variance_threshold, weight in scales:
+            if len(recent_norms) >= window_size:
+                scale_data = recent_norms[-window_size:]
+                if len(scale_data) > 1:
+                    scale_var = var(scale_data)
+                    scale_mean = mean(scale_data)
+                    
+                    # Normalize variance relative to mean for scale-invariant detection
+                    if scale_mean > 1e-8:
+                        normalized_var = scale_var / (scale_mean ** 2)
+                        anomaly_risk = min(1.0, normalized_var / variance_threshold)
+                        total_risk += anomaly_risk * weight
+                        total_weight += weight
         
-        # Calculate variance at different scales
-        short_term_var = var(short_term) if len(short_term) > 1 else 0
-        medium_term_var = var(medium_term) if len(medium_term) > 1 else 0
-        long_term_var = var(long_term) if len(long_term) > 1 else 0
-        
-        # Detect scale-specific anomalies
-        short_term_anomaly = 1.0 if short_term_var > mean(short_term) * 0.5 else 0.0
-        medium_term_anomaly = 1.0 if medium_term_var > mean(medium_term) * 0.3 else 0.0
-        long_term_anomaly = 1.0 if long_term_var > mean(long_term) * 0.2 else 0.0
-        
-        # Multi-scale anomaly risk (weighted combination)
+        # Normalize by total weight to get final risk score
         self.current_metrics.multi_scale_anomaly_risk = (
-            short_term_anomaly * 0.5 +
-            medium_term_anomaly * 0.3 +
-            long_term_anomaly * 0.2
+            total_risk / total_weight if total_weight > 0 else 0.0
         )
     
     def _early_warning_system(self):
