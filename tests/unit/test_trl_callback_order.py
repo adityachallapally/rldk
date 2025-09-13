@@ -469,6 +469,43 @@ class TestTRLCallbackOrder(unittest.TestCase):
                         "Training stability score should be included in stored metrics")
         self.assertEqual(stored_metrics.convergence_indicator, 0.1, 
                         "Convergence indicator should be included in stored metrics")
+    
+    def test_derived_metrics_timing_verification(self):
+        """Test that derived metrics are calculated and stored in the same step, not delayed."""
+        # Test with multiple steps to verify timing
+        for step in range(1, 4):
+            # Update state
+            self.trainer_state.global_step = step
+            
+            # Call on_step_begin to set the step number
+            self.callback.on_step_begin(
+                args=self.training_args,
+                state=self.trainer_state,
+                control=self.trainer_control
+            )
+            
+            # Call on_log with step-specific data
+            logs = {"train_loss": 0.5 + step * 0.1}
+            self.callback.on_log(
+                args=self.training_args,
+                state=self.trainer_state,
+                control=self.trainer_control,
+                logs=logs
+            )
+            
+            # Verify that derived metrics are immediately available in the stored metrics
+            stored_metrics = self.callback.metrics_history[-1]
+            
+            # For steps after the first one, derived metrics should be calculated
+            if step > 1:
+                self.assertEqual(stored_metrics.training_stability_score, 0.95, 
+                               f"Training stability score should be calculated in step {step}")
+                self.assertEqual(stored_metrics.convergence_indicator, 0.1, 
+                               f"Convergence indicator should be calculated in step {step}")
+            
+            # Verify the step number is correct (no delay)
+            self.assertEqual(stored_metrics.step, step, 
+                           f"Step number should be {step}, not delayed")
 
 
 if __name__ == "__main__":
