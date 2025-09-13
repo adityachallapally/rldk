@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+from ..utils.runtime import run_with_timeout_subprocess, RLDKTimeoutError
 import re
 import tempfile
 import warnings
@@ -284,14 +285,12 @@ def _run_deterministic_cmd(
     modified_cmd = f'python -c "{deterministic_wrapper}"'
 
     try:
-        # Run the command
-        result = subprocess.run(
+        # Run the command with timeout
+        result = run_with_timeout_subprocess(
             modified_cmd,
-            shell=True,
-            env=env,
-            capture_output=True,
-            text=True,
             timeout=300,  # 5 minute timeout
+            env=env,
+            shell=True
         )
 
         # Read output file if it exists
@@ -307,7 +306,7 @@ def _run_deterministic_cmd(
 
         result.output_file = output_file
 
-    except subprocess.TimeoutExpired:
+    except RLDKTimeoutError:
         result = subprocess.CompletedProcess(
             args=modified_cmd, returncode=-1, stdout="", stderr="Command timed out"
         )

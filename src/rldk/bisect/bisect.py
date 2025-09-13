@@ -1,6 +1,7 @@
 """Git bisect wrapper for finding regressions."""
 
 import subprocess
+from ..utils.runtime import run_with_timeout_subprocess, RLDKTimeoutError
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -165,14 +166,12 @@ except Exception as e:
 def _run_git_bisect(script_path: Path) -> subprocess.CompletedProcess:
     """Run git bisect with the given script."""
     try:
-        result = subprocess.run(
+        result = run_with_timeout_subprocess(
             ["git", "bisect", "run", str(script_path)],
-            capture_output=True,
-            text=True,
             timeout=1800,  # 30 minute timeout
         )
         return result
-    except subprocess.TimeoutExpired:
+    except RLDKTimeoutError:
         # Force reset bisect on timeout
         subprocess.run(["git", "bisect", "reset"], check=True)
         raise RuntimeError("Git bisect timed out")
