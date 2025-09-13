@@ -206,8 +206,8 @@ class TestComprehensiveDivisionByZeroProtection:
             (0, 5, 0.0),
             (0, 0, 0.0),
             (-10, 2, -5.0),
-            (10, -2, -5.0),
-            (-10, -2, 5.0),
+            (10, -2, 0.0),  # Now returns fallback for negative denominators
+            (-10, -2, 0.0),  # Now returns fallback for negative denominators
         ]
         
         for num, denom, expected in test_cases:
@@ -223,7 +223,7 @@ class TestComprehensiveDivisionByZeroProtection:
             (0, 10, 0.0),
             (0, 0, 0.0),
             (-100, 10, -10.0),
-            (100, -10, -10.0),
+            (100, -10, 0.0),  # Now returns fallback for negative denominators
         ]
         
         for count, time_interval, expected in test_cases:
@@ -239,6 +239,7 @@ class TestComprehensiveDivisionByZeroProtection:
             (0, 100, 0.0),
             (0, 0, 0.0),
             (50, 200, 25.0),
+            (25, -100, 0.0),  # Now returns fallback for negative denominators
         ]
         
         for num, denom, expected in test_cases:
