@@ -2,6 +2,7 @@
 
 from typing import Dict, Tuple, Any
 import numpy as np
+import warnings
 from scipy import stats
 from scipy.stats import bootstrap
 
@@ -393,21 +394,13 @@ def calculate_kl_divergence(
     if np.sum(q) == 0:
         return float('inf')  # KL divergence is infinite when Q is zero but P is not
     
-    # Normalize distributions to sum to 1
+    # Normalize distributions to sum to 1 with epsilon for numerical stability
     p_sum = np.sum(p)
     q_sum = np.sum(q)
     
-    # Use more robust normalization with epsilon
-    p_norm = p / (p_sum + epsilon)
-    q_norm = q / (q_sum + epsilon)
-    
-    # Add epsilon to avoid log(0) - use larger epsilon for better numerical stability
-    p_safe = p_norm + epsilon
-    q_safe = q_norm + epsilon
-    
-    # Renormalize after adding epsilon
-    p_safe = p_safe / np.sum(p_safe)
-    q_safe = q_safe / np.sum(q_safe)
+    # Single normalization step with epsilon addition
+    p_safe = (p + epsilon) / (p_sum + len(p) * epsilon)
+    q_safe = (q + epsilon) / (q_sum + len(q) * epsilon)
     
     # Calculate KL divergence: sum(p * log(p/q))
     # Only consider terms where p > epsilon to avoid numerical issues
@@ -423,10 +416,8 @@ def calculate_kl_divergence(
     if np.any(np.isnan(log_ratio)) or np.any(np.isinf(log_ratio)):
         # Fallback: use more conservative epsilon
         epsilon_large = 1e-6
-        p_safe_large = p_norm + epsilon_large
-        q_safe_large = q_norm + epsilon_large
-        p_safe_large = p_safe_large / np.sum(p_safe_large)
-        q_safe_large = q_safe_large / np.sum(q_safe_large)
+        p_safe_large = (p + epsilon_large) / (p_sum + len(p) * epsilon_large)
+        q_safe_large = (q + epsilon_large) / (q_sum + len(q) * epsilon_large)
         
         mask_large = p_safe_large > epsilon_large
         if not np.any(mask_large):

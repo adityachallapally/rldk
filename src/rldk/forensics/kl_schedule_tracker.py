@@ -1,7 +1,7 @@
 """Comprehensive KL schedule tracking and analysis for PPO training."""
 
 import numpy as np
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Union
 from dataclasses import dataclass
 from collections import deque
 import warnings
@@ -224,7 +224,7 @@ class KLScheduleTracker:
         
         print(f"🎯 KL Schedule Tracker initialized - Target: {kl_target}±{kl_target_tolerance}")
     
-    def update(self, step: int, kl_value: Any, kl_coef: Any) -> KLScheduleMetrics:
+    def update(self, step: int, kl_value: Union[float, Any], kl_coef: Union[float, Any]) -> KLScheduleMetrics:
         """Update tracker with new KL and coefficient values."""
         # Safely process inputs using robust edge case handling
         safe_kl_value = _safe_kl_value(kl_value, default=0.0, max_value=1e6)
