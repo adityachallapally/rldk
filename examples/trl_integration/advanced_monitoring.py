@@ -99,7 +99,7 @@ class CustomRLDKCallback(RLDKCallback):
         time_elapsed = self.metrics_history[-1].wall_time - self.metrics_history[-10].wall_time
         
         if time_elapsed > 0:
-            return max(0, safe_divide(reward_improvement, time_elapsed, 0.0))
+            return max(0, safe_rate_calculation(reward_improvement, time_elapsed, 0.0))
         
         return 1.0
     

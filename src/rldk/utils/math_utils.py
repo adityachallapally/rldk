@@ -1,4 +1,20 @@
-"""Mathematical utilities for safe operations in RLDK."""
+"""Mathematical utilities for safe operations in RLDK.
+
+This module provides safe mathematical operations that prevent division by zero
+and other common mathematical errors. All functions return float values for
+consistency, even when inputs are integers.
+
+Functions:
+    safe_divide: Safely divide two numbers with fallback for invalid denominators
+    safe_rate_calculation: Calculate rates (count per unit time) safely
+    safe_percentage: Calculate percentages safely
+    safe_ratio: Calculate ratios safely
+
+All functions handle:
+- Division by zero (returns fallback value)
+- Negative denominators (returns fallback value)
+- Type conversion (int/float inputs -> float output)
+"""
 
 from typing import Union
 

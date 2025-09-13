@@ -314,7 +314,7 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 if len(steps) > 1:
                     slope = np.polyfit(steps, rewards, 1)[0]
                     # Convert slope to stability score
-                    stability_score = max(0, 1 - safe_divide(abs(slope), abs(reward_mean), 0.0) if reward_mean != 0 else 0)
+                    stability_score = max(0, 1 - safe_divide(abs(slope), abs(reward_mean), 0.0))
                     consistency_metrics.append(("reward_stability", stability_score))
     
     # 2. Check response consistency for similar inputs
@@ -653,7 +653,7 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         if total_time > 0 and total_steps > 0:
             steps_per_second = safe_rate_calculation(total_steps, total_time, 0.0)
             # Normalize to a reasonable range (0-1000 steps/sec)
-            speed_score = min(1.0, safe_divide(steps_per_second, 1000.0, 0.0))
+            speed_score = min(1.0, steps_per_second / 1000.0)
             efficiency_metrics.append(("training_speed", speed_score))
     
     # 2. Check for memory efficiency
@@ -668,7 +668,7 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             if avg_memory < 8.0:  # Less than 8GB average
                 memory_efficiency = 1.0
             else:
-                memory_efficiency = max(0, 1 - safe_divide(avg_memory - 8.0, 8.0, 0.0))
+                memory_efficiency = max(0, 1 - (avg_memory - 8.0) / 8.0)
             
             efficiency_metrics.append(("memory_efficiency", memory_efficiency))
             
@@ -677,7 +677,7 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             if memory_std < 1.0:  # Stable memory usage
                 memory_stability = 1.0
             else:
-                memory_stability = max(0, 1 - safe_divide(memory_std, 4.0, 0.0))
+                memory_stability = max(0, 1 - memory_std / 4.0)
             
             efficiency_metrics.append(("memory_stability", memory_stability))
     
@@ -1081,7 +1081,7 @@ def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         if total_time > 0 and total_steps > 0:
             steps_per_second = safe_rate_calculation(total_steps, total_time, 0.0)
             # Normalize to reasonable range (0-1000 steps/sec)
-            training_speed = min(1.0, safe_divide(steps_per_second, 1000.0, 0.0))
+            training_speed = min(1.0, steps_per_second / 1000.0)
             speed_metrics.append(("training_speed", training_speed))
     
     # 3. Check for throughput metrics
@@ -1091,7 +1091,7 @@ def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             avg_throughput = throughput_values.mean()
             # Higher throughput = better speed
             # Normalize to reasonable range (0-1000 samples/sec)
-            normalized_throughput = min(1.0, safe_divide(avg_throughput, 1000.0, 0.0))
+            normalized_throughput = min(1.0, avg_throughput / 1000.0)
             speed_metrics.append(("throughput_speed", normalized_throughput))
     
     # 4. Check for latency metrics
@@ -1126,7 +1126,7 @@ def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 avg_samples_per_second = 0.0
             
             # Normalize to reasonable range
-            batch_speed = min(1.0, safe_divide(avg_samples_per_second, 1000.0, 0.0))
+            batch_speed = min(1.0, avg_samples_per_second / 1000.0)
             speed_metrics.append(("batch_speed", batch_speed))
     
     # 6. Check for convergence speed (how quickly model improves)
@@ -1240,7 +1240,7 @@ def evaluate_memory(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             if memory_std < 1.0:  # Very stable
                 memory_stability = 1.0
             else:
-                memory_stability = max(0, 1 - safe_divide(memory_std, 4.0, 0.0))
+                memory_stability = max(0, 1 - memory_std / 4.0)
             
             memory_metrics.append(("memory_stability", memory_stability))
             
