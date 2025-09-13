@@ -7,12 +7,21 @@ import json
 import numpy as np
 
 from ..reward.health_analysis import RewardHealthReport
+from .unified_writer import UnifiedWriter
 
 
 def _json_serialize(obj):
-    """Custom JSON serializer that converts NaN to null."""
+    """
+    Custom JSON serializer that converts NaN to null.
+    
+    Note: This function is deprecated. Use UnifiedWriter._json_serializer instead
+    for consistent serialization across the codebase.
+    """
     # Handle numpy floating point types and Python float
     if (isinstance(obj, (float, np.floating)) and np.isnan(obj)):
+        return None
+    # Handle infinity values
+    elif (isinstance(obj, (float, np.floating)) and np.isinf(obj)):
         return None
     # Handle numpy integers (convert to Python int for JSON compatibility)
     elif isinstance(obj, np.integer):
@@ -20,6 +29,9 @@ def _json_serialize(obj):
     # Handle numpy floating point numbers (convert to Python float for JSON compatibility)
     elif isinstance(obj, np.floating):
         return float(obj)
+    # Handle pandas NaN values
+    elif pd.isna(obj):
+        return None
     elif isinstance(obj, dict):
         return {key: _json_serialize(value) for key, value in obj.items()}
     elif isinstance(obj, list):
@@ -207,11 +219,9 @@ def write_reward_health_summary(report: RewardHealthReport, output_dir: Path) ->
     if report.calibration_details:
         summary["calibration_details"] = report.calibration_details
 
-    # Serialize the summary to handle NaN values
-    serialized_summary = _json_serialize(summary)
-    
-    with open(summary_path, "w") as f:
-        json.dump(serialized_summary, f, indent=2)
+    # Use UnifiedWriter for consistent JSON serialization
+    writer = UnifiedWriter(output_dir)
+    writer.write_json(summary, "reward_health_summary.json")
 
 
 def generate_reward_health_report(
