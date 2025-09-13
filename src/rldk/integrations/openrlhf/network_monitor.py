@@ -760,30 +760,30 @@ class NetworkLatencyMonitor:
             if self._invocation_count % self.sampling_frequency != 0:
                 # Return cached results or empty results
                 return {host: 0.0 for host in self.target_hosts}
-        
-        results = {}
-        
-        with ThreadPoolExecutor(max_workers=len(self.target_hosts)) as executor:
-            future_to_host = {
-                executor.submit(self._ping_host, host): host 
-                for host in self.target_hosts
-            }
             
-            for future in as_completed(future_to_host, timeout=5.0):
-                host = future_to_host[future]
-                try:
-                    latency = future.result()
-                    results[host] = latency
-                    
-                    # Thread-safe update of history
-                    with self._lock:
-                        self.latency_history[host].append(latency)
+            # Keep lock during expensive operations to prevent race conditions
+            results = {}
+            
+            with ThreadPoolExecutor(max_workers=len(self.target_hosts)) as executor:
+                future_to_host = {
+                    executor.submit(self._ping_host, host): host 
+                    for host in self.target_hosts
+                }
+                
+                for future in as_completed(future_to_host, timeout=5.0):
+                    host = future_to_host[future]
+                    try:
+                        latency = future.result()
+                        results[host] = latency
                         
-                except Exception as e:
-                    print(f"Error measuring latency to {host}: {e}")
-                    results[host] = float('inf')
-        
-        return results
+                        # Thread-safe update of history
+                        self.latency_history[host].append(latency)
+                            
+                    except Exception as e:
+                        print(f"Error measuring latency to {host}: {e}")
+                        results[host] = float('inf')
+            
+            return results
     
     def _ping_host(self, host: str) -> float:
         """Ping a specific host and return latency in milliseconds."""
@@ -987,10 +987,10 @@ class DistributedNetworkMonitor:
         self.sampling_frequency = sampling_frequency
         self._invocation_count = 0
         
-        # Initialize monitors with sampling frequency
-        self.interface_monitor = NetworkInterfaceMonitor(sampling_frequency=sampling_frequency)
-        self.latency_monitor = NetworkLatencyMonitor(sampling_frequency=sampling_frequency)
-        self.bandwidth_monitor = NetworkBandwidthMonitor(sampling_frequency=sampling_frequency)
+        # Initialize monitors without sampling frequency (parent controls sampling)
+        self.interface_monitor = NetworkInterfaceMonitor(sampling_frequency=1)
+        self.latency_monitor = NetworkLatencyMonitor(sampling_frequency=1)
+        self.bandwidth_monitor = NetworkBandwidthMonitor(sampling_frequency=1)
         
         # Thread safety for distributed metrics
         self._distributed_lock = threading.RLock()
@@ -1018,64 +1018,64 @@ class DistributedNetworkMonitor:
                     world_size=self.world_size,
                     rank=self.rank
                 )
-        
-        metrics = NetworkMetrics(
-            timestamp=time.time(),
-            world_size=self.world_size,
-            rank=self.rank
-        )
-        
-        # Basic network metrics
-        interface_stats = self.interface_monitor.get_interface_stats()
-        latency_results = self.latency_monitor.measure_latency()
-        bandwidth = self.bandwidth_monitor.measure_bandwidth()
-        
-        # Update metrics
-        metrics.bandwidth_mbps = bandwidth
-        metrics.latency_ms = self.latency_monitor.get_average_latency()
-        metrics.bandwidth_in_mbps = interface_stats['bytes_in_mbps']
-        metrics.bandwidth_out_mbps = interface_stats['bytes_out_mbps']
-        metrics.packets_in_per_sec = interface_stats['packets_in_per_sec']
-        metrics.packets_out_per_sec = interface_stats['packets_out_per_sec']
-        metrics.bytes_in_per_sec = interface_stats['bytes_in_per_sec']
-        metrics.bytes_out_per_sec = interface_stats['bytes_out_per_sec']
-        
-        # Connection metrics
-        try:
-            connections = psutil.net_connections()
-            metrics.tcp_connections = len([c for c in connections if c.status == 'ESTABLISHED' and c.type == socket.SOCK_STREAM])
-            metrics.udp_connections = len([c for c in connections if c.type == socket.SOCK_DGRAM])
-            metrics.active_connections = len([c for c in connections if c.status == 'ESTABLISHED'])
-        except Exception:
-            pass
-        
-        # Error metrics
-        metrics.network_errors = int(interface_stats['errin'] + interface_stats['errout'])
-        metrics.dropped_packets = int(interface_stats['dropin'] + interface_stats['dropout'])
-        
-        # Calculate packet loss percentage
-        total_packets = interface_stats['total_packets_recv'] + interface_stats['total_packets_sent']
-        if total_packets > 0:
-            metrics.packet_loss_percent = (metrics.dropped_packets / total_packets) * 100
-        
-        # Distributed training specific metrics
-        if DIST_AVAILABLE and dist.is_initialized() and self.enable_distributed_measurements:
-            metrics.allreduce_bandwidth = self._measure_allreduce_bandwidth()
-            metrics.broadcast_bandwidth = self._measure_broadcast_bandwidth()
-            metrics.gather_bandwidth = self._measure_gather_bandwidth()
-            metrics.scatter_bandwidth = self._measure_scatter_bandwidth()
-        else:
-            # Set to 0 if distributed measurements are disabled or not available
-            metrics.allreduce_bandwidth = 0.0
-            metrics.broadcast_bandwidth = 0.0
-            metrics.gather_bandwidth = 0.0
-            metrics.scatter_bandwidth = 0.0
-        
-        # Thread-safe update of history
-        with self._distributed_lock:
+            
+            # Keep lock during expensive operations to prevent race conditions
+            metrics = NetworkMetrics(
+                timestamp=time.time(),
+                world_size=self.world_size,
+                rank=self.rank
+            )
+            
+            # Basic network metrics
+            interface_stats = self.interface_monitor.get_interface_stats()
+            latency_results = self.latency_monitor.measure_latency()
+            bandwidth = self.bandwidth_monitor.measure_bandwidth()
+            
+            # Update metrics
+            metrics.bandwidth_mbps = bandwidth
+            metrics.latency_ms = self.latency_monitor.get_average_latency()
+            metrics.bandwidth_in_mbps = interface_stats['bytes_in_mbps']
+            metrics.bandwidth_out_mbps = interface_stats['bytes_out_mbps']
+            metrics.packets_in_per_sec = interface_stats['packets_in_per_sec']
+            metrics.packets_out_per_sec = interface_stats['packets_out_per_sec']
+            metrics.bytes_in_per_sec = interface_stats['bytes_in_per_sec']
+            metrics.bytes_out_per_sec = interface_stats['bytes_out_per_sec']
+            
+            # Connection metrics
+            try:
+                connections = psutil.net_connections()
+                metrics.tcp_connections = len([c for c in connections if c.status == 'ESTABLISHED' and c.type == socket.SOCK_STREAM])
+                metrics.udp_connections = len([c for c in connections if c.type == socket.SOCK_DGRAM])
+                metrics.active_connections = len([c for c in connections if c.status == 'ESTABLISHED'])
+            except Exception:
+                pass
+            
+            # Error metrics
+            metrics.network_errors = int(interface_stats['errin'] + interface_stats['errout'])
+            metrics.dropped_packets = int(interface_stats['dropin'] + interface_stats['dropout'])
+            
+            # Calculate packet loss percentage
+            total_packets = interface_stats['total_packets_recv'] + interface_stats['total_packets_sent']
+            if total_packets > 0:
+                metrics.packet_loss_percent = (metrics.dropped_packets / total_packets) * 100
+            
+            # Distributed training specific metrics
+            if DIST_AVAILABLE and dist.is_initialized() and self.enable_distributed_measurements:
+                metrics.allreduce_bandwidth = self._measure_allreduce_bandwidth()
+                metrics.broadcast_bandwidth = self._measure_broadcast_bandwidth()
+                metrics.gather_bandwidth = self._measure_gather_bandwidth()
+                metrics.scatter_bandwidth = self._measure_scatter_bandwidth()
+            else:
+                # Set to 0 if distributed measurements are disabled or not available
+                metrics.allreduce_bandwidth = 0.0
+                metrics.broadcast_bandwidth = 0.0
+                metrics.gather_bandwidth = 0.0
+                metrics.scatter_bandwidth = 0.0
+            
+            # Thread-safe update of history
             self.performance_history.append(metrics)
-        
-        return metrics
+            
+            return metrics
     
     def _measure_allreduce_bandwidth(self) -> float:
         """Measure bandwidth during allreduce operations."""
@@ -1296,13 +1296,13 @@ class RealNetworkMonitor:
         self.sampling_frequency = sampling_frequency
         self._invocation_count = 0
         
-        # Initialize monitors with sampling frequency
-        self.interface_monitor = NetworkInterfaceMonitor(sampling_frequency=sampling_frequency)
-        self.latency_monitor = NetworkLatencyMonitor(sampling_frequency=sampling_frequency)
-        self.bandwidth_monitor = NetworkBandwidthMonitor(sampling_frequency=sampling_frequency)
+        # Initialize monitors without sampling frequency (parent controls sampling)
+        self.interface_monitor = NetworkInterfaceMonitor(sampling_frequency=1)
+        self.latency_monitor = NetworkLatencyMonitor(sampling_frequency=1)
+        self.bandwidth_monitor = NetworkBandwidthMonitor(sampling_frequency=1)
         
         # Initialize comprehensive diagnostics
-        self.network_diagnostics = NetworkDiagnostics(sampling_frequency=sampling_frequency)
+        self.network_diagnostics = NetworkDiagnostics(sampling_frequency=1)
         
         # Distributed monitor
         self.distributed_monitor = None
@@ -1341,6 +1341,7 @@ class RealNetworkMonitor:
                     'latency': self.latency_history[-1] if self.latency_history else 0.0,
                 }
             
+            # Keep lock during expensive operations to prevent race conditions
             # Get comprehensive metrics
             if self.distributed_monitor:
                 metrics = self.distributed_monitor.measure_distributed_metrics()
