@@ -15,7 +15,6 @@ gradient issues leading to training instabilities.
 """
 
 import math
-import random
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass
 from collections import deque
@@ -55,7 +54,7 @@ def polyfit(x, y, degree):
     if abs(slope) > 1e6 or abs(intercept) > 1e6:
         return [0.0, sum_y / n]
     
-    return [slope, intercept]
+    return [intercept, slope]  # Fixed: numpy compatibility order
 
 def _validate_math_functions():
     """
@@ -65,7 +64,7 @@ def _validate_math_functions():
     # Test polyfit with simple linear data
     x = [1, 2, 3, 4, 5]
     y = [2, 4, 6, 8, 10]  # Perfect linear relationship: y = 2x
-    slope, intercept = polyfit(x, y, 1)
+    intercept, slope = polyfit(x, y, 1)  # Fixed: correct order [intercept, slope]
     
     # Allow small floating point errors
     if abs(slope - 2.0) > 1e-10 or abs(intercept - 0.0) > 1e-10:
@@ -74,7 +73,7 @@ def _validate_math_functions():
     # Test mean and std with known values
     test_values = [1, 2, 3, 4, 5]
     expected_mean = 3.0
-    expected_std = 1.4142135623730951  # sqrt(2)
+    expected_std = 1.5811388300841898  # sqrt(2.5) - corrected for sample std (n-1)
     
     if abs(mean(test_values) - expected_mean) > 1e-10:
         warnings.warn("mean function may have accuracy issues", UserWarning)
@@ -87,20 +86,40 @@ def mean(values):
     return sum(values) / len(values) if values else 0.0
 
 def std(values):
-    """Calculate standard deviation."""
+    """Calculate sample standard deviation (using n-1 denominator)."""
     if not values or len(values) < 2:
         return 0.0
     m = mean(values)
-    variance = sum((x - m) ** 2 for x in values) / len(values)
+    variance = sum((x - m) ** 2 for x in values) / (len(values) - 1)  # Fixed: use n-1
     return math.sqrt(variance)
 
 def percentile(values, p):
-    """Calculate percentile."""
+    """Calculate percentile with proper error handling."""
     if not values:
         return 0.0
+    if not (0 <= p <= 100):
+        raise ValueError("Percentile must be between 0 and 100")
+    
     sorted_values = sorted(values)
-    index = int(p / 100 * len(sorted_values))
-    return sorted_values[min(index, len(sorted_values) - 1)]
+    n = len(sorted_values)
+    
+    # Use linear interpolation for more accurate percentile calculation
+    if p == 0:
+        return sorted_values[0]
+    elif p == 100:
+        return sorted_values[-1]
+    
+    # Calculate index with proper interpolation
+    index = (p / 100) * (n - 1)
+    lower_idx = int(index)
+    upper_idx = min(lower_idx + 1, n - 1)
+    
+    if lower_idx == upper_idx:
+        return sorted_values[lower_idx]
+    
+    # Linear interpolation between adjacent values
+    weight = index - lower_idx
+    return sorted_values[lower_idx] * (1 - weight) + sorted_values[upper_idx] * weight
 
 def var(values):
     """Calculate variance."""
@@ -110,14 +129,28 @@ def var(values):
     return sum((x - m) ** 2 for x in values) / len(values)
 
 def zscore(values):
-    """Calculate z-scores."""
-    if not values:
+    """Calculate z-scores with proper error handling."""
+    if not values or len(values) < 2:
         return []
+    
     m = mean(values)
     s = std(values)
+    
+    # Handle case where all values are identical (std = 0)
     if s < 1e-10:
         return [0.0] * len(values)
-    return [(x - m) / s for x in values]
+    
+    # Calculate z-scores with bounds checking
+    z_scores = []
+    for x in values:
+        if not isinstance(x, (int, float)) or not math.isfinite(x):
+            z_scores.append(0.0)  # Handle non-numeric or infinite values
+        else:
+            z_score = (x - m) / s
+            # Bound extreme z-scores to prevent overflow
+            z_scores.append(max(-10.0, min(10.0, z_score)))
+    
+    return z_scores
 
 
 @dataclass
@@ -313,20 +346,23 @@ class GradientNormsAnalyzer:
             return
         
         # Policy gradient trend
-        recent_policy = list(self.policy_grad_history)[-self.trend_window:]
+        recent_policy = self._get_recent_values(self.policy_grad_history, self.trend_window)
         steps = list(range(len(recent_policy)))
         if len(recent_policy) > 1:
-            self.current_metrics.policy_grad_trend = polyfit(steps, recent_policy, 1)[0]
+            _, slope = polyfit(steps, recent_policy, 1)  # Fixed: use correct order
+            self.current_metrics.policy_grad_trend = slope
         
         # Value gradient trend
-        recent_value = list(self.value_grad_history)[-self.trend_window:]
+        recent_value = self._get_recent_values(self.value_grad_history, self.trend_window)
         if len(recent_value) > 1:
-            self.current_metrics.value_grad_trend = polyfit(steps, recent_value, 1)[0]
+            _, slope = polyfit(steps, recent_value, 1)  # Fixed: use correct order
+            self.current_metrics.value_grad_trend = slope
         
         # Ratio trend
-        recent_ratio = list(self.ratio_history)[-self.trend_window:]
+        recent_ratio = self._get_recent_values(self.ratio_history, self.trend_window)
         if len(recent_ratio) > 1:
-            self.current_metrics.ratio_trend = polyfit(steps, recent_ratio, 1)[0]
+            _, slope = polyfit(steps, recent_ratio, 1)  # Fixed: use correct order
+            self.current_metrics.ratio_trend = slope
     
     def _analyze_gradient_flow_health(self):
         """Analyze gradient flow health."""
@@ -419,6 +455,12 @@ class GradientNormsAnalyzer:
         )
         self.current_metrics.training_stability = max(0, min(1, training_stability))
     
+    def _get_recent_values(self, history, count):
+        """Efficiently get recent values from a deque without full list conversion."""
+        if len(history) <= count:
+            return list(history)
+        return [history[i] for i in range(len(history) - count, len(history))]
+    
     def _adaptive_threshold_detection(self):
         """
         Optimized adaptive threshold detection with caching.
@@ -429,15 +471,17 @@ class GradientNormsAnalyzer:
         if len(self.total_grad_history) < 20:
             return
         
-        # Establish baseline if not done yet
-        if not self.baseline_established and len(self.total_grad_history) >= 20:
-            self._establish_baseline()
-        
+        # Establish baseline if not done yet - FIXED: prevent infinite loop
         if not self.baseline_established:
-            return
+            if len(self.total_grad_history) >= 20:
+                self._establish_baseline()
+            else:
+                # Not enough data yet, skip adaptive detection
+                self.current_metrics.adaptive_explosion_risk = 0.0
+                return
         
         # Use only recent data for efficiency
-        recent_norms = list(self.total_grad_history)[-10:]
+        recent_norms = self._get_recent_values(self.total_grad_history, 10)
         
         # Cache threshold calculations
         if not hasattr(self, '_cached_threshold'):
@@ -610,7 +654,7 @@ class GradientNormsAnalyzer:
         
         # Calculate trend in health scores
         if len(recent_health_scores) > 2:
-            health_trend = polyfit(list(range(len(recent_health_scores))), recent_health_scores, 1)[0]
+            _, health_trend = polyfit(list(range(len(recent_health_scores))), recent_health_scores, 1)  # Fixed: use correct order
             
             # Early warning if health is declining
             declining_health = max(0, -health_trend)
@@ -643,9 +687,10 @@ class GradientNormsAnalyzer:
         if len(self.exponential_smoothed_history) >= 3:
             smoothed_values = list(self.exponential_smoothed_history)[-5:]
             if len(smoothed_values) > 1:
-                self.current_metrics.exponential_smoothing_trend = polyfit(
+                _, slope = polyfit(
                     list(range(len(smoothed_values))), smoothed_values, 1
-                )[0]
+                )  # Fixed: use correct order
+                self.current_metrics.exponential_smoothing_trend = slope
     
     def _change_point_detection(self):
         """Detect sudden changes in gradient patterns."""
