@@ -287,9 +287,10 @@ def _run_deterministic_cmd(
     try:
         # Run the command with timeout
         result = run_with_timeout_subprocess(
-            [modified_cmd],
+            modified_cmd,
             timeout=300,  # 5 minute timeout
-            env=env
+            env=env,
+            shell=True
         )
 
         # Read output file if it exists

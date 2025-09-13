@@ -79,19 +79,21 @@ def _fallback_timeout(func: Callable, timeout_seconds: int, *args, **kwargs) -> 
 
 
 def run_with_timeout_subprocess(
-    argv: List[str], 
+    argv: Union[List[str], str], 
     timeout: int, 
     cwd: Optional[str] = None, 
-    env: Optional[Dict[str, str]] = None
+    env: Optional[Dict[str, str]] = None,
+    shell: bool = False
 ) -> subprocess.CompletedProcess:
     """
     Run a subprocess with timeout and cross-platform process tree cleanup.
     
     Args:
-        argv: Command and arguments as list
+        argv: Command and arguments as list or string (if shell=True)
         timeout: Timeout in seconds
         cwd: Working directory for the subprocess
         env: Environment variables for the subprocess
+        shell: Whether to use shell execution
         
     Returns:
         CompletedProcess result
@@ -108,7 +110,8 @@ def run_with_timeout_subprocess(
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
+            shell=shell
         )
         
         try:
@@ -135,7 +138,8 @@ def run_with_timeout_subprocess(
             )
             
     except FileNotFoundError as e:
-        raise RLDKTimeoutError(f"Command not found: {e}")
+        # Re-raise FileNotFoundError as-is since it's not a timeout issue
+        raise e
 
 
 def _kill_process_tree(pid: int) -> None:
