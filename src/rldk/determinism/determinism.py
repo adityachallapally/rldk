@@ -9,6 +9,7 @@ from typing import List, Dict, Any, Optional
 import pandas as pd
 
 from ..io import read_metrics_jsonl
+from .runner import run_deterministic_command
 
 
 def _deduplicate_deterministic(items: List[str]) -> List[str]:
@@ -129,88 +130,13 @@ def _get_deterministic_env(device: str) -> Dict[str, str]:
 def _run_deterministic_cmd(
     cmd: str, env: Dict[str, str]
 ) -> subprocess.CompletedProcess:
-    """Run command with deterministic environment."""
-    # Create temporary script with deterministic settings
-    script_content = f"""#!/usr/bin/env python3
-import os
-import random
-import numpy as np
-
-# Set Python hash seed
-os.environ['PYTHONHASHSEED'] = '42'
-
-# Set random seeds for all sources
-random.seed(42)
-np.random.seed(42)
-
-# PyTorch deterministic settings
-try:
-    import torch
-    torch.manual_seed(42)
-    torch.use_deterministic_algorithms(True)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    
-    # Disable TF32 for better determinism
-    if hasattr(torch.backends.cuda, 'matmul.allow_tf32'):
-        torch.backends.cuda.matmul.allow_tf32 = False
-    if hasattr(torch.backends.cudnn, 'allow_tf32'):
-        torch.backends.cudnn.allow_tf32 = False
-    
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(42)
-        torch.cuda.manual_seed_all(42)
-        # Set CUDA workspace config
-        os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
-except ImportError:
-    pass
-
-# TensorFlow deterministic settings
-try:
-    import tensorflow as tf
-    tf.random.set_seed(42)
-    os.environ['TF_DETERMINISTIC_OPS'] = '1'
-    os.environ['TF_CUDNN_DETERMINISTIC'] = '1'
-except ImportError:
-    pass
-
-# Execute original command
-import subprocess
-import sys
-
-# Extract the actual command from the script
-original_cmd = "{cmd}"
-if original_cmd.startswith("python "):
-    script_args = original_cmd[7:].split()
-    sys.argv = ["python"] + script_args
-    exec(open(script_args[0]).read())
-else:
-    # For non-Python commands, run as subprocess
-    result = subprocess.run(original_cmd, shell=True, capture_output=True, text=True, env={env})
-    print(result.stdout)
-    if result.stderr:
-        print(result.stderr, file=sys.stderr)
-    sys.exit(result.returncode)
-"""
-
-    script_path = Path("temp_deterministic_script.py")
-    with open(script_path, "w") as f:
-        f.write(script_content)
-
-    try:
-        # Run the script
-        result = subprocess.run(
-            ["python3", str(script_path)],
-            capture_output=True,
-            text=True,
-            env=env,
-            timeout=300,  # 5 minute timeout
-        )
-        return result
-    finally:
-        # Clean up
-        if script_path.exists():
-            script_path.unlink()
+    """Run command with deterministic environment using the unified runner."""
+    return run_deterministic_command(
+        cmd=cmd,
+        env=env,
+        timeout_seconds=300,  # 5 minute timeout
+        replica_id=0
+    )
 
 
 def _compare_executions(

@@ -208,35 +208,7 @@ def with_retry(max_retries: int = 3, delay: float = 1.0, backoff: float = 2.0):
     return decorator
 
 
-def with_timeout(timeout_seconds: float):
-    """Decorator to add timeout to operations."""
-    def decorator(func: Callable) -> Callable:
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            import signal
-            
-            def timeout_handler(signum, frame):
-                raise RLDKTimeoutError(
-                    f"Operation timed out after {timeout_seconds} seconds",
-                    suggestion="Try increasing the timeout or optimizing the operation",
-                    error_code="OPERATION_TIMEOUT",
-                    details={"timeout_seconds": timeout_seconds}
-                )
-            
-            # Set up timeout
-            old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(int(timeout_seconds))
-            
-            try:
-                result = func(*args, **kwargs)
-                return result
-            finally:
-                # Restore old handler
-                signal.alarm(0)
-                signal.signal(signal.SIGALRM, old_handler)
-        
-        return wrapper
-    return decorator
+# with_timeout moved to rldk.utils.runtime
 
 
 def handle_graceful_degradation(operation_name: str, fallback_value: Any = None):
