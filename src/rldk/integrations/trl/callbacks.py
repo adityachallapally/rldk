@@ -315,22 +315,22 @@ class RLDKCallback(TrainerCallback):
         if 'ppo/advantages/std' in logs:
             self.current_metrics.advantage_std = logs['ppo/advantages/std']
         
-        # Step 2: Append a copy of current_metrics to history (only after logs carry real values)
+        # Step 2: Analyze logs and update derived metrics BEFORE storing
+        self._analyze_logs(logs, state)
+        
+        # Step 3: Append a copy of current_metrics to history (only after logs carry real values)
         self.metrics_history.append(RLDKMetrics(**self.current_metrics.to_dict()))
         
-        # Step 3: Write JSONL if enabled
+        # Step 4: Write JSONL if enabled
         if (self.enable_jsonl_logging and 
             self.jsonl_log_interval > 0 and 
             state.global_step % self.jsonl_log_interval == 0):
             self._log_jsonl_event(state, logs)
         
-        # Step 4: Run alert checks
+        # Step 5: Run alert checks
         self._check_alerts()
         
-        # Step 5: Any detailed logging
-        self._analyze_logs(logs, state)
-        
-        # Log detailed metrics at intervals
+        # Step 6: Log detailed metrics at intervals
         if state.global_step % self.log_interval == 0:
             self._log_detailed_metrics()
     

@@ -64,6 +64,10 @@ class RLDKMetrics:
     step_time: float = 0.0
     wall_time: float = 0.0
     
+    # Training health indicators
+    training_stability_score: float = 1.0
+    convergence_indicator: float = 0.0
+    
     # Metadata
     run_id: str = ""
     seed: int = 0
@@ -161,19 +165,29 @@ class RLDKCallback:
         if 'ppo/policy/policy_loss' in logs:
             self.current_metrics.policy_loss = logs['ppo/policy/policy_loss']
         
-        # Step 2: Append a copy of current_metrics to history (only after logs carry real values)
+        # Step 2: Analyze logs and update derived metrics BEFORE storing
+        self._analyze_logs(logs, state)
+        
+        # Step 3: Append a copy of current_metrics to history (only after logs carry real values)
         self.metrics_history.append(RLDKMetrics(**self.current_metrics.to_dict()))
         
-        # Step 3: Write JSONL if enabled (simplified for testing)
+        # Step 4: Write JSONL if enabled (simplified for testing)
         if self.enable_jsonl_logging:
             self._log_jsonl_event(state, logs)
         
-        # Step 4: Run alert checks (simplified for testing)
+        # Step 5: Run alert checks (simplified for testing)
         self._check_alerts()
         
-        # Step 5: Any detailed logging
+        # Step 6: Any detailed logging
         if state.global_step % self.log_interval == 0:
             self._log_detailed_metrics()
+    
+    def _analyze_logs(self, logs, state):
+        """Analyze logs and update derived metrics (simplified for testing)."""
+        # Simulate updating derived metrics like training_stability_score
+        if len(self.metrics_history) > 0:
+            self.current_metrics.training_stability_score = 0.95  # Mock value
+            self.current_metrics.convergence_indicator = 0.1  # Mock value
     
     def _monitor_resources(self):
         """Monitor resource usage (simplified for testing)."""
@@ -428,6 +442,33 @@ class TestTRLCallbackOrder(unittest.TestCase):
         self.assertEqual(stored_metrics.kl_mean, 0.15)
         self.assertEqual(stored_metrics.entropy_mean, 0.8)
         self.assertEqual(stored_metrics.clip_frac, 0.1)
+    
+    def test_derived_metrics_included_in_stored_metrics(self):
+        """Test that derived metrics calculated by _analyze_logs are included in stored metrics."""
+        # First, add some metrics to history so _analyze_logs has data to work with
+        logs1 = {"train_loss": 1.0}
+        self.callback.on_log(
+            args=self.training_args,
+            state=self.trainer_state,
+            control=self.trainer_control,
+            logs=logs1
+        )
+        
+        # Now test that derived metrics are included in the second step
+        logs2 = {"train_loss": 1.5}
+        self.callback.on_log(
+            args=self.training_args,
+            state=self.trainer_state,
+            control=self.trainer_control,
+            logs=logs2
+        )
+        
+        # Verify that the stored metrics include the derived metrics
+        stored_metrics = self.callback.metrics_history[-1]
+        self.assertEqual(stored_metrics.training_stability_score, 0.95, 
+                        "Training stability score should be included in stored metrics")
+        self.assertEqual(stored_metrics.convergence_indicator, 0.1, 
+                        "Convergence indicator should be included in stored metrics")
 
 
 if __name__ == "__main__":
