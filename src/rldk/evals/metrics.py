@@ -2,6 +2,7 @@
 
 from typing import Dict, Tuple, Any
 import numpy as np
+import pandas as pd
 import warnings
 from scipy import stats
 from scipy.stats import bootstrap

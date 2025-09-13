@@ -713,17 +713,18 @@ class TestErrorHandlingIntegration:
     def test_error_formatting_with_chain(self):
         """Test error formatting with error chain."""
         original_error = ValueError("Original error")
-        rldk_error = ValidationError(
-            "Validation failed",
-            suggestion="Check input",
-            error_code="VALIDATION_ERROR"
-        ) from original_error
-        
-        message = format_error_message(rldk_error)
-        
-        assert "❌ Validation failed" in message
-        assert "💡 Suggestion: Check input" in message
-        assert "🔍 Error Code: VALIDATION_ERROR" in message
+        try:
+            raise ValidationError(
+                "Validation failed",
+                suggestion="Check input",
+                error_code="VALIDATION_ERROR"
+            ) from original_error
+        except ValidationError as rldk_error:
+            message = format_error_message(rldk_error)
+            
+            assert "❌ Validation failed" in message
+            assert "💡 Suggestion: Check input" in message
+            assert "🔍 Error Code: VALIDATION_ERROR" in message
     
     def test_multiple_decorators(self):
         """Test combining multiple decorators."""
