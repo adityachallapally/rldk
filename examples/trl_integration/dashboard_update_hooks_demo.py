@@ -15,6 +15,8 @@ import threading
 from pathlib import Path
 from typing import Dict, Any
 
+from rldk.utils.math_utils import safe_divide
+
 # Import TRL components
 try:
     from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -33,7 +35,7 @@ def create_sample_metrics(step: int) -> RLDKMetrics:
     """Create sample metrics for demonstration."""
     return RLDKMetrics(
         step=step,
-        epoch=step / 100.0,
+        epoch=safe_divide(step, 100.0, 0.0),
         learning_rate=0.0001,
         loss=0.5 + (step % 10) * 0.1,
         grad_norm=1.0 + (step % 5) * 0.2,

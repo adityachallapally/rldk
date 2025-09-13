@@ -7,6 +7,7 @@ from datasets import Dataset
 
 # Import RLDK components
 from rldk.integrations.trl import RLDKCallback, PPOMonitor, CheckpointMonitor, prepare_models_for_ppo, check_trl_compatibility
+from rldk.utils.math_utils import safe_divide
 
 try:
     from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead
@@ -160,7 +161,7 @@ def test_basic_ppo_integration():
             args = TrainingArguments(output_dir=output_dir)
             state = TrainerState()
             state.global_step = step
-            state.epoch = step / 10.0
+            state.epoch = safe_divide(step, 10.0, 0.0)
             control = TrainerControl()
             
             # Call callbacks

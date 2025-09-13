@@ -9,6 +9,7 @@ from typing import Dict, Any, List, Optional
 from transformers import TrainerCallback, TrainerControl, TrainerState, TrainingArguments
 
 from rldk.integrations.trl import RLDKCallback, PPOMonitor
+from rldk.utils.math_utils import safe_divide, safe_rate_calculation
 
 
 class RewardModelMonitor(TrainerCallback):
@@ -150,7 +151,7 @@ class DataPipelineMonitor(TrainerCallback):
         total_batch_size = batch_size * getattr(args, 'world_size', 1)
         
         # Calculate throughput
-        throughput = total_batch_size / step_time if step_time > 0 else 0
+        throughput = safe_rate_calculation(total_batch_size, step_time, 0.0)
         self.throughput_history.append(throughput)
         
         # Simulate data quality check (in practice, this would be real quality metrics)
@@ -164,7 +165,7 @@ class DataPipelineMonitor(TrainerCallback):
             'quality_score': quality_score,
             'batch_size': total_batch_size,
             'step_time': step_time,
-            'efficiency': throughput / self.target_throughput,
+            'efficiency': safe_divide(throughput, self.target_throughput, 0.0),
             'timestamp': time.time(),
         }
         
@@ -300,15 +301,15 @@ class MemoryOptimizationMonitor(TrainerCallback):
         
         # GPU memory
         if torch.cuda.is_available():
-            memory_info['gpu_memory_used'] = torch.cuda.memory_allocated() / 1024**3  # GB
-            memory_info['gpu_memory_total'] = torch.cuda.get_device_properties(0).total_memory / 1024**3  # GB
-            memory_info['gpu_memory_percent'] = memory_info['gpu_memory_used'] / memory_info['gpu_memory_total']
+            memory_info['gpu_memory_used'] = safe_divide(torch.cuda.memory_allocated(), 1024**3, 0.0)  # GB
+            memory_info['gpu_memory_total'] = safe_divide(torch.cuda.get_device_properties(0).total_memory, 1024**3, 0.0)  # GB
+            memory_info['gpu_memory_percent'] = safe_divide(memory_info['gpu_memory_used'], memory_info['gpu_memory_total'], 0.0)
         
         # CPU memory
         try:
             import psutil
             process = psutil.Process()
-            memory_info['cpu_memory_used'] = process.memory_info().rss / 1024**3  # GB
+            memory_info['cpu_memory_used'] = safe_divide(process.memory_info().rss, 1024**3, 0.0)  # GB
             memory_info['cpu_memory_percent'] = process.memory_percent()
         except ImportError:
             pass
@@ -319,13 +320,13 @@ class MemoryOptimizationMonitor(TrainerCallback):
         """Calculate memory efficiency score."""
         # Efficiency based on memory utilization vs performance
         gpu_efficiency = memory_info['gpu_memory_percent']
-        cpu_efficiency = memory_info['cpu_memory_percent'] / 100.0
+        cpu_efficiency = safe_divide(memory_info['cpu_memory_percent'], 100.0, 0.0)
         
         # Optimal range is 70-90% for GPU, 50-80% for CPU
         gpu_score = 1.0 if 0.7 <= gpu_efficiency <= 0.9 else max(0, 1 - abs(gpu_efficiency - 0.8) * 2)
         cpu_score = 1.0 if 0.5 <= cpu_efficiency <= 0.8 else max(0, 1 - abs(cpu_efficiency - 0.65) * 2)
         
-        return (gpu_score + cpu_score) / 2
+        return safe_divide(gpu_score + cpu_score, 2, 0.0)
     
     def _check_memory_optimization(self, metrics: Dict[str, Any]):
         """Check for memory optimization opportunities."""

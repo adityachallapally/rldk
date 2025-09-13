@@ -10,6 +10,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments
 
 # Import RLDK components
 from rldk.integrations.trl import RLDKCallback, PPOMonitor, CheckpointMonitor, RLDKDashboard
+from rldk.utils.math_utils import safe_divide, safe_rate_calculation
 
 try:
     from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead
@@ -46,11 +47,11 @@ class CustomRLDKCallback(RLDKCallback):
         current = self.current_metrics
         
         # Performance score calculation
-        reward_score = min(1.0, current.reward_mean / self.performance_benchmarks["target_reward"])
-        kl_score = max(0, 1 - current.kl_mean / self.performance_benchmarks["max_kl_divergence"])
-        entropy_score = min(1.0, current.entropy_mean / self.performance_benchmarks["min_entropy"])
+        reward_score = min(1.0, safe_divide(current.reward_mean, self.performance_benchmarks["target_reward"], 0.0))
+        kl_score = max(0, 1 - safe_divide(current.kl_mean, self.performance_benchmarks["max_kl_divergence"], 0.0))
+        entropy_score = min(1.0, safe_divide(current.entropy_mean, self.performance_benchmarks["min_entropy"], 0.0))
         
-        performance_score = (reward_score + kl_score + entropy_score) / 3
+        performance_score = safe_divide(reward_score + kl_score + entropy_score, 3, 0.0)
         
         # Store custom metrics
         custom_metrics = {
@@ -80,7 +81,7 @@ class CustomRLDKCallback(RLDKCallback):
         total_time = sum(m.step_time for m in recent_metrics if m.step_time > 0)
         
         if total_time > 0:
-            self.current_metrics.tokens_per_second = total_tokens / total_time
+            self.current_metrics.tokens_per_second = safe_rate_calculation(total_tokens, total_time, 0.0)
         else:
             self.current_metrics.tokens_per_second = 0.0
     
@@ -98,7 +99,7 @@ class CustomRLDKCallback(RLDKCallback):
         time_elapsed = self.metrics_history[-1].wall_time - self.metrics_history[-10].wall_time
         
         if time_elapsed > 0:
-            return max(0, reward_improvement / time_elapsed)
+            return max(0, safe_rate_calculation(reward_improvement, time_elapsed, 0.0))
         
         return 1.0
     
@@ -222,7 +223,7 @@ class AdvancedPPOMonitor(PPOMonitor):
         return {
             "convergence_analysis": self.convergence_analysis,
             "all_converged": all(self.convergence_analysis.values()),
-            "convergence_percentage": sum(self.convergence_analysis.values()) / len(self.convergence_analysis) * 100,
+            "convergence_percentage": safe_divide(sum(self.convergence_analysis.values()), len(self.convergence_analysis), 0.0) * 100,
         }
     
     def save_ppo_analysis(self):
@@ -305,7 +306,7 @@ def test_advanced_monitoring():
             args = TrainingArguments(output_dir=output_dir)
             state = TrainerState()
             state.global_step = len(custom_callback.metrics_history)
-            state.epoch = state.global_step / 10.0
+            state.epoch = safe_divide(state.global_step, 10.0, 0.0)
             control = TrainerControl()
             
             custom_callback.on_step_end(args, state, control)
