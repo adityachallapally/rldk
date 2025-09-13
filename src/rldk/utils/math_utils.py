@@ -1,7 +1,7 @@
 """Mathematical utilities for robust division and rate calculations."""
 
 import logging
-from typing import Tuple, Union, Literal
+from typing import Tuple, Union, Literal, List
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +40,7 @@ def try_divide(
         >>> try_divide(10, 0, on_zero="nan")
         (nan, True)
     """
-    if denominator > 0:
-        return numerator / denominator, True
-    elif denominator == 0:
+    if denominator == 0:
         if on_zero == "skip":
             logger.debug(f"Skipping division by zero: {numerator} / {denominator}")
             return fallback, False
@@ -55,19 +53,11 @@ def try_divide(
         else:
             raise ValueError(f"Invalid on_zero value: {on_zero}")
     else:
-        # Negative denominator - treat as zero for safety
-        logger.debug(f"Negative denominator treated as zero: {numerator} / {denominator}")
-        if on_zero == "skip":
-            return fallback, False
-        elif on_zero == "zero":
-            return 0.0, True
-        elif on_zero == "nan":
-            return float("nan"), True
-        else:
-            raise ValueError(f"Invalid on_zero value: {on_zero}")
+        # Handle both positive and negative denominators normally
+        return numerator / denominator, True
 
 
-def nan_aware_mean(values: list[float]) -> float:
+def nan_aware_mean(values: List[float]) -> float:
     """
     Calculate mean ignoring NaN values.
     
@@ -87,7 +77,7 @@ def nan_aware_mean(values: list[float]) -> float:
     return sum(valid_values) / len(valid_values)
 
 
-def nan_aware_std(values: list[float], ddof: int = 1) -> float:
+def nan_aware_std(values: List[float], ddof: int = 1) -> float:
     """
     Calculate standard deviation ignoring NaN values.
     
@@ -110,7 +100,7 @@ def nan_aware_std(values: list[float], ddof: int = 1) -> float:
     return variance ** 0.5
 
 
-def nan_aware_median(values: list[float]) -> float:
+def nan_aware_median(values: List[float]) -> float:
     """
     Calculate median ignoring NaN values.
     
