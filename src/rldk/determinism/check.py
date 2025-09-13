@@ -280,7 +280,10 @@ def _run_deterministic_cmd(
             torch.backends.cudnn.allow_tf32 = False
 
         # Execute the original command using safe runner
-        from .runner import run_deterministic_command
+        import sys
+        import os
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        from rldk.determinism.runner import run_deterministic_command
         exit_code = run_deterministic_command(modified_cmd, 42 + {replica_id}, 300)
         sys.exit(exit_code)
         """

@@ -189,7 +189,7 @@ if original_cmd.startswith("python "):
     sys.exit(exit_code)
 else:
     # For non-Python commands, run as subprocess
-    result = subprocess.run(original_cmd, shell=True, capture_output=True, text=True, env={env})
+    result = subprocess.run(original_cmd, shell=True, capture_output=True, text=True, env=env)
     print(result.stdout)
     if result.stderr:
         print(result.stderr, file=sys.stderr)

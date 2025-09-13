@@ -5,7 +5,7 @@ import shlex
 import subprocess
 import sys
 import tempfile
-import runpy
+import json
 from pathlib import Path
 from typing import Dict, Any
 
@@ -76,83 +76,115 @@ def run_deterministic_command(command: str, seed: int, timeout: int) -> int:
     )
     
     if is_python_command:
-        return _run_python_command(command, cmd_parts, seed, timeout)
+        return _run_python_command_safe(command, cmd_parts, seed, timeout)
     else:
         return _run_generic_command(command, cmd_parts, seed, timeout)
 
 
-def _run_python_command(command: str, cmd_parts: list, seed: int, timeout: int) -> int:
-    """Run a Python command with deterministic seeding using a temporary shim."""
+def _run_python_command_safe(command: str, cmd_parts: list, seed: int, timeout: int) -> int:
+    """Run a Python command with deterministic seeding using a safe approach."""
     with tempfile.TemporaryDirectory() as temp_dir:
-        # Create a Python shim that sets up deterministic environment
-        shim_content = f'''#!/usr/bin/env python3
+        # Create a configuration file with the seed and command info
+        config = {
+            "seed": seed,
+            "command": command,
+            "cmd_parts": cmd_parts
+        }
+        
+        config_path = Path(temp_dir) / "config.json"
+        with open(config_path, 'w') as f:
+            json.dump(config, f)
+        
+        # Create a safe Python shim that reads from the config file
+        shim_content = '''#!/usr/bin/env python3
 import os
 import sys
 import random
 import numpy as np
+import json
 import runpy
+import subprocess
+from pathlib import Path
 
-# Set deterministic environment
-os.environ['PYTHONHASHSEED'] = str({seed})
-
-# Set random seeds
-random.seed({seed})
-np.random.seed({seed})
-
-# PyTorch deterministic settings
-try:
-    import torch
-    torch.manual_seed({seed})
-    torch.use_deterministic_algorithms(True)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+def main():
+    # Read configuration safely
+    config_path = sys.argv[1]
+    with open(config_path, 'r') as f:
+        config = json.load(f)
     
-    # Disable TF32 for better determinism
-    if hasattr(torch.backends.cuda, 'matmul.allow_tf32'):
-        torch.backends.cuda.matmul.allow_tf32 = False
-    if hasattr(torch.backends.cudnn, 'allow_tf32'):
-        torch.backends.cudnn.allow_tf32 = False
+    seed = config["seed"]
+    cmd_parts = config["cmd_parts"]
     
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed({seed})
-        torch.cuda.manual_seed_all({seed})
-except ImportError:
-    pass
-
-# TensorFlow deterministic settings
-try:
-    import tensorflow as tf
-    tf.random.set_seed({seed})
-    os.environ['TF_DETERMINISTIC_OPS'] = '1'
-    os.environ['TF_CUDNN_DETERMINISTIC'] = '1'
-except ImportError:
-    pass
-
-# Execute the target script
-try:
-    # Preserve original sys.argv
-    original_argv = sys.argv.copy()
-    sys.argv = {cmd_parts!r}
+    # Set deterministic environment
+    os.environ['PYTHONHASHSEED'] = str(seed)
     
-    # Determine the target script
-    if len(sys.argv) > 1 and sys.argv[1].endswith('.py'):
-        script_path = sys.argv[1]
-        if os.path.exists(script_path):
-            runpy.run_path(script_path, run_name='__main__')
+    # Set random seeds
+    random.seed(seed)
+    np.random.seed(seed)
+    
+    # PyTorch deterministic settings
+    try:
+        import torch
+        torch.manual_seed(seed)
+        torch.use_deterministic_algorithms(True)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        
+        # Disable TF32 for better determinism
+        if hasattr(torch.backends.cuda, 'matmul.allow_tf32'):
+            torch.backends.cuda.matmul.allow_tf32 = False
+        if hasattr(torch.backends.cudnn, 'allow_tf32'):
+            torch.backends.cudnn.allow_tf32 = False
+        
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+    except ImportError:
+        pass
+    
+    # TensorFlow deterministic settings
+    try:
+        import tensorflow as tf
+        tf.random.set_seed(seed)
+        os.environ['TF_DETERMINISTIC_OPS'] = '1'
+        os.environ['TF_CUDNN_DETERMINISTIC'] = '1'
+    except ImportError:
+        pass
+    
+    # Execute the target script safely
+    try:
+        # Preserve original sys.argv
+        original_argv = sys.argv.copy()
+        sys.argv = cmd_parts
+        
+        # Determine the target script
+        if len(sys.argv) > 1 and sys.argv[1].endswith('.py'):
+            script_path = sys.argv[1]
+            if os.path.exists(script_path):
+                runpy.run_path(script_path, run_name='__main__')
+            else:
+                print(f"Error: Script not found: {script_path}", file=sys.stderr)
+                sys.exit(1)
         else:
-            print(f"Error: Script not found: {{script_path}}", file=sys.stderr)
-            sys.exit(1)
-    else:
-        # For python -c commands, execute the code directly
-        if len(sys.argv) > 2 and sys.argv[1] == '-c':
-            exec(sys.argv[2])
-        else:
-            print("Error: Invalid Python command format", file=sys.stderr)
-            sys.exit(1)
-            
-except Exception as e:
-    print(f"Error executing command: {{e}}", file=sys.stderr)
-    sys.exit(1)
+            # For python -c commands, use subprocess instead of exec
+            if len(sys.argv) > 2 and sys.argv[1] == '-c':
+                # Use subprocess to execute the -c command safely
+                result = subprocess.run([sys.executable, '-c', sys.argv[2]], 
+                                     capture_output=True, text=True)
+                print(result.stdout, end='')
+                if result.stderr:
+                    print(result.stderr, file=sys.stderr, end='')
+                sys.exit(result.returncode)
+            else:
+                print("Error: Invalid Python command format", file=sys.stderr)
+                sys.exit(1)
+                
+    except Exception as e:
+        print(f"Error executing command: {e}", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
 '''
         
         # Write shim to temporary file
@@ -167,9 +199,9 @@ except Exception as e:
         env = os.environ.copy()
         env['PYTHONHASHSEED'] = str(seed)
         
-        # Run the shim
+        # Run the shim with the config file
         result = run_with_timeout_subprocess(
-            [sys.executable, str(shim_path)],
+            [sys.executable, str(shim_path), str(config_path)],
             env=env,
             timeout=timeout
         )
