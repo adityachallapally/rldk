@@ -2,6 +2,7 @@
 
 from typing import Dict, Tuple, Any
 import numpy as np
+import warnings
 from scipy import stats
 from scipy.stats import bootstrap
 
@@ -346,7 +347,7 @@ def calculate_effect_size_interpretation(effect_size: float) -> str:
 
 
 def calculate_kl_divergence(
-    p: np.ndarray, q: np.ndarray, epsilon: float = 1e-10
+    p: np.ndarray, q: np.ndarray, epsilon: float = 1e-8
 ) -> float:
     """
     Calculate KL divergence D_KL(P||Q) between two probability distributions.
@@ -354,7 +355,7 @@ def calculate_kl_divergence(
     Args:
         p: Probability distribution P (target/reference)
         q: Probability distribution Q (model under test)
-        epsilon: Small value to avoid log(0)
+        epsilon: Small value to avoid log(0) and numerical instability
 
     Returns:
         KL divergence value (non-negative)
@@ -367,32 +368,75 @@ def calculate_kl_divergence(
     if len(p) != len(q):
         raise ValueError("Distributions must have the same length")
 
-    # Ensure probabilities sum to 1 and handle edge cases
+    # Convert to numpy arrays with higher precision
     p = np.array(p, dtype=np.float64)
     q = np.array(q, dtype=np.float64)
-
-    # Normalize to probability distributions
-    p = p / (np.sum(p) + epsilon)
-    q = q / (np.sum(q) + epsilon)
-
-    # Add small epsilon to avoid log(0)
-    p = p + epsilon
-    q = q + epsilon
-
-    # Renormalize
-    p = p / np.sum(p)
-    q = q / np.sum(q)
-
+    
+    # Validate inputs for numerical stability
+    if np.any(np.isnan(p)) or np.any(np.isnan(q)):
+        raise ValueError("Input distributions contain NaN values")
+    
+    if np.any(np.isinf(p)) or np.any(np.isinf(q)):
+        raise ValueError("Input distributions contain infinite values")
+    
+    # Check for negative values
+    if np.any(p < 0) or np.any(q < 0):
+        raise ValueError("Probability distributions must be non-negative")
+    
+    # Handle edge case: both distributions are zero
+    if np.sum(p) == 0 and np.sum(q) == 0:
+        return 0.0
+    
+    # Handle edge case: one distribution is zero
+    if np.sum(p) == 0:
+        return 0.0  # KL divergence is 0 when P is zero everywhere
+    
+    if np.sum(q) == 0:
+        return float('inf')  # KL divergence is infinite when Q is zero but P is not
+    
+    # Normalize distributions to sum to 1 with epsilon for numerical stability
+    p_sum = np.sum(p)
+    q_sum = np.sum(q)
+    
+    # Single normalization step with epsilon addition
+    p_safe = (p + epsilon) / (p_sum + len(p) * epsilon)
+    q_safe = (q + epsilon) / (q_sum + len(q) * epsilon)
+    
     # Calculate KL divergence: sum(p * log(p/q))
-    # Only sum where p > 0 to avoid log(0)
-    mask = p > epsilon
+    # Only consider terms where p > epsilon to avoid numerical issues
+    mask = p_safe > epsilon
+    
     if not np.any(mask):
         return 0.0
-
-    kl_div = np.sum(p[mask] * np.log(p[mask] / q[mask]))
-
-    # Ensure non-negative result (numerical issues can cause small negative values)
-    return max(0.0, float(kl_div))
+    
+    # Calculate KL divergence with improved numerical stability
+    log_ratio = np.log(p_safe[mask] / q_safe[mask])
+    
+    # Check for numerical issues in log calculation
+    if np.any(np.isnan(log_ratio)) or np.any(np.isinf(log_ratio)):
+        # Fallback: use more conservative epsilon
+        epsilon_large = 1e-6
+        p_safe_large = (p + epsilon_large) / (p_sum + len(p) * epsilon_large)
+        q_safe_large = (q + epsilon_large) / (q_sum + len(q) * epsilon_large)
+        
+        mask_large = p_safe_large > epsilon_large
+        if not np.any(mask_large):
+            return 0.0
+        
+        log_ratio = np.log(p_safe_large[mask_large] / q_safe_large[mask_large])
+        kl_div = np.sum(p_safe_large[mask_large] * log_ratio)
+    else:
+        kl_div = np.sum(p_safe[mask] * log_ratio)
+    
+    # Ensure non-negative result and handle numerical precision issues
+    kl_div = max(0.0, float(kl_div))
+    
+    # Cap extremely large values to prevent overflow
+    if kl_div > 1e6:
+        warnings.warn(f"KL divergence value {kl_div} is extremely large, capping to 1e6")
+        kl_div = 1e6
+    
+    return kl_div
 
 
 def calculate_kl_divergence_between_runs(
