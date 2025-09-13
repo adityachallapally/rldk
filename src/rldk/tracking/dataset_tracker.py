@@ -6,7 +6,7 @@ import hashlib
 import json
 import pickle
 from pathlib import Path
-from typing import Dict, Any, Optional, Union, List
+from typing import Dict, Any, Optional, Union
 import numpy as np
 import pandas as pd
 from datasets import Dataset, DatasetDict
@@ -194,8 +194,16 @@ class DatasetTracker:
             sample_size = min(1000, len(dataset))
             if len(dataset) > sample_size:
                 # Use deterministic sampling: take every nth element by stride
-                step = len(dataset) // sample_size
-                sample_indices = list(range(0, len(dataset), step))[:sample_size]
+                # Ensure we get exactly sample_size items
+                step = max(1, len(dataset) // sample_size)
+                sample_indices = []
+                for i in range(0, len(dataset), step):
+                    if len(sample_indices) >= sample_size:
+                        break
+                    sample_indices.append(i)
+                # If we still need more samples, fill from the end
+                while len(sample_indices) < sample_size and len(sample_indices) < len(dataset):
+                    sample_indices.append(len(dataset) - 1 - len(sample_indices))
             else:
                 # Use all indices if dataset is small
                 sample_indices = list(range(len(dataset)))
@@ -216,8 +224,16 @@ class DatasetTracker:
         sample_size = min(100, len(dataset))
         if len(dataset) > sample_size:
             # Use deterministic sampling: take every nth element by stride
-            step = len(dataset) // sample_size
-            sample_indices = list(range(0, len(dataset), step))[:sample_size]
+            # Ensure we get exactly sample_size items
+            step = max(1, len(dataset) // sample_size)
+            sample_indices = []
+            for i in range(0, len(dataset), step):
+                if len(sample_indices) >= sample_size:
+                    break
+                sample_indices.append(i)
+            # If we still need more samples, fill from the end
+            while len(sample_indices) < sample_size and len(sample_indices) < len(dataset):
+                sample_indices.append(len(dataset) - 1 - len(sample_indices))
         else:
             # Use all indices if dataset is small
             sample_indices = list(range(len(dataset)))
@@ -245,8 +261,16 @@ class DatasetTracker:
             flat = dataset.flatten()
             sample_size = min(100000, len(flat))
             # Use deterministic sampling: take every nth element by stride
-            step = len(flat) // sample_size
-            sample_indices = list(range(0, len(flat), step))[:sample_size]
+            # Ensure we get exactly sample_size items
+            step = max(1, len(flat) // sample_size)
+            sample_indices = []
+            for i in range(0, len(flat), step):
+                if len(sample_indices) >= sample_size:
+                    break
+                sample_indices.append(i)
+            # If we still need more samples, fill from the end
+            while len(sample_indices) < sample_size and len(sample_indices) < len(flat):
+                sample_indices.append(len(flat) - 1 - len(sample_indices))
             sample = flat[sample_indices]
         else:
             sample = dataset.flatten()
@@ -258,14 +282,31 @@ class DatasetTracker:
         # For large DataFrames, sample a subset deterministically by stride
         if len(dataset) > 10000:
             sample_size = min(1000, len(dataset))
-            step = len(dataset) // sample_size
-            sample_indices = list(range(0, len(dataset), step))[:sample_size]
+            # Use deterministic sampling: take every nth element by stride
+            # Ensure we get exactly sample_size items
+            step = max(1, len(dataset) // sample_size)
+            sample_indices = []
+            for i in range(0, len(dataset), step):
+                if len(sample_indices) >= sample_size:
+                    break
+                sample_indices.append(i)
+            # If we still need more samples, fill from the end
+            while len(sample_indices) < sample_size and len(sample_indices) < len(dataset):
+                sample_indices.append(len(dataset) - 1 - len(sample_indices))
             sample_df = dataset.iloc[sample_indices]
         else:
             sample_df = dataset
         
-        # Convert to string representation and hash
-        df_str = sample_df.to_string()
+        # Use deterministic JSON serialization instead of to_string()
+        # This ensures consistent representation across pandas versions
+        try:
+            # Convert to dict with sorted columns for deterministic ordering
+            df_dict = sample_df.to_dict('records')
+            df_str = json.dumps(df_dict, sort_keys=True, default=str)
+        except Exception:
+            # Fallback to to_string() if JSON serialization fails
+            df_str = sample_df.to_string()
+        
         return hashlib.sha256(df_str.encode()).hexdigest()
     
     def _get_file_size(self, path: Path) -> int:

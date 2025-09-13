@@ -4,9 +4,8 @@ Model tracking for architecture fingerprinting and versioning.
 
 import hashlib
 import json
-import pickle
 from pathlib import Path
-from typing import Dict, Any, Optional, Union, List
+from typing import Dict, Any, Optional, Union
 import torch
 import torch.nn as nn
 from transformers import PreTrainedModel, PreTrainedTokenizer
@@ -148,23 +147,30 @@ class ModelTracker:
         
         if total_params > 100000000:  # 100M parameters
             # For very large models, sample tensors by fixed stride per parameter
-            sampled_weights = []
+            # Use streaming approach to avoid memory pressure
             
             for name, param in named_params:
                 if param.numel() > 0:
                     flat_param = param.detach().cpu().flatten()
                     if len(flat_param) > 10000:
                         # Use fixed stride sampling: take every nth element
-                        step = len(flat_param) // 10000
-                        sample_indices = list(range(0, len(flat_param), step))[:10000]
-                        sampled_weights.append(flat_param[sample_indices])
+                        # Ensure we get exactly 10000 items
+                        step = max(1, len(flat_param) // 10000)
+                        sample_indices = []
+                        for i in range(0, len(flat_param), step):
+                            if len(sample_indices) >= 10000:
+                                break
+                            sample_indices.append(i)
+                        # If we still need more samples, fill from the end
+                        while len(sample_indices) < 10000 and len(sample_indices) < len(flat_param):
+                            sample_indices.append(len(flat_param) - 1 - len(sample_indices))
+                        
+                        # Hash the sampled weights directly to avoid memory accumulation
+                        sampled_weights = flat_param[sample_indices]
+                        hash_obj.update(sampled_weights.numpy().tobytes())
                     else:
-                        sampled_weights.append(flat_param)
-            
-            # Concatenate on CPU and hash
-            if sampled_weights:
-                all_weights = torch.cat(sampled_weights)
-                hash_obj.update(all_weights.numpy().tobytes())
+                        # Hash the entire parameter if it's small
+                        hash_obj.update(flat_param.numpy().tobytes())
         else:
             # For smaller models, hash all weights in fixed parameter order
             for name, param in named_params:
