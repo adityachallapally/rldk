@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+from ..utils.runtime import run_with_timeout_subprocess, RLDKTimeoutError
 import tempfile
 import json
 import shlex
@@ -200,23 +201,19 @@ def _run_replay(command: str, output_path: Path, device: Optional[str]) -> Repla
         # Run the command securely
         logger.info(f"Executing: {command}")
         try:
-            result = subprocess.run(
+            result = run_with_timeout_subprocess(
                 argv,
-                shell=False,
-                env=env,
-                capture_output=True,
-                text=True,
                 timeout=3600,  # 1 hour timeout
-                check=False  # We'll handle errors explicitly
+                env=env
             )
-        except subprocess.TimeoutExpired as e:
+        except RLDKTimeoutError as e:
             error_msg = f"Replay command timed out after 3600 seconds: {e}"
             logger.error(error_msg)
             return ReplayResult(
                 success=False,
                 return_code=-1,
-                stdout=e.stdout or "",
-                stderr=e.stderr or "",
+                stdout="",
+                stderr=str(e),
                 metrics_data=pd.DataFrame(),
                 error_message=error_msg
             )
