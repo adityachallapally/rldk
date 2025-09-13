@@ -3,6 +3,7 @@
 import os
 import subprocess
 import re
+import sys
 import tempfile
 import warnings
 from dataclasses import dataclass
@@ -278,8 +279,10 @@ def _run_deterministic_cmd(
             torch.backends.cuda.matmul.allow_tf32 = False
             torch.backends.cudnn.allow_tf32 = False
 
-        # Execute the original command
-        exec('''{modified_cmd}''')
+        # Execute the original command using safe runner
+        from .runner import run_deterministic_command
+        exit_code = run_deterministic_command(modified_cmd, 42 + {replica_id}, 300)
+        sys.exit(exit_code)
         """
     modified_cmd = f'python -c "{deterministic_wrapper}"'
 
