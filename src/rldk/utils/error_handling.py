@@ -352,3 +352,61 @@ def safe_operation(operation_name: str, fallback_value: Any = None,
                 return fallback_value
         return wrapper
     return decorator
+
+
+def safe_divide(numerator: float, denominator: float, fallback: float = 0.0) -> float:
+    """Safely divide two numbers, avoiding division by zero.
+    
+    Args:
+        numerator: The number to divide
+        denominator: The number to divide by
+        fallback: Value to return if denominator is zero
+        
+    Returns:
+        The result of division or fallback value
+    """
+    if denominator == 0:
+        return fallback
+    return numerator / denominator
+
+
+def safe_rate_calculation(count: float, time_interval: float, fallback: float = 0.0) -> float:
+    """Safely calculate rate (count per unit time), avoiding division by zero.
+    
+    Args:
+        count: The count or amount
+        time_interval: The time interval
+        fallback: Value to return if time_interval is zero
+        
+    Returns:
+        The rate or fallback value
+    """
+    return safe_divide(count, time_interval, fallback)
+
+
+def safe_percentage(numerator: float, denominator: float, fallback: float = 0.0) -> float:
+    """Safely calculate percentage, avoiding division by zero.
+    
+    Args:
+        numerator: The numerator
+        denominator: The denominator
+        fallback: Value to return if denominator is zero
+        
+    Returns:
+        The percentage or fallback value
+    """
+    return safe_divide(numerator * 100, denominator, fallback)
+
+
+def safe_ratio(numerator: float, denominator: float, fallback: float = 0.0) -> float:
+    """Safely calculate ratio, avoiding division by zero.
+    
+    Args:
+        numerator: The numerator
+        denominator: The denominator
+        fallback: Value to return if denominator is zero
+        
+    Returns:
+        The ratio or fallback value
+    """
+    return safe_divide(numerator, denominator, fallback)
