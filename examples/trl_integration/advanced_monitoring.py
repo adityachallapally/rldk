@@ -10,6 +10,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments
 
 # Import RLDK components
 from rldk.integrations.trl import RLDKCallback, PPOMonitor, CheckpointMonitor, RLDKDashboard
+from rldk.utils.math_utils import safe_rate, nan_aware_mean
 
 try:
     from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead
@@ -29,6 +30,14 @@ class CustomRLDKCallback(RLDKCallback):
             "target_reward": 1.0,
             "max_kl_divergence": 0.1,
             "min_entropy": 1.0,
+        }
+        # Counters for division by zero tracking
+        self.division_counters = {
+            "samples_seen": 0,
+            "samples_used": 0,
+            "zero_denominator_skipped": 0,
+            "non_positive_time_skipped": 0,
+            "other_skip_reasons": []
         }
     
     def on_step_end(self, args, state, control, **kwargs):
@@ -70,19 +79,29 @@ class CustomRLDKCallback(RLDKCallback):
                           f"Performance score {performance_score:.3f} is below threshold")
     
     def _calculate_efficiency_metrics(self):
-        """Calculate training efficiency metrics."""
+        """Calculate training efficiency metrics with robust division."""
         if len(self.metrics_history) < 2:
             return
         
-        # Calculate tokens per second
+        # Calculate tokens per second using robust division
         recent_metrics = self.metrics_history[-5:]
         total_tokens = sum(m.tokens_in + m.tokens_out for m in recent_metrics if m.tokens_in and m.tokens_out)
         total_time = sum(m.step_time for m in recent_metrics if m.step_time > 0)
         
-        if total_time > 0:
-            self.current_metrics.tokens_per_second = total_tokens / total_time
+        self.division_counters["samples_seen"] += 1
+        
+        tokens_per_sec, used, reason = safe_rate(total_tokens, total_time, on_zero="skip")
+        if used:
+            self.current_metrics.tokens_per_second = tokens_per_sec
+            self.division_counters["samples_used"] += 1
         else:
             self.current_metrics.tokens_per_second = 0.0
+            if reason == "zero_denominator_skipped":
+                self.division_counters["zero_denominator_skipped"] += 1
+            elif reason == "non_positive_time_skipped":
+                self.division_counters["non_positive_time_skipped"] += 1
+            else:
+                self.division_counters["other_skip_reasons"].append(reason)
     
     def _calculate_efficiency_ratio(self) -> float:
         """Calculate overall training efficiency ratio."""
@@ -98,7 +117,9 @@ class CustomRLDKCallback(RLDKCallback):
         time_elapsed = self.metrics_history[-1].wall_time - self.metrics_history[-10].wall_time
         
         if time_elapsed > 0:
-            return max(0, reward_improvement / time_elapsed)
+            efficiency_ratio, used, reason = safe_rate(reward_improvement, time_elapsed, on_zero="skip")
+            if used:
+                return max(0, efficiency_ratio)
         
         return 1.0
     
@@ -110,11 +131,12 @@ class CustomRLDKCallback(RLDKCallback):
         df = pd.DataFrame(self.custom_metrics_history)
         
         return {
-            "average_performance_score": df['performance_score'].mean(),
+            "average_performance_score": nan_aware_mean(df['performance_score'].tolist()),
             "best_performance_score": df['performance_score'].max(),
-            "average_efficiency_ratio": df['efficiency_ratio'].mean(),
+            "average_efficiency_ratio": nan_aware_mean(df['efficiency_ratio'].tolist()),
             "total_custom_alerts": len([a for a in self.alerts if a['type'] == 'low_performance']),
             "performance_trend": self._calculate_performance_trend(),
+            "division_counters": self.division_counters,
         }
     
     def _calculate_performance_trend(self) -> str:
@@ -131,6 +153,23 @@ class CustomRLDKCallback(RLDKCallback):
             return "declining"
         else:
             return "stable"
+    
+    def get_throughput_metrics(self) -> Dict[str, Any]:
+        """Get throughput metrics with division counters."""
+        if not hasattr(self.current_metrics, 'tokens_per_second'):
+            return {
+                "tokens_per_second": 0.0,
+                "window_size_used": 0,
+                "zero_time_samples_skipped": 0,
+                "division_counters": self.division_counters
+            }
+        
+        return {
+            "tokens_per_second": getattr(self.current_metrics, 'tokens_per_second', 0.0),
+            "window_size_used": self.division_counters["samples_used"],
+            "zero_time_samples_skipped": self.division_counters["zero_denominator_skipped"],
+            "division_counters": self.division_counters
+        }
     
     def save_metrics_history(self):
         """Save custom metrics history and call parent method."""
@@ -328,6 +367,10 @@ def test_advanced_monitoring():
     # Performance summary
     performance_summary = custom_callback.get_performance_summary()
     print(f"Performance Summary: {performance_summary}")
+    
+    # Throughput metrics with counters
+    throughput_metrics = custom_callback.get_throughput_metrics()
+    print(f"Throughput Metrics: {throughput_metrics}")
     
     # Convergence report
     convergence_report = advanced_ppo_monitor.get_convergence_report()
