@@ -183,10 +183,13 @@ original_cmd = "{cmd}"
 if original_cmd.startswith("python "):
     script_args = original_cmd[7:].split()
     sys.argv = ["python"] + script_args
-    exec(open(script_args[0]).read())
+    # Use safe runner instead of exec
+    from .runner import run_deterministic_command
+    exit_code = run_deterministic_command(original_cmd, 42, 300)
+    sys.exit(exit_code)
 else:
     # For non-Python commands, run as subprocess
-    result = subprocess.run(original_cmd, shell=True, capture_output=True, text=True, env={env})
+    result = subprocess.run(original_cmd, shell=True, capture_output=True, text=True, env=env)
     print(result.stdout)
     if result.stderr:
         print(result.stderr, file=sys.stderr)
