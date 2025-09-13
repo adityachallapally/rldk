@@ -2,6 +2,8 @@
 
 This guide explains how to use RLDK with TRL (Transformer Reinforcement Learning) for monitoring and analyzing PPO training runs.
 
+**Note:** RLDK requires TRL 0.23 or newer.
+
 ## Overview
 
 RLDK provides comprehensive monitoring and analysis capabilities for TRL training runs through:

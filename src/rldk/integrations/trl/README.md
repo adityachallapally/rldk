@@ -2,6 +2,8 @@
 
 This module provides callbacks and monitoring tools for TRL (Transformer Reinforcement Learning) training loops.
 
+**Note:** RLDK requires TRL 0.23 or newer.
+
 ## Features
 
 - Real-time training monitoring and analysis
