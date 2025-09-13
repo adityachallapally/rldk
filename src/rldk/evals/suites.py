@@ -23,6 +23,7 @@ from .metrics import (
     evaluate_toxicity,
     evaluate_bias,
 )
+from ..utils.math_utils import try_divide, safe_percentage, nan_aware_mean, nan_aware_std
 
 
 # Quick evaluation suite - designed to run in < 5 minutes
@@ -302,18 +303,22 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             reward_std = rewards.std()
             reward_mean = rewards.mean()
             if reward_mean != 0:
-                cv = reward_std / abs(reward_mean)
-                # Convert to consistency score (lower CV = higher consistency)
-                consistency_score = max(0, 1 - cv)
-                consistency_metrics.append(("reward_consistency", consistency_score))
+                cv, used, reason = safe_percentage(reward_std, abs(reward_mean), on_zero="skip")
+                if used:
+                    # Convert to consistency score (lower CV = higher consistency)
+                    consistency_score = max(0, 1 - cv / 100)  # Convert percentage back to ratio
+                    consistency_metrics.append(("reward_consistency", consistency_score))
                 
                 # Check for trend in rewards
                 steps = np.arange(len(rewards))
                 if len(steps) > 1:
                     slope = np.polyfit(steps, rewards, 1)[0]
-                    # Convert slope to stability score
-                    stability_score = max(0, 1 - abs(slope) / abs(reward_mean) if reward_mean != 0 else 0)
-                    consistency_metrics.append(("reward_stability", stability_score))
+                    # Convert slope to stability score using robust division
+                    if reward_mean != 0:
+                        stability_ratio, used, reason = safe_percentage(abs(slope), abs(reward_mean), on_zero="skip")
+                        if used:
+                            stability_score = max(0, 1 - stability_ratio / 100)  # Convert percentage back to ratio
+                            consistency_metrics.append(("reward_stability", stability_score))
     
     # 2. Check response consistency for similar inputs
     prompt_cols = [col for col in data.columns if any(keyword in col.lower() 
@@ -362,9 +367,10 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                             group_std = group_rewards.std()
                             group_mean = group_rewards.mean()
                             if group_mean != 0:
-                                group_cv = group_std / abs(group_mean)
-                                group_consistency = max(0, 1 - group_cv)
-                                group_consistencies.append(group_consistency)
+                                group_cv, used, reason = safe_percentage(group_std, abs(group_mean), on_zero="skip")
+                                if used:
+                                    group_consistency = max(0, 1 - group_cv / 100)  # Convert percentage back to ratio
+                                    group_consistencies.append(group_consistency)
                     else:
                         # Fallback: use other available metrics for consistency
                         # Look for any numeric columns that might indicate consistency
@@ -377,12 +383,13 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                                 group_std = group_values.std()
                                 group_mean = group_values.mean()
                                 if group_mean != 0:
-                                    group_cv = group_std / abs(group_mean)
-                                    group_consistency = max(0, 1 - group_cv)
-                                    group_consistencies.append(group_consistency)
+                                    group_cv, used, reason = safe_percentage(group_std, abs(group_mean), on_zero="skip")
+                                    if used:
+                                        group_consistency = max(0, 1 - group_cv / 100)  # Convert percentage back to ratio
+                                        group_consistencies.append(group_consistency)
             
             if group_consistencies:
-                avg_group_consistency = np.mean(group_consistencies)
+                avg_group_consistency = nan_aware_mean(group_consistencies)
                 consistency_metrics.append(("response_consistency", avg_group_consistency))
     
     # 3. Check metric consistency across different evaluation conditions
@@ -397,9 +404,10 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 metric_std = values.std()
                 metric_mean = values.mean()
                 if metric_mean != 0:
-                    metric_cv = metric_std / abs(metric_mean)
-                    metric_consistency = max(0, 1 - metric_cv)
-                    consistency_metrics.append((f"{metric_col}_consistency", metric_consistency))
+                    metric_cv, used, reason = safe_percentage(metric_std, abs(metric_mean), on_zero="skip")
+                    if used:
+                        metric_consistency = max(0, 1 - metric_cv / 100)  # Convert percentage back to ratio
+                        consistency_metrics.append((f"{metric_col}_consistency", metric_consistency))
     
     # 4. Check for systematic biases that indicate inconsistency
     if "step" in data.columns:
@@ -424,7 +432,7 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     # Calculate overall consistency score
     if consistency_metrics:
         scores = [score for _, score in consistency_metrics]
-        overall_score = np.mean(scores)
+        overall_score = nan_aware_mean(scores)
     else:
         # Fallback: use basic reward statistics
         if "reward_mean" in data.columns:
@@ -433,8 +441,11 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 reward_std = rewards.std()
                 reward_mean = rewards.mean()
                 if reward_mean != 0:
-                    cv = reward_std / abs(reward_mean)
-                    overall_score = max(0, 1 - cv)
+                    cv, used, reason = safe_percentage(reward_std, abs(reward_mean), on_zero="skip")
+                    if used:
+                        overall_score = max(0, 1 - cv / 100)  # Convert percentage back to ratio
+                    else:
+                        overall_score = 0.5
                 else:
                     overall_score = 0.5
             else:
@@ -495,9 +506,10 @@ def evaluate_robustness(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             
             if reward_mean != 0:
                 # Coefficient of variation (lower = more robust)
-                cv = reward_std / abs(reward_mean)
-                stability_score = max(0, 1 - cv)
-                robustness_metrics.append(("reward_stability", stability_score))
+                cv, used, reason = safe_percentage(reward_std, abs(reward_mean), on_zero="skip")
+                if used:
+                    stability_score = max(0, 1 - cv / 100)  # Convert percentage back to ratio
+                    robustness_metrics.append(("reward_stability", stability_score))
                 
                 # Check for outliers that might indicate fragility
                 Q1 = np.percentile(rewards, 25)
@@ -508,7 +520,11 @@ def evaluate_robustness(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 outlier_threshold_high = Q3 + 1.5 * IQR
                 
                 outliers = np.sum((rewards < outlier_threshold_low) | (rewards > outlier_threshold_high))
-                outlier_ratio = outliers / len(rewards)
+                outlier_ratio, used, reason = safe_percentage(outliers, len(rewards), on_zero="skip")
+                if not used:
+                    outlier_ratio = 0.0
+                else:
+                    outlier_ratio = outlier_ratio / 100  # Convert percentage back to ratio
                 
                 # Lower outlier ratio = more robust
                 outlier_resistance = max(0, 1 - outlier_ratio)
@@ -542,14 +558,22 @@ def evaluate_robustness(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                                 # Avoid division by zero when mean is zero
                                 if valid_metrics.mean() != 0:
                                     max_expected_degradation = abs(valid_metrics.mean()) * 0.1  # 10% degradation
-                                    normalized_slope = min(1.0, abs(slope) / max_expected_degradation)
-                                    trend_robustness = max(0, 1 - normalized_slope)
+                                    normalized_slope, used, reason = safe_percentage(abs(slope), max_expected_degradation, on_zero="skip")
+                                    if used:
+                                        normalized_slope = min(1.0, normalized_slope / 100)  # Convert percentage back to ratio
+                                        trend_robustness = max(0, 1 - normalized_slope)
+                                    else:
+                                        trend_robustness = 1.0
                                 else:
                                     # When mean is zero, use a fallback approach
                                     # Use the standard deviation as a reference for normalization
                                     if valid_metrics.std() > 0:
-                                        normalized_slope = min(1.0, abs(slope) / valid_metrics.std())
-                                        trend_robustness = max(0, 1 - normalized_slope)
+                                        normalized_slope, used, reason = safe_percentage(abs(slope), valid_metrics.std(), on_zero="skip")
+                                        if used:
+                                            normalized_slope = min(1.0, normalized_slope / 100)  # Convert percentage back to ratio
+                                            trend_robustness = max(0, 1 - normalized_slope)
+                                        else:
+                                            trend_robustness = 1.0
                                     else:
                                         # If both mean and std are zero, assume no degradation
                                         trend_robustness = 1.0
@@ -574,10 +598,11 @@ def evaluate_robustness(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 overall_mean = condition_means.mean()
                 
                 if overall_mean != 0:
-                    condition_cv = condition_means.std() / abs(overall_mean)
-                    # Lower CV across conditions = more robust
-                    condition_robustness = max(0, 1 - condition_cv)
-                    robustness_metrics.append((f"{condition_col}_robustness", condition_robustness))
+                    condition_cv, used, reason = safe_percentage(condition_means.std(), abs(overall_mean), on_zero="skip")
+                    if used:
+                        # Lower CV across conditions = more robust
+                        condition_robustness = max(0, 1 - condition_cv / 100)  # Convert percentage back to ratio
+                        robustness_metrics.append((f"{condition_col}_robustness", condition_robustness))
     
     # 6. Check for gradient clipping and other stability indicators
     if "gradient_norm" in data.columns:
@@ -595,7 +620,7 @@ def evaluate_robustness(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     # Calculate overall robustness score
     if robustness_metrics:
         scores = [score for _, score in robustness_metrics]
-        overall_score = np.mean(scores)
+        overall_score = nan_aware_mean(scores)
     else:
         # Fallback: use basic reward statistics
         if "reward_mean" in data.columns:
@@ -604,8 +629,11 @@ def evaluate_robustness(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 reward_std = rewards.std()
                 reward_mean = rewards.mean()
                 if reward_mean != 0:
-                    cv = reward_std / abs(reward_mean)
-                    overall_score = max(0, 1 - cv)
+                    cv, used, reason = safe_percentage(reward_std, abs(reward_mean), on_zero="skip")
+                    if used:
+                        overall_score = max(0, 1 - cv / 100)  # Convert percentage back to ratio
+                    else:
+                        overall_score = 0.5
                 else:
                     overall_score = 0.5
             else:
@@ -649,10 +677,11 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         total_steps = data["step"].max() - data["step"].min()
         
         if total_time > 0 and total_steps > 0:
-            steps_per_second = total_steps / total_time
-            # Normalize to a reasonable range (0-1000 steps/sec)
-            speed_score = min(1.0, steps_per_second / 1000.0)
-            efficiency_metrics.append(("training_speed", speed_score))
+            steps_per_second, used, reason = safe_rate(total_steps, total_time, on_zero="skip")
+            if used:
+                # Normalize to a reasonable range (0-1000 steps/sec)
+                speed_score = min(1.0, steps_per_second / 1000.0)
+                efficiency_metrics.append(("training_speed", speed_score))
     
     # 2. Check for memory efficiency
     if "memory_usage" in data.columns:
@@ -697,19 +726,27 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 # Convert improvement to efficiency score
                 if improvement > 0:
                     # Normalize improvement
-                    # Avoid division by zero when mean is zero
-                    if rewards.mean() != 0:
-                        max_expected_improvement = abs(rewards.mean()) * 0.5
-                        improvement_score = min(1.0, improvement / max_expected_improvement)
+                # Avoid division by zero when mean is zero
+                if rewards.mean() != 0:
+                    max_expected_improvement = abs(rewards.mean()) * 0.5
+                    improvement_ratio, used, reason = safe_percentage(improvement, max_expected_improvement, on_zero="skip")
+                    if used:
+                        improvement_score = min(1.0, improvement_ratio / 100)  # Convert percentage back to ratio
                     else:
-                        # When mean is zero, use a fallback approach
-                        # Use the standard deviation as a reference for normalization
-                        if rewards.std() > 0:
-                            max_expected_improvement = rewards.std() * 0.5
-                            improvement_score = min(1.0, improvement / max_expected_improvement)
+                        improvement_score = 1.0
+                else:
+                    # When mean is zero, use a fallback approach
+                    # Use the standard deviation as a reference for normalization
+                    if rewards.std() > 0:
+                        max_expected_improvement = rewards.std() * 0.5
+                        improvement_ratio, used, reason = safe_percentage(improvement, max_expected_improvement, on_zero="skip")
+                        if used:
+                            improvement_score = min(1.0, improvement_ratio / 100)  # Convert percentage back to ratio
                         else:
-                            # If both mean and std are zero, assume good improvement
                             improvement_score = 1.0
+                    else:
+                        # If both mean and std are zero, assume good improvement
+                        improvement_score = 1.0
                 else:
                     improvement_score = 0.0
                 
@@ -728,9 +765,11 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 
                 if convergence_step is not None:
                     # Earlier convergence = better efficiency
-                    convergence_ratio = convergence_step / len(rewards)
-                    early_convergence_score = max(0, 1 - convergence_ratio)
-                    efficiency_metrics.append(("early_convergence", early_convergence_score))
+                    convergence_ratio, used, reason = safe_percentage(convergence_step, len(rewards), on_zero="skip")
+                    if used:
+                        convergence_ratio = convergence_ratio / 100  # Convert percentage back to ratio
+                        early_convergence_score = max(0, 1 - convergence_ratio)
+                        efficiency_metrics.append(("early_convergence", early_convergence_score))
     
     # 4. Check for computational efficiency (FLOPs, etc.)
     if "flops" in data.columns:
@@ -772,10 +811,11 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             final_loss = losses[-len(losses)//4:].mean()
             
             if initial_loss > 0:
-                loss_reduction = (initial_loss - final_loss) / initial_loss
-                # Higher reduction = better efficiency
-                loss_efficiency = min(1.0, loss_reduction)
-                efficiency_metrics.append(("loss_efficiency", loss_efficiency))
+                loss_reduction, used, reason = safe_percentage(initial_loss - final_loss, initial_loss, on_zero="skip")
+                if used:
+                    # Higher reduction = better efficiency
+                    loss_efficiency = min(1.0, loss_reduction / 100)  # Convert percentage back to ratio
+                    efficiency_metrics.append(("loss_efficiency", loss_efficiency))
     
     # 7. Check for sample efficiency (rewards per step)
     if "reward_mean" in data.columns and "step" in data.columns:
@@ -795,7 +835,7 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     # Calculate overall efficiency score
     if efficiency_metrics:
         scores = [score for _, score in efficiency_metrics]
-        overall_score = np.mean(scores)
+        overall_score = nan_aware_mean(scores)
     else:
         # Fallback: use basic metrics
         if "reward_mean" in data.columns:
@@ -1010,8 +1050,11 @@ def evaluate_adversarial(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 reward_std = rewards.std()
                 reward_mean = rewards.mean()
                 if reward_mean != 0:
-                    cv = reward_std / abs(reward_mean)
-                    overall_score = max(0, 1 - cv)
+                    cv, used, reason = safe_percentage(reward_std, abs(reward_mean), on_zero="skip")
+                    if used:
+                        overall_score = max(0, 1 - cv / 100)  # Convert percentage back to ratio
+                    else:
+                        overall_score = 0.5
                 else:
                     overall_score = 0.5
             else:
@@ -1077,10 +1120,11 @@ def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         total_steps = data["step"].max() - data["step"].min()
         
         if total_time > 0 and total_steps > 0:
-            steps_per_second = total_steps / total_time
-            # Normalize to reasonable range (0-1000 steps/sec)
-            training_speed = min(1.0, steps_per_second / 1000.0)
-            speed_metrics.append(("training_speed", training_speed))
+            steps_per_second, used, reason = safe_rate(total_steps, total_time, on_zero="skip")
+            if used:
+                # Normalize to reasonable range (0-1000 steps/sec)
+                training_speed = min(1.0, steps_per_second / 1000.0)
+                speed_metrics.append(("training_speed", training_speed))
     
     # 3. Check for throughput metrics
     if "throughput" in data.columns:
@@ -1111,18 +1155,18 @@ def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         batch_sizes = data["batch_size"].dropna()
         
         if len(batch_times) > 0 and len(batch_sizes) > 0:
-            # Calculate samples per second - avoid division by zero
-            batch_times_safe = batch_times.replace(0, np.nan)  # Replace zeros with NaN
-            samples_per_second = batch_sizes / batch_times_safe
-            samples_per_second = samples_per_second.dropna()  # Remove NaN values
-            if len(samples_per_second) > 0:
-                avg_samples_per_second = samples_per_second.mean()
-            else:
-                avg_samples_per_second = 0.0
+            # Calculate samples per second using robust division
+            valid_samples = []
+            for batch_time, batch_size in zip(batch_times, batch_sizes):
+                samples_per_sec, used, reason = safe_rate(batch_size, batch_time, on_zero="skip")
+                if used:
+                    valid_samples.append(samples_per_sec)
             
-            # Normalize to reasonable range
-            batch_speed = min(1.0, avg_samples_per_second / 1000.0)
-            speed_metrics.append(("batch_speed", batch_speed))
+            if valid_samples:
+                avg_samples_per_second = nan_aware_mean(valid_samples)
+                # Normalize to reasonable range
+                batch_speed = min(1.0, avg_samples_per_second / 1000.0)
+                speed_metrics.append(("batch_speed", batch_speed))
     
     # 6. Check for convergence speed (how quickly model improves)
     if "reward_mean" in data.columns and "step" in data.columns:
@@ -1140,11 +1184,12 @@ def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 steps_taken = len(rewards)
                 
                 if improvement > 0 and steps_taken > 0:
-                    # Improvement per step
-                    improvement_rate = improvement / steps_taken
-                    # Normalize to reasonable range
-                    convergence_speed = min(1.0, improvement_rate * 1000)
-                    speed_metrics.append(("convergence_speed", convergence_speed))
+                    # Improvement per step using robust division
+                    improvement_rate, used, reason = safe_rate(improvement, steps_taken, on_zero="skip")
+                    if used:
+                        # Normalize to reasonable range
+                        convergence_speed = min(1.0, improvement_rate * 1000)
+                        speed_metrics.append(("convergence_speed", convergence_speed))
     
     # 7. Check for memory access speed
     if "memory_access_time" in data.columns:
@@ -1170,7 +1215,7 @@ def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     # Calculate overall speed score
     if speed_metrics:
         scores = [score for _, score in speed_metrics]
-        overall_score = np.mean(scores)
+        overall_score = nan_aware_mean(scores)
     else:
         # Fallback: use basic metrics
         if "reward_mean" in data.columns:
@@ -1266,14 +1311,16 @@ def evaluate_memory(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             
             # Check for GPU memory utilization
             if max_gpu_memory > 0:
-                gpu_utilization = avg_gpu_memory / max_gpu_memory
-                # Moderate utilization is good (not too low, not too high)
-                if 0.3 <= gpu_utilization <= 0.8:
-                    gpu_utilization_score = 1.0
-                else:
-                    gpu_utilization_score = max(0, 1 - abs(gpu_utilization - 0.55) / 0.55)
-                
-                memory_metrics.append(("gpu_utilization_score", gpu_utilization_score))
+                gpu_utilization, used, reason = safe_percentage(avg_gpu_memory, max_gpu_memory, on_zero="skip")
+                if used:
+                    gpu_utilization = gpu_utilization / 100  # Convert percentage back to ratio
+                    # Moderate utilization is good (not too low, not too high)
+                    if 0.3 <= gpu_utilization <= 0.8:
+                        gpu_utilization_score = 1.0
+                    else:
+                        gpu_utilization_score = max(0, 1 - abs(gpu_utilization - 0.55) / 0.55)
+                    
+                    memory_metrics.append(("gpu_utilization_score", gpu_utilization_score))
     
     # 3. Check for memory leaks (increasing memory over time)
     if "memory_usage" in data.columns and "step" in data.columns:
@@ -1294,8 +1341,12 @@ def evaluate_memory(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 else:
                     # Normalize slope to [0, 1] range
                     max_expected_growth = memory_over_time.mean() * 0.1  # 10% growth
-                    normalized_slope = min(1.0, slope / max_expected_growth)
-                    memory_leak_score = max(0, 1 - normalized_slope)
+                    normalized_slope, used, reason = safe_percentage(slope, max_expected_growth, on_zero="skip")
+                    if used:
+                        normalized_slope = min(1.0, normalized_slope / 100)  # Convert percentage back to ratio
+                        memory_leak_score = max(0, 1 - normalized_slope)
+                    else:
+                        memory_leak_score = 1.0
                 
                 memory_metrics.append(("memory_leak_resistance", memory_leak_score))
     
@@ -1357,7 +1408,7 @@ def evaluate_memory(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     # Calculate overall memory score (lower is better)
     if memory_metrics:
         scores = [score for _, score in memory_metrics]
-        overall_score = np.mean(scores)
+        overall_score = nan_aware_mean(scores)
     else:
         # Fallback: use basic metrics
         if "memory_usage" in data.columns:
@@ -1575,7 +1626,7 @@ def evaluate_calibration(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     # Calculate overall calibration score
     if calibration_metrics:
         scores = [score for _, score in calibration_metrics]
-        overall_score = np.mean(scores)
+        overall_score = nan_aware_mean(scores)
     else:
         # Fallback: use basic metrics
         if "confidence_score" in data.columns:

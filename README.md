@@ -293,6 +293,81 @@ rldk card reward run_a
 - **Extensible** - Plugin architecture with custom adapters and evaluation metrics
 - **CI/CD integration** - Gate mode with configurable exit codes for automated testing
 
+## 🔢 **Denominator Policy**
+
+RLDK implements a robust policy for handling division by zero and undefined ratios to prevent crashes while maintaining data integrity. This policy ensures that evaluation metrics are calculated safely even with problematic data.
+
+### **Policy Overview**
+
+| Scenario | Behavior | Result | Used in Calculation |
+|----------|----------|--------|-------------------|
+| **Bad data/timing artifacts** | Skip sample | NaN | No |
+| **Legitimate zero state** | Surface NaN | NaN | Yes |
+| **Explicit zero request** | Return zero | 0.0 | Yes |
+
+### **Implementation Details**
+
+**Local Guards**: Each division site has explicit checks rather than global replacements:
+```python
+from rldk.utils.math_utils import safe_rate, safe_percentage
+
+# Robust rate calculation
+rate, used, reason = safe_rate(numerator, denominator, on_zero="skip")
+if used:
+    # Include in calculations
+    metrics.append(rate)
+else:
+    # Track skip reason
+    counters["zero_denominator_skipped"] += 1
+```
+
+**Counters and Provenance**: All metric calculations return detailed counters:
+```python
+{
+    "score": 0.75,
+    "counters": {
+        "samples_seen": 100,
+        "samples_used": 95,
+        "zero_denominator_skipped": 3,
+        "non_positive_time_skipped": 2,
+        "other_skip_reasons": ["invalid_timestamp", "missing_data"]
+    }
+}
+```
+
+**NaN-Aware Aggregation**: Statistics functions handle NaN values correctly:
+```python
+from rldk.utils.math_utils import nan_aware_mean, nan_aware_std
+
+# Ignores NaN values in calculations
+mean_score = nan_aware_mean([1.0, 2.0, float('nan'), 4.0])  # Returns 2.33
+```
+
+### **Example Usage**
+
+```python
+# Throughput evaluation with counters
+result = evaluate_throughput(data)
+print(f"Throughput: {result['metrics']['mean_tokens_per_sec']:.2f} tokens/sec")
+print(f"Reliability: {result['counters']['samples_used']}/{result['counters']['samples_seen']} samples used")
+
+# Advanced monitoring with division tracking
+from examples.trl_integration.advanced_monitoring import CustomRLDKCallback
+
+callback = CustomRLDKCallback(output_dir="./output", run_id="demo")
+throughput_metrics = callback.get_throughput_metrics()
+print(f"Window size used: {throughput_metrics['window_size_used']}")
+print(f"Zero time samples skipped: {throughput_metrics['zero_time_samples_skipped']}")
+```
+
+### **Benefits**
+
+- ✅ **No crashes** from division by zero
+- ✅ **Data integrity** preserved with clear provenance
+- ✅ **Configurable behavior** for different use cases
+- ✅ **Detailed reporting** of skipped samples and reasons
+- ✅ **NaN-aware aggregation** prevents bias in statistics
+
 ## 📦 **Installation**
 
 ### **Core Package (Recommended)**
