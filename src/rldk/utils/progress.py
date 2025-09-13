@@ -2,7 +2,7 @@
 
 import time
 import sys
-from typing import Optional, Iterator, Any, Callable
+from typing import Optional, Iterator, Any, Callable, Dict
 from contextlib import contextmanager
 import threading
 
