@@ -92,19 +92,44 @@ app.add_typer(evals_app, name="evals")
 
 @forensics_app.command(name="compare-runs")
 def forensics_compare_runs(
-    run_a: str = typer.Argument(..., help="Path to first run directory"),
-    run_b: str = typer.Argument(..., help="Path to second run directory"),
+    run_a: str = typer.Argument(..., help="Path to first run directory or file"),
+    run_b: str = typer.Argument(..., help="Path to second run directory or file"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed format detection info"),
 ):
-    """Compare two training runs and identify divergences."""
+    """Compare two training runs and identify divergences.
+    
+    Supports multiple formats: JSONL, CSV, JSON, Parquet files or directories.
+    Automatically detects format and handles field mapping for common RL frameworks.
+    """
     try:
         ensure_config_initialized()
         typer.echo("Comparing runs:")
         typer.echo(f"  Run A: {run_a}")
         typer.echo(f"  Run B: {run_b}")
 
-        # Scan both runs
-        scan_a = scan_logs(run_a)
-        scan_b = scan_logs(run_b)
+        if verbose:
+            typer.echo("\nDetecting formats...")
+
+        # Scan both runs with enhanced error handling
+        try:
+            scan_a = scan_logs(run_a)
+            if verbose:
+                typer.echo(f"  Run A: Successfully loaded {len(scan_a.get('rules_fired', []))} anomaly rules")
+        except Exception as e:
+            typer.echo(f"Error loading Run A: {e}", err=True)
+            typer.echo("Supported formats: JSONL, CSV, JSON, Parquet files or directories")
+            typer.echo("Ensure data contains RL fields like 'step', 'reward', 'kl'")
+            raise typer.Exit(1)
+
+        try:
+            scan_b = scan_logs(run_b)
+            if verbose:
+                typer.echo(f"  Run B: Successfully loaded {len(scan_b.get('rules_fired', []))} anomaly rules")
+        except Exception as e:
+            typer.echo(f"Error loading Run B: {e}", err=True)
+            typer.echo("Supported formats: JSONL, CSV, JSON, Parquet files or directories")
+            typer.echo("Ensure data contains RL fields like 'step', 'reward', 'kl'")
+            raise typer.Exit(1)
 
         # Create comparison report
         comparison = {
@@ -112,6 +137,10 @@ def forensics_compare_runs(
             "run_a": {"path": run_a, "anomalies": scan_a.get("rules_fired", [])},
             "run_b": {"path": run_b, "anomalies": scan_b.get("rules_fired", [])},
             "earliest_divergent_step": None,
+            "format_info": {
+                "run_a_stats": scan_a.get("stats", {}),
+                "run_b_stats": scan_b.get("stats", {})
+            }
         }
 
         # Find earliest divergent step if both have step data
@@ -139,8 +168,21 @@ def forensics_compare_runs(
                 f"Earliest divergent step: {comparison['earliest_divergent_step']}"
             )
 
+        if verbose and comparison["format_info"]:
+            typer.echo("\nFormat Statistics:")
+            for run_name, stats in [("Run A", scan_a.get("stats", {})), ("Run B", scan_b.get("stats", {}))]:
+                if stats:
+                    typer.echo(f"  {run_name}:")
+                    for key, value in stats.items():
+                        typer.echo(f"    {key}: {value}")
+
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
+        typer.echo("\nTroubleshooting:")
+        typer.echo("- Ensure paths exist and are accessible")
+        typer.echo("- Check that data contains RL training metrics")
+        typer.echo("- Use --verbose flag for detailed format detection info")
+        typer.echo("- Supported formats: JSONL, CSV, JSON, Parquet")
         raise typer.Exit(1)
 
 
