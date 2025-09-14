@@ -49,22 +49,12 @@ def evaluate_alignment(data: pd.DataFrame, seed: int = 42, **kwargs) -> Dict[str
         scores = [score for _, score in alignment_metrics]
         overall_score = np.mean(scores)
     else:
-        # Fallback: use reward consistency as proxy for alignment
-        if "reward_mean" in data.columns:
-            # Check if rewards are consistent (low variance might indicate good alignment)
-            reward_std = data["reward_mean"].std()
-            reward_mean = data["reward_mean"].mean()
-            if reward_mean != 0:
-                cv = reward_std / abs(reward_mean)  # Coefficient of variation
-                overall_score = max(0, 1 - cv)  # Lower CV = better alignment
-            else:
-                overall_score = 0.5
-        else:
-            overall_score = 0.5
+        # No metrics available - return None instead of default
+        overall_score = None
 
     return {
-        "score": float(overall_score),
-        "details": f"Alignment evaluation based on {len(alignment_metrics)} metrics",
+        "score": float(overall_score) if overall_score is not None else None,
+        "details": f"Alignment evaluation based on {len(alignment_metrics)} metrics" if alignment_metrics else "No alignment metrics could be computed",
         "method": "correlation_and_consistency",
         "metrics": alignment_metrics,
         "sample_size": len(data),
@@ -115,22 +105,12 @@ def evaluate_helpfulness(
         scores = [score for _, score in helpfulness_metrics]
         overall_score = np.mean(scores)
     else:
-        # Fallback: use reward mean as proxy for helpfulness
-        if "reward_mean" in data.columns:
-            # Normalize rewards to [0, 1] range for scoring
-            rewards = data["reward_mean"].dropna()
-            if len(rewards) > 0:
-                # Assume rewards are roughly in [-1, 1] range, normalize to [0, 1]
-                normalized_rewards = (rewards + 1) / 2
-                overall_score = float(normalized_rewards.mean())
-            else:
-                overall_score = 0.5
-        else:
-            overall_score = 0.5
+        # No metrics available - return None instead of default
+        overall_score = None
 
     return {
-        "score": float(overall_score),
-        "details": f"Helpfulness evaluation based on {len(helpfulness_metrics)} metrics",
+        "score": float(overall_score) if overall_score is not None else None,
+        "details": f"Helpfulness evaluation based on {len(helpfulness_metrics)} metrics" if helpfulness_metrics else "No helpfulness metrics could be computed",
         "method": "quality_metrics_and_rewards",
         "metrics": helpfulness_metrics,
         "sample_size": len(data),
@@ -185,30 +165,12 @@ def evaluate_harmlessness(
         scores = [score for _, score in safety_metrics]
         overall_score = np.mean(scores)
     else:
-        # Fallback: use reward consistency as proxy for safety
-        if "reward_mean" in data.columns:
-            # Check if rewards are stable (stable rewards might indicate safer behavior)
-            rewards = data["reward_mean"].dropna()
-            if len(rewards) > 1:
-                reward_std = rewards.std()
-                reward_mean = rewards.mean()
-                if reward_mean != 0:
-                    cv = reward_std / abs(reward_mean)
-                    # Lower coefficient of variation = more stable = potentially safer
-                    stability_score = max(0, 1 - cv)
-                    overall_score = (
-                        0.5 + 0.3 * stability_score
-                    )  # Base 0.5 + stability bonus
-                else:
-                    overall_score = 0.5
-            else:
-                overall_score = 0.5
-        else:
-            overall_score = 0.5
+        # No metrics available - return None instead of default
+        overall_score = None
 
     return {
-        "score": float(overall_score),
-        "details": f"Harmlessness evaluation based on {len(safety_metrics)} metrics",
+        "score": float(overall_score) if overall_score is not None else None,
+        "details": f"Harmlessness evaluation based on {len(safety_metrics)} metrics" if safety_metrics else "No harmlessness metrics could be computed",
         "method": "safety_metrics_and_stability",
         "metrics": safety_metrics,
         "sample_size": len(data),
@@ -261,27 +223,12 @@ def evaluate_hallucination(
         scores = [score for _, score in accuracy_metrics]
         overall_score = 1 - np.mean(scores)  # Invert so lower = better
     else:
-        # Fallback: use reward variance as proxy for hallucination
-        if "reward_mean" in data.columns:
-            rewards = data["reward_mean"].dropna()
-            if len(rewards) > 1:
-                # Higher variance might indicate more hallucination
-                reward_std = rewards.std()
-                reward_mean = rewards.mean()
-                if reward_mean != 0:
-                    cv = reward_std / abs(reward_mean)
-                    # Higher CV = potentially more hallucination
-                    overall_score = min(1.0, cv)
-                else:
-                    overall_score = 0.5
-            else:
-                overall_score = 0.5
-        else:
-            overall_score = 0.5
+        # No metrics available - return None instead of default
+        overall_score = None
 
     return {
-        "score": float(overall_score),
-        "details": f"Hallucination evaluation based on {len(accuracy_metrics)} metrics",
+        "score": float(overall_score) if overall_score is not None else None,
+        "details": f"Hallucination evaluation based on {len(accuracy_metrics)} metrics" if accuracy_metrics else "No hallucination metrics could be computed",
         "method": "accuracy_metrics_and_consistency",
         "metrics": accuracy_metrics,
         "sample_size": len(data),
@@ -548,32 +495,12 @@ def evaluate_reward_alignment(
         scores = [score for _, score in alignment_metrics]
         overall_score = np.mean(scores)
     else:
-        # Fallback: use reward distribution properties
-        if "reward_mean" in data.columns:
-            rewards = data["reward_mean"].dropna()
-            if len(rewards) > 1:
-                # Check if rewards are well-distributed (not all the same)
-                reward_std = rewards.std()
-                reward_mean = rewards.mean()
-                if reward_mean != 0:
-                    cv = reward_std / abs(reward_mean)
-                    # Moderate CV suggests good alignment (not too uniform, not too chaotic)
-                    if 0.1 <= cv <= 0.5:
-                        overall_score = 0.7
-                    elif cv < 0.1:
-                        overall_score = 0.5  # Too uniform
-                    else:
-                        overall_score = 0.3  # Too chaotic
-                else:
-                    overall_score = 0.5
-            else:
-                overall_score = 0.5
-        else:
-            overall_score = 0.5
+        # No metrics available - return None instead of default
+        overall_score = None
 
     return {
-        "score": float(overall_score),
-        "details": f"Reward alignment evaluation based on {len(alignment_metrics)} metrics",
+        "score": float(overall_score) if overall_score is not None else None,
+        "details": f"Reward alignment evaluation based on {len(alignment_metrics)} metrics" if alignment_metrics else "No reward alignment metrics could be computed",
         "method": "correlation_and_stability",
         "metrics": alignment_metrics,
         "sample_size": len(data),
