@@ -2,6 +2,7 @@
 Configuration classes for the tracking system.
 """
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -61,6 +62,17 @@ class TrackingConfig:
     notes: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
 
+    # Performance and timeout settings
+    tracking_timeout: int = field(default_factory=lambda: int(os.getenv("RLDK_TRACKING_TIMEOUT", "30")))
+    dataset_sample_size: int = field(default_factory=lambda: int(os.getenv("RLDK_DATASET_SAMPLE_SIZE", "1000")))
+    model_fingerprint_limit: int = field(default_factory=lambda: int(os.getenv("RLDK_MODEL_FINGERPRINT_LIMIT", "100000000")))
+    enable_async_init: bool = field(default_factory=lambda: os.getenv("RLDK_ENABLE_ASYNC_INIT", "true").lower() == "true")
+    cache_timeout: int = field(default_factory=lambda: int(os.getenv("RLDK_CACHE_TIMEOUT", "3600")))
+    max_memory_gb: float = field(default_factory=lambda: float(os.getenv("RLDK_MAX_MEMORY_GB", "2.0")))
+    enable_progress_indicators: bool = field(default_factory=lambda: os.getenv("RLDK_ENABLE_PROGRESS", "true").lower() == "true")
+    git_timeout: int = field(default_factory=lambda: int(os.getenv("RLDK_GIT_TIMEOUT", "10")))
+    environment_timeout: int = field(default_factory=lambda: int(os.getenv("RLDK_ENV_TIMEOUT", "30")))
+
     def __post_init__(self):
         """Post-initialization validation and setup."""
         if self.experiment_id is None:
@@ -72,7 +84,13 @@ class TrackingConfig:
 
         # Set default dataset cache dir
         if self.dataset_cache_dir is None:
-            self.dataset_cache_dir = self.output_dir / "dataset_cache"
+            cache_dir_env = os.getenv("RLDK_CACHE_DIR")
+            if cache_dir_env:
+                self.dataset_cache_dir = Path(cache_dir_env)
+            else:
+                self.dataset_cache_dir = self.output_dir / "dataset_cache"
+
+        self.dataset_cache_dir.mkdir(parents=True, exist_ok=True)
 
         # Set default git repo path
         if self.git_repo_path is None:

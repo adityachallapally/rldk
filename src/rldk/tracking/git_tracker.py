@@ -2,19 +2,108 @@
 Git tracking for capturing repository state and changes.
 """
 
+import asyncio
 import hashlib
 import json
 import subprocess
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from .cache import TrackingCache
+
 
 class GitTracker:
     """Tracks Git repository state and changes."""
 
-    def __init__(self, repo_path: Optional[Path] = None):
+    def __init__(self, repo_path: Optional[Path] = None, config=None):
         self.repo_path = repo_path or Path.cwd()
+        self.config = config
         self.tracking_info: Dict[str, Any] = {}
+        self._cache = TrackingCache(
+            cache_dir=config.dataset_cache_dir / "git" if config and config.dataset_cache_dir else None,
+            ttl=config.cache_timeout if config else 3600,
+            max_memory_mb=int((config.max_memory_gb if config else 2.0) * 1024 * 0.1)  # 10% of total memory for git cache
+        ) if config else None
+
+    async def capture_git_state_async(
+        self,
+        capture_commit: bool = True,
+        capture_diff: bool = True,
+        capture_status: bool = True,
+        capture_remote: bool = True,
+        timeout: Optional[int] = None,
+        progress_callback=None
+    ) -> Dict[str, Any]:
+        """
+        Async version of capture_git_state with timeout and caching.
+        """
+        timeout = timeout or (self.config.git_timeout if self.config else 10)
+
+        if self._cache:
+            cache_key = f"git_state_{str(self.repo_path)}"
+            cached_result = await self._cache.get_async(cache_key)
+            if cached_result:
+                if progress_callback:
+                    progress_callback("Using cached Git state")
+                return cached_result
+
+        if progress_callback:
+            progress_callback("Starting Git state capture...")
+
+        try:
+            tasks = []
+            task_names = []
+
+            if capture_commit:
+                tasks.append(self._capture_commit_info_async())
+                task_names.append("commit")
+            if capture_diff:
+                tasks.append(self._capture_diff_info_async())
+                task_names.append("diff")
+            if capture_status:
+                tasks.append(self._capture_status_info_async())
+                task_names.append("status")
+            if capture_remote:
+                tasks.append(self._capture_remote_info_async())
+                task_names.append("remote")
+
+            if progress_callback:
+                progress_callback(f"Running {len(tasks)} Git operations...")
+
+            results = await asyncio.wait_for(
+                asyncio.gather(*tasks, return_exceptions=True),
+                timeout=timeout
+            )
+
+            git_info = {
+                "timestamp": self._get_timestamp(),
+                "repo_path": str(self.repo_path.absolute())
+            }
+
+            for i, (task_name, result) in enumerate(zip(task_names, results)):
+                if not isinstance(result, Exception):
+                    git_info[task_name] = result
+                else:
+                    git_info[task_name] = {"error": str(result)}
+                    if progress_callback:
+                        progress_callback(f"Warning: {task_name} capture failed: {str(result)}")
+
+            # Compute Git fingerprint
+            git_info["git_checksum"] = self._compute_git_checksum(git_info)
+
+            if self._cache:
+                cache_key = f"git_state_{str(self.repo_path)}"
+                await self._cache.set_async(cache_key, git_info)
+
+            self.tracking_info = git_info
+            return git_info
+
+        except asyncio.TimeoutError:
+            return {
+                "timestamp": self._get_timestamp(),
+                "repo_path": str(self.repo_path.absolute()),
+                "error": f"Git capture timed out after {timeout}s"
+            }
 
     def capture_git_state(
         self,
@@ -24,39 +113,28 @@ class GitTracker:
         capture_remote: bool = True
     ) -> Dict[str, Any]:
         """
-        Capture comprehensive Git repository state.
-
-        Args:
-            capture_commit: Whether to capture commit information
-            capture_diff: Whether to capture diff information
-            capture_status: Whether to capture status information
-            capture_remote: Whether to capture remote information
-
-        Returns:
-            Dictionary containing Git state information
+        Synchronous version of capture_git_state for backward compatibility.
         """
-        git_info = {
-            "timestamp": self._get_timestamp(),
-            "repo_path": str(self.repo_path.absolute())
-        }
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                return self._capture_git_state_sync(capture_commit, capture_diff, capture_status, capture_remote)
+            else:
+                return loop.run_until_complete(
+                    self.capture_git_state_async(capture_commit, capture_diff, capture_status, capture_remote)
+                )
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            return loop.run_until_complete(
+                self.capture_git_state_async(capture_commit, capture_diff, capture_status, capture_remote)
+            )
 
-        if capture_commit:
-            git_info["commit"] = self._capture_commit_info()
-
-        if capture_diff:
-            git_info["diff"] = self._capture_diff_info()
-
-        if capture_status:
-            git_info["status"] = self._capture_status_info()
-
-        if capture_remote:
-            git_info["remote"] = self._capture_remote_info()
-
-        # Compute Git fingerprint
-        git_info["git_checksum"] = self._compute_git_checksum(git_info)
-
-        self.tracking_info = git_info
-        return git_info
+    async def _capture_commit_info_async(self) -> Dict[str, Any]:
+        """Async version of commit info capture."""
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self._capture_commit_info
+        )
 
     def _capture_commit_info(self) -> Dict[str, Any]:
         """Capture current commit information."""
@@ -158,6 +236,12 @@ class GitTracker:
 
         return commit_info
 
+    async def _capture_diff_info_async(self) -> Dict[str, Any]:
+        """Async version of diff info capture."""
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self._capture_diff_info
+        )
+
     def _capture_diff_info(self) -> Dict[str, Any]:
         """Capture diff information."""
         diff_info = {}
@@ -220,6 +304,12 @@ class GitTracker:
 
         return diff_info
 
+    async def _capture_status_info_async(self) -> Dict[str, Any]:
+        """Async version of status info capture."""
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self._capture_status_info
+        )
+
     def _capture_status_info(self) -> Dict[str, Any]:
         """Capture Git status information."""
         status_info = {}
@@ -257,6 +347,12 @@ class GitTracker:
             status_info["short"] = "git not available"
 
         return status_info
+
+    async def _capture_remote_info_async(self) -> Dict[str, Any]:
+        """Async version of remote info capture."""
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self._capture_remote_info
+        )
 
     def _capture_remote_info(self) -> Dict[str, Any]:
         """Capture remote repository information."""

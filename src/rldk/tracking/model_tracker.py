@@ -2,10 +2,13 @@
 Model tracking for architecture fingerprinting and versioning.
 """
 
+import asyncio
 import hashlib
 import json
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+from .cache import TrackingCache, run_with_timeout_and_progress
 
 
 def _import_torch():
@@ -25,9 +28,71 @@ def _import_numpy():
 class ModelTracker:
     """Tracks model architecture, weights, and metadata."""
 
-    def __init__(self, algorithm: str = "sha256"):
+    def __init__(self, algorithm: str = "sha256", config=None):
         self.algorithm = algorithm
+        self.config = config
         self.tracked_models: Dict[str, Dict[str, Any]] = {}
+        self._cache = TrackingCache(
+            cache_dir=config.dataset_cache_dir / "models" if config and config.dataset_cache_dir else None,
+            ttl=config.cache_timeout if config else 3600,
+            max_memory_mb=int((config.max_memory_gb if config else 2.0) * 1024 * 0.25)  # 25% of total memory for model cache
+        ) if config else None
+
+    async def track_model_async(
+        self,
+        model,
+        name: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        save_architecture: bool = True,
+        save_weights: bool = False,
+        timeout: Optional[int] = None,
+        progress_callback=None
+    ) -> Dict[str, Any]:
+        """
+        Async version of track_model with size limits and timeout.
+        """
+        timeout = timeout or (self.config.tracking_timeout if self.config else 30)
+
+        if self._cache:
+            cache_key = f"model_{name}_{hash(str(model))}"
+            cached_result = await self._cache.get_async(cache_key)
+            if cached_result:
+                if progress_callback:
+                    progress_callback(f"Using cached result for model {name}")
+                return cached_result
+
+        if progress_callback:
+            progress_callback(f"Starting model tracking for {name}")
+
+        try:
+            num_params = sum(p.numel() for p in model.parameters())
+            if self.config and num_params > self.config.model_fingerprint_limit:
+                if progress_callback:
+                    progress_callback(f"Large model detected ({num_params} parameters), using lightweight fingerprinting")
+                return await self._track_large_model_lightweight(model, name, metadata, progress_callback)
+        except Exception:
+            pass
+
+        try:
+            result = await run_with_timeout_and_progress(
+                self._track_model_internal(model, name, metadata, save_architecture, save_weights, progress_callback),
+                timeout=timeout,
+                progress_callback=progress_callback,
+                error_message=f"Model tracking for {name} timed out"
+            )
+
+            if self._cache and not result.get("error"):
+                cache_key = f"model_{name}_{hash(str(model))}"
+                await self._cache.set_async(cache_key, result)
+
+            return result
+
+        except Exception as e:
+            return {
+                "name": name,
+                "error": f"Model tracking failed: {str(e)}",
+                "architecture_checksum": "error"
+            }
 
     def track_model(
         self,
@@ -38,17 +103,29 @@ class ModelTracker:
         save_weights: bool = False
     ) -> Dict[str, Any]:
         """
-        Track a model and compute its fingerprint.
+        Synchronous version of track_model for backward compatibility.
+        """
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
 
-        Args:
-            model: The model to track
-            name: Name identifier for the model
-            metadata: Additional metadata to store
-            save_architecture: Whether to save model architecture
-            save_weights: Whether to save model weights (usually too large)
+        return loop.run_until_complete(
+            self.track_model_async(model, name, metadata, save_architecture, save_weights)
+        )
 
-        Returns:
-            Dictionary containing tracking information
+    async def _track_model_internal(
+        self,
+        model,
+        name: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        save_architecture: bool = True,
+        save_weights: bool = False,
+        progress_callback=None
+    ) -> Dict[str, Any]:
+        """
+        Internal async model tracking implementation.
         """
         tracking_info = {
             "name": name,
@@ -60,24 +137,88 @@ class ModelTracker:
             "save_weights": save_weights
         }
 
+        if progress_callback:
+            progress_callback("Analyzing model architecture...")
+
         # Get model architecture info
-        tracking_info.update(self._get_model_architecture_info(model))
+        tracking_info.update(await self._get_model_architecture_info_async(model, progress_callback))
+
+        if progress_callback:
+            progress_callback("Computing architecture fingerprint...")
 
         # Compute architecture fingerprint
-        tracking_info["architecture_checksum"] = self._compute_architecture_checksum(model)
+        tracking_info["architecture_checksum"] = await self._compute_architecture_checksum_async(model, progress_callback)
 
         # Compute weights fingerprint if requested
         if save_weights:
-            tracking_info["weights_checksum"] = self._compute_weights_checksum(model)
+            if progress_callback:
+                progress_callback("Computing weights fingerprint...")
+            tracking_info["weights_checksum"] = await self._compute_weights_checksum_async(model, progress_callback)
             tracking_info["weights_size_bytes"] = self._get_model_size(model)
 
         # Handle special cases for different model types
-        PreTrainedModel, _ = _import_transformers()
-        if isinstance(model, PreTrainedModel):
-            tracking_info.update(self._get_pretrained_model_info(model))
+        try:
+            PreTrainedModel, _ = _import_transformers()
+            if isinstance(model, PreTrainedModel):
+                if progress_callback:
+                    progress_callback("Extracting pre-trained model info...")
+                tracking_info.update(self._get_pretrained_model_info(model))
+        except ImportError:
+            pass  # transformers not available
 
         self.tracked_models[name] = tracking_info
         return tracking_info
+
+    async def _track_large_model_lightweight(
+        self,
+        model,
+        name: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        progress_callback=None
+    ) -> Dict[str, Any]:
+        """
+        Lightweight tracking for large models that exceed size limits.
+        """
+        tracking_info = {
+            "name": name,
+            "type": type(model).__name__,
+            "algorithm": self.algorithm,
+            "metadata": metadata or {},
+            "timestamp": self._get_timestamp(),
+            "lightweight_mode": True
+        }
+
+        if progress_callback:
+            progress_callback("Using lightweight mode for large model...")
+
+        try:
+            num_params = sum(p.numel() for p in model.parameters())
+            tracking_info["num_parameters"] = num_params
+            tracking_info["num_trainable_parameters"] = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+            # Use model class name and parameter count as lightweight fingerprint
+            lightweight_fingerprint = f"{type(model).__name__}_{num_params}"
+            tracking_info["architecture_checksum"] = hashlib.sha256(lightweight_fingerprint.encode()).hexdigest()
+
+        except Exception as e:
+            tracking_info["error"] = f"Lightweight tracking failed: {str(e)}"
+            tracking_info["architecture_checksum"] = "error"
+
+        try:
+            PreTrainedModel, _ = _import_transformers()
+            if isinstance(model, PreTrainedModel):
+                tracking_info.update(self._get_pretrained_model_info(model))
+        except ImportError:
+            pass
+
+        self.tracked_models[name] = tracking_info
+        return tracking_info
+
+    async def _get_model_architecture_info_async(self, model, progress_callback=None) -> Dict[str, Any]:
+        """Async version of model architecture info extraction."""
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self._get_model_architecture_info, model
+        )
 
     def _get_model_architecture_info(self, model) -> Dict[str, Any]:
         """Extract architecture information from a model."""
@@ -127,6 +268,12 @@ class ModelTracker:
 
         return info
 
+    async def _compute_architecture_checksum_async(self, model, progress_callback=None) -> str:
+        """Async version of architecture checksum computation."""
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self._compute_architecture_checksum, model
+        )
+
     def _compute_architecture_checksum(self, model) -> str:
         """Compute checksum of model architecture."""
         hash_obj = hashlib.new(self.algorithm)
@@ -147,6 +294,12 @@ class ModelTracker:
                 hash_obj.update(module_info.encode())
 
         return hash_obj.hexdigest()
+
+    async def _compute_weights_checksum_async(self, model, progress_callback=None) -> str:
+        """Async version of weights checksum computation."""
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self._compute_weights_checksum, model
+        )
 
     def _compute_weights_checksum(self, model) -> str:
         """Compute checksum of model weights."""

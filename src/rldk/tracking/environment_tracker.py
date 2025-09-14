@@ -2,26 +2,114 @@
 Environment tracking for capturing system state and dependencies.
 """
 
+import asyncio
 import hashlib
 import json
 import platform
 import subprocess
 import sys
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 try:
     from importlib import metadata
 except ImportError:
-    import importlib_metadata as metadata
+    metadata = None
 import numpy as np
 import torch
+
+from .cache import TrackingCache
 
 
 class EnvironmentTracker:
     """Tracks environment state including dependencies and system info."""
 
-    def __init__(self):
+    def __init__(self, config=None):
+        self.config = config
         self.tracking_info: Dict[str, Any] = {}
+        self._cache = TrackingCache(
+            cache_dir=config.dataset_cache_dir / "environment" if config and config.dataset_cache_dir else None,
+            ttl=config.cache_timeout if config else 3600,
+            max_memory_mb=int((config.max_memory_gb if config else 2.0) * 1024 * 0.1)  # 10% of total memory for env cache
+        ) if config else None
+
+    async def capture_environment_async(
+        self,
+        capture_conda: bool = True,
+        capture_pip: bool = True,
+        capture_system: bool = True,
+        timeout: Optional[int] = None,
+        progress_callback=None
+    ) -> Dict[str, Any]:
+        """
+        Async version of capture_environment with caching and timeout.
+        """
+        timeout = timeout or (self.config.environment_timeout if self.config else 30)
+
+        if self._cache:
+            cached_result = await self._cache.get_async("environment")
+            if cached_result:
+                if progress_callback:
+                    progress_callback("Using cached environment information")
+                return cached_result
+
+        if progress_callback:
+            progress_callback("Starting environment capture...")
+
+        try:
+            tasks = []
+            task_names = []
+
+            if capture_conda:
+                tasks.append(self._capture_conda_environment_async())
+                task_names.append("conda")
+            if capture_pip:
+                tasks.append(self._capture_pip_environment_async())
+                task_names.append("pip")
+            if capture_system:
+                tasks.append(self._capture_system_info_async())
+                task_names.append("system")
+
+            tasks.append(self._capture_ml_frameworks_async())
+            task_names.append("ml_frameworks")
+
+            if progress_callback:
+                progress_callback(f"Running {len(tasks)} environment capture tasks...")
+
+            results = await asyncio.wait_for(
+                asyncio.gather(*tasks, return_exceptions=True),
+                timeout=timeout
+            )
+
+            env_info = {
+                "timestamp": self._get_timestamp(),
+                "python_version": sys.version,
+                "python_executable": sys.executable
+            }
+
+            for i, (task_name, result) in enumerate(zip(task_names, results)):
+                if not isinstance(result, Exception):
+                    env_info[task_name] = result
+                else:
+                    env_info[task_name] = {"error": str(result)}
+                    if progress_callback:
+                        progress_callback(f"Warning: {task_name} capture failed: {str(result)}")
+
+            # Compute environment fingerprint
+            env_info["environment_checksum"] = self._compute_environment_checksum(env_info)
+
+            if self._cache:
+                await self._cache.set_async("environment", env_info)
+
+            self.tracking_info = env_info
+            return env_info
+
+        except asyncio.TimeoutError:
+            return {
+                "timestamp": self._get_timestamp(),
+                "error": f"Environment capture timed out after {timeout}s",
+                "python_version": sys.version,
+                "python_executable": sys.executable
+            }
 
     def capture_environment(
         self,
@@ -30,103 +118,68 @@ class EnvironmentTracker:
         capture_system: bool = True
     ) -> Dict[str, Any]:
         """
-        Capture comprehensive environment information.
-
-        Args:
-            capture_conda: Whether to capture conda environment
-            capture_pip: Whether to capture pip freeze
-            capture_system: Whether to capture system information
-
-        Returns:
-            Dictionary containing environment information
+        Synchronous version of capture_environment for backward compatibility.
         """
-        env_info = {
-            "timestamp": self._get_timestamp(),
-            "python_version": sys.version,
-            "python_executable": sys.executable
-        }
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                return self._capture_environment_sync(capture_conda, capture_pip, capture_system)
+            else:
+                return loop.run_until_complete(
+                    self.capture_environment_async(capture_conda, capture_pip, capture_system)
+                )
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            return loop.run_until_complete(
+                self.capture_environment_async(capture_conda, capture_pip, capture_system)
+            )
 
-        if capture_conda:
-            env_info["conda"] = self._capture_conda_environment()
-
-        if capture_pip:
-            env_info["pip"] = self._capture_pip_environment()
-
-        if capture_system:
-            env_info["system"] = self._capture_system_info()
-
-        # Capture ML framework versions
-        env_info["ml_frameworks"] = self._capture_ml_frameworks()
-
-        # Compute environment fingerprint
-        env_info["environment_checksum"] = self._compute_environment_checksum(env_info)
-
-        self.tracking_info = env_info
-        return env_info
+    async def _capture_conda_environment_async(self) -> Dict[str, Any]:
+        """Async version of conda environment capture."""
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self._capture_conda_environment
+        )
 
     def _capture_conda_environment(self) -> Dict[str, Any]:
-        """Capture conda environment information."""
+        """Capture conda environment information (lightweight version)."""
         conda_info = {}
 
         try:
-            # Get conda info
             result = subprocess.run(
-                ["conda", "info", "--json"],
+                ["conda", "--version"],
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=5  # Very short timeout
             )
             if result.returncode == 0:
-                conda_info["info"] = json.loads(result.stdout)
+                conda_info["version"] = result.stdout.strip()
+                conda_info["available"] = True
+            else:
+                conda_info["available"] = False
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
-            conda_info["info"] = "conda not available"
+            conda_info["available"] = False
 
-        try:
-            # Get current environment
-            result = subprocess.run(
-                ["conda", "list", "--json"],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            if result.returncode == 0:
-                conda_info["packages"] = json.loads(result.stdout)
-        except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
-            conda_info["packages"] = "conda list failed"
-
-        try:
-            # Get environment name
-            result = subprocess.run(
-                ["conda", "info", "--envs"],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            if result.returncode == 0:
-                # Parse active environment from output
-                lines = result.stdout.strip().split('\n')
-                active_env = None
-                for line in lines:
-                    if line.startswith('*'):
-                        active_env = line.split()[0]
-                        break
-                conda_info["active_environment"] = active_env
-        except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
-            conda_info["active_environment"] = "unknown"
+        conda_info["note"] = "Lightweight mode - detailed conda info skipped for performance"
 
         return conda_info
 
+    async def _capture_pip_environment_async(self) -> Dict[str, Any]:
+        """Async version of pip environment capture."""
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self._capture_pip_environment
+        )
+
     def _capture_pip_environment(self) -> Dict[str, Any]:
-        """Capture pip environment information."""
+        """Capture pip environment information (lightweight version)."""
         pip_info = {}
 
         try:
-            # Get pip freeze output
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "freeze"],
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=10  # Reduced timeout
             )
             if result.returncode == 0:
                 pip_info["freeze"] = result.stdout.strip().split('\n')
@@ -135,113 +188,34 @@ class EnvironmentTracker:
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
             pip_info["freeze"] = "pip freeze failed"
 
-        try:
-            # Get pip list with versions
-            result = subprocess.run(
-                [sys.executable, "-m", "pip", "list", "--format=json"],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            if result.returncode == 0:
-                pip_info["list"] = json.loads(result.stdout)
-            else:
-                pip_info["list"] = f"pip list failed: {result.stderr}"
-        except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
-            pip_info["list"] = "pip list failed"
-
-        # Get installed packages using importlib.metadata
-        try:
-            installed_packages = []
-            for dist in metadata.distributions():
-                # Get package location using locate_file with a common package file
-                location = "unknown"
-                try:
-                    # Try to locate a common package file to determine installation directory
-                    package_name = dist.metadata.get("Name", "").lower().replace("-", "_")
-                    if package_name:
-                        # Try common package files
-                        for test_file in [f"{package_name}/__init__.py", f"{package_name}.py", "__init__.py"]:
-                            try:
-                                file_path = dist.locate_file(test_file)
-                                if file_path and file_path.exists():
-                                    location = str(file_path.parent)
-                                    break
-                            except Exception:
-                                continue
-
-                    # If that didn't work, try to get from the distribution's origin
-                    if location == "unknown" and hasattr(dist, 'origin') and dist.origin:
-                        location = str(dist.origin.parent)
-                except Exception:
-                    pass
-
-                installed_packages.append({
-                    "name": dist.metadata.get("Name", "unknown"),
-                    "version": dist.version,
-                    "location": location
-                })
-            pip_info["installed_packages"] = installed_packages
-        except Exception as e:
-            pip_info["installed_packages"] = f"Error getting installed packages: {str(e)}"
+        pip_info["note"] = "Lightweight mode - full package metadata skipped for performance"
 
         return pip_info
 
+    async def _capture_system_info_async(self) -> Dict[str, Any]:
+        """Async version of system info capture."""
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self._capture_system_info
+        )
+
     def _capture_system_info(self) -> Dict[str, Any]:
-        """Capture system information."""
+        """Capture system information (lightweight version)."""
         system_info = {
             "platform": platform.platform(),
             "system": platform.system(),
-            "release": platform.release(),
-            "version": platform.version(),
             "machine": platform.machine(),
-            "processor": platform.processor(),
-            "architecture": platform.architecture(),
-            "hostname": platform.node(),
             "python_implementation": platform.python_implementation(),
-            "python_compiler": platform.python_compiler(),
         }
 
-        # Get CPU info
-        try:
-            import psutil
-            system_info["cpu"] = {
-                "count": psutil.cpu_count(),
-                "count_logical": psutil.cpu_count(logical=True),
-                "freq": psutil.cpu_freq()._asdict() if psutil.cpu_freq() else None,
-                "usage_percent": psutil.cpu_percent(interval=1)
-            }
-        except ImportError:
-            system_info["cpu"] = "psutil not available"
-
-        # Get memory info
-        try:
-            import psutil
-            memory = psutil.virtual_memory()
-            system_info["memory"] = {
-                "total": memory.total,
-                "available": memory.available,
-                "percent": memory.percent,
-                "used": memory.used,
-                "free": memory.free
-            }
-        except ImportError:
-            system_info["memory"] = "psutil not available"
-
-        # Get disk info
-        try:
-            import psutil
-            disk = psutil.disk_usage('/')
-            system_info["disk"] = {
-                "total": disk.total,
-                "used": disk.used,
-                "free": disk.free,
-                "percent": (disk.used / disk.total) * 100
-            }
-        except ImportError:
-            system_info["disk"] = "psutil not available"
+        system_info["note"] = "Lightweight mode - detailed system metrics skipped for performance"
 
         return system_info
+
+    async def _capture_ml_frameworks_async(self) -> Dict[str, Any]:
+        """Async version of ML frameworks capture."""
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self._capture_ml_frameworks
+        )
 
     def _capture_ml_frameworks(self) -> Dict[str, Any]:
         """Capture ML framework versions and configurations."""
@@ -337,6 +311,47 @@ class EnvironmentTracker:
         """Get current timestamp."""
         from datetime import datetime
         return datetime.now().isoformat()
+
+    def _capture_environment_sync(
+        self,
+        capture_conda: bool = True,
+        capture_pip: bool = True,
+        capture_system: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Synchronous fallback when already in async context.
+        """
+        if self._cache:
+            cached_result = self._cache.get("environment")
+            if cached_result:
+                return cached_result
+
+        env_info = {
+            "timestamp": self._get_timestamp(),
+            "python_version": sys.version,
+            "python_executable": sys.executable
+        }
+
+        if capture_conda:
+            env_info["conda"] = self._capture_conda_environment()
+
+        if capture_pip:
+            env_info["pip"] = self._capture_pip_environment()
+
+        if capture_system:
+            env_info["system"] = self._capture_system_info()
+
+        # Capture ML framework versions
+        env_info["ml_frameworks"] = self._capture_ml_frameworks()
+
+        # Compute environment fingerprint
+        env_info["environment_checksum"] = self._compute_environment_checksum(env_info)
+
+        if self._cache:
+            self._cache.set("environment", env_info)
+
+        self.tracking_info = env_info
+        return env_info
 
     def get_tracking_summary(self) -> Dict[str, Any]:
         """Get summary of environment tracking."""

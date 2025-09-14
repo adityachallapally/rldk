@@ -2,9 +2,12 @@
 Dataset tracking for versioning and checksums.
 """
 
+import asyncio
 import hashlib
 import json
+import multiprocessing as mp
 import pickle
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
@@ -14,13 +17,66 @@ import torch
 from datasets import Dataset, DatasetDict
 from torch.utils.data import Dataset as TorchDataset
 
+from .cache import TrackingCache, run_with_timeout_and_progress
+
 
 class DatasetTracker:
     """Tracks dataset versioning, checksums, and metadata."""
 
-    def __init__(self, algorithm: str = "sha256"):
+    def __init__(self, algorithm: str = "sha256", config=None):
         self.algorithm = algorithm
+        self.config = config
         self.tracked_datasets: Dict[str, Dict[str, Any]] = {}
+        self._cache = TrackingCache(
+            cache_dir=config.dataset_cache_dir if config else None,
+            ttl=config.cache_timeout if config else 3600,
+            max_memory_mb=int((config.max_memory_gb if config else 2.0) * 1024 * 0.25)  # 25% of total memory for dataset cache
+        ) if config else None
+
+    async def track_dataset_async(
+        self,
+        dataset: Union[Dataset, DatasetDict, TorchDataset, np.ndarray, pd.DataFrame, str, Path],
+        name: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        timeout: Optional[int] = None,
+        progress_callback=None
+    ) -> Dict[str, Any]:
+        """
+        Async version of track_dataset with timeout and progress indicators.
+        """
+        timeout = timeout or (self.config.tracking_timeout if self.config else 30)
+
+        if self._cache:
+            cache_key = f"dataset_{name}_{hash(str(dataset))}"
+            cached_result = await self._cache.get_async(cache_key)
+            if cached_result:
+                if progress_callback:
+                    progress_callback(f"Using cached result for dataset {name}")
+                return cached_result
+
+        if progress_callback:
+            progress_callback(f"Starting dataset tracking for {name}")
+
+        try:
+            result = await run_with_timeout_and_progress(
+                self._track_dataset_internal(dataset, name, metadata, progress_callback),
+                timeout=timeout,
+                progress_callback=progress_callback,
+                error_message=f"Dataset tracking for {name} timed out"
+            )
+
+            if self._cache and not result.get("error"):
+                cache_key = f"dataset_{name}_{hash(str(dataset))}"
+                await self._cache.set_async(cache_key, result)
+
+            return result
+
+        except Exception as e:
+            return {
+                "name": name,
+                "error": f"Dataset tracking failed: {str(e)}",
+                "checksum": "error"
+            }
 
     def track_dataset(
         self,
@@ -29,15 +85,27 @@ class DatasetTracker:
         metadata: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        Track a dataset and compute its fingerprint.
+        Synchronous version of track_dataset for backward compatibility.
+        """
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
 
-        Args:
-            dataset: The dataset to track
-            name: Name identifier for the dataset
-            metadata: Additional metadata to store
+        return loop.run_until_complete(
+            self.track_dataset_async(dataset, name, metadata)
+        )
 
-        Returns:
-            Dictionary containing tracking information
+    async def _track_dataset_internal(
+        self,
+        dataset: Union[Dataset, DatasetDict, TorchDataset, np.ndarray, pd.DataFrame, str, Path],
+        name: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        progress_callback=None
+    ) -> Dict[str, Any]:
+        """
+        Internal async dataset tracking implementation.
         """
         tracking_info = {
             "name": name,
@@ -47,22 +115,31 @@ class DatasetTracker:
             "timestamp": self._get_timestamp()
         }
 
+        if progress_callback:
+            progress_callback(f"Analyzing dataset type: {type(dataset).__name__}")
+
         # Compute checksum based on dataset type
         if isinstance(dataset, (str, Path)):
-            tracking_info.update(self._track_file_dataset(dataset))
+            tracking_info.update(await self._track_file_dataset_async(dataset, progress_callback))
         elif isinstance(dataset, (Dataset, DatasetDict)):
-            tracking_info.update(self._track_huggingface_dataset(dataset))
+            tracking_info.update(await self._track_huggingface_dataset_async(dataset, progress_callback))
         elif isinstance(dataset, TorchDataset):
-            tracking_info.update(self._track_torch_dataset(dataset))
+            tracking_info.update(await self._track_torch_dataset_async(dataset, progress_callback))
         elif isinstance(dataset, np.ndarray):
-            tracking_info.update(self._track_numpy_dataset(dataset))
+            tracking_info.update(await self._track_numpy_dataset_async(dataset, progress_callback))
         elif isinstance(dataset, pd.DataFrame):
-            tracking_info.update(self._track_pandas_dataset(dataset))
+            tracking_info.update(await self._track_pandas_dataset_async(dataset, progress_callback))
         else:
-            tracking_info.update(self._track_generic_dataset(dataset))
+            tracking_info.update(await self._track_generic_dataset_async(dataset, progress_callback))
 
         self.tracked_datasets[name] = tracking_info
         return tracking_info
+
+    async def _track_file_dataset_async(self, dataset_path: Union[str, Path], progress_callback=None) -> Dict[str, Any]:
+        """Async version of file dataset tracking."""
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self._track_file_dataset, dataset_path
+        )
 
     def _track_file_dataset(self, dataset_path: Union[str, Path]) -> Dict[str, Any]:
         """Track a dataset stored as files."""
@@ -85,6 +162,25 @@ class DatasetTracker:
 
         return info
 
+    async def _track_huggingface_dataset_async(self, dataset: Union[Dataset, DatasetDict], progress_callback=None) -> Dict[str, Any]:
+        """Async version of Hugging Face dataset tracking."""
+        info = {
+            "num_rows": len(dataset) if isinstance(dataset, Dataset) else sum(len(split) for split in dataset.values()),
+            "features": list(dataset.features.keys()) if isinstance(dataset, Dataset) else list(dataset.column_names.keys()),
+        }
+
+        if isinstance(dataset, DatasetDict):
+            info["splits"] = list(dataset.keys())
+            info["split_sizes"] = {split: len(ds) for split, ds in dataset.items()}
+
+        if progress_callback:
+            progress_callback("Computing dataset checksum...")
+
+        # Compute checksum with multiprocessing for large datasets
+        info["checksum"] = await self._compute_dataset_checksum_async(dataset, progress_callback)
+
+        return info
+
     def _track_huggingface_dataset(self, dataset: Union[Dataset, DatasetDict]) -> Dict[str, Any]:
         """Track a Hugging Face dataset."""
         info = {
@@ -98,6 +194,24 @@ class DatasetTracker:
 
         # Compute checksum from a sample of the data
         info["checksum"] = self._compute_dataset_checksum(dataset)
+
+        return info
+
+    async def _track_torch_dataset_async(self, dataset: TorchDataset, progress_callback=None) -> Dict[str, Any]:
+        """Async version of PyTorch dataset tracking."""
+        info = {
+            "num_samples": len(dataset),
+        }
+
+        if progress_callback:
+            progress_callback("Computing PyTorch dataset checksum...")
+
+        info["checksum"] = await self._compute_torch_dataset_checksum_async(dataset, progress_callback)
+
+        # Try to get additional info if available
+        if hasattr(dataset, 'data') and hasattr(dataset, 'targets'):
+            info["data_shape"] = getattr(dataset.data, 'shape', None)
+            info["targets_shape"] = getattr(dataset.targets, 'shape', None)
 
         return info
 
@@ -115,6 +229,18 @@ class DatasetTracker:
 
         return info
 
+    async def _track_numpy_dataset_async(self, dataset: np.ndarray, progress_callback=None) -> Dict[str, Any]:
+        """Async version of NumPy dataset tracking."""
+        if progress_callback:
+            progress_callback("Computing NumPy array checksum...")
+
+        return {
+            "shape": dataset.shape,
+            "dtype": str(dataset.dtype),
+            "size_bytes": dataset.nbytes,
+            "checksum": await self._compute_numpy_checksum_async(dataset, progress_callback)
+        }
+
     def _track_numpy_dataset(self, dataset: np.ndarray) -> Dict[str, Any]:
         """Track a NumPy array dataset."""
         return {
@@ -122,6 +248,19 @@ class DatasetTracker:
             "dtype": str(dataset.dtype),
             "size_bytes": dataset.nbytes,
             "checksum": self._compute_numpy_checksum(dataset)
+        }
+
+    async def _track_pandas_dataset_async(self, dataset: pd.DataFrame, progress_callback=None) -> Dict[str, Any]:
+        """Async version of Pandas dataset tracking."""
+        if progress_callback:
+            progress_callback("Computing Pandas DataFrame checksum...")
+
+        return {
+            "shape": dataset.shape,
+            "columns": list(dataset.columns),
+            "dtypes": dataset.dtypes.to_dict(),
+            "size_bytes": dataset.memory_usage(deep=True).sum(),
+            "checksum": await self._compute_pandas_checksum_async(dataset, progress_callback)
         }
 
     def _track_pandas_dataset(self, dataset: pd.DataFrame) -> Dict[str, Any]:
@@ -133,6 +272,15 @@ class DatasetTracker:
             "size_bytes": dataset.memory_usage(deep=True).sum(),
             "checksum": self._compute_pandas_checksum(dataset)
         }
+
+    async def _track_generic_dataset_async(self, dataset: Any, progress_callback=None) -> Dict[str, Any]:
+        """Async version of generic dataset tracking."""
+        if progress_callback:
+            progress_callback("Computing generic dataset checksum...")
+
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self._track_generic_dataset, dataset
+        )
 
     def _track_generic_dataset(self, dataset: Any) -> Dict[str, Any]:
         """Track a generic dataset by serializing it."""
@@ -181,6 +329,86 @@ class DatasetTracker:
 
         return hash_obj.hexdigest()
 
+    async def _compute_dataset_checksum_async(self, dataset: Union[Dataset, DatasetDict], progress_callback=None) -> str:
+        """Async version of dataset checksum computation with multiprocessing."""
+        if isinstance(dataset, DatasetDict):
+            # Hash each split
+            hash_obj = hashlib.new(self.algorithm)
+            for split_name, split_dataset in dataset.items():
+                if progress_callback:
+                    progress_callback(f"Processing split: {split_name}")
+                hash_obj.update(split_name.encode())
+                split_checksum = await self._compute_dataset_checksum_async(split_dataset, progress_callback)
+                hash_obj.update(split_checksum.encode())
+            return hash_obj.hexdigest()
+
+        sample_size = self.config.dataset_sample_size if self.config else 1000
+        dataset_size = len(dataset)
+
+        if dataset_size > sample_size:
+            if progress_callback:
+                progress_callback(f"Large dataset detected ({dataset_size} samples), using intelligent sampling")
+
+            return await self._compute_large_dataset_checksum_mp(dataset, sample_size, progress_callback)
+        else:
+            return await asyncio.get_event_loop().run_in_executor(
+                None, self._compute_dataset_checksum, dataset
+            )
+
+    async def _compute_large_dataset_checksum_mp(self, dataset, sample_size: int, progress_callback=None) -> str:
+        """Compute checksum for large datasets using multiprocessing."""
+        try:
+            step = max(1, len(dataset) // sample_size)
+            sample_indices = list(range(0, len(dataset), step))[:sample_size]
+
+            num_workers = min(mp.cpu_count(), 4)  # Limit workers to avoid memory issues
+            chunk_size = max(1, len(sample_indices) // num_workers)
+            index_chunks = [sample_indices[i:i + chunk_size] for i in range(0, len(sample_indices), chunk_size)]
+
+            if progress_callback:
+                progress_callback(f"Processing {len(sample_indices)} samples using {num_workers} workers")
+
+            with ProcessPoolExecutor(max_workers=num_workers) as executor:
+                tasks = []
+                for chunk in index_chunks:
+                    chunk_samples = []
+                    for idx in chunk:
+                        try:
+                            sample = dataset[idx]
+                            chunk_samples.append(json.dumps(sample, sort_keys=True, default=str))
+                        except Exception:
+                            continue  # Skip problematic samples
+
+                    if chunk_samples:
+                        task = asyncio.get_event_loop().run_in_executor(
+                            executor, self._hash_sample_chunk, chunk_samples, self.algorithm
+                        )
+                        tasks.append(task)
+
+                chunk_hashes = await asyncio.gather(*tasks)
+
+            final_hash = hashlib.new(self.algorithm)
+            for chunk_hash in chunk_hashes:
+                final_hash.update(chunk_hash.encode())
+
+            return final_hash.hexdigest()
+
+        except Exception as e:
+            if progress_callback:
+                progress_callback(f"Multiprocessing failed, falling back to single-threaded: {str(e)}")
+            # Fallback to single-threaded processing
+            return await asyncio.get_event_loop().run_in_executor(
+                None, self._compute_dataset_checksum, dataset
+            )
+
+    @staticmethod
+    def _hash_sample_chunk(samples: list, algorithm: str) -> str:
+        """Hash a chunk of samples (used in multiprocessing)."""
+        hash_obj = hashlib.new(algorithm)
+        for sample_str in samples:
+            hash_obj.update(sample_str.encode())
+        return hash_obj.hexdigest()
+
     def _compute_dataset_checksum(self, dataset: Union[Dataset, DatasetDict]) -> str:
         """Compute checksum of a Hugging Face dataset."""
         hash_obj = hashlib.new(self.algorithm)
@@ -216,6 +444,17 @@ class DatasetTracker:
                 hash_obj.update(sample_str.encode())
 
         return hash_obj.hexdigest()
+
+    async def _compute_torch_dataset_checksum_async(self, dataset: TorchDataset, progress_callback=None) -> str:
+        """Async version of PyTorch dataset checksum computation."""
+        sample_size = min(100, len(dataset))
+        if len(dataset) > sample_size:
+            if progress_callback:
+                progress_callback(f"Large PyTorch dataset, sampling {sample_size} items")
+
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self._compute_torch_dataset_checksum, dataset
+        )
 
     def _compute_torch_dataset_checksum(self, dataset: TorchDataset) -> str:
         """Compute checksum of a PyTorch dataset."""
@@ -255,6 +494,16 @@ class DatasetTracker:
 
         return hash_obj.hexdigest()
 
+    async def _compute_numpy_checksum_async(self, dataset: np.ndarray, progress_callback=None) -> str:
+        """Async version of NumPy checksum computation."""
+        if dataset.size > 1000000:  # 1M elements
+            if progress_callback:
+                progress_callback(f"Large NumPy array ({dataset.size} elements), using sampling")
+
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self._compute_numpy_checksum, dataset
+        )
+
     def _compute_numpy_checksum(self, dataset: np.ndarray) -> str:
         """Compute checksum of a NumPy array."""
         # For large arrays, sample a subset deterministically by stride
@@ -277,6 +526,16 @@ class DatasetTracker:
             sample = dataset.flatten()
 
         return hashlib.sha256(sample.tobytes()).hexdigest()
+
+    async def _compute_pandas_checksum_async(self, dataset: pd.DataFrame, progress_callback=None) -> str:
+        """Async version of Pandas checksum computation."""
+        if len(dataset) > 10000:
+            if progress_callback:
+                progress_callback(f"Large DataFrame ({len(dataset)} rows), using sampling")
+
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self._compute_pandas_checksum, dataset
+        )
 
     def _compute_pandas_checksum(self, dataset: pd.DataFrame) -> str:
         """Compute checksum of a Pandas DataFrame."""

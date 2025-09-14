@@ -2,6 +2,7 @@
 Main experiment tracker that coordinates all tracking components.
 """
 
+import asyncio
 import json
 from datetime import datetime
 from pathlib import Path
@@ -26,12 +27,12 @@ class ExperimentTracker:
         self.experiment_name = config.experiment_name
         self.output_dir = config.output_dir
 
-        # Initialize tracking components
-        self.dataset_tracker = DatasetTracker(config.dataset_checksum_algorithm) if config.enable_dataset_tracking else None
-        self.model_tracker = ModelTracker(config.model_fingerprint_algorithm) if config.enable_model_tracking else None
-        self.environment_tracker = EnvironmentTracker() if config.enable_environment_tracking else None
+        # Initialize tracking components with config for performance optimization
+        self.dataset_tracker = DatasetTracker(config.dataset_checksum_algorithm, config) if config.enable_dataset_tracking else None
+        self.model_tracker = ModelTracker(config.model_fingerprint_algorithm, config) if config.enable_model_tracking else None
+        self.environment_tracker = EnvironmentTracker(config) if config.enable_environment_tracking else None
         self.seed_tracker = SeedTracker() if config.enable_seed_tracking else None
-        self.git_tracker = GitTracker(config.git_repo_path) if config.enable_git_tracking else None
+        self.git_tracker = GitTracker(config.git_repo_path, config) if config.enable_git_tracking else None
 
         # Storage for tracking data
         self.tracking_data: Dict[str, Any] = {
@@ -52,43 +53,230 @@ class ExperimentTracker:
         # Create output directory
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    def start_experiment(self) -> Dict[str, Any]:
-        """Start the experiment and capture initial state."""
+    async def start_experiment_async(self, progress_callback=None) -> Dict[str, Any]:
+        """Async version of start_experiment with progress indicators and graceful degradation."""
+        if progress_callback:
+            progress_callback("Starting experiment initialization...")
+
         print(f"Starting experiment: {self.experiment_name} (ID: {self.experiment_id})")
 
-        # Capture environment state
+        # Initialize components concurrently with individual error handling
+        tasks = []
+        task_names = []
+
         if self.environment_tracker:
-            print("Capturing environment state...")
-            self.tracking_data["environment"] = self.environment_tracker.capture_environment(
+            if progress_callback:
+                progress_callback("Scheduling environment capture...")
+            tasks.append(self._capture_environment_safe())
+            task_names.append("environment")
+
+        if self.git_tracker:
+            if progress_callback:
+                progress_callback("Scheduling Git state capture...")
+            tasks.append(self._capture_git_safe())
+            task_names.append("git")
+
+        if self.seed_tracker:
+            if progress_callback:
+                progress_callback("Scheduling seed capture...")
+            tasks.append(self._capture_seeds_safe())
+            task_names.append("seeds")
+
+        if tasks:
+            if progress_callback:
+                progress_callback(f"Running {len(tasks)} initialization tasks concurrently...")
+
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            for i, (task_name, result) in enumerate(zip(task_names, results)):
+                if not isinstance(result, Exception) and not result.get("error"):
+                    self.tracking_data[task_name] = result
+                    if progress_callback:
+                        progress_callback(f"✓ {task_name} capture completed")
+                else:
+                    error_msg = str(result) if isinstance(result, Exception) else result.get("error", "Unknown error")
+                    self.tracking_data[task_name] = {"error": error_msg}
+                    if progress_callback:
+                        progress_callback(f"⚠ {task_name} capture failed: {error_msg}")
+
+        # Save initial state
+        self._save_tracking_data()
+
+        if progress_callback:
+            progress_callback("Experiment initialization complete!")
+
+        return self.tracking_data
+
+    async def _capture_environment_safe(self) -> Dict[str, Any]:
+        """Safely capture environment with timeout and error handling."""
+        try:
+            return await self.environment_tracker.capture_environment_async(
                 capture_conda=self.config.capture_conda_env,
                 capture_pip=self.config.capture_pip_freeze,
-                capture_system=self.config.capture_system_info
+                capture_system=self.config.capture_system_info,
+                timeout=self.config.environment_timeout
             )
+        except Exception as e:
+            return {"error": f"Environment capture failed: {str(e)}"}
 
-        # Capture Git state
-        if self.git_tracker:
-            print("Capturing Git state...")
-            self.tracking_data["git"] = self.git_tracker.capture_git_state(
+    async def _capture_git_safe(self) -> Dict[str, Any]:
+        """Safely capture Git state with timeout and error handling."""
+        try:
+            return await self.git_tracker.capture_git_state_async(
                 capture_commit=True,
                 capture_diff=self.config.capture_git_diff,
                 capture_status=self.config.capture_git_status,
-                capture_remote=True
+                capture_remote=True,
+                timeout=self.config.git_timeout
             )
+        except Exception as e:
+            return {"error": f"Git capture failed: {str(e)}"}
 
-        # Capture initial seed state
-        if self.seed_tracker:
-            print("Capturing seed state...")
-            self.tracking_data["seeds"] = self.seed_tracker.capture_seeds(
+    async def _capture_seeds_safe(self) -> Dict[str, Any]:
+        """Safely capture seed state with error handling."""
+        try:
+            return self.seed_tracker.capture_seeds(
                 track_python=self.config.track_python_seed,
                 track_numpy=self.config.track_numpy_seed,
                 track_torch=self.config.track_torch_seed,
                 track_cuda=self.config.track_cuda_seed
             )
+        except Exception as e:
+            return {"error": f"Seed capture failed: {str(e)}"}
+
+    def start_experiment(self) -> Dict[str, Any]:
+        """
+        Synchronous version of start_experiment for backward compatibility.
+        """
+        if self.config.enable_async_init:
+            # Use async version if enabled
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    return self._start_experiment_sync()
+                else:
+                    return loop.run_until_complete(self.start_experiment_async())
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                return loop.run_until_complete(self.start_experiment_async())
+        else:
+            print(f"Starting experiment: {self.experiment_name} (ID: {self.experiment_id})")
+
+            # Capture environment state
+            if self.environment_tracker:
+                print("Capturing environment state...")
+                try:
+                    self.tracking_data["environment"] = self.environment_tracker.capture_environment(
+                        capture_conda=self.config.capture_conda_env,
+                        capture_pip=self.config.capture_pip_freeze,
+                        capture_system=self.config.capture_system_info
+                    )
+                except Exception as e:
+                    self.tracking_data["environment"] = {"error": f"Environment capture failed: {str(e)}"}
+
+            # Capture Git state
+            if self.git_tracker:
+                print("Capturing Git state...")
+                try:
+                    self.tracking_data["git"] = self.git_tracker.capture_git_state(
+                        capture_commit=True,
+                        capture_diff=self.config.capture_git_diff,
+                        capture_status=self.config.capture_git_status,
+                        capture_remote=True
+                    )
+                except Exception as e:
+                    self.tracking_data["git"] = {"error": f"Git capture failed: {str(e)}"}
+
+            # Capture initial seed state
+            if self.seed_tracker:
+                print("Capturing seed state...")
+                try:
+                    self.tracking_data["seeds"] = self.seed_tracker.capture_seeds(
+                        track_python=self.config.track_python_seed,
+                        track_numpy=self.config.track_numpy_seed,
+                        track_torch=self.config.track_torch_seed,
+                        track_cuda=self.config.track_cuda_seed
+                    )
+                except Exception as e:
+                    self.tracking_data["seeds"] = {"error": f"Seed capture failed: {str(e)}"}
+
+            # Save initial state
+            self._save_tracking_data()
+
+            return self.tracking_data
+
+    def _start_experiment_sync(self) -> Dict[str, Any]:
+        """Synchronous fallback when already in async context."""
+        print(f"Starting experiment: {self.experiment_name} (ID: {self.experiment_id})")
+
+        # Capture environment state synchronously
+        if self.environment_tracker:
+            print("Capturing environment state...")
+            try:
+                self.tracking_data["environment"] = self.environment_tracker.capture_environment(
+                    capture_conda=self.config.capture_conda_env,
+                    capture_pip=self.config.capture_pip_freeze,
+                    capture_system=self.config.capture_system_info
+                )
+            except Exception as e:
+                self.tracking_data["environment"] = {"error": f"Environment capture failed: {str(e)}"}
+
+        # Capture Git state synchronously
+        if self.git_tracker:
+            print("Capturing Git state...")
+            try:
+                self.tracking_data["git"] = self.git_tracker.capture_git_state(
+                    capture_commit=True,
+                    capture_diff=self.config.capture_git_diff,
+                    capture_status=self.config.capture_git_status,
+                    capture_remote=True
+                )
+            except Exception as e:
+                self.tracking_data["git"] = {"error": f"Git capture failed: {str(e)}"}
+
+        # Capture seed state
+        if self.seed_tracker:
+            print("Capturing seed state...")
+            try:
+                self.tracking_data["seeds"] = self.seed_tracker.capture_seeds(
+                    track_python=self.config.track_python_seed,
+                    track_numpy=self.config.track_numpy_seed,
+                    track_torch=self.config.track_torch_seed,
+                    track_cuda=self.config.track_cuda_seed
+                )
+            except Exception as e:
+                self.tracking_data["seeds"] = {"error": f"Seed capture failed: {str(e)}"}
 
         # Save initial state
         self._save_tracking_data()
 
         return self.tracking_data
+
+    async def track_dataset_async(
+        self,
+        dataset: Any,
+        name: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        timeout: Optional[int] = None,
+        progress_callback=None
+    ) -> Dict[str, Any]:
+        """Async version of track_dataset with timeout and progress."""
+        if not self.dataset_tracker:
+            raise RuntimeError("Dataset tracking is not enabled")
+
+        if progress_callback:
+            progress_callback(f"Starting dataset tracking for {name}")
+
+        tracking_info = await self.dataset_tracker.track_dataset_async(
+            dataset, name, metadata, timeout, progress_callback
+        )
+
+        if not tracking_info.get("error"):
+            self.tracking_data["datasets"][name] = tracking_info
+            self._save_tracking_data()
+
+        return tracking_info
 
     def track_dataset(
         self,
@@ -107,6 +295,58 @@ class ExperimentTracker:
 
         return tracking_info
 
+    async def track_model_async(
+        self,
+        model: Any,
+        name: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        save_architecture: Optional[bool] = None,
+        save_weights: Optional[bool] = None,
+        timeout: Optional[int] = None,
+        progress_callback=None
+    ) -> Dict[str, Any]:
+        """Async version of track_model with timeout and progress."""
+        if not self.model_tracker:
+            raise RuntimeError("Model tracking is not enabled")
+
+        if progress_callback:
+            progress_callback(f"Starting model tracking for {name}")
+
+        # Use config defaults if not specified
+        if save_architecture is None:
+            save_architecture = self.config.save_model_architecture
+        if save_weights is None:
+            save_weights = self.config.save_model_weights
+
+        tracking_info = await self.model_tracker.track_model_async(
+            model, name, metadata, save_architecture, save_weights, timeout, progress_callback
+        )
+
+        if not tracking_info.get("error"):
+            # Save model files if requested and tracking was successful
+            if save_architecture:
+                try:
+                    arch_path = self.model_tracker.save_model_architecture(
+                        model, self.output_dir, name
+                    )
+                    tracking_info["architecture_file"] = str(arch_path)
+                except Exception as e:
+                    tracking_info["architecture_file_error"] = str(e)
+
+            if save_weights:
+                try:
+                    weights_path = self.model_tracker.save_model_weights(
+                        model, self.output_dir, name
+                    )
+                    tracking_info["weights_file"] = str(weights_path)
+                except Exception as e:
+                    tracking_info["weights_file_error"] = str(e)
+
+            self.tracking_data["models"][name] = tracking_info
+            self._save_tracking_data()
+
+        return tracking_info
+
     def track_model(
         self,
         model: Any,
@@ -115,39 +355,64 @@ class ExperimentTracker:
         save_architecture: Optional[bool] = None,
         save_weights: Optional[bool] = None
     ) -> Dict[str, Any]:
-        """Track a model."""
-        if not self.model_tracker:
-            raise RuntimeError("Model tracking is not enabled")
+        """
+        Synchronous version of track_model for backward compatibility.
+        """
+        if self.config.enable_async_init:
+            # Use async version if enabled
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    pass  # Continue to sync implementation below
+                else:
+                    return loop.run_until_complete(
+                        self.track_model_async(model, name, metadata, save_architecture, save_weights)
+                    )
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                return loop.run_until_complete(
+                    self.track_model_async(model, name, metadata, save_architecture, save_weights)
+                )
+        else:
+            if not self.model_tracker:
+                raise RuntimeError("Model tracking is not enabled")
 
-        print(f"Tracking model: {name}")
+            print(f"Tracking model: {name}")
 
-        # Use config defaults if not specified
-        if save_architecture is None:
-            save_architecture = self.config.save_model_architecture
-        if save_weights is None:
-            save_weights = self.config.save_model_weights
+            # Use config defaults if not specified
+            if save_architecture is None:
+                save_architecture = self.config.save_model_architecture
+            if save_weights is None:
+                save_weights = self.config.save_model_weights
 
-        tracking_info = self.model_tracker.track_model(
-            model, name, metadata, save_architecture, save_weights
-        )
-
-        # Save model files if requested
-        if save_architecture:
-            arch_path = self.model_tracker.save_model_architecture(
-                model, self.output_dir, name
+            tracking_info = self.model_tracker.track_model(
+                model, name, metadata, save_architecture, save_weights
             )
-            tracking_info["architecture_file"] = str(arch_path)
 
-        if save_weights:
-            weights_path = self.model_tracker.save_model_weights(
-                model, self.output_dir, name
-            )
-            tracking_info["weights_file"] = str(weights_path)
+            # Save model files if requested
+            if save_architecture:
+                try:
+                    arch_path = self.model_tracker.save_model_architecture(
+                        model, self.output_dir, name
+                    )
+                    tracking_info["architecture_file"] = str(arch_path)
+                except Exception as e:
+                    tracking_info["architecture_file_error"] = str(e)
 
-        self.tracking_data["models"][name] = tracking_info
-        self._save_tracking_data()
+            if save_weights:
+                try:
+                    weights_path = self.model_tracker.save_model_weights(
+                        model, self.output_dir, name
+                    )
+                    tracking_info["weights_file"] = str(weights_path)
+                except Exception as e:
+                    tracking_info["weights_file_error"] = str(e)
 
-        return tracking_info
+            self.tracking_data["models"][name] = tracking_info
+            self._save_tracking_data()
+
+            return tracking_info
 
     def track_tokenizer(
         self,
