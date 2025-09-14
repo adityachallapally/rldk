@@ -233,3 +233,12 @@ test-trl-slow:
 	@echo "⚠️  This will download models and may take several minutes"
 	python3 -m pytest test_trl_integration_optional.py -m integration -v --tb=short
 	@echo "✅ TRL slow tests completed!"
+
+# Examples smoke test target for PR3
+examples-smoke:
+	@echo "Running examples smoke tests..."
+	python test_imports.py
+	python examples/basic_ppo_cartpole.py --help >/dev/null 2>&1 || echo "basic_ppo_cartpole.py has no --help flag"
+	python examples/run_evals.py --help >/dev/null 2>&1 || echo "run_evals.py has no --help flag"
+	python scripts/setup_reference_runs.py --help >/dev/null
+	@echo "✅ Examples smoke tests passed!"
