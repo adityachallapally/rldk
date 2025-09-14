@@ -9,11 +9,10 @@ This script creates the required reference runs that the test suite expects:
 It creates minimal but valid training logs that match the expected format.
 """
 
-import json
-import hashlib
 import argparse
+import hashlib
+import json
 from pathlib import Path
-from typing import Dict, List
 
 
 def compute_sha256(text: str) -> str:
@@ -24,15 +23,15 @@ def compute_sha256(text: str) -> str:
 def create_minimal_manifest(output_dir: Path, num_samples: int = 5) -> str:
     """Create a minimal dataset manifest for testing."""
     manifest_path = output_dir / "ag_news_manifest.jsonl"
-    
+
     manifest = []
     for i in range(num_samples):
         prompt = f"This is test prompt {i} for summarization training."
         reference = f"This is test summary {i} for the prompt."
-        
+
         manifest.append({
             "dataset_id": "ag_news",
-            "dataset_revision": "main", 
+            "dataset_revision": "main",
             "dataset_split": "train",
             "original_index": i,
             "prompt_sha256": compute_sha256(prompt),
@@ -45,11 +44,11 @@ def create_minimal_manifest(output_dir: Path, num_samples: int = 5) -> str:
                 "do_sample": False,
             },
         })
-    
+
     with open(manifest_path, "w") as f:
         for item in manifest:
             f.write(json.dumps(item) + "\n")
-    
+
     print(f"Created minimal manifest with {len(manifest)} samples: {manifest_path}")
     return str(manifest_path)
 
@@ -68,7 +67,7 @@ def create_training_log_entry(
     loss: float,
     reward_scalar: float,
     kl_to_ref: float
-) -> Dict:
+) -> dict:
     """Create a training log entry with the expected format."""
     return {
         "global_step": step,
@@ -108,21 +107,21 @@ def create_reference_runs():
     # Create directories
     good_run_dir = Path("reference/runs/summarization/good")
     tokenizer_changed_dir = Path("reference/runs/summarization/tokenizer_changed")
-    
+
     good_run_dir.mkdir(parents=True, exist_ok=True)
     tokenizer_changed_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Create minimal manifest
     datasets_dir = Path("reference/datasets")
     datasets_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = create_minimal_manifest(datasets_dir)
-    
+
     # Load manifest for reference
     manifest = []
-    with open(manifest_path, "r") as f:
+    with open(manifest_path) as f:
         for line in f:
             manifest.append(json.loads(line.strip()))
-    
+
     # Create good run training log
     good_log_path = good_run_dir / "training_log.jsonl"
     with open(good_log_path, "w") as f:
@@ -143,9 +142,9 @@ def create_reference_runs():
                 kl_to_ref=0.1 - step * 0.02  # Decreasing KL divergence
             )
             f.write(json.dumps(log_entry) + "\n")
-    
+
     print(f"Created good run training log: {good_log_path}")
-    
+
     # Create tokenizer changed run training log
     tokenizer_changed_log_path = tokenizer_changed_dir / "training_log.jsonl"
     with open(tokenizer_changed_log_path, "w") as f:
@@ -166,9 +165,9 @@ def create_reference_runs():
                 kl_to_ref=0.15 - step * 0.015  # Different KL divergence pattern
             )
             f.write(json.dumps(log_entry) + "\n")
-    
+
     print(f"Created tokenizer changed run training log: {tokenizer_changed_log_path}")
-    
+
     print("✅ Reference runs created successfully!")
     print(f"   - Good run: {good_run_dir}")
     print(f"   - Tokenizer changed run: {tokenizer_changed_dir}")
@@ -182,9 +181,9 @@ def main():
         action="store_true",
         help="Clean existing reference runs before creating new ones"
     )
-    
+
     args = parser.parse_args()
-    
+
     if args.clean:
         # Clean existing runs
         runs_dir = Path("reference/runs")
@@ -192,7 +191,7 @@ def main():
             import shutil
             shutil.rmtree(runs_dir)
             print("Cleaned existing reference runs")
-    
+
     create_reference_runs()
 
 

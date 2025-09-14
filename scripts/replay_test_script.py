@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Test script for the seeded replay functionality."""
 
+import json
 import os
+from pathlib import Path
 import sys
 import tempfile
-import json
-from pathlib import Path
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))

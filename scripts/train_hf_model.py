@@ -13,35 +13,32 @@ Example usage:
 
 import argparse
 import json
-import time
 import os
-import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+import sys
+from typing import Any
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
-import numpy as np
 from transformers import (
-    AutoTokenizer, 
-    AutoModel, 
     AutoConfig,
-    get_linear_schedule_with_warmup
+    AutoModel,
+    AutoTokenizer,
+    get_linear_schedule_with_warmup,
 )
 
 # Add current directory to path for imports
 sys.path.append(str(Path(__file__).parent))
 
-from rlhf_core.profiler import ProfilerManager
-from profiler.torch_profiler import TorchProfiler
 from profiler.profiler_context import ProfilerContext
-from profiler.hooks import profiler_registry, StepProfiler
 
 
 class HuggingFaceModelWrapper(nn.Module):
     """Wrapper for Hugging Face models with classification head."""
-    
+
     def __init__(self, model_name: str, num_labels: int = 2, dropout_rate: float = 0.1):
         super().__init__()
         self.model_name = model_name
@@ -49,24 +46,24 @@ class HuggingFaceModelWrapper(nn.Module):
         self.transformer = AutoModel.from_pretrained(model_name)
         self.dropout = nn.Dropout(dropout_rate)
         self.classifier = nn.Linear(self.config.hidden_size, num_labels)
-        
+
     def forward(self, input_ids, attention_mask=None):
         outputs = self.transformer(input_ids=input_ids, attention_mask=attention_mask)
-        
+
         # Use the last hidden state and pool it (mean pooling)
         if hasattr(outputs, 'pooler_output') and outputs.pooler_output is not None:
             pooled_output = outputs.pooler_output
         else:
             # For models without pooler_output (like DistilBERT), use mean pooling
             pooled_output = outputs.last_hidden_state.mean(dim=1)
-        
+
         pooled_output = self.dropout(pooled_output)
         return self.classifier(pooled_output)
 
 
 class TrainingConfig:
     """Configuration for training parameters."""
-    
+
     def __init__(self):
         self.model_name = "distilbert-base-uncased"
         self.num_labels = 2
@@ -80,8 +77,8 @@ class TrainingConfig:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.profiler_enabled = False
         self.output_dir = "hf_training_output"
-        
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for serialization."""
         return {
             "model_name": self.model_name,
@@ -117,9 +114,9 @@ def create_dummy_dataset(tokenizer, num_samples: int = 1000, max_length: int = 1
         "Natural language processing is a fascinating field of study.",
         "Transformers have revolutionized the field of deep learning.",
     ] * (num_samples // 5 + 1)
-    
+
     labels = [0, 1, 0, 1, 0] * (num_samples // 5 + 1)
-    
+
     # Tokenize texts
     encodings = tokenizer(
         texts[:num_samples],
@@ -128,7 +125,7 @@ def create_dummy_dataset(tokenizer, num_samples: int = 1000, max_length: int = 1
         max_length=max_length,
         return_tensors="pt"
     )
-    
+
     return TensorDataset(
         encodings['input_ids'],
         encodings['attention_mask'],
@@ -142,37 +139,37 @@ def train_epoch(model, dataloader, optimizer, scheduler, criterion, device, prof
     total_loss = 0
     correct_predictions = 0
     total_predictions = 0
-    
+
     for batch_idx, (input_ids, attention_mask, labels) in enumerate(dataloader):
         input_ids = input_ids.to(device)
         attention_mask = attention_mask.to(device)
         labels = labels.to(device)
-        
+
         optimizer.zero_grad()
-        
+
         # Forward pass
         outputs = model(input_ids=input_ids, attention_mask=attention_mask)
         loss = criterion(outputs, labels)
-        
+
         # Backward pass
         loss.backward()
         optimizer.step()
         scheduler.step()
-        
+
         # Statistics
         total_loss += loss.item()
         predictions = torch.argmax(outputs, dim=1)
         correct_predictions += (predictions == labels).sum().item()
         total_predictions += labels.size(0)
-        
+
         # Profiler step
         # if profiler_context:
         #     profiler_context.step()  # ProfilerContext doesn't have a step() method
-        
+
         if batch_idx % 10 == 0:
             print(f"Batch {batch_idx}, Loss: {loss.item():.4f}, "
                   f"Accuracy: {correct_predictions/total_predictions:.4f}")
-    
+
     avg_loss = total_loss / len(dataloader)
     accuracy = correct_predictions / total_predictions
     return avg_loss, accuracy
@@ -184,21 +181,21 @@ def evaluate(model, dataloader, criterion, device):
     total_loss = 0
     correct_predictions = 0
     total_predictions = 0
-    
+
     with torch.no_grad():
         for input_ids, attention_mask, labels in dataloader:
             input_ids = input_ids.to(device)
             attention_mask = attention_mask.to(device)
             labels = labels.to(device)
-            
+
             outputs = model(input_ids=input_ids, attention_mask=attention_mask)
             loss = criterion(outputs, labels)
-            
+
             total_loss += loss.item()
             predictions = torch.argmax(outputs, dim=1)
             correct_predictions += (predictions == labels).sum().item()
             total_predictions += labels.size(0)
-    
+
     avg_loss = total_loss / len(dataloader)
     accuracy = correct_predictions / total_predictions
     return avg_loss, accuracy
@@ -218,9 +215,9 @@ def main():
                        help="Learning rate")
     parser.add_argument("--output-dir", type=str, default="hf_training_output",
                        help="Output directory for artifacts")
-    
+
     args = parser.parse_args()
-    
+
     # Initialize configuration
     config = TrainingConfig()
     config.model_name = args.model
@@ -229,14 +226,14 @@ def main():
     config.batch_size = args.batch_size
     config.learning_rate = args.learning_rate
     config.output_dir = args.output_dir
-    
+
     # Set seed for reproducibility
     set_seed(config.seed)
-    
+
     # Create output directory
     os.makedirs(config.output_dir, exist_ok=True)
-    
-    print(f"Training configuration:")
+
+    print("Training configuration:")
     print(f"  Model: {config.model_name}")
     print(f"  Device: {config.device}")
     print(f"  Profiler: {'Enabled' if config.profiler_enabled else 'Disabled'}")
@@ -244,14 +241,14 @@ def main():
     print(f"  Batch size: {config.batch_size}")
     print(f"  Learning rate: {config.learning_rate}")
     print()
-    
+
     # Initialize tokenizer and model
     print("Loading tokenizer and model...")
     try:
         tokenizer = AutoTokenizer.from_pretrained(config.model_name)
         model = HuggingFaceModelWrapper(
-            config.model_name, 
-            config.num_labels, 
+            config.model_name,
+            config.num_labels,
             config.dropout_rate
         ).to(config.device)
         print(f"✓ Successfully loaded {config.model_name}")
@@ -259,15 +256,15 @@ def main():
         print(f"✗ Error loading model: {e}")
         print("Make sure you have internet connection and the model name is correct.")
         return 1
-    
+
     # Create datasets
     print("Creating datasets...")
     train_dataset = create_dummy_dataset(tokenizer, num_samples=800, max_length=config.max_length)
     val_dataset = create_dummy_dataset(tokenizer, num_samples=200, max_length=config.max_length)
-    
+
     train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=config.batch_size, shuffle=False)
-    
+
     # Initialize optimizer and scheduler
     optimizer = optim.AdamW(model.parameters(), lr=config.learning_rate)
     total_steps = len(train_loader) * config.num_epochs
@@ -277,7 +274,7 @@ def main():
         num_training_steps=total_steps
     )
     criterion = nn.CrossEntropyLoss()
-    
+
     # Initialize profiler if enabled
     profiler_context = None
     if config.profiler_enabled:
@@ -293,24 +290,24 @@ def main():
             print(f"✗ Error initializing profiler: {e}")
             print("Continuing without profiler...")
             config.profiler_enabled = False
-    
+
     # Training loop
     print(f"\nStarting training for {config.num_epochs} epochs...")
     training_history = []
-    
+
     for epoch in range(config.num_epochs):
         print(f"\nEpoch {epoch + 1}/{config.num_epochs}")
         print("-" * 50)
-        
+
         # Train
         train_loss, train_acc = train_epoch(
-            model, train_loader, optimizer, scheduler, criterion, 
+            model, train_loader, optimizer, scheduler, criterion,
             config.device, profiler_context
         )
-        
+
         # Validate
         val_loss, val_acc = evaluate(model, val_loader, criterion, config.device)
-        
+
         # Record metrics
         epoch_metrics = {
             "epoch": epoch + 1,
@@ -321,18 +318,18 @@ def main():
             "learning_rate": scheduler.get_last_lr()[0]
         }
         training_history.append(epoch_metrics)
-        
+
         print(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}")
         print(f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
         print(f"Learning Rate: {scheduler.get_last_lr()[0]:.2e}")
-    
+
     # Save results
     print(f"\nSaving results to {config.output_dir}...")
-    
+
     # Save training history
     with open(os.path.join(config.output_dir, "training_history.json"), "w") as f:
         json.dump(training_history, f, indent=2)
-    
+
     # Save model
     model_path = os.path.join(config.output_dir, "model.pt")
     torch.save({
@@ -340,18 +337,18 @@ def main():
         'config': config.to_dict(),
         'training_history': training_history
     }, model_path)
-    
+
     # Save configuration
     with open(os.path.join(config.output_dir, "config.json"), "w") as f:
         json.dump(config.to_dict(), f, indent=2)
-    
+
     print("✓ Training completed successfully!")
     print(f"✓ Model saved to: {model_path}")
     print(f"✓ Training history saved to: {os.path.join(config.output_dir, 'training_history.json')}")
-    
+
     if config.profiler_enabled and profiler_context:
         print(f"✓ Profiler artifacts saved to: {config.output_dir}")
-    
+
     return 0
 
 

@@ -21,7 +21,7 @@ ARTIFACT_SCHEMAS = {
             "additionalProperties": True,
         },
     },
-    
+
     "diff_result": {
         "type": "object",
         "properties": {
@@ -32,7 +32,7 @@ ARTIFACT_SCHEMAS = {
         "required": ["diverged", "first_step", "tripped_signals"],
         "additionalProperties": True,
     },
-    
+
     "determinism_result": {
         "type": "object",
         "properties": {
@@ -43,7 +43,7 @@ ARTIFACT_SCHEMAS = {
         "required": ["passed", "culprit", "fixes"],
         "additionalProperties": True,
     },
-    
+
     "reward_health_result": {
         "type": "object",
         "properties": {
@@ -54,7 +54,7 @@ ARTIFACT_SCHEMAS = {
         "required": ["passed", "drift_detected", "calibration_score"],
         "additionalProperties": True,
     },
-    
+
     "eval_result": {
         "type": "object",
         "properties": {
@@ -65,7 +65,7 @@ ARTIFACT_SCHEMAS = {
         "required": ["sample_size", "seed", "scores"],
         "additionalProperties": True,
     },
-    
+
     "golden_master_summary": {
         "type": "object",
         "properties": {
@@ -98,7 +98,7 @@ ARTIFACT_SCHEMAS = {
         "required": ["version", "timestamp", "total_commands", "successful_commands", "failed_commands", "commands"],
         "additionalProperties": True,
     },
-    
+
     "determinism_card": {
         "type": "object",
         "properties": {
@@ -110,7 +110,7 @@ ARTIFACT_SCHEMAS = {
         "required": ["version", "passed", "culprit", "fixes"],
         "additionalProperties": True,
     },
-    
+
     "drift_card": {
         "type": "object",
         "properties": {
@@ -122,7 +122,7 @@ ARTIFACT_SCHEMAS = {
         "required": ["version", "diverged", "first_step", "signals_monitored"],
         "additionalProperties": True,
     },
-    
+
     "reward_card": {
         "type": "object",
         "properties": {
@@ -134,7 +134,7 @@ ARTIFACT_SCHEMAS = {
         "required": ["version", "passed", "calibration_score", "drift_detected"],
         "additionalProperties": True,
     },
-    
+
     "diff_report": {
         "type": "object",
         "properties": {
@@ -146,7 +146,7 @@ ARTIFACT_SCHEMAS = {
         "required": ["version", "diverged", "first_step", "tripped_signals"],
         "additionalProperties": True,
     },
-    
+
     "reward_health_summary": {
         "type": "object",
         "properties": {
@@ -158,7 +158,7 @@ ARTIFACT_SCHEMAS = {
         "required": ["passed", "drift_detected", "calibration_score", "saturation_issues"],
         "additionalProperties": True,
     },
-    
+
     "eval_summary": {
         "type": "object",
         "properties": {
@@ -170,7 +170,7 @@ ARTIFACT_SCHEMAS = {
         "required": ["suite", "sample_size", "seed", "scores"],
         "additionalProperties": True,
     },
-    
+
     "run_comparison": {
         "type": "object",
         "properties": {
@@ -182,7 +182,7 @@ ARTIFACT_SCHEMAS = {
         "required": ["version", "run_a", "run_b", "earliest_divergent_step"],
         "additionalProperties": True,
     },
-    
+
     "reward_drift": {
         "type": "object",
         "properties": {
@@ -193,7 +193,7 @@ ARTIFACT_SCHEMAS = {
         "required": ["pearson", "spearman", "mae_z"],
         "additionalProperties": True,
     },
-    
+
     "ckpt_diff": {
         "type": "object",
         "properties": {
@@ -205,7 +205,7 @@ ARTIFACT_SCHEMAS = {
         "required": ["total_params", "diff_count", "max_diff", "top_movers"],
         "additionalProperties": True,
     },
-    
+
     "ppo_scan": {
         "type": "object",
         "properties": {
@@ -216,7 +216,7 @@ ARTIFACT_SCHEMAS = {
         "required": ["rules_fired", "earliest_step", "anomaly_count"],
         "additionalProperties": True,
     },
-    
+
     "env_audit": {
         "type": "object",
         "properties": {
@@ -227,7 +227,7 @@ ARTIFACT_SCHEMAS = {
         "required": ["deterministic", "reproducible", "issues"],
         "additionalProperties": True,
     },
-    
+
     "replay_comparison": {
         "type": "object",
         "properties": {
@@ -239,7 +239,7 @@ ARTIFACT_SCHEMAS = {
         "required": ["passed", "original_seed", "replay_seed", "mismatches"],
         "additionalProperties": True,
     },
-    
+
     "tracking_data": {
         "type": "object",
         "properties": {
@@ -263,11 +263,11 @@ def validate_artifact(artifact_name: str, data: dict) -> bool:
     """Validate artifact data against its schema."""
     import jsonschema
     from jsonschema import Draft7Validator
-    
+
     schema = get_schema_for_artifact(artifact_name)
     if not schema:
         return True  # No schema defined, assume valid
-    
+
     try:
         Draft7Validator(schema).validate(data)
         return True
@@ -284,5 +284,5 @@ if __name__ == "__main__":
     print("Available artifact schemas:")
     for artifact_type in list_artifact_types():
         print(f"  - {artifact_type}")
-    
+
     print(f"\nTotal schemas: {len(ARTIFACT_SCHEMAS)}")
