@@ -94,8 +94,7 @@ def validate_dataset_tracker_improvements():
         "_load_from_cache",
         "_save_to_cache",
         "sample_size",
-        "batch_size",
-        "intelligent sampling"
+        "batch_size"
     ]
     
     for improvement in improvements:

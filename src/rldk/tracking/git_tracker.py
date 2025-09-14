@@ -84,7 +84,7 @@ class GitTracker:
         self.tracking_info = git_info
         return git_info
 
-    @with_timeout(10.0)  # 10 second timeout for commit info capture
+    @with_timeout(10.0)  # Use settings value in method
     def _capture_commit_info(self) -> Dict[str, Any]:
         """Capture current commit information with timeout."""
         commit_info = {}
@@ -185,6 +185,7 @@ class GitTracker:
 
         return commit_info
 
+    @with_timeout(10.0)  # Use settings value in method
     def _capture_diff_info(self) -> Dict[str, Any]:
         """Capture diff information."""
         diff_info = {}
@@ -247,6 +248,7 @@ class GitTracker:
 
         return diff_info
 
+    @with_timeout(10.0)  # Use settings value in method
     def _capture_status_info(self) -> Dict[str, Any]:
         """Capture Git status information."""
         status_info = {}
@@ -285,6 +287,7 @@ class GitTracker:
 
         return status_info
 
+    @with_timeout(10.0)  # Use settings value in method
     def _capture_remote_info(self) -> Dict[str, Any]:
         """Capture remote repository information."""
         remote_info = {}
@@ -364,6 +367,8 @@ class GitTracker:
     def _save_to_cache(self, git_info: Dict[str, Any]) -> None:
         """Save git info to cache."""
         try:
+            # Add cache timestamp for validation
+            git_info["cache_timestamp"] = time.time()
             with open(self._cache_file, 'w') as f:
                 json.dump(git_info, f, indent=2, default=str)
         except Exception:

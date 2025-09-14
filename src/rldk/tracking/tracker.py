@@ -88,7 +88,15 @@ class ExperimentTracker:
 
             # Wait for all components to initialize
             if tasks:
-                await asyncio.gather(*tasks, return_exceptions=True)
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                # Check for exceptions and log them
+                for i, result in enumerate(results):
+                    if isinstance(result, Exception):
+                        component_names = ["dataset_tracker", "model_tracker", "environment_tracker", "seed_tracker", "git_tracker"]
+                        if i < len(component_names):
+                            print(f"Warning: Failed to initialize {component_names[i]}: {result}")
+                        else:
+                            print(f"Warning: Failed to initialize component {i}: {result}")
 
             self._initialized = True
             init_time = time.time() - start_time
@@ -175,7 +183,14 @@ class ExperimentTracker:
         if not self._initialized:
             if self._settings.enable_async_init:
                 try:
-                    asyncio.run(self.initialize_async())
+                    # Check if we're already in an event loop
+                    try:
+                        loop = asyncio.get_running_loop()
+                        # We're in an event loop, create a task
+                        loop.create_task(self.initialize_async())
+                    except RuntimeError:
+                        # No event loop running, use asyncio.run
+                        asyncio.run(self.initialize_async())
                 except Exception as e:
                     print(f"Async initialization failed, falling back to sync: {e}")
                     self.initialize_sync()

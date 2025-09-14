@@ -485,7 +485,12 @@ class RLPerformanceTester:
         
         # Initialize
         start_time = time.time()
-        asyncio.run(tracker.initialize_async())
+        try:
+            asyncio.run(tracker.initialize_async())
+        except RuntimeError:
+            # Already in event loop, use create_task
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(tracker.initialize_async())
         init_time = time.time() - start_time
         
         # Start experiment
@@ -556,7 +561,7 @@ class RLPerformanceTester:
             "success": success,
             "tracking_time": tracking_time,
             "error": error,
-            "model_parameters": huge_agent.policy_net.parameters().__next__().numel() if hasattr(huge_agent, 'policy_net') else 0
+            "model_parameters": sum(p.numel() for p in huge_agent.policy_net.parameters()) if hasattr(huge_agent, 'policy_net') else 0
         }
     
     def run_all_tests(self):

@@ -380,6 +380,8 @@ class EnvironmentTracker:
     def _save_to_cache(self, env_info: Dict[str, Any]) -> None:
         """Save environment info to cache."""
         try:
+            # Add cache timestamp for validation
+            env_info["cache_timestamp"] = time.time()
             with open(self._cache_file, 'w') as f:
                 json.dump(env_info, f, indent=2, default=str)
         except Exception:

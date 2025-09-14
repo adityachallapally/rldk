@@ -5,6 +5,7 @@ Model tracking for architecture fingerprinting and versioning.
 import hashlib
 import json
 import time
+import random
 from pathlib import Path
 from typing import Any, Dict, Optional
 from functools import lru_cache
@@ -266,8 +267,13 @@ class ModelTracker:
                                     break
                                 sample_indices.append(i)
                             # If we still need more samples, fill from the end
-                            while len(sample_indices) < sample_size and len(sample_indices) < len(flat_param):
-                                sample_indices.append(len(flat_param) - 1 - len(sample_indices))
+                            # Fill remaining slots with random indices if needed
+                            if len(sample_indices) < sample_size:
+                                remaining_needed = sample_size - len(sample_indices)
+                                available_indices = [i for i in range(len(flat_param)) if i not in sample_indices]
+                                if available_indices:
+                                    additional_indices = random.sample(available_indices, min(remaining_needed, len(available_indices)))
+                                    sample_indices.extend(additional_indices)
 
                             # Hash the sampled weights directly to avoid memory accumulation
                             sampled_weights = flat_param[sample_indices]

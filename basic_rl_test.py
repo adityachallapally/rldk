@@ -314,9 +314,9 @@ def test_basic_rl_tracking_performance():
                 
                 # Track training data periodically
                 if episode % 25 == 0:
-                    start_time = time.time()
+                    data_start_time = time.time()
                     tracker.track_dataset(training_data[-1000:], f"training_data_ep_{episode}")
-                    data_tracking_time = time.time() - start_time
+                    data_tracking_time = time.time() - data_start_time
                     
                     print(f"     Episode {episode}: reward={episode_reward:.2f}, loss={loss:.4f}, data_tracking={data_tracking_time:.3f}s")
         
