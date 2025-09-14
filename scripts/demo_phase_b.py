@@ -4,19 +4,20 @@ Demo script for Phase B of RL Debug Kit.
 Demonstrates reward health checking and evaluation functionality.
 """
 
-import pandas as pd
-import numpy as np
 from pathlib import Path
-import tempfile
 import shutil
 
 # Add src to path for imports
 import sys
+import tempfile
+
+import numpy as np
+import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from rldk.reward import health
 from rldk.evals import run
+from rldk.reward import health
 
 
 def create_synthetic_data():

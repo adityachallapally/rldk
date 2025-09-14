@@ -2,8 +2,8 @@
 """Generate golden fixtures for testing."""
 
 import json
-import random
 from pathlib import Path
+import random
 
 
 def create_clean_ppo_log():
