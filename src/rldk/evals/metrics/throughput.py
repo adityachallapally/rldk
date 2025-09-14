@@ -206,7 +206,7 @@ def evaluate_throughput(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     if log_column not in data.columns:
         logger.warning(f"Log column '{log_column}' not found in data")
         return {
-            "score": 0.0,
+            "score": np.nan,
             "details": f"No event logs found in column '{log_column}'",
             "method": "event_log_analysis",
             "num_samples": 0,
@@ -243,7 +243,7 @@ def evaluate_throughput(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     if valid_samples < min_samples:
         logger.warning(f"Insufficient valid samples: {valid_samples} < {min_samples}")
         return {
-            "score": 0.0,
+            "score": np.nan,
             "details": f"Insufficient valid samples ({valid_samples} < {min_samples})",
             "method": "event_log_analysis",
             "num_samples": valid_samples,
@@ -253,7 +253,7 @@ def evaluate_throughput(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     if not all_events:
         logger.warning("No valid throughput events found")
         return {
-            "score": 0.0,
+            "score": np.nan,
             "details": "No valid throughput events found in logs",
             "method": "event_log_analysis",
             "num_samples": valid_samples,

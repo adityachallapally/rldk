@@ -420,25 +420,12 @@ def evaluate_consistency(data: pd.DataFrame, config: Optional[EvaluationConfig] 
         scores = [score for _, score in consistency_metrics]
         overall_score = np.mean(scores)
     else:
-        # Fallback: use basic reward statistics
-        if "reward_mean" in data.columns:
-            rewards = data["reward_mean"].dropna()
-            if len(rewards) > 1:
-                reward_std = rewards.std()
-                reward_mean = rewards.mean()
-                if reward_mean != 0:
-                    cv = safe_divide(reward_std, abs(reward_mean), 0.0)
-                    overall_score = max(0, 1 - cv)
-                else:
-                    overall_score = 0.5
-            else:
-                overall_score = 0.5
-        else:
-            overall_score = 0.5
+        # No metrics available - return None instead of default
+        overall_score = None
     
     return {
-        "score": float(overall_score),
-        "details": f"Consistency evaluation based on {len(consistency_metrics)} metrics",
+        "score": float(overall_score) if overall_score is not None else np.nan,
+        "details": f"Consistency evaluation based on {len(consistency_metrics)} metrics" if consistency_metrics else "No consistency metrics could be computed",
         "method": "temporal_and_group_analysis",
         "metrics": consistency_metrics,
         "sample_size": len(data),
@@ -594,25 +581,12 @@ def evaluate_robustness(data: pd.DataFrame, config: Optional[EvaluationConfig] =
         scores = [score for _, score in robustness_metrics]
         overall_score = np.mean(scores)
     else:
-        # Fallback: use basic reward statistics
-        if "reward_mean" in data.columns:
-            rewards = data["reward_mean"].dropna()
-            if len(rewards) > 1:
-                reward_std = rewards.std()
-                reward_mean = rewards.mean()
-                if reward_mean != 0:
-                    cv = safe_divide(reward_std, abs(reward_mean), 0.0)
-                    overall_score = max(0, 1 - cv)
-                else:
-                    overall_score = 0.5
-            else:
-                overall_score = 0.5
-        else:
-            overall_score = 0.5
+        # No metrics available - return None instead of default
+        overall_score = None
     
     return {
-        "score": float(overall_score),
-        "details": f"Robustness evaluation based on {len(robustness_metrics)} metrics",
+        "score": float(overall_score) if overall_score is not None else np.nan,
+        "details": f"Robustness evaluation based on {len(robustness_metrics)} metrics" if robustness_metrics else "No robustness metrics could be computed",
         "method": "stability_and_perturbation_analysis",
         "metrics": robustness_metrics,
         "sample_size": len(data),
@@ -797,21 +771,12 @@ def evaluate_efficiency(data: pd.DataFrame, config: Optional[EvaluationConfig] =
         scores = [score for _, score in efficiency_metrics]
         overall_score = np.mean(scores)
     else:
-        # Fallback: use basic metrics
-        if "reward_mean" in data.columns:
-            rewards = data["reward_mean"].dropna()
-            if len(rewards) > 0:
-                # Use reward mean as proxy for efficiency
-                normalized_reward = (rewards.mean() + 1) / 2  # Assume [-1, 1] range
-                overall_score = max(0, min(1, normalized_reward))
-            else:
-                overall_score = 0.5
-        else:
-            overall_score = 0.5
+        # No metrics available - return None instead of default
+        overall_score = None
     
     return {
-        "score": float(overall_score),
-        "details": f"Efficiency evaluation based on {len(efficiency_metrics)} metrics",
+        "score": float(overall_score) if overall_score is not None else np.nan,
+        "details": f"Efficiency evaluation based on {len(efficiency_metrics)} metrics" if efficiency_metrics else "No efficiency metrics could be computed",
         "method": "computational_and_convergence_analysis",
         "metrics": efficiency_metrics,
         "sample_size": len(data),
@@ -1006,25 +971,12 @@ def evaluate_adversarial(data: pd.DataFrame, config: Optional[EvaluationConfig] 
         scores = [score for _, score in adversarial_metrics]
         overall_score = np.mean(scores)
     else:
-        # Fallback: use basic stability metrics
-        if "reward_mean" in data.columns:
-            rewards = data["reward_mean"].dropna()
-            if len(rewards) > 1:
-                reward_std = rewards.std()
-                reward_mean = rewards.mean()
-                if reward_mean != 0:
-                    cv = safe_divide(reward_std, abs(reward_mean), 0.0)
-                    overall_score = max(0, 1 - cv)
-                else:
-                    overall_score = 0.5
-            else:
-                overall_score = 0.5
-        else:
-            overall_score = 0.5
+        # No metrics available - return None instead of default
+        overall_score = None
     
     return {
-        "score": float(overall_score),
-        "details": f"Adversarial robustness evaluation based on {len(adversarial_metrics)} metrics",
+        "score": float(overall_score) if overall_score is not None else np.nan,
+        "details": f"Adversarial robustness evaluation based on {len(adversarial_metrics)} metrics" if adversarial_metrics else "No adversarial robustness metrics could be computed",
         "method": "stability_and_attack_resistance_analysis",
         "metrics": adversarial_metrics,
         "sample_size": len(data),
@@ -1181,21 +1133,12 @@ def evaluate_speed(data: pd.DataFrame, config: Optional[EvaluationConfig] = None
         scores = [score for _, score in speed_metrics]
         overall_score = np.mean(scores)
     else:
-        # Fallback: use basic metrics
-        if "reward_mean" in data.columns:
-            rewards = data["reward_mean"].dropna()
-            if len(rewards) > 0:
-                # Use reward mean as proxy for speed (higher rewards might indicate faster learning)
-                normalized_reward = (rewards.mean() + 1) / 2  # Assume [-1, 1] range
-                overall_score = max(0, min(1, normalized_reward))
-            else:
-                overall_score = 0.5
-        else:
-            overall_score = 0.5
+        # No metrics available - return None instead of default
+        overall_score = None
     
     return {
-        "score": float(overall_score),
-        "details": f"Speed evaluation based on {len(speed_metrics)} metrics",
+        "score": float(overall_score) if overall_score is not None else np.nan,
+        "details": f"Speed evaluation based on {len(speed_metrics)} metrics" if speed_metrics else "No speed metrics could be computed",
         "method": "inference_and_training_analysis",
         "metrics": speed_metrics,
         "sample_size": len(data),
@@ -1371,26 +1314,12 @@ def evaluate_memory(data: pd.DataFrame, config: Optional[EvaluationConfig] = Non
         scores = [score for _, score in memory_metrics]
         overall_score = np.mean(scores)
     else:
-        # Fallback: use basic metrics
-        if "memory_usage" in data.columns:
-            memory_values = data["memory_usage"].dropna()
-            if len(memory_values) > 0:
-                avg_memory = memory_values.mean()
-                # Lower memory usage = better
-                if avg_memory < 8.0:
-                    overall_score = 0.8
-                elif avg_memory < 16.0:
-                    overall_score = 0.6
-                else:
-                    overall_score = 0.4
-            else:
-                overall_score = 0.5
-        else:
-            overall_score = 0.5
+        # No metrics available - return None instead of default
+        overall_score = None
     
     return {
-        "score": float(overall_score),
-        "details": f"Memory evaluation based on {len(memory_metrics)} metrics",
+        "score": float(overall_score) if overall_score is not None else np.nan,
+        "details": f"Memory evaluation based on {len(memory_metrics)} metrics" if memory_metrics else "No memory metrics could be computed",
         "method": "usage_and_efficiency_analysis",
         "metrics": memory_metrics,
         "sample_size": len(data),
@@ -1592,24 +1521,12 @@ def evaluate_calibration(data: pd.DataFrame, config: Optional[EvaluationConfig] 
         scores = [score for _, score in calibration_metrics]
         overall_score = np.mean(scores)
     else:
-        # Fallback: use basic metrics
-        if "confidence_score" in data.columns:
-            confidence_values = data["confidence_score"].dropna()
-            if len(confidence_values) > 0:
-                avg_confidence = confidence_values.mean()
-                # Moderate confidence indicates good calibration
-                if 0.3 <= avg_confidence <= 0.8:
-                    overall_score = 0.7
-                else:
-                    overall_score = 0.4
-            else:
-                overall_score = 0.5
-        else:
-            overall_score = 0.5
+        # No metrics available - return None instead of default
+        overall_score = None
     
     return {
-        "score": float(overall_score),
-        "details": f"Calibration evaluation based on {len(calibration_metrics)} metrics",
+        "score": float(overall_score) if overall_score is not None else np.nan,
+        "details": f"Calibration evaluation based on {len(calibration_metrics)} metrics" if calibration_metrics else "No calibration metrics could be computed",
         "method": "confidence_and_uncertainty_analysis",
         "metrics": calibration_metrics,
         "sample_size": len(data),

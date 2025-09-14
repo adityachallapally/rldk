@@ -10,6 +10,7 @@ import logging
 
 from .suites import get_eval_suite
 from .metrics import calculate_confidence_intervals, calculate_effect_sizes
+from .schema import validate_eval_input, get_schema_for_suite
 from ..utils.error_handling import (
     EvaluationError, ValidationError, format_error_message,
     handle_graceful_degradation, safe_operation
@@ -29,6 +30,65 @@ class EvalResult:
     seed: int
     metadata: Dict[str, Any]
     raw_results: List[Dict[str, Any]]
+    warnings: List[str] = None
+    
+    def __post_init__(self):
+        if self.warnings is None:
+            self.warnings = []
+    
+    @property
+    def overall_score(self) -> Optional[float]:
+        """
+        Calculate overall score as unweighted mean of available numeric metrics.
+        
+        Returns:
+            Overall score or None if no metrics available
+        """
+        from .schema import safe_mean
+        
+        valid_scores = []
+        for metric, score in self.scores.items():
+            if score is not None:
+                try:
+                    # Convert to float and check for NaN
+                    score_float = float(score)
+                    if not np.isnan(score_float):
+                        valid_scores.append(score_float)
+                except (ValueError, TypeError):
+                    # Skip non-numeric scores
+                    continue
+        
+        if not valid_scores:
+            return None
+        
+        return safe_mean(valid_scores)
+    
+    @property
+    def available_fraction(self) -> float:
+        """
+        Fraction of metrics that produced valid values.
+        
+        Returns:
+            Float between 0 and 1 indicating fraction of available metrics
+        """
+        if not self.scores:
+            return 0.0
+        
+        total_metrics = len(self.scores)
+        valid_metrics = 0
+        
+        for score in self.scores.values():
+            if score is not None:
+                try:
+                    # Convert to float and check for NaN
+                    score_float = float(score)
+                    if not np.isnan(score_float):
+                        valid_metrics += 1
+                except (ValueError, TypeError):
+                    # Skip non-numeric scores
+                    continue
+        
+        return valid_metrics / total_metrics if total_metrics > 0 else 0.0
 
 
 def run(
@@ -72,9 +132,6 @@ def run(
             error_code="EMPTY_RUN_DATA"
         )
 
-    # Set random seed for reproducibility
-    np.random.seed(seed)
-
     # Get evaluation suite
     eval_suite = get_eval_suite(suite)
     if eval_suite is None:
@@ -84,25 +141,45 @@ def run(
             error_code="UNKNOWN_SUITE"
         )
 
-    logger.info(f"Running {suite} evaluation suite on {len(run_data)} records")
+    # Validate and normalize input data using schema
+    schema = get_schema_for_suite(suite)
+    try:
+        validated_data = validate_eval_input(run_data, schema, suite)
+        logger.info(f"Data validation completed with {len(validated_data.warnings)} warnings")
+        
+        # Log warnings
+        for warning in validated_data.warnings:
+            logger.warning(f"Data validation warning: {warning}")
+            
+    except ValueError as e:
+        raise ValidationError(
+            str(e),
+            suggestion="Check your data columns and ensure required fields are present",
+            error_code="SCHEMA_VALIDATION_FAILED"
+        )
+
+    # Set random seed for reproducibility
+    np.random.seed(seed)
+
+    logger.info(f"Running {suite} evaluation suite on {len(validated_data.data)} records")
 
     # Determine sample size - use actual data size for empty or small datasets
     if sample_size is None:
-        if len(run_data) == 0:
+        if len(validated_data.data) == 0:
             sample_size = 0
-        elif len(run_data) <= eval_suite.get("default_sample_size", 100):
-            sample_size = len(run_data)
+        elif len(validated_data.data) <= eval_suite.get("default_sample_size", 100):
+            sample_size = len(validated_data.data)
         else:
             sample_size = eval_suite.get("default_sample_size", 100)
 
     # Sample data if needed
-    if len(run_data) > sample_size:
-        sampled_data = run_data.sample(n=sample_size, random_state=seed).reset_index(
+    if len(validated_data.data) > sample_size:
+        sampled_data = validated_data.data.sample(n=sample_size, random_state=seed).reset_index(
             drop=True
         )
-        logger.info(f"Sampled {sample_size} records from {len(run_data)} total")
+        logger.info(f"Sampled {sample_size} records from {len(validated_data.data)} total")
     else:
-        sampled_data = run_data.copy()
+        sampled_data = validated_data.data.copy()
 
     # Run evaluations with progress indication
     raw_results = []
@@ -189,6 +266,17 @@ def run(
         logger.warning(f"Failed to calculate effect sizes: {e}")
         effect_sizes = {}
 
+    # Collect all warnings
+    all_warnings = list(validated_data.warnings)
+    
+    # Add warnings for failed evaluations
+    if failed_evaluations:
+        all_warnings.append(f"Failed evaluations: {', '.join(failed_evaluations)}")
+    
+    # Add warning if no metrics are available
+    if not scores or all(np.isnan(score) if isinstance(score, (int, float)) else score is None for score in scores.values()):
+        all_warnings.append("No valid metrics computed - check data quality and evaluation requirements")
+
     # Create result object
     result = EvalResult(
         suite_name=suite,
@@ -203,8 +291,10 @@ def run(
             "sampled_data_shape": sampled_data.shape,
             "evaluation_count": len(eval_suite["evaluations"]),
             "failed_evaluations": failed_evaluations,
+            "normalized_columns": validated_data.normalized_columns,
         },
         raw_results=raw_results,
+        warnings=all_warnings,
     )
 
     # Save results if output directory specified
@@ -266,11 +356,14 @@ def generate_eval_card(result: EvalResult, output_dir: Path) -> None:
         )
 
         f.write("## 📊 Overall Scores\n\n")
+        f.write(f"**Overall Score:** {result.overall_score:.3f}" if result.overall_score is not None else "**Overall Score:** Not available")
+        f.write(f"\n**Available Metrics:** {result.available_fraction:.1%}\n\n")
+        
         f.write("| Metric | Score | Confidence Interval | Effect Size |\n")
         f.write("|--------|-------|-------------------|-------------|\n")
 
         for metric, score in result.scores.items():
-            if not np.isnan(score):
+            if not np.isnan(score) if isinstance(score, (int, float)) else score is not None:
                 ci = result.confidence_intervals.get(metric, (np.nan, np.nan))
                 effect_size = result.effect_sizes.get(metric, np.nan)
 
@@ -280,6 +373,15 @@ def generate_eval_card(result: EvalResult, output_dir: Path) -> None:
                 )
 
                 f.write(f"| {metric} | {score:.3f} | {ci_str} | {effect_str} |\n")
+            else:
+                f.write(f"| {metric} | N/A | N/A | N/A |\n")
+
+        # Add warnings section if there are any
+        if result.warnings:
+            f.write("\n## ⚠️ Warnings\n\n")
+            for warning in result.warnings:
+                f.write(f"- {warning}\n")
+            f.write("\n")
 
         f.write("\n## 🔍 Detailed Results\n\n")
 
