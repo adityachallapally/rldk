@@ -83,19 +83,24 @@ class TestDeterminismFunctionality:
         script_content = """
 import random
 import numpy as np
-import torch
 
 # This should be deterministic due to our seeding
 random.seed(42)
 np.random.seed(42)
-torch.manual_seed(42)
 
 print(f"random: {random.random()}")
 print(f"numpy: {np.random.random()}")
-if torch.cuda.is_available():
-    print(f"torch: {torch.rand(1).item()}")
-else:
-    print(f"torch: {torch.rand(1).item()}")
+
+# Try to import torch, but don't fail if it's not available
+try:
+    import torch
+    torch.manual_seed(42)
+    if torch.cuda.is_available():
+        print(f"torch: {torch.rand(1).item()}")
+    else:
+        print(f"torch: {torch.rand(1).item()}")
+except ImportError:
+    print("torch: not available")
 """
         
         with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:

@@ -31,9 +31,11 @@ def with_timeout(timeout_seconds: float):
                     details={"timeout_seconds": timeout_seconds}
                 )
             
-            # Set up timeout
+            # Set up timeout - use ceiling to ensure we don't timeout early
+            import math
+            timeout_int = max(1, math.ceil(timeout_seconds))
             old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(int(timeout_seconds))
+            signal.alarm(timeout_int)
             
             try:
                 result = func(*args, **kwargs)

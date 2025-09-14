@@ -66,8 +66,12 @@ def run_deterministic_command(
         elif python_code.startswith('"') and python_code.endswith('"'):
             python_code = python_code[1:-1]  # Remove quotes
         
-        # Create a deterministic wrapper
-        deterministic_wrapper = f"""
+        # Sanitize the Python code to prevent injection
+        # Replace any triple quotes that could break out of our wrapper
+        python_code = python_code.replace('"""', '\\"\\"\\"').replace("'''", "\\'\\'\\'")
+        
+        # Create a deterministic wrapper using safer string formatting
+        deterministic_wrapper = """
 import torch
 import random
 import numpy as np
@@ -91,8 +95,9 @@ if torch.cuda.is_available():
     torch.backends.cudnn.allow_tf32 = False
 
 # Execute the original Python code
-{python_code}
-"""
+{user_code}
+""".format(replica_id=replica_id, user_code=python_code)
+        
         final_cmd = f'python3 -c "{deterministic_wrapper}"'
     else:
         # For other commands, use subprocess with deterministic environment
@@ -171,7 +176,7 @@ def _get_deterministic_env(device: str) -> Dict[str, str]:
     )
     
     # Set CUDA-specific settings only when CUDA is actually available
-    if device == "cuda" or (device is None and _detect_device() == "cuda"):
+    if device == "cuda":
         env.update(
             {
                 "CUDA_LAUNCH_BLOCKING": "1",
