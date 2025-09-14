@@ -175,6 +175,21 @@ class _SettingsProxy:
     def __str__(self):
         return str(get_settings())
     
+    def __eq__(self, other):
+        return get_settings() == other
+    
+    def __hash__(self):
+        return hash(get_settings())
+    
+    def __bool__(self):
+        return bool(get_settings())
+    
+    def __getitem__(self, key):
+        return getattr(get_settings(), key)
+    
+    def __setitem__(self, key, value):
+        setattr(get_settings(), key, value)
+    
     @property
     def __class__(self):
         return get_settings().__class__

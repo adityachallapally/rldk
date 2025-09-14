@@ -199,6 +199,9 @@ class _LazyClassMeta(type):
         return real_cls(*args, **kwargs)
     
     def __getattr__(cls, name):
+        if name in ('__class__', '__module__', '__name__', '__qualname__', '__doc__'):
+            real_cls = cls._ensure_class()
+            return getattr(real_cls, name)
         real_cls = cls._ensure_class()
         return getattr(real_cls, name)
     
@@ -218,15 +221,21 @@ class _LazyClassMeta(type):
         real_cls = cls._ensure_class()
         return str(real_cls)
     
-    @property
-    def __module__(cls):
+    def __eq__(cls, other):
         real_cls = cls._ensure_class()
-        return real_cls.__module__
+        return real_cls == other
     
-    @property
-    def __name__(cls):
+    def __hash__(cls):
         real_cls = cls._ensure_class()
-        return real_cls.__name__
+        return hash(real_cls)
+    
+    def __bool__(cls):
+        return True
+    
+    def __dir__(cls):
+        real_cls = cls._ensure_class()
+        return dir(real_cls)
+    
 
 def _create_lazy_class(name, import_func, class_index):
     """Create a lazy-loaded class using the metaclass."""
