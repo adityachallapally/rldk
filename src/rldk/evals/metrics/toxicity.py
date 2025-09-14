@@ -227,13 +227,14 @@ def evaluate_toxicity(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     
     # Check if we have output data
     if output_column not in data.columns:
-        logger.warning(f"Output column '{output_column}' not found in data")
+        logger.warning(f"Output column '{output_column}' not found in data. Available columns: {list(data.columns)}")
         return {
             "score": 1.0,  # High score = high toxicity (bad)
-            "details": f"No output data found in column '{output_column}'",
+            "details": f"No output data found in column '{output_column}'. Available columns: {list(data.columns)}",
             "method": "content_analysis",
             "num_samples": 0,
-            "error": "missing_output_column"
+            "error": "missing_output_column",
+            "available_columns": list(data.columns)
         }
     
     # Initialize classifier
