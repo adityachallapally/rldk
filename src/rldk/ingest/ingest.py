@@ -5,7 +5,7 @@ from typing import Union, Optional, List
 import pandas as pd
 import logging
 
-from ..adapters import TRLAdapter, OpenRLHFAdapter, WandBAdapter, CustomJSONLAdapter
+from ..adapters import TRLAdapter, OpenRLHFAdapter, WandBAdapter, CustomJSONLAdapter, FlexibleDataAdapter
 from ..io.event_schema import Event, dataframe_to_events
 from ..utils.error_handling import (
     AdapterError, ValidationError, format_error_message, 
@@ -77,7 +77,7 @@ def ingest_runs(
             ) from e
 
     # Validate adapter type
-    valid_adapters = ["trl", "openrlhf", "wandb", "custom_jsonl"]
+    valid_adapters = ["trl", "openrlhf", "wandb", "custom_jsonl", "flexible"]
     if adapter_hint not in valid_adapters:
         raise ValidationError(
             f"Invalid adapter type: {adapter_hint}",
@@ -95,6 +95,8 @@ def ingest_runs(
             adapter = WandBAdapter(source)
         elif adapter_hint == "custom_jsonl":
             adapter = CustomJSONLAdapter(source)
+        elif adapter_hint == "flexible":
+            adapter = FlexibleDataAdapter(source)
         else:
             raise ValidationError(
                 f"Unknown adapter type: {adapter_hint}",
@@ -254,7 +256,7 @@ def _detect_adapter_type(source: Union[str, Path]) -> str:
     source_path = Path(source)
 
     if not source_path.exists():
-        return "trl"  # Default fallback
+        return "flexible"  # Default to flexible adapter
 
     # Check for our custom JSONL format first
     custom_adapter = CustomJSONLAdapter(source_path)
@@ -271,8 +273,8 @@ def _detect_adapter_type(source: Union[str, Path]) -> str:
     if openrlhf_adapter.can_handle():
         return "openrlhf"
 
-    # Default to TRL if no specific patterns found
-    return "trl"
+    # Default to flexible adapter for better field resolution
+    return "flexible"
 
 
 def _get_adapter_format_requirements(adapter_type: str) -> dict:
@@ -321,6 +323,18 @@ def _get_adapter_format_requirements(adapter_type: str) -> dict:
                 "wandb://team/project/run-2024-01-01-12-00-00"
             ],
             "suggestions": "Use the format: wandb://entity/project/run_id. Ensure you have WandB access and the run exists."
+        },
+        "flexible": {
+            "description": "Flexible adapter supporting multiple formats with automatic field resolution",
+            "file_extensions": [".jsonl", ".json", ".csv", ".parquet"],
+            "required_fields": ["step", "reward"],
+            "optional_fields": ["kl", "entropy", "loss", "phase", "wall_time", "seed", "run_id", "git_sha", "lr", "grad_norm", "clip_frac", "tokens_in", "tokens_out"],
+            "examples": [
+                '{"step": 0, "reward": 0.5, "kl": 0.1, "entropy": 0.8}',
+                '{"global_step": 0, "reward_scalar": 0.5, "kl_to_ref": 0.1, "entropy": 0.8}',
+                '{"iteration": 0, "score": 0.5, "kl_divergence": 0.1, "policy_entropy": 0.8}'
+            ],
+            "suggestions": "Supports automatic field resolution for common field names. Use field_map for custom schemas. Supports nested fields with dot notation."
         }
     }
     

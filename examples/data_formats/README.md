@@ -1,10 +1,102 @@
 # RL Debug Kit Data Format Examples
 
-This directory contains examples of the data formats supported by RL Debug Kit's ingestion system.
+This directory contains examples of the data formats supported by RL Debug Kit's flexible ingestion system.
 
-## Supported Adapters
+## Quick Start
 
-### 1. TRL Adapter (`--adapter trl`)
+The flexible data adapters automatically resolve field names and work with multiple formats:
+
+```python
+from rldk.adapters.flexible import FlexibleDataAdapter
+
+# Zero-config ingestion (works for common field names)
+adapter = FlexibleDataAdapter("your_data.jsonl")
+df = adapter.load()
+
+# With explicit field mapping for custom schemas
+field_map = {"step": "global_step", "reward": "reward_scalar", "kl": "kl_to_ref"}
+adapter = FlexibleDataAdapter("your_data.jsonl", field_map=field_map)
+df = adapter.load()
+```
+
+## Supported Formats
+
+### 1. Flexible Data Adapter (Recommended)
+
+**Description**: Universal adapter that works with multiple formats and automatically resolves field names
+
+**File Types**: `.jsonl`, `.json`, `.csv`, `.parquet`
+
+**Canonical Fields** (automatically resolved from synonyms):
+- `step`: Training step number
+- `reward`: Reward value  
+- `kl`: KL divergence
+- `entropy`: Policy entropy
+- `loss`: Training loss
+- `phase`: Training phase
+- `wall_time`: Wall clock time
+- `seed`: Random seed
+- `run_id`: Run identifier
+- `git_sha`: Git commit hash
+- `lr`: Learning rate
+- `grad_norm`: Gradient norm
+- `clip_frac`: Clipping fraction
+- `tokens_in`: Input tokens count
+- `tokens_out`: Output tokens count
+
+**Field Synonyms** (automatically resolved):
+- `step`: global_step, step, iteration, iter, timestep, step_id, epoch, batch, update, training_step
+- `reward`: reward_scalar, reward, score, return, r, reward_mean, avg_reward, mean_reward, total_reward, cumulative_reward
+- `kl`: kl_to_ref, kl, kl_divergence, kl_ref, kl_value, kl_mean, kl_div, kl_loss, kl_penalty, kl_regularization
+- `entropy`: entropy, entropy_mean, avg_entropy, mean_entropy, policy_entropy, action_entropy
+- `loss`: loss, total_loss, policy_loss, value_loss, actor_loss, critic_loss, combined_loss, training_loss
+
+**Examples**:
+
+Zero-config (automatic field resolution):
+```json
+{"step": 0, "reward": 0.5, "kl": 0.1, "entropy": 0.8}
+{"global_step": 0, "reward_scalar": 0.5, "kl_to_ref": 0.1, "entropy": 0.8}
+{"iteration": 0, "score": 0.5, "kl_divergence": 0.1, "policy_entropy": 0.8}
+```
+
+With explicit field mapping:
+```python
+field_map = {
+    "step": "iteration",
+    "reward": "score", 
+    "kl": "kl_divergence",
+    "entropy": "policy_entropy"
+}
+```
+
+With nested fields:
+```python
+field_map = {
+    "reward": "metrics.reward",
+    "kl": "metrics.kl_divergence",
+    "entropy": "data.entropy_value"
+}
+```
+
+**Usage**:
+```python
+# Zero-config
+adapter = FlexibleDataAdapter("data.jsonl")
+df = adapter.load()
+
+# With field mapping
+adapter = FlexibleDataAdapter("data.jsonl", field_map={"step": "global_step"})
+df = adapter.load()
+
+# With YAML config
+adapter = FlexibleDataAdapter("data.jsonl", config_file="field_mapping.yaml")
+df = adapter.load()
+```
+
+### 2. Legacy Adapters
+
+#### TRL Adapter (`--adapter trl`)
 
 **Description**: For TRL (Transformer Reinforcement Learning) training logs
 
@@ -16,32 +108,12 @@ This directory contains examples of the data formats supported by RL Debug Kit's
 - `reward_mean`: Mean reward value
 - `kl_mean`: Mean KL divergence
 
-**Optional Fields**:
-- `reward_std`: Standard deviation of rewards
-- `entropy_mean`: Mean entropy
-- `clip_frac`: Clipping fraction
-- `grad_norm`: Gradient norm
-- `lr`: Learning rate
-- `loss`: Training loss
-- `tokens_in`: Input tokens count
-- `tokens_out`: Output tokens count
-- `wall_time`: Wall clock time
-- `seed`: Random seed
-- `run_id`: Run identifier
-- `git_sha`: Git commit hash
-
 **Example**:
 ```json
 {"step": 0, "phase": "train", "reward_mean": 0.5, "kl_mean": 0.1, "entropy_mean": 0.8, "loss": 0.5, "lr": 0.001}
 ```
 
-**Usage**:
-```bash
-rldk ingest /path/to/trl_logs --adapter trl
-rldk ingest trl_example.jsonl --adapter trl
-```
-
-### 2. OpenRLHF Adapter (`--adapter openrlhf`)
+#### OpenRLHF Adapter (`--adapter openrlhf`)
 
 **Description**: For OpenRLHF training logs
 
@@ -49,18 +121,7 @@ rldk ingest trl_example.jsonl --adapter trl
 
 **Required Fields**: Same as TRL adapter
 
-**Example**:
-```json
-{"step": 0, "phase": "train", "reward_mean": 0.5, "kl_mean": 0.1, "entropy_mean": 0.8, "loss": 0.5, "lr": 0.001}
-```
-
-**Usage**:
-```bash
-rldk ingest /path/to/openrlhf_logs --adapter openrlhf
-rldk ingest openrlhf_example.jsonl --adapter openrlhf
-```
-
-### 3. Custom JSONL Adapter (`--adapter custom_jsonl`)
+#### Custom JSONL Adapter (`--adapter custom_jsonl`)
 
 **Description**: For custom JSONL formats with specific field names
 
@@ -71,31 +132,12 @@ rldk ingest openrlhf_example.jsonl --adapter openrlhf
 - `reward_scalar`: Reward value
 - `kl_to_ref`: KL divergence to reference model
 
-**Optional Fields**:
-- `entropy`: Entropy value
-- `clip_frac`: Clipping fraction
-- `grad_norm`: Gradient norm
-- `lr`: Learning rate
-- `loss`: Training loss
-- `tokens_in`: Input tokens count
-- `tokens_out`: Output tokens count
-- `wall_time`: Wall clock time
-- `seed`: Random seed
-- `run_id`: Run identifier
-- `git_sha`: Git commit hash
-
 **Example**:
 ```json
 {"global_step": 0, "reward_scalar": 0.5, "kl_to_ref": 0.1, "entropy": 0.8, "loss": 0.5, "lr": 0.001}
 ```
 
-**Usage**:
-```bash
-rldk ingest /path/to/custom_logs --adapter custom_jsonl
-rldk ingest custom_jsonl_example.jsonl --adapter custom_jsonl
-```
-
-### 4. WandB Adapter (`--adapter wandb`)
+#### WandB Adapter (`--adapter wandb`)
 
 **Description**: For WandB run data
 
@@ -104,80 +146,155 @@ rldk ingest custom_jsonl_example.jsonl --adapter custom_jsonl
 **Example**:
 ```
 wandb://my-entity/my-project/abc123
-wandb://team/project/run-2024-01-01-12-00-00
 ```
 
-**Usage**:
-```bash
-rldk ingest wandb://my-entity/my-project/abc123 --adapter wandb
+## Cookbook
+
+### Zero-Config Ingestion
+
+For common field names, no configuration is needed:
+
+```python
+from rldk.adapters.flexible import FlexibleDataAdapter
+
+# Works automatically with common field names
+adapter = FlexibleDataAdapter("training_logs.jsonl")
+df = adapter.load()
 ```
 
-## Auto-Detection
+### Mapping via Code
 
-If you don't specify an adapter, RL Debug Kit will try to auto-detect the format:
+For custom field names, provide explicit mapping:
 
-```bash
-rldk ingest /path/to/logs  # Auto-detects adapter
+```python
+field_map = {
+    "step": "global_step",
+    "reward": "reward_scalar", 
+    "kl": "kl_to_ref",
+    "entropy": "entropy_value"
+}
+
+adapter = FlexibleDataAdapter("custom_logs.jsonl", field_map=field_map)
+df = adapter.load()
 ```
+
+### Mapping via YAML
+
+Create a reusable configuration file:
+
+```yaml
+# field_mapping.yaml
+field_map:
+  step: global_step
+  reward: reward_scalar
+  kl: kl_to_ref
+  entropy: entropy_value
+  loss: total_loss
+  lr: learning_rate
+```
+
+```python
+adapter = FlexibleDataAdapter("data.jsonl", config_file="field_mapping.yaml")
+df = adapter.load()
+```
+
+### Nested Keys
+
+Access nested fields using dot notation:
+
+```python
+field_map = {
+    "reward": "metrics.reward",
+    "kl": "metrics.kl_divergence", 
+    "entropy": "data.entropy_value"
+}
+
+adapter = FlexibleDataAdapter("nested_data.jsonl", field_map=field_map)
+df = adapter.load()
+```
+
+### Helpful Errors
+
+When fields are missing, you get helpful suggestions:
+
+```python
+try:
+    adapter = FlexibleDataAdapter("incomplete_data.jsonl")
+    df = adapter.load()
+except SchemaError as e:
+    print(e)  # Shows suggestions and ready-to-paste field_map
+```
+
+### Multiple Formats
+
+Load from directories with mixed file types:
+
+```python
+# Loads all supported files from directory
+adapter = FlexibleDataAdapter("/path/to/logs/")
+df = adapter.load()
+```
+
+### Streaming Large Files
+
+For large JSONL files, use streaming:
+
+```python
+from rldk.adapters.flexible import FlexibleJSONLAdapter
+
+adapter = FlexibleJSONLAdapter("large_file.jsonl", stream_large_files=True)
+df = adapter.load()
+```
+
+## Performance Tips
+
+- **Parquet**: Fastest for large datasets, good compression
+- **JSONL**: Good for streaming, human-readable
+- **CSV**: Human-readable but slower for large files
+- **JSON**: Good for small datasets, supports nested structures
 
 ## Common Issues and Solutions
 
-### Issue: "Cannot handle source"
-**Solution**: The adapter can't process your data format. Check:
-1. File extension is supported (`.jsonl` or `.log`)
-2. Required fields are present
-3. Data is valid JSON (for JSONL files)
-4. Try a different adapter type
-
 ### Issue: "Missing required fields"
-**Solution**: Ensure your data contains the required fields for the adapter:
-- TRL/OpenRLHF: `step`, `phase`, `reward_mean`, `kl_mean`
-- Custom JSONL: `global_step`, `reward_scalar`, `kl_to_ref`
+**Solution**: The adapter provides suggestions for similar field names and ready-to-paste field_map:
+
+```python
+# Error message includes:
+# Found similar fields:
+#   step: step_count, step_id
+#   reward: reward_value, score
+# Try this field_map: {"step": "step_count", "reward": "reward_value"}
+```
+
+### Issue: "Cannot handle source"
+**Solution**: Check file extension and format:
+- Supported: `.jsonl`, `.json`, `.csv`, `.parquet`
+- Ensure data is valid for the format
+- Try explicit field mapping
 
 ### Issue: "Invalid JSON"
-**Solution**: Check that each line in your JSONL file is valid JSON:
+**Solution**: Validate JSONL files:
 ```bash
-# Test JSONL file
 python -m json.tool your_file.jsonl
-```
-
-### Issue: "No log files found"
-**Solution**: Ensure your directory contains `.jsonl` or `.log` files:
-```bash
-# Check directory contents
-ls -la /path/to/logs/
-```
-
-## Data Validation
-
-You can validate your data format before ingestion:
-
-```bash
-# Validate a JSONL file
-rldk evals validate-data your_data.jsonl
-
-# Validate with specific columns
-rldk evals validate-data your_data.jsonl --output-column output --events-column events
 ```
 
 ## Examples
 
 See the example files in this directory:
+- `jsonl_flexible_adapter_demo.py` - Comprehensive flexible adapter demo
+- `csv_parquet_adapter_demo.py` - CSV and Parquet format demo
 - `trl_example.jsonl` - TRL format example
 - `openrlhf_example.jsonl` - OpenRLHF format example  
 - `custom_jsonl_example.jsonl` - Custom JSONL format example
-- `trl_log_example.log` - TRL log format example
 
 ## Getting Help
 
-If you're still having issues:
-
-1. Check the error message for specific suggestions
-2. Try different adapter types
-3. Validate your data format
-4. Check the example files for reference
+1. Check error messages for specific suggestions
+2. Try the flexible adapter with zero-config first
+3. Use field mapping for custom schemas
+4. Check example files for reference
 5. Use `--verbose` flag for detailed output
 
 ```bash
-rldk ingest your_data.jsonl --adapter trl --verbose
+rldk ingest your_data.jsonl --adapter flexible --verbose
 ```
