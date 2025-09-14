@@ -310,7 +310,7 @@ class FlexibleDataAdapter(BaseAdapter):
         result = []
         
         for idx, row in df.iterrows():
-            value = row
+            value = row.to_dict()  # Convert Series to dict for nested access
             try:
                 for part in parts:
                     if isinstance(value, dict) and part in value:
