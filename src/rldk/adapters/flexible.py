@@ -270,16 +270,24 @@ class FlexibleDataAdapter(BaseAdapter):
                     missing_fields, available_headers, self.field_resolver
                 )
             elif self.validation_mode == "flexible":
-                critical_missing = [f for f in missing_fields if f in ['step']]
+                step_missing = 'step' in missing_fields
                 has_metric = any(self.field_resolver.resolve_field(metric, available_headers, self.field_map) 
                                for metric in ['reward', 'score', 'return', 'kl', 'entropy', 'loss'])
-                if critical_missing and not has_metric:
+                
+                if step_missing:
                     raise SchemaError(
-                        f"Missing critical fields: {', '.join(critical_missing)} and no metric fields found",
-                        critical_missing, available_headers, self.field_resolver
+                        f"Missing required 'step' field in flexible mode",
+                        ['step'], available_headers, self.field_resolver
+                    )
+                elif not has_metric:
+                    raise SchemaError(
+                        f"No metric fields found in flexible mode (need at least one of: reward, score, return, kl, entropy, loss)",
+                        [], available_headers, self.field_resolver
                     )
                 elif missing_fields and self.logger:
-                    self.logger.warning(f"Missing optional fields in flexible mode: {', '.join(missing_fields)}")
+                    optional_missing = [f for f in missing_fields if f != 'step']
+                    if optional_missing:
+                        self.logger.warning(f"Missing optional fields in flexible mode: {', '.join(optional_missing)}")
             elif self.validation_mode == "lenient" and missing_fields and self.logger:
                 self.logger.warning(f"Missing fields in lenient mode: {', '.join(missing_fields)}")
         

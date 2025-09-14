@@ -1106,7 +1106,7 @@ def ingest(
                 error_code="INVALID_VALIDATION_MODE"
             )
         
-        if parsed_field_map or config_file or validation_mode != "flexible":
+        if parsed_field_map or config_file:
             if not adapter:
                 adapter = "flexible"
                 if verbose:
