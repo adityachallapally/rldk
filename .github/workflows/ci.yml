@@ -24,7 +24,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
+        python3 -m pip install --upgrade pip
         pip install -e ".[dev]"
     
     - name: Run linting
@@ -54,7 +54,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
+        python3 -m pip install --upgrade pip
         pip install -e ".[dev]"
     
     - name: Generate test fixtures
@@ -149,7 +149,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
+        python3 -m pip install --upgrade pip
         pip install safety bandit
     
     - name: Run security checks

@@ -9,8 +9,8 @@ a quick way to verify that all optional dependencies are available.
 import sys
 from pathlib import Path
 
-# Add current directory to path
-sys.path.append(str(Path(__file__).parent))
+# Add project root to path
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from utils.dependency_checker import (
     DependencyChecker, 

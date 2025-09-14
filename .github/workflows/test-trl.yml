@@ -23,7 +23,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
+        python3 -m pip install --upgrade pip
         pip install -e .
         pip install pytest pytest-cov
     
@@ -37,7 +37,7 @@ jobs:
     
     - name: Run example tests (without model downloads)
       run: |
-        SKIP_MODEL_LOADING=true python test_trl_integration.py
+        SKIP_MODEL_LOADING=true python3 test_trl_integration.py
 
   integration-tests:
     runs-on: ubuntu-latest
@@ -53,7 +53,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
+        python3 -m pip install --upgrade pip
         pip install -e .
         pip install pytest pytest-cov
     
