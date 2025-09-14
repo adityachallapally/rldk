@@ -81,6 +81,7 @@ def test_import_performance():
     print("Testing import performance...")
 
     start_time = time.time()
+    import rldk  # noqa: F401
     duration = time.time() - start_time
 
     print(f"Import time: {duration:.3f}s")

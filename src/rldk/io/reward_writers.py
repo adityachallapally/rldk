@@ -179,7 +179,7 @@ def write_drift_analysis_csv(report: RewardHealthReport, output_dir: Path) -> No
 def write_reward_health_summary(report: RewardHealthReport, output_dir: Path) -> None:
     """Write reward health summary as JSON file."""
 
-    output_dir / "reward_health_summary.json"
+    summary_path = output_dir / "reward_health_summary.json"
 
     summary = {
         "passed": report.passed,
@@ -221,7 +221,7 @@ def write_reward_health_summary(report: RewardHealthReport, output_dir: Path) ->
 
     # Use UnifiedWriter for consistent JSON serialization
     writer = UnifiedWriter(output_dir)
-    writer.write_json(summary, "reward_health_summary.json")
+    writer.write_json(summary, summary_path.name)
 
 
 def generate_reward_health_report(

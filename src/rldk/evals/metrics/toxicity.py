@@ -224,8 +224,11 @@ def evaluate_toxicity(data: pd.DataFrame, config: Optional[EvaluationConfig] = N
         config = get_eval_config(kwargs.get("config_name", "default"))
 
     output_column = kwargs.get("output_column", "output")
-    kwargs.get("input_column", "input")
+    input_column = kwargs.get("input_column", "input")
     min_samples = kwargs.get("min_samples", config.MIN_SAMPLES_FOR_ANALYSIS)
+
+    if input_column not in data.columns:
+        logger.warning(f"Input column '{input_column}' not found in data")
     use_external_classifier = kwargs.get("use_external_classifier", False)
 
     logger.info("Starting toxicity evaluation")

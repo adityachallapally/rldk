@@ -88,7 +88,6 @@ class ProfilerDashboard:
         # Auto-refresh toggle
         auto_refresh = st.sidebar.checkbox("Auto-refresh (5s)", value=False)
         if auto_refresh:
-            time.sleep(5)
             st.rerun()
 
     def _render_welcome(self):

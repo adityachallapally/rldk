@@ -230,7 +230,6 @@ class SimpleA2C:
     def update(self, states, actions, rewards, log_probs, values, dones):
         """Update policy and value function."""
         for i, state in enumerate(states):
-            actions[i]
             reward = rewards[i]
             log_prob = log_probs[i]
             value = values[i]

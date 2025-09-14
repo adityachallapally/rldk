@@ -268,10 +268,11 @@ def run_multiple_experiments(env_name, hyperparams_list, episodes=100, seeds=Non
                 # Calculate summary metrics
                 final_avg_reward = np.mean(result['episode_rewards'][-min(10, len(result['episode_rewards'])):]) if result['episode_rewards'] else 0
                 total_anomalies = len(result['anomalies'])
-                result['health_summary'].get('overall_health', 0)
+                health_score = result['health_summary'].get('overall_health', 0)
 
                 print(f"      Final avg reward: {final_avg_reward:.2f}")
                 print(f"      Anomalies: {total_anomalies}")
+                print(f"      Health score: {health_score:.2f}")
 
             except Exception as e:
                 print(f"      ❌ Error: {e}")

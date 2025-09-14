@@ -114,7 +114,8 @@ class ProductionPPO:
         value = (state @ self.value).item()
 
         # Record performance metrics
-        time.time() - start_time
+        inference_time = time.time() - start_time
+        self.performance_metrics['inference_times'].append(inference_time)
         self.performance_metrics['value_estimates'].append(value)
 
         # Validate output

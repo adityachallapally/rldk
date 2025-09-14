@@ -70,6 +70,7 @@ class ReproduciblePPO:
         # Initialize policy and value networks
         self.policy = np.random.randn(state_dim, action_dim) * 0.1
         self.value = np.random.randn(state_dim, 1) * 0.1
+        self.training_metrics = []
 
         # Training statistics
         self.training_stats = {
@@ -185,7 +186,15 @@ class ReproduciblePPO:
             kl_div = log_probs_old[i] - log_prob_new
 
             # Total loss
-            policy_loss + value_loss + entropy_loss
+            total_loss = policy_loss + value_loss + entropy_loss
+
+            self.training_metrics.append({
+                'step': i,
+                'total_loss': total_loss,
+                'policy_loss': policy_loss,
+                'value_loss': value_loss,
+                'entropy_loss': entropy_loss
+            })
 
             # Gradient step
             self.policy -= self.lr * policy_loss * state.reshape(-1, 1)

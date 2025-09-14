@@ -271,7 +271,7 @@ class TestDataFrameValidation:
         assert result is sample_data
 
         # Test with required columns
-        result = validate_dataframe(sample_data, required_columns=["step", "reward_mean"])
+        result = validate_dataframe(sample_data, required_columns=["numbers", "strings"])
         assert result is sample_data
 
     def test_validate_dataframe_invalid_type(self):

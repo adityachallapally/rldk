@@ -223,11 +223,6 @@ install:
 	pip install -e .
 	@echo "Installation complete!"
 
-# Test target
-test:
-	@echo "Running tests..."
-	pytest tests/ -v
-	@echo "Tests complete!"
 
 # Profiler targets
 profile:

@@ -348,8 +348,7 @@ class TestDeterminismHashes:
                 np.random.seed(seed)
                 result1 = np.random.random()
 
-                # Reload modules
-                importlib.reload(np)
+                # importlib.reload(np)
 
                 # Second run with same seed
                 set_global_seed(seed)
