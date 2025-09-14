@@ -276,6 +276,12 @@ class _LazyClassMeta(type):
 
 def _create_lazy_class(name, import_func, class_index):
     """Create a lazy-loaded class using the metaclass."""
+    if DISABLE_LAZY_LOADING:
+        try:
+            imports = import_func()
+            return imports[class_index]
+        except (ImportError, AttributeError, ValueError, TypeError):
+            return type(f'Disabled{name}', (), {})
     return _LazyClassMeta(name, (), {}, import_func=import_func, class_index=class_index)
 
 DivergenceReport = _create_lazy_class('DivergenceReport', _lazy_import_diff, 1)
