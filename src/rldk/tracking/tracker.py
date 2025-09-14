@@ -89,12 +89,19 @@ class ExperimentTracker:
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
             for i, (task_name, result) in enumerate(zip(task_names, results)):
-                if not isinstance(result, Exception) and not result.get("error"):
-                    self.tracking_data[task_name] = result
-                    if progress_callback:
-                        progress_callback(f"✓ {task_name} capture completed")
+                if not isinstance(result, Exception):
+                    has_error = (isinstance(result, dict) and result.get("error")) or (hasattr(result, 'get') and result.get("error"))
+                    if not has_error:
+                        self.tracking_data[task_name] = result
+                        if progress_callback:
+                            progress_callback(f"✓ {task_name} capture completed")
+                    else:
+                        error_msg = result.get("error", "Unknown error") if hasattr(result, 'get') else str(result)
+                        self.tracking_data[task_name] = {"error": error_msg}
+                        if progress_callback:
+                            progress_callback(f"⚠ {task_name} capture failed: {error_msg}")
                 else:
-                    error_msg = str(result) if isinstance(result, Exception) else result.get("error", "Unknown error")
+                    error_msg = str(result)
                     self.tracking_data[task_name] = {"error": error_msg}
                     if progress_callback:
                         progress_callback(f"⚠ {task_name} capture failed: {error_msg}")
@@ -367,7 +374,7 @@ class ExperimentTracker:
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
-                    pass  # Continue to sync implementation below
+                    return self._track_model_sync(model, name, metadata, save_architecture, save_weights)
                 else:
                     return loop.run_until_complete(
                         self.track_model_async(model, name, metadata, save_architecture, save_weights)
@@ -417,6 +424,56 @@ class ExperimentTracker:
             self._save_tracking_data()
 
             return tracking_info
+
+    def _track_model_sync(
+        self,
+        model: Any,
+        name: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        save_architecture: Optional[bool] = None,
+        save_weights: Optional[bool] = None
+    ) -> Dict[str, Any]:
+        """
+        Synchronous fallback implementation for track_model when event loop is running.
+        """
+        if not self.model_tracker:
+            raise RuntimeError("Model tracking is not enabled")
+
+        print(f"Tracking model: {name}")
+
+        # Use config defaults if not specified
+        if save_architecture is None:
+            save_architecture = self.config.save_model_architecture
+        if save_weights is None:
+            save_weights = self.config.save_model_weights
+
+        tracking_info = self.model_tracker.track_model(
+            model, name, metadata, save_architecture, save_weights
+        )
+
+        # Save model files if requested
+        if save_architecture:
+            try:
+                arch_path = self.model_tracker.save_model_architecture(
+                    model, self.output_dir, name
+                )
+                tracking_info["architecture_file"] = str(arch_path)
+            except Exception as e:
+                tracking_info["architecture_file_error"] = str(e)
+
+        if save_weights:
+            try:
+                weights_path = self.model_tracker.save_model_weights(
+                    model, self.output_dir, name
+                )
+                tracking_info["weights_file"] = str(weights_path)
+            except Exception as e:
+                tracking_info["weights_file_error"] = str(e)
+
+        self.tracking_data["models"][name] = tracking_info
+        self._save_tracking_data()
+
+        return tracking_info
 
     def track_tokenizer(
         self,
