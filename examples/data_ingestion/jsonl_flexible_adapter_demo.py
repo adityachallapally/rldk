@@ -14,7 +14,7 @@ import tempfile
 from pathlib import Path
 import pandas as pd
 
-from rldk.adapters.flexible import FlexibleDataAdapter, FlexibleJSONLAdapter
+from rldk.adapters.flexible import FlexibleDataAdapter
 from rldk.adapters.field_resolver import SchemaError
 
 
@@ -249,9 +249,9 @@ def demo_error_handling():
         Path(file_path).unlink()
 
 
-def demo_streaming_large_files():
-    """Demonstrate streaming for large JSONL files."""
-    print("\n=== Streaming Large Files Demo ===")
+def demo_large_files():
+    """Demonstrate loading large JSONL files."""
+    print("\n=== Large Files Demo ===")
     
     # Create a large dataset
     large_data = []
@@ -274,11 +274,11 @@ def demo_streaming_large_files():
     try:
         print(f"📁 Created large file with {len(large_data)} records")
         
-        # Load with streaming JSONL adapter
-        adapter = FlexibleJSONLAdapter(file_path, stream_large_files=True)
+        # Load with flexible adapter (automatically handles large files)
+        adapter = FlexibleDataAdapter(file_path)
         df = adapter.load()
         
-        print(f"✅ Successfully loaded {len(df)} records using streaming")
+        print(f"✅ Successfully loaded {len(df)} records")
         print(f"📊 Columns: {list(df.columns)}")
         print(f"📈 Data range: step {df['step'].min()} to {df['step'].max()}")
         print(f"📈 Reward range: {df['reward'].min():.3f} to {df['reward'].max():.3f}")
@@ -340,7 +340,7 @@ def main():
         demo_explicit_field_mapping()
         demo_yaml_config_mapping()
         demo_error_handling()
-        demo_streaming_large_files()
+        demo_large_files()
         demo_multiple_formats()
         
         print("\n✅ All demos completed successfully!")
@@ -349,7 +349,7 @@ def main():
         print("   • Explicit field mapping handles custom schemas")
         print("   • YAML config files provide reusable mappings")
         print("   • Helpful error messages guide you to solutions")
-        print("   • Streaming supports large files efficiently")
+        print("   • Efficiently handles large files")
         print("   • Multiple formats can be loaded from directories")
         
     except Exception as e:
