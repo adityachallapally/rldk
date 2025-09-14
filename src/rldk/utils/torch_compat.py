@@ -28,10 +28,7 @@ def safe_torch_load(
         ValueError: If checkpoint loading fails
     """
     try:
-        torch_version = torch.__version__
-        major, minor = map(int, torch_version.split('.')[:2])
-        
-        if major > 2 or (major == 2 and minor >= 6):
+        if _supports_weights_only():
             if 'weights_only' not in kwargs:
                 kwargs['weights_only'] = False
         
@@ -57,22 +54,50 @@ def get_torch_version_info() -> Dict[str, Any]:
         Dictionary with version information
     """
     version_str = torch.__version__
-    parts = version_str.split('.')
+    major, minor, patch = _parse_version_string(version_str)
     
     return {
         'version_string': version_str,
-        'major': int(parts[0]),
-        'minor': int(parts[1]) if len(parts) > 1 else 0,
-        'patch': int(parts[2].split('+')[0]) if len(parts) > 2 else 0,
+        'major': major,
+        'minor': minor,
+        'patch': patch,
         'supports_weights_only': _supports_weights_only(),
     }
+
+
+def _parse_version_string(version_str: str) -> tuple[int, int, int]:
+    """
+    Parse PyTorch version string robustly, handling non-standard formats.
+    
+    Args:
+        version_str: Version string like '2.6.0+cu118' or '2.6.0.dev20240101'
+        
+    Returns:
+        Tuple of (major, minor, patch) as integers
+    """
+    import re
+    
+    try:
+        match = re.match(r'^(\d+)\.(\d+)(?:\.(\d+))?', version_str)
+        if match:
+            major = int(match.group(1))
+            minor = int(match.group(2))
+            patch = int(match.group(3)) if match.group(3) else 0
+            return major, minor, patch
+        else:
+            parts = version_str.split('.')
+            major = int(re.sub(r'[^\d]', '', parts[0])) if parts else 0
+            minor = int(re.sub(r'[^\d]', '', parts[1])) if len(parts) > 1 else 0
+            patch = int(re.sub(r'[^\d]', '', parts[2])) if len(parts) > 2 else 0
+            return major, minor, patch
+    except Exception:
+        return 0, 0, 0
 
 
 def _supports_weights_only() -> bool:
     """Check if current PyTorch version supports weights_only parameter."""
     try:
-        version_str = torch.__version__
-        major, minor = map(int, version_str.split('.')[:2])
+        major, minor, _ = _parse_version_string(torch.__version__)
         return major > 2 or (major == 2 and minor >= 6)
     except Exception:
         return False
