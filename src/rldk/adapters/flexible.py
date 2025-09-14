@@ -292,6 +292,7 @@ class FlexibleDataAdapter(BaseAdapter):
         for field in self.required_fields:
             if field not in result_df.columns:
                 result_df[field] = None
+                self.logger.warning(f"Required field '{field}' not found, filled with None values")
         
         return result_df
     

@@ -310,6 +310,10 @@ def demo_error_handling_csv():
         adapter = FlexibleDataAdapter(file_path)
         df = adapter.load()
         
+        # If we get here, the load succeeded unexpectedly
+        print("⚠️  Load succeeded unexpectedly - this should have failed")
+        print(f"   Loaded {len(df)} records with columns: {list(df.columns)}")
+        
     except SchemaError as e:
         print("❌ Schema validation failed (expected)")
         print(f"📝 Error message: {e}")

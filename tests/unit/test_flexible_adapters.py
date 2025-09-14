@@ -275,6 +275,8 @@ class TestFlexibleDataAdapter:
             assert "step" in df.columns
             assert "reward" in df.columns
             assert "kl" in df.columns
+        
+        Path(f.name).unlink()
     
     def test_load_csv_data(self):
         """Test loading CSV data."""
