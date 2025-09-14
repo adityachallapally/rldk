@@ -24,7 +24,8 @@ class FlexibleDataAdapter(BaseAdapter):
         field_map: Optional[Dict[str, str]] = None,
         config_file: Optional[Union[str, Path]] = None,
         allow_dot_paths: bool = True,
-        required_fields: Optional[List[str]] = None
+        required_fields: Optional[List[str]] = None,
+        validation_mode: str = "flexible"
     ):
         """Initialize the flexible adapter.
         
@@ -34,6 +35,7 @@ class FlexibleDataAdapter(BaseAdapter):
             config_file: Optional path to YAML/JSON config file with field mapping
             allow_dot_paths: Whether to support nested field access with dot notation
             required_fields: List of required canonical field names (defaults to ['step', 'reward'])
+            validation_mode: Validation strictness - 'strict', 'flexible', or 'lenient'
         """
         super().__init__(source)
         self.field_resolver = FieldResolver(allow_dot_paths=allow_dot_paths)
@@ -41,6 +43,7 @@ class FlexibleDataAdapter(BaseAdapter):
         self.config_file = Path(config_file) if config_file else None
         self.allow_dot_paths = allow_dot_paths
         self.required_fields = required_fields or ['step', 'reward']
+        self.validation_mode = validation_mode
         self.logger = logging.getLogger(self.__class__.__name__)
         
         # Load field map from config file if provided
@@ -255,16 +258,30 @@ class FlexibleDataAdapter(BaseAdapter):
         """Resolve field names and validate schema."""
         available_headers = df.columns.tolist()
         
-        # Check for missing required fields
+        # Check for missing required fields based on validation mode
         missing_fields = self.field_resolver.get_missing_fields(
             self.required_fields, available_headers, self.field_map
         )
         
         if missing_fields:
-            raise SchemaError(
-                f"Missing required fields: {', '.join(missing_fields)}",
-                missing_fields, available_headers, self.field_resolver
-            )
+            if self.validation_mode == "strict":
+                raise SchemaError(
+                    f"Missing required fields: {', '.join(missing_fields)}",
+                    missing_fields, available_headers, self.field_resolver
+                )
+            elif self.validation_mode == "flexible":
+                critical_missing = [f for f in missing_fields if f in ['step']]
+                has_metric = any(self.field_resolver.resolve_field(metric, available_headers, self.field_map) 
+                               for metric in ['reward', 'score', 'return', 'kl', 'entropy', 'loss'])
+                if critical_missing and not has_metric:
+                    raise SchemaError(
+                        f"Missing critical fields: {', '.join(critical_missing)} and no metric fields found",
+                        critical_missing, available_headers, self.field_resolver
+                    )
+                elif missing_fields and self.logger:
+                    self.logger.warning(f"Missing optional fields in flexible mode: {', '.join(missing_fields)}")
+            elif self.validation_mode == "lenient" and missing_fields and self.logger:
+                self.logger.warning(f"Missing fields in lenient mode: {', '.join(missing_fields)}")
         
         # Resolve field names and create new DataFrame with canonical names
         resolved_data = {}
@@ -343,6 +360,7 @@ class FlexibleDataAdapter(BaseAdapter):
             "config_file": str(self.config_file) if self.config_file else None,
             "allow_dot_paths": self.allow_dot_paths,
             "required_fields": self.required_fields,
+            "validation_mode": self.validation_mode,
             "supported_extensions": list(self.SUPPORTED_EXTENSIONS)
         }
 
@@ -357,14 +375,21 @@ class FlexibleJSONLAdapter(FlexibleDataAdapter):
         config_file: Optional[Union[str, Path]] = None,
         allow_dot_paths: bool = True,
         required_fields: Optional[List[str]] = None,
+        validation_mode: str = "flexible",
         stream_large_files: bool = True
     ):
         """Initialize JSONL adapter with streaming support.
         
         Args:
+            source: Path to JSONL file
+            field_map: Optional explicit mapping from canonical to actual field names
+            config_file: Optional path to YAML/JSON config file with field mapping
+            allow_dot_paths: Whether to support nested field access with dot notation
+            required_fields: List of required canonical field names (defaults to ['step', 'reward'])
+            validation_mode: Validation strictness - 'strict', 'flexible', or 'lenient'
             stream_large_files: Whether to stream large files instead of loading all at once
         """
-        super().__init__(source, field_map, config_file, allow_dot_paths, required_fields)
+        super().__init__(source, field_map, config_file, allow_dot_paths, required_fields, validation_mode)
         self.stream_large_files = stream_large_files
     
     def can_handle(self) -> bool:

@@ -981,10 +981,22 @@ def ingest(
         ..., help="Path to runs directory, file, or wandb:// URI"
     ),
     adapter: Optional[str] = typer.Option(
-        None, "--adapter", "-a", help="Adapter type (trl, openrlhf, wandb, custom_jsonl)"
+        None, "--adapter", "-a", help="Adapter type (trl, openrlhf, wandb, custom_jsonl, flexible)"
     ),
     output: Optional[str] = typer.Option(
         "metrics.jsonl", "--output", "-o", help="Output file path"
+    ),
+    field_map: Optional[str] = typer.Option(
+        None, "--field-map", help="JSON string or file path with field mapping (e.g., '{\"step\": \"global_step\"}')"
+    ),
+    config_file: Optional[str] = typer.Option(
+        None, "--config-file", "-c", help="YAML/JSON config file with field mapping"
+    ),
+    validation_mode: str = typer.Option(
+        "flexible", "--validation-mode", help="Validation mode: strict, flexible, or lenient"
+    ),
+    required_fields: Optional[str] = typer.Option(
+        None, "--required-fields", help="Comma-separated list of required fields (default: step,reward)"
     ),
     validate: bool = typer.Option(
         True, "--validate/--no-validate", help="Validate input data before processing"
@@ -999,6 +1011,9 @@ def ingest(
         rldk ingest /path/to/logs --adapter trl
         rldk ingest wandb://entity/project/run_id --adapter wandb
         rldk ingest data.jsonl --adapter custom_jsonl --output results.jsonl
+        rldk ingest data.jsonl --adapter flexible --field-map '{"step": "global_step"}'
+        rldk ingest data.jsonl --config-file field_mapping.yaml --validation-mode strict
+        rldk ingest data.jsonl --required-fields step,reward,kl --validation-mode lenient
     """
     try:
         # Setup logging
@@ -1030,7 +1045,7 @@ def ingest(
             
             # Validate adapter if specified
             if adapter:
-                valid_adapters = ["trl", "openrlhf", "wandb", "custom_jsonl"]
+                valid_adapters = ["trl", "openrlhf", "wandb", "custom_jsonl", "flexible"]
                 if adapter not in valid_adapters:
                     raise ValidationError(
                         f"Invalid adapter: {adapter}",
@@ -1040,6 +1055,66 @@ def ingest(
             
             print_operation_status("Input validation", "success")
         
+        parsed_field_map = None
+        if field_map:
+            if field_map.startswith('{'):
+                import json
+                try:
+                    parsed_field_map = json.loads(field_map)
+                except json.JSONDecodeError as e:
+                    raise ValidationError(
+                        f"Invalid JSON in field_map: {e}",
+                        suggestion="Use valid JSON format like '{\"step\": \"global_step\"}'",
+                        error_code="INVALID_FIELD_MAP_JSON"
+                    )
+            else:
+                import json
+                import yaml
+                from pathlib import Path
+                field_map_path = Path(field_map)
+                if not field_map_path.exists():
+                    raise ValidationError(
+                        f"Field map file not found: {field_map}",
+                        suggestion="Ensure the file path exists and is accessible",
+                        error_code="FIELD_MAP_FILE_NOT_FOUND"
+                    )
+                try:
+                    if field_map_path.suffix.lower() in ['.yaml', '.yml']:
+                        with open(field_map_path, 'r') as f:
+                            config = yaml.safe_load(f)
+                            parsed_field_map = config.get('field_map', {})
+                    else:
+                        with open(field_map_path, 'r') as f:
+                            parsed_field_map = json.load(f)
+                except Exception as e:
+                    raise ValidationError(
+                        f"Failed to parse field map file: {e}",
+                        suggestion="Ensure the file contains valid JSON or YAML",
+                        error_code="FIELD_MAP_PARSE_ERROR"
+                    )
+        
+        parsed_required_fields = None
+        if required_fields:
+            parsed_required_fields = [f.strip() for f in required_fields.split(',')]
+        
+        # Validate validation mode
+        valid_validation_modes = ["strict", "flexible", "lenient"]
+        if validation_mode not in valid_validation_modes:
+            raise ValidationError(
+                f"Invalid validation mode: {validation_mode}",
+                suggestion=f"Use one of: {', '.join(valid_validation_modes)}",
+                error_code="INVALID_VALIDATION_MODE"
+            )
+        
+        if parsed_field_map or config_file or validation_mode != "flexible":
+            if not adapter:
+                adapter = "flexible"
+                if verbose:
+                    typer.echo("🔧 Auto-selecting flexible adapter for field mapping options")
+            elif adapter != "flexible":
+                typer.echo("⚠️  Field mapping options require flexible adapter. Switching to flexible adapter.", err=True)
+                adapter = "flexible"
+
         # Ingest the runs with progress indication
         with timed_operation_context("Data ingestion"):
             typer.echo(f"Ingesting runs from: {runs}")
@@ -1047,7 +1122,20 @@ def ingest(
             if adapter:
                 typer.echo(f"Using adapter: {adapter}")
             
-            df = ingest_runs(runs, adapter)
+            if parsed_field_map and verbose:
+                typer.echo(f"Field mapping: {parsed_field_map}")
+            
+            if validation_mode != "flexible" and verbose:
+                typer.echo(f"Validation mode: {validation_mode}")
+            
+            df = ingest_runs(
+                runs, 
+                adapter, 
+                field_map=parsed_field_map,
+                config_file=config_file,
+                validation_mode=validation_mode,
+                required_fields=parsed_required_fields
+            )
             
             if df.empty:
                 raise ValidationError(
@@ -1092,15 +1180,18 @@ def ingest(
             "Ensure the source path exists and is accessible",
             "Check that the adapter matches your data format",
             "Use --verbose flag for detailed output",
-            "Try auto-detection by omitting --adapter"
+            "Try auto-detection by omitting --adapter",
+            "Use --adapter flexible with --field-map for custom schemas",
+            "Try --validation-mode lenient for partial data"
         ])
         raise typer.Exit(1)
     except AdapterError as e:
         typer.echo(format_error_message(e), err=True)
         print_troubleshooting_tips([
             "Check that the data format matches the specified adapter",
-            "Try different adapter types: trl, openrlhf, wandb, custom_jsonl",
-            "Use --verbose flag to see detailed error information"
+            "Try different adapter types: trl, openrlhf, wandb, custom_jsonl, flexible",
+            "Use --verbose flag to see detailed error information",
+            "Try --adapter flexible with --field-map for custom field names"
         ])
         raise typer.Exit(1)
     except Exception as e:

@@ -1,7 +1,7 @@
 """Main ingest function for training runs."""
 
 from pathlib import Path
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Dict
 import pandas as pd
 import logging
 
@@ -15,14 +15,23 @@ from ..utils.progress import progress_bar, spinner, timed_operation_context
 
 
 def ingest_runs(
-    source: Union[str, Path], adapter_hint: Optional[str] = None
+    source: Union[str, Path], 
+    adapter_hint: Optional[str] = None,
+    field_map: Optional[Dict[str, str]] = None,
+    config_file: Optional[Union[str, Path]] = None,
+    validation_mode: str = "flexible",
+    required_fields: Optional[List[str]] = None
 ) -> pd.DataFrame:
     """
     Ingest training runs from various sources.
 
     Args:
         source: Path to logs directory, file, or wandb:// URI
-        adapter_hint: Optional hint for adapter type ('trl', 'openrlhf', 'wandb', 'custom_jsonl')
+        adapter_hint: Optional hint for adapter type ('trl', 'openrlhf', 'wandb', 'custom_jsonl', 'flexible')
+        field_map: Optional explicit mapping from canonical to actual field names
+        config_file: Optional path to YAML/JSON config file with field mapping
+        validation_mode: Validation strictness - 'strict', 'flexible', or 'lenient'
+        required_fields: List of required canonical field names
 
     Returns:
         DataFrame with standardized training metrics
@@ -96,7 +105,13 @@ def ingest_runs(
         elif adapter_hint == "custom_jsonl":
             adapter = CustomJSONLAdapter(source)
         elif adapter_hint == "flexible":
-            adapter = FlexibleDataAdapter(source)
+            adapter = FlexibleDataAdapter(
+                source,
+                field_map=field_map,
+                config_file=config_file,
+                required_fields=required_fields or ['step', 'reward'],
+                validation_mode=validation_mode
+            )
         else:
             raise ValidationError(
                 f"Unknown adapter type: {adapter_hint}",
@@ -218,20 +233,36 @@ def _standardize_schema(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def ingest_runs_to_events(
-    source: Union[str, Path], adapter_hint: Optional[str] = None
+    source: Union[str, Path], 
+    adapter_hint: Optional[str] = None,
+    field_map: Optional[Dict[str, str]] = None,
+    config_file: Optional[Union[str, Path]] = None,
+    validation_mode: str = "flexible",
+    required_fields: Optional[List[str]] = None
 ) -> List[Event]:
     """
     Ingest training runs and convert to normalized Event objects.
 
     Args:
         source: Path to logs directory, file, or wandb:// URI
-        adapter_hint: Optional hint for adapter type ('trl', 'openrlhf', 'wandb')
+        adapter_hint: Optional hint for adapter type ('trl', 'openrlhf', 'wandb', 'custom_jsonl', 'flexible')
+        field_map: Optional explicit mapping from canonical to actual field names
+        config_file: Optional path to YAML/JSON config file with field mapping
+        validation_mode: Validation strictness - 'strict', 'flexible', or 'lenient'
+        required_fields: List of required canonical field names
 
     Returns:
         List of Event objects with normalized training data
     """
     # Get the DataFrame first
-    df = ingest_runs(source, adapter_hint)
+    df = ingest_runs(
+        source, 
+        adapter_hint, 
+        field_map=field_map,
+        config_file=config_file,
+        validation_mode=validation_mode,
+        required_fields=required_fields
+    )
 
     # Extract run_id from the data
     run_id = (
