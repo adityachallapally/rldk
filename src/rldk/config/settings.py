@@ -149,8 +149,27 @@ class RLDKSettings(BaseSettings):
         self.create_directories()
     
 
-# Global settings instance
-settings = RLDKSettings()
+# Global settings instance - initialized lazily
+_settings = None
+
+def get_settings() -> RLDKSettings:
+    """Get global settings instance, initializing if needed."""
+    global _settings
+    if _settings is None:
+        _settings = RLDKSettings()
+    return _settings
+
+class _SettingsProxy:
+    def __getattr__(self, name):
+        return getattr(get_settings(), name)
+    
+    def __setattr__(self, name, value):
+        setattr(get_settings(), name, value)
+    
+    def __call__(self, *args, **kwargs):
+        return get_settings()(*args, **kwargs)
+
+settings = _SettingsProxy()
 
 # Note: setup_logging() and create_directories() are not called automatically
 # to avoid side effects on import. Call them explicitly when needed:
