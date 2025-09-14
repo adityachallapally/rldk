@@ -8,6 +8,7 @@ from typing import Union, List, Iterator, Dict, Any, Callable, Optional
 import pandas as pd
 
 from .consolidated_schemas import TrainingMetrics, MetricsSchema, Event, create_event_from_row
+from ..utils.torch_compat import safe_torch_load
 
 
 def _hash_state_dict(state_dict: Dict[str, Any]) -> str:
@@ -173,7 +174,7 @@ def read_checkpoint(path: Union[str, Path]) -> Dict[str, torch.Tensor]:
 
     try:
         # Load checkpoint to CPU
-        checkpoint = torch.load(path, map_location="cpu")
+        checkpoint = safe_torch_load(path, map_location="cpu")
 
         # Handle different checkpoint formats
         if isinstance(checkpoint, dict):
@@ -207,7 +208,7 @@ def read_reward_head(dir_path: Union[str, Path]) -> Callable[[List[str]], List[f
 
     try:
         # Load model to CPU
-        model = torch.load(model_path, map_location="cpu")
+        model = safe_torch_load(model_path, map_location="cpu")
 
         # Create model-dependent scoring function
         def score_prompts(prompts: List[str]) -> List[float]:
