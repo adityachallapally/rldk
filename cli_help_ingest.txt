@@ -1,0 +1,26 @@
+                                                                                                                            
+ Usage: rldk ingest [OPTIONS] RUNS                                                                                          
+                                                                                                                            
+ Ingest training runs from various sources.                                                                                 
+                                                                                                                            
+ Examples:     rldk ingest /path/to/logs --adapter trl     rldk ingest wandb://entity/project/run_id --adapter wandb        
+ rldk ingest data.jsonl --adapter custom_jsonl --output results.jsonl     rldk ingest data.jsonl --adapter flexible         
+ --field-map '{"step": "global_step"}'     rldk ingest data.jsonl --config-file field_mapping.yaml --validation-mode strict 
+ rldk ingest data.jsonl --required-fields step,reward,kl --validation-mode lenient                                          
+                                                                                                                            
+╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ *    runs      TEXT  Path to runs directory, file, or wandb:// URI [required]                                            │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --adapter          -a                   TEXT  Adapter type (trl, openrlhf, wandb, custom_jsonl, flexible)                │
+│ --output           -o                   TEXT  Output file path [default: metrics.jsonl]                                  │
+│ --field-map                             TEXT  JSON string or file path with field mapping (e.g., '{"step":               │
+│                                               "global_step"}')                                                           │
+│ --config-file      -c                   TEXT  YAML/JSON config file with field mapping                                   │
+│ --validation-mode                       TEXT  Validation mode: strict, flexible, or lenient [default: flexible]          │
+│ --required-fields                       TEXT  Comma-separated list of required fields (default: step,reward)             │
+│ --validate             --no-validate          Validate input data before processing [default: validate]                  │
+│ --verbose          -v                         Enable verbose output                                                      │
+│ --help                                        Show this message and exit.                                                │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+

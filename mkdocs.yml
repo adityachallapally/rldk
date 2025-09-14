@@ -134,6 +134,7 @@ nav:
     - Core API: reference/api.md
   - CLI Reference:
     - Commands: reference/commands.md
+    - CLI Commands: reference/cli-commands.md
 
 # Extra
 extra:
