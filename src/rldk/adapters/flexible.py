@@ -474,10 +474,26 @@ class FlexibleJSONLAdapter(FlexibleDataAdapter):
         )
         
         if missing_fields:
-            raise SchemaError(
-                f"Missing required fields: {', '.join(missing_fields)}",
-                missing_fields, available_headers, self.field_resolver
-            )
+            if self.validation_mode == "strict":
+                raise SchemaError(
+                    f"Missing required fields: {', '.join(missing_fields)}",
+                    missing_fields, available_headers, self.field_resolver
+                )
+            elif self.validation_mode == "flexible":
+                step_missing = 'step' in missing_fields
+                has_metric = any(self.field_resolver.resolve_field(metric, available_headers, self.field_map) 
+                               for metric in ['reward', 'score', 'return', 'kl', 'entropy', 'loss'])
+                
+                if step_missing:
+                    raise SchemaError(
+                        f"Missing required 'step' field in flexible mode",
+                        ['step'], available_headers, self.field_resolver
+                    )
+                elif not has_metric:
+                    raise SchemaError(
+                        f"No metric fields found in flexible mode (need at least one of: reward, score, return, kl, entropy, loss)",
+                        [], available_headers, self.field_resolver
+                    )
         
         return {
             "resolved_fields": resolved_fields,
