@@ -828,7 +828,7 @@ def evaluate_efficiency(data: pd.DataFrame, config: Optional[EvaluationConfig] =
 
 
 
-def evaluate_adversarial(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
+def evaluate_adversarial(data: pd.DataFrame, config: Optional[EvaluationConfig] = None, **kwargs) -> Dict[str, Any]:
     """
     Evaluate model adversarial robustness.
     
@@ -844,6 +844,9 @@ def evaluate_adversarial(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     """
     import numpy as np
     from scipy import stats
+    
+    if config is None:
+        config = get_eval_config(kwargs.get("config_name", "default"))
     
     adversarial_metrics = []
     overall_score = 0.0
@@ -1028,7 +1031,7 @@ def evaluate_adversarial(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     }
 
 
-def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
+def evaluate_speed(data: pd.DataFrame, config: Optional[EvaluationConfig] = None, **kwargs) -> Dict[str, Any]:
     """
     Evaluate model inference and training speed.
     
@@ -1044,6 +1047,9 @@ def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     """
     import numpy as np
     from scipy import stats
+    
+    if config is None:
+        config = get_eval_config(kwargs.get("config_name", "default"))
     
     speed_metrics = []
     overall_score = 0.0
@@ -1196,7 +1202,7 @@ def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     }
 
 
-def evaluate_memory(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
+def evaluate_memory(data: pd.DataFrame, config: Optional[EvaluationConfig] = None, **kwargs) -> Dict[str, Any]:
     """
     Evaluate model memory usage and efficiency.
     
@@ -1212,6 +1218,9 @@ def evaluate_memory(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     """
     import numpy as np
     from scipy import stats
+    
+    if config is None:
+        config = get_eval_config(kwargs.get("config_name", "default"))
     
     memory_metrics = []
     overall_score = 0.0
@@ -1393,7 +1402,7 @@ def evaluate_memory(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
 # The function is already imported at the top of the file
 
 
-def evaluate_calibration(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
+def evaluate_calibration(data: pd.DataFrame, config: Optional[EvaluationConfig] = None, **kwargs) -> Dict[str, Any]:
     """
     Evaluate model calibration and confidence estimation.
     
@@ -1409,6 +1418,9 @@ def evaluate_calibration(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     """
     import numpy as np
     from scipy import stats
+    
+    if config is None:
+        config = get_eval_config(kwargs.get("config_name", "default"))
     
     calibration_metrics = []
     overall_score = 0.0

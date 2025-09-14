@@ -376,23 +376,23 @@ class ConfigValidator:
             issues.append("COMPREHENSIVE_RUNTIME_MAX must be greater than COMPREHENSIVE_RUNTIME_MIN")
         
         # Baseline score validation
-        baseline_scores = [
-            config.QUICK_ALIGNMENT_BASELINE,
-            config.QUICK_HELPFULNESS_BASELINE,
-            config.QUICK_HARMLESSNESS_BASELINE,
-            config.QUICK_HALLUCINATION_BASELINE,
-            config.QUICK_REWARD_ALIGNMENT_BASELINE,
-            config.QUICK_KL_DIVERGENCE_BASELINE,
-            config.QUICK_PROMPT_CONTAMINATION_BASELINE,
-            config.QUICK_ANSWER_LEAKAGE_BASELINE,
-            config.QUICK_THROUGHPUT_BASELINE,
-            config.QUICK_TOXICITY_BASELINE,
-            config.QUICK_BIAS_BASELINE,
+        baseline_score_names = [
+            (config.QUICK_ALIGNMENT_BASELINE, "QUICK_ALIGNMENT_BASELINE"),
+            (config.QUICK_HELPFULNESS_BASELINE, "QUICK_HELPFULNESS_BASELINE"),
+            (config.QUICK_HARMLESSNESS_BASELINE, "QUICK_HARMLESSNESS_BASELINE"),
+            (config.QUICK_HALLUCINATION_BASELINE, "QUICK_HALLUCINATION_BASELINE"),
+            (config.QUICK_REWARD_ALIGNMENT_BASELINE, "QUICK_REWARD_ALIGNMENT_BASELINE"),
+            (config.QUICK_KL_DIVERGENCE_BASELINE, "QUICK_KL_DIVERGENCE_BASELINE"),
+            (config.QUICK_PROMPT_CONTAMINATION_BASELINE, "QUICK_PROMPT_CONTAMINATION_BASELINE"),
+            (config.QUICK_ANSWER_LEAKAGE_BASELINE, "QUICK_ANSWER_LEAKAGE_BASELINE"),
+            (config.QUICK_THROUGHPUT_BASELINE, "QUICK_THROUGHPUT_BASELINE"),
+            (config.QUICK_TOXICITY_BASELINE, "QUICK_TOXICITY_BASELINE"),
+            (config.QUICK_BIAS_BASELINE, "QUICK_BIAS_BASELINE"),
         ]
         
-        for score in baseline_scores:
+        for score, name in baseline_score_names:
             if not 0 <= score <= 1:
-                issues.append(f"Baseline score {score} must be between 0 and 1")
+                issues.append(f"{name} ({score}) must be between 0 and 1")
         
         # Timeout validation
         if config.EVALUATION_TIMEOUT_SECONDS <= 0:

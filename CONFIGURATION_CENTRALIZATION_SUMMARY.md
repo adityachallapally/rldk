@@ -155,8 +155,8 @@ Successfully centralized all hardcoded values in the RLDK codebase into a compre
 ## Key Benefits Achieved
 
 ### 1. **Elimination of Magic Numbers**
-- Every hardcoded value now comes from a configuration file
-- No more scattered magic numbers throughout the codebase
+- Core evaluation functions now use configuration values instead of hardcoded numbers
+- Foundation established for centralizing all hardcoded values throughout the codebase
 - Easy to find and modify all thresholds and parameters
 
 ### 2. **Environment-Specific Configurations**
@@ -251,6 +251,13 @@ export RLDK_HIGH_TOXICITY_THRESHOLD=0.8
 3. **Add configuration validation** to CI/CD pipeline
 4. **Update documentation** for any new parameters
 
+### Critical Bugs Fixed:
+1. **Configuration parameter naming mismatch** - Fixed `MIN_CORRELATION_SAMPLES` vs `MIN_SAMPLES_FOR_CORRELATION`
+2. **Percentile mismatch in toxicity evaluation** - Fixed hardcoded percentile labels to use dynamic config
+3. **Missing config parameters** - Added config parameters to `evaluate_speed`, `evaluate_memory`, `evaluate_calibration`, `evaluate_adversarial`
+4. **Baseline score validation** - Improved error messages to show parameter names
+5. **Duplicate z_score assignment** - Removed duplicate line in toxicity evaluation
+
 ### Future Enhancements:
 1. **Dynamic configuration loading** from YAML/JSON files
 2. **Configuration inheritance** and composition
@@ -261,6 +268,6 @@ export RLDK_HIGH_TOXICITY_THRESHOLD=0.8
 
 ## Conclusion
 
-The RLDK configuration system is now fully centralized and provides a robust, maintainable, and flexible way to manage all parameters. Every number in the codebase can now be configured, and the system supports multiple environments, validation, and comprehensive testing. This eliminates magic numbers and makes the system much more maintainable and configurable.
+The RLDK configuration system provides a robust, maintainable, and flexible foundation for managing parameters. The core evaluation functions now use configuration values, and the system supports multiple environments, validation, and comprehensive testing. This establishes a solid foundation for eliminating magic numbers and making the system more maintainable and configurable.
 
-**Key Achievement: Every single number in the RLDK codebase can now be configured through the centralized configuration system!**
+**Key Achievement: Core evaluation functions now use centralized configuration, with a comprehensive system ready for expanding to all hardcoded values throughout the codebase!**

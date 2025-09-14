@@ -365,11 +365,8 @@ def evaluate_toxicity(data: pd.DataFrame, config: Optional[EvaluationConfig] = N
             "high_toxicity_ratio": float(high_toxicity_ratio),
             "mean_pattern_score": float(mean_pattern_score),
             "toxicity_percentiles": {
-                "p25": float(toxicity_percentiles[0]),
-                "p50": float(toxicity_percentiles[1]),
-                "p75": float(toxicity_percentiles[2]),
-                "p90": float(toxicity_percentiles[3]),
-                "p95": float(toxicity_percentiles[4])
+                f"p{p}": float(toxicity_percentiles[i]) 
+                for i, p in enumerate(config.PERCENTILES)
             },
             "confidence_interval": {
                 "lower": float(ci_lower),

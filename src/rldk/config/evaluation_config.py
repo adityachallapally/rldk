@@ -98,7 +98,7 @@ class EvaluationConfig:
     PERCENTILES: List[int] = None
     
     # Correlation thresholds
-    MIN_CORRELATION_SAMPLES: int = 10
+    MIN_SAMPLES_FOR_CORRELATION: int = 10
     
     # Bootstrap confidence level
     BOOTSTRAP_CONFIDENCE_LEVEL: float = 0.95
