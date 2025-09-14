@@ -1,0 +1,19 @@
+                                                                                                                            
+ Usage: rldk check-determinism [OPTIONS]                                                                                    
+                                                                                                                            
+ Check if a training command is deterministic.                                                                              
+                                                                                                                            
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --cmd         -c      TEXT     Command to run for testing                                                                │
+│ --compare     -m      TEXT     Metrics to compare (comma-separated)                                                      │
+│ --steps       -s      TEXT     Specific steps to compare (comma-separated)                                               │
+│ --stride              INTEGER  Step interval for comparison if steps not specified [default: 50]                         │
+│ --replicas    -r      INTEGER  Number of replicas to run [default: 5]                                                    │
+│ --runs                INTEGER  Number of runs for determinism check (alias for replicas)                                 │
+│ --tolerance   -t      FLOAT    Tolerance for metric differences [default: 0.01]                                          │
+│ --device      -d      TEXT     Device to use (auto-detected if None)                                                     │
+│ --output-dir  -o      TEXT     Output directory for reports [default: determinism_analysis]                              │
+│ --gate                         Enable CI gate mode with exit codes (0=pass, 1=warn, 2=fail)                              │
+│ --help                         Show this message and exit.                                                               │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+

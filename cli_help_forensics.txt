@@ -1,0 +1,16 @@
+                                                                                                                            
+ Usage: rldk forensics [OPTIONS] COMMAND [ARGS]...                                                                          
+                                                                                                                            
+ Forensics commands for RL training analysis                                                                                
+                                                                                                                            
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ compare-runs   Compare two training runs and identify divergences.                                                       │
+│ diff-ckpt      Compare two model checkpoints and identify parameter differences.                                         │
+│ env-audit      Audit environment for determinism and reproducibility.                                                    │
+│ log-scan       Scan training logs for PPO anomalies and issues.                                                          │
+│ doctor         Run comprehensive diagnostics on a training run or repository.                                            │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+

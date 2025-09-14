@@ -1,0 +1,33 @@
+                                                                                                                            
+ Usage: rldk [OPTIONS] COMMAND [ARGS]...                                                                                    
+                                                                                                                            
+ RL Debug Kit - Library and CLI for debugging reinforcement learning training runs                                          
+                                                                                                                            
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ ingest              Ingest training runs from various sources.                                                           │
+│ diff                Find first divergence between two training runs.                                                     │
+│ check-determinism   Check if a training command is deterministic.                                                        │
+│ bisect              Find regression using git bisect.                                                                    │
+│ reward-health       Analyze reward model health and detect pathologies.                                                  │
+│ replay              Replay a training run with the original seed and verify reproducibility.                             │
+│ eval                Run evaluation suite with statistical analysis.                                                      │
+│ compare-runs        Compare two training runs and identify divergences.                                                  │
+│ diff-ckpt           Compare two model checkpoints and identify parameter differences.                                    │
+│ env-audit           Audit environment for determinism and reproducibility.                                               │
+│ log-scan            Scan training logs for PPO anomalies and issues.                                                     │
+│ track               Start tracking an experiment with W&B (default) or file logging.                                     │
+│ reward-drift        Compare two reward models and detect drift.                                                          │
+│ doctor              Run comprehensive diagnostics on a training run or repository.                                       │
+│ format-info         Show data format information for adapters.                                                           │
+│ validate-format     Validate data format and suggest appropriate adapter.                                                │
+│ version             Show version information.                                                                            │
+│ seed                Manage global seed for reproducible experiments.                                                     │
+│ card                Generate trust cards for RL training runs.                                                           │
+│ forensics           Forensics commands for RL training analysis                                                          │
+│ reward              Reward model analysis commands                                                                       │
+│ evals               Evaluation suite commands                                                                            │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+

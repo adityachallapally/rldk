@@ -1,0 +1,15 @@
+                                                                                                                            
+ Usage: rldk evals [OPTIONS] COMMAND [ARGS]...                                                                              
+                                                                                                                            
+ Evaluation suite commands                                                                                                  
+                                                                                                                            
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ evaluate        Run evaluation suite on JSONL data.                                                                      │
+│ list-suites     List available evaluation suites.                                                                        │
+│ validate-data   Validate JSONL file structure and data.                                                                  │
+│ validate        Validate JSONL file structure and data (alias for validate-data).                                        │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
