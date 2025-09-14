@@ -375,7 +375,7 @@ class OpenRLHFCheckpointMonitor:
         try:
             # Try to load as PyTorch checkpoint
             if checkpoint_path.suffix == '.pt' or checkpoint_path.suffix == '.pth':
-                checkpoint = torch.load(checkpoint_path, map_location='cpu')
+                checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
                 return checkpoint.get('metadata', {})
             
             # Try to load as JSON metadata
@@ -393,7 +393,7 @@ class OpenRLHFCheckpointMonitor:
         try:
             # Basic validation - check if checkpoint can be loaded
             if checkpoint_path.suffix in ['.pt', '.pth']:
-                checkpoint = torch.load(checkpoint_path, map_location='cpu')
+                checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
                 if isinstance(checkpoint, dict) and 'model' in checkpoint:
                     return 1.0  # Valid checkpoint
                 else:
