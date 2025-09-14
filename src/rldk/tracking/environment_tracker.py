@@ -7,7 +7,10 @@ import json
 import platform
 import subprocess
 import sys
-from typing import Any, Dict
+import time
+from pathlib import Path
+from typing import Any, Dict, Optional
+from functools import lru_cache
 
 try:
     from importlib import metadata
@@ -16,12 +19,19 @@ except ImportError:
 import numpy as np
 import torch
 
+from ..config import settings
+from ..utils.runtime import with_timeout
+
 
 class EnvironmentTracker:
     """Tracks environment state including dependencies and system info."""
 
     def __init__(self):
         self.tracking_info: Dict[str, Any] = {}
+        self._settings = settings
+        self._cache_dir = self._settings.get_cache_dir() / "environment_cache"
+        self._cache_dir.mkdir(parents=True, exist_ok=True)
+        self._cache_file = self._cache_dir / "environment_info.json"
 
     def capture_environment(
         self,
@@ -30,7 +40,7 @@ class EnvironmentTracker:
         capture_system: bool = True
     ) -> Dict[str, Any]:
         """
-        Capture comprehensive environment information.
+        Capture comprehensive environment information with caching.
 
         Args:
             capture_conda: Whether to capture conda environment
@@ -40,32 +50,50 @@ class EnvironmentTracker:
         Returns:
             Dictionary containing environment information
         """
+        # Check cache first if caching is enabled
+        if self._settings.cache_environment:
+            cached_info = self._load_from_cache()
+            if cached_info and self._is_cache_valid(cached_info):
+                # Update timestamp
+                cached_info["timestamp"] = self._get_timestamp()
+                self.tracking_info = cached_info
+                return cached_info
+
         env_info = {
             "timestamp": self._get_timestamp(),
             "python_version": sys.version,
             "python_executable": sys.executable
         }
 
-        if capture_conda:
-            env_info["conda"] = self._capture_conda_environment()
+        try:
+            if capture_conda:
+                env_info["conda"] = self._capture_conda_environment()
 
-        if capture_pip:
-            env_info["pip"] = self._capture_pip_environment()
+            if capture_pip:
+                env_info["pip"] = self._capture_pip_environment()
 
-        if capture_system:
-            env_info["system"] = self._capture_system_info()
+            if capture_system:
+                env_info["system"] = self._capture_system_info()
 
-        # Capture ML framework versions
-        env_info["ml_frameworks"] = self._capture_ml_frameworks()
+            # Capture ML framework versions
+            env_info["ml_frameworks"] = self._capture_ml_frameworks()
 
-        # Compute environment fingerprint
-        env_info["environment_checksum"] = self._compute_environment_checksum(env_info)
+            # Compute environment fingerprint
+            env_info["environment_checksum"] = self._compute_environment_checksum(env_info)
+
+        except Exception as e:
+            env_info["error"] = f"Failed to capture environment: {str(e)}"
+
+        # Save to cache
+        if self._settings.cache_environment:
+            self._save_to_cache(env_info)
 
         self.tracking_info = env_info
         return env_info
 
+    @with_timeout(30.0)  # 30 second timeout for conda environment capture
     def _capture_conda_environment(self) -> Dict[str, Any]:
-        """Capture conda environment information."""
+        """Capture conda environment information with timeout."""
         conda_info = {}
 
         try:
@@ -74,7 +102,7 @@ class EnvironmentTracker:
                 ["conda", "info", "--json"],
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=self._settings.environment_timeout
             )
             if result.returncode == 0:
                 conda_info["info"] = json.loads(result.stdout)
@@ -87,7 +115,7 @@ class EnvironmentTracker:
                 ["conda", "list", "--json"],
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=self._settings.environment_timeout
             )
             if result.returncode == 0:
                 conda_info["packages"] = json.loads(result.stdout)
@@ -100,7 +128,7 @@ class EnvironmentTracker:
                 ["conda", "info", "--envs"],
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=self._settings.environment_timeout
             )
             if result.returncode == 0:
                 # Parse active environment from output
@@ -116,8 +144,9 @@ class EnvironmentTracker:
 
         return conda_info
 
+    @with_timeout(30.0)  # 30 second timeout for pip environment capture
     def _capture_pip_environment(self) -> Dict[str, Any]:
-        """Capture pip environment information."""
+        """Capture pip environment information with timeout."""
         pip_info = {}
 
         try:
@@ -126,7 +155,7 @@ class EnvironmentTracker:
                 [sys.executable, "-m", "pip", "freeze"],
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=self._settings.environment_timeout
             )
             if result.returncode == 0:
                 pip_info["freeze"] = result.stdout.strip().split('\n')
@@ -141,7 +170,7 @@ class EnvironmentTracker:
                 [sys.executable, "-m", "pip", "list", "--format=json"],
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=self._settings.environment_timeout
             )
             if result.returncode == 0:
                 pip_info["list"] = json.loads(result.stdout)
@@ -337,6 +366,30 @@ class EnvironmentTracker:
         """Get current timestamp."""
         from datetime import datetime
         return datetime.now().isoformat()
+
+    def _load_from_cache(self) -> Optional[Dict[str, Any]]:
+        """Load environment info from cache."""
+        if self._cache_file.exists():
+            try:
+                with open(self._cache_file, 'r') as f:
+                    return json.load(f)
+            except Exception:
+                return None
+        return None
+
+    def _save_to_cache(self, env_info: Dict[str, Any]) -> None:
+        """Save environment info to cache."""
+        try:
+            with open(self._cache_file, 'w') as f:
+                json.dump(env_info, f, indent=2, default=str)
+        except Exception:
+            pass  # Cache failures shouldn't break the main functionality
+
+    def _is_cache_valid(self, cached_info: Dict[str, Any]) -> bool:
+        """Check if cached environment info is still valid."""
+        # Cache is valid for 1 hour
+        cache_age = time.time() - cached_info.get("cache_timestamp", 0)
+        return cache_age < 3600  # 1 hour
 
     def get_tracking_summary(self) -> Dict[str, Any]:
         """Get summary of environment tracking."""

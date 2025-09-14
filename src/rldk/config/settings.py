@@ -1,11 +1,16 @@
 """Central configuration management for RLDK."""
 
 import logging
+import os
+import time
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from pydantic import ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings
+
+from ..utils.runtime import with_timeout
 
 
 class RLDKSettings(BaseSettings):
@@ -43,6 +48,16 @@ class RLDKSettings(BaseSettings):
     num_workers: int = Field(default=4, description="Number of parallel workers")
     batch_size: int = Field(default=32, description="Default batch size")
     memory_limit_gb: Optional[float] = Field(default=None, description="Memory limit in GB")
+    
+    # Tracking performance settings
+    tracking_timeout: float = Field(default=30.0, description="Default timeout for tracking operations in seconds")
+    dataset_sample_size: int = Field(default=1000, description="Sample size for large dataset checksums")
+    model_fingerprint_limit: int = Field(default=100000000, description="Parameter limit for model fingerprinting (100M)")
+    enable_async_init: bool = Field(default=True, description="Enable async initialization for tracking components")
+    cache_environment: bool = Field(default=True, description="Cache environment information")
+    cache_git_info: bool = Field(default=True, description="Cache git information")
+    git_timeout: float = Field(default=10.0, description="Timeout for git operations in seconds")
+    environment_timeout: float = Field(default=30.0, description="Timeout for environment capture in seconds")
 
     # Visualization settings
     plot_style: str = Field(default="seaborn-v0_8", description="Matplotlib style")
@@ -92,6 +107,46 @@ class RLDKSettings(BaseSettings):
         """Validate batch size."""
         if v <= 0:
             raise ValueError("batch_size must be positive")
+        return v
+
+    @field_validator('tracking_timeout')
+    @classmethod
+    def validate_tracking_timeout(cls, v):
+        """Validate tracking timeout."""
+        if v <= 0:
+            raise ValueError("tracking_timeout must be positive")
+        return v
+
+    @field_validator('dataset_sample_size')
+    @classmethod
+    def validate_dataset_sample_size(cls, v):
+        """Validate dataset sample size."""
+        if v <= 0:
+            raise ValueError("dataset_sample_size must be positive")
+        return v
+
+    @field_validator('model_fingerprint_limit')
+    @classmethod
+    def validate_model_fingerprint_limit(cls, v):
+        """Validate model fingerprint limit."""
+        if v <= 0:
+            raise ValueError("model_fingerprint_limit must be positive")
+        return v
+
+    @field_validator('git_timeout')
+    @classmethod
+    def validate_git_timeout(cls, v):
+        """Validate git timeout."""
+        if v <= 0:
+            raise ValueError("git_timeout must be positive")
+        return v
+
+    @field_validator('environment_timeout')
+    @classmethod
+    def validate_environment_timeout(cls, v):
+        """Validate environment timeout."""
+        if v <= 0:
+            raise ValueError("environment_timeout must be positive")
         return v
 
     def setup_logging(self) -> None:
@@ -149,6 +204,61 @@ class RLDKSettings(BaseSettings):
         self.setup_logging()
         self.create_directories()
 
+    @lru_cache(maxsize=1)
+    def get_cache_dir(self) -> Path:
+        """Get cache directory with lazy creation."""
+        cache_dir = self.cache_dir
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        return cache_dir
+
+    @lru_cache(maxsize=1)
+    def get_output_dir(self) -> Path:
+        """Get output directory with lazy creation."""
+        output_dir = self.default_output_dir
+        output_dir.mkdir(parents=True, exist_ok=True)
+        return output_dir
+
+    @lru_cache(maxsize=1)
+    def get_runs_dir(self) -> Path:
+        """Get runs directory with lazy creation."""
+        runs_dir = self.runs_dir
+        runs_dir.mkdir(parents=True, exist_ok=True)
+        return runs_dir
+
+    def get_performance_config(self) -> Dict[str, Any]:
+        """Get performance-related configuration."""
+        return {
+            "tracking_timeout": self.tracking_timeout,
+            "dataset_sample_size": self.dataset_sample_size,
+            "model_fingerprint_limit": self.model_fingerprint_limit,
+            "enable_async_init": self.enable_async_init,
+            "cache_environment": self.cache_environment,
+            "cache_git_info": self.cache_git_info,
+            "git_timeout": self.git_timeout,
+            "environment_timeout": self.environment_timeout,
+            "num_workers": self.num_workers,
+            "memory_limit_gb": self.memory_limit_gb
+        }
+
+    @with_timeout(5.0)
+    def _safe_create_directories(self) -> None:
+        """Safely create directories with timeout."""
+        self.create_directories()
+
+    def initialize_async(self) -> None:
+        """Initialize settings asynchronously with performance optimizations."""
+        try:
+            # Use cached directory creation
+            self.get_cache_dir()
+            self.get_output_dir()
+            self.get_runs_dir()
+            
+            # Setup logging with timeout
+            self.setup_logging()
+        except Exception as e:
+            logging.warning(f"Async initialization failed, falling back to sync: {e}")
+            self.initialize()
+
 
 # Global settings instance - initialized lazily
 _settings = None
@@ -158,6 +268,9 @@ def get_settings() -> RLDKSettings:
     global _settings
     if _settings is None:
         _settings = RLDKSettings()
+        # Use async initialization if enabled
+        if _settings.enable_async_init:
+            _settings.initialize_async()
     return _settings
 
 class _SettingsProxy:

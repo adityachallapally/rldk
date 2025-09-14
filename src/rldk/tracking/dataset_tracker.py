@@ -5,14 +5,20 @@ Dataset tracking for versioning and checksums.
 import hashlib
 import json
 import pickle
+import time
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import lru_cache
 
 import numpy as np
 import pandas as pd
 import torch
 from datasets import Dataset, DatasetDict
 from torch.utils.data import Dataset as TorchDataset
+
+from ..config import settings
+from ..utils.runtime import with_timeout
 
 
 class DatasetTracker:
@@ -21,6 +27,9 @@ class DatasetTracker:
     def __init__(self, algorithm: str = "sha256"):
         self.algorithm = algorithm
         self.tracked_datasets: Dict[str, Dict[str, Any]] = {}
+        self._settings = settings
+        self._cache_dir = self._settings.get_cache_dir() / "dataset_checksums"
+        self._cache_dir.mkdir(parents=True, exist_ok=True)
 
     def track_dataset(
         self,
@@ -39,6 +48,17 @@ class DatasetTracker:
         Returns:
             Dictionary containing tracking information
         """
+        # Check cache first
+        cache_key = self._get_cache_key(dataset, name)
+        cached_info = self._load_from_cache(cache_key)
+        if cached_info:
+            # Update timestamp and metadata
+            cached_info["timestamp"] = self._get_timestamp()
+            if metadata:
+                cached_info["metadata"].update(metadata)
+            self.tracked_datasets[name] = cached_info
+            return cached_info
+
         tracking_info = {
             "name": name,
             "type": type(dataset).__name__,
@@ -48,19 +68,28 @@ class DatasetTracker:
         }
 
         # Compute checksum based on dataset type
-        if isinstance(dataset, (str, Path)):
-            tracking_info.update(self._track_file_dataset(dataset))
-        elif isinstance(dataset, (Dataset, DatasetDict)):
-            tracking_info.update(self._track_huggingface_dataset(dataset))
-        elif isinstance(dataset, TorchDataset):
-            tracking_info.update(self._track_torch_dataset(dataset))
-        elif isinstance(dataset, np.ndarray):
-            tracking_info.update(self._track_numpy_dataset(dataset))
-        elif isinstance(dataset, pd.DataFrame):
-            tracking_info.update(self._track_pandas_dataset(dataset))
-        else:
-            tracking_info.update(self._track_generic_dataset(dataset))
+        try:
+            if isinstance(dataset, (str, Path)):
+                tracking_info.update(self._track_file_dataset(dataset))
+            elif isinstance(dataset, (Dataset, DatasetDict)):
+                tracking_info.update(self._track_huggingface_dataset(dataset))
+            elif isinstance(dataset, TorchDataset):
+                tracking_info.update(self._track_torch_dataset(dataset))
+            elif isinstance(dataset, np.ndarray):
+                tracking_info.update(self._track_numpy_dataset(dataset))
+            elif isinstance(dataset, pd.DataFrame):
+                tracking_info.update(self._track_pandas_dataset(dataset))
+            else:
+                tracking_info.update(self._track_generic_dataset(dataset))
+        except Exception as e:
+            # If tracking fails, create a minimal tracking info
+            tracking_info.update({
+                "error": f"Failed to track dataset: {str(e)}",
+                "checksum": "unknown"
+            })
 
+        # Save to cache
+        self._save_to_cache(cache_key, tracking_info)
         self.tracked_datasets[name] = tracking_info
         return tracking_info
 
@@ -149,11 +178,35 @@ class DatasetTracker:
             }
 
     def _compute_file_checksum(self, file_path: Path) -> str:
-        """Compute checksum of a single file."""
+        """Compute checksum of a single file with streaming."""
         hash_obj = hashlib.new(self.algorithm)
         with open(file_path, 'rb') as f:
-            for chunk in iter(lambda: f.read(4096), b""):
+            for chunk in iter(lambda: f.read(8192), b""):  # Larger chunk size for better performance
                 hash_obj.update(chunk)
+        return hash_obj.hexdigest()
+
+    def _compute_file_checksum_streaming(self, file_path: Path, chunk_size: int = 8192) -> str:
+        """Compute checksum of a large file with streaming and progress tracking."""
+        hash_obj = hashlib.new(self.algorithm)
+        file_size = file_path.stat().st_size
+        
+        # For very large files, use streaming with progress
+        if file_size > 100 * 1024 * 1024:  # 100MB
+            with open(file_path, 'rb') as f:
+                bytes_read = 0
+                while True:
+                    chunk = f.read(chunk_size)
+                    if not chunk:
+                        break
+                    hash_obj.update(chunk)
+                    bytes_read += len(chunk)
+                    # Optional: Add progress callback here
+        else:
+            # For smaller files, use regular method
+            with open(file_path, 'rb') as f:
+                for chunk in iter(lambda: f.read(chunk_size), b""):
+                    hash_obj.update(chunk)
+        
         return hash_obj.hexdigest()
 
     def _compute_directory_checksum(self, dir_path: Path) -> str:
@@ -181,8 +234,9 @@ class DatasetTracker:
 
         return hash_obj.hexdigest()
 
+    @with_timeout(30.0)  # 30 second timeout for dataset checksum
     def _compute_dataset_checksum(self, dataset: Union[Dataset, DatasetDict]) -> str:
-        """Compute checksum of a Hugging Face dataset."""
+        """Compute checksum of a Hugging Face dataset with intelligent sampling."""
         hash_obj = hashlib.new(self.algorithm)
 
         if isinstance(dataset, DatasetDict):
@@ -191,8 +245,9 @@ class DatasetTracker:
                 hash_obj.update(split_name.encode())
                 hash_obj.update(self._compute_dataset_checksum(split_dataset).encode())
         else:
-            # Sample a subset for large datasets using deterministic sampling by stride
-            sample_size = min(1000, len(dataset))
+            # Use configurable sample size from settings
+            sample_size = min(self._settings.dataset_sample_size, len(dataset))
+            
             if len(dataset) > sample_size:
                 # Use deterministic sampling: take every nth element by stride
                 # Ensure we get exactly sample_size items
@@ -209,20 +264,29 @@ class DatasetTracker:
                 # Use all indices if dataset is small
                 sample_indices = list(range(len(dataset)))
 
-            for idx in sample_indices:
-                sample = dataset[idx]
-                # Convert to JSON string for consistent hashing
-                sample_str = json.dumps(sample, sort_keys=True, default=str)
-                hash_obj.update(sample_str.encode())
+            # Process samples in batches to avoid memory issues
+            batch_size = min(100, len(sample_indices))
+            for i in range(0, len(sample_indices), batch_size):
+                batch_indices = sample_indices[i:i + batch_size]
+                for idx in batch_indices:
+                    try:
+                        sample = dataset[idx]
+                        # Convert to JSON string for consistent hashing
+                        sample_str = json.dumps(sample, sort_keys=True, default=str)
+                        hash_obj.update(sample_str.encode())
+                    except Exception as e:
+                        # If sampling fails, use a fallback hash
+                        hash_obj.update(f"error_{idx}_{str(e)}".encode())
 
         return hash_obj.hexdigest()
 
+    @with_timeout(30.0)  # 30 second timeout for PyTorch dataset checksum
     def _compute_torch_dataset_checksum(self, dataset: TorchDataset) -> str:
-        """Compute checksum of a PyTorch dataset."""
+        """Compute checksum of a PyTorch dataset with intelligent sampling."""
         hash_obj = hashlib.new(self.algorithm)
 
-        # Sample a subset for large datasets using deterministic sampling by stride
-        sample_size = min(100, len(dataset))
+        # Use configurable sample size from settings
+        sample_size = min(self._settings.dataset_sample_size // 10, len(dataset))  # Smaller sample for PyTorch datasets
         if len(dataset) > sample_size:
             # Use deterministic sampling: take every nth element by stride
             # Ensure we get exactly sample_size items
@@ -239,28 +303,53 @@ class DatasetTracker:
             # Use all indices if dataset is small
             sample_indices = list(range(len(dataset)))
 
-        for idx in sample_indices:
-            sample = dataset[idx]
-            if isinstance(sample, (tuple, list)):
-                # Handle tuple/list samples
-                for item in sample:
-                    if isinstance(item, torch.Tensor):
-                        hash_obj.update(item.detach().cpu().numpy().tobytes())
+        # Process samples in batches to avoid memory issues
+        batch_size = min(50, len(sample_indices))
+        for i in range(0, len(sample_indices), batch_size):
+            batch_indices = sample_indices[i:i + batch_size]
+            for idx in batch_indices:
+                try:
+                    sample = dataset[idx]
+                    if isinstance(sample, (tuple, list)):
+                        # Handle tuple/list samples
+                        for item in sample:
+                            if isinstance(item, torch.Tensor):
+                                # For large tensors, sample a subset
+                                if item.numel() > 10000:
+                                    flat_item = item.detach().cpu().flatten()
+                                    step = max(1, len(flat_item) // 1000)
+                                    sampled = flat_item[::step][:1000]
+                                    hash_obj.update(sampled.numpy().tobytes())
+                                else:
+                                    hash_obj.update(item.detach().cpu().numpy().tobytes())
+                            else:
+                                hash_obj.update(str(item).encode())
+                    elif isinstance(sample, torch.Tensor):
+                        # For large tensors, sample a subset
+                        if sample.numel() > 10000:
+                            flat_sample = sample.detach().cpu().flatten()
+                            step = max(1, len(flat_sample) // 1000)
+                            sampled = flat_sample[::step][:1000]
+                            hash_obj.update(sampled.numpy().tobytes())
+                        else:
+                            hash_obj.update(sample.detach().cpu().numpy().tobytes())
                     else:
-                        hash_obj.update(str(item).encode())
-            elif isinstance(sample, torch.Tensor):
-                hash_obj.update(sample.detach().cpu().numpy().tobytes())
-            else:
-                hash_obj.update(str(sample).encode())
+                        hash_obj.update(str(sample).encode())
+                except Exception as e:
+                    # If sampling fails, use a fallback hash
+                    hash_obj.update(f"error_{idx}_{str(e)}".encode())
 
         return hash_obj.hexdigest()
 
+    @with_timeout(30.0)  # 30 second timeout for NumPy checksum
     def _compute_numpy_checksum(self, dataset: np.ndarray) -> str:
-        """Compute checksum of a NumPy array."""
-        # For large arrays, sample a subset deterministically by stride
-        if dataset.size > 1000000:  # 1M elements
+        """Compute checksum of a NumPy array with intelligent sampling."""
+        # Use configurable sample size from settings
+        max_elements = self._settings.dataset_sample_size * 100  # 100x for NumPy arrays
+        
+        if dataset.size > max_elements:
             flat = dataset.flatten()
-            sample_size = min(100000, len(flat))
+            sample_size = min(max_elements, len(flat))
             # Use deterministic sampling: take every nth element by stride
             # Ensure we get exactly sample_size items
             step = max(1, len(flat) // sample_size)
@@ -278,11 +367,13 @@ class DatasetTracker:
 
         return hashlib.sha256(sample.tobytes()).hexdigest()
 
+    @with_timeout(30.0)  # 30 second timeout for Pandas checksum
     def _compute_pandas_checksum(self, dataset: pd.DataFrame) -> str:
-        """Compute checksum of a Pandas DataFrame."""
-        # For large DataFrames, sample a subset deterministically by stride
-        if len(dataset) > 10000:
-            sample_size = min(1000, len(dataset))
+        """Compute checksum of a Pandas DataFrame with intelligent sampling."""
+        # Use configurable sample size from settings
+        sample_size = min(self._settings.dataset_sample_size, len(dataset))
+        
+        if len(dataset) > sample_size:
             # Use deterministic sampling: take every nth element by stride
             # Ensure we get exactly sample_size items
             step = max(1, len(dataset) // sample_size)
@@ -323,10 +414,37 @@ class DatasetTracker:
         from datetime import datetime
         return datetime.now().isoformat()
 
+    def _get_cache_key(self, dataset: Any, name: str) -> str:
+        """Generate cache key for dataset."""
+        # Create a simple hash based on dataset type and name
+        key_data = f"{type(dataset).__name__}_{name}_{self.algorithm}"
+        return hashlib.sha256(key_data.encode()).hexdigest()[:16]
+
+    def _load_from_cache(self, cache_key: str) -> Optional[Dict[str, Any]]:
+        """Load tracking info from cache."""
+        cache_file = self._cache_dir / f"{cache_key}.json"
+        if cache_file.exists():
+            try:
+                with open(cache_file, 'r') as f:
+                    return json.load(f)
+            except Exception:
+                return None
+        return None
+
+    def _save_to_cache(self, cache_key: str, tracking_info: Dict[str, Any]) -> None:
+        """Save tracking info to cache."""
+        cache_file = self._cache_dir / f"{cache_key}.json"
+        try:
+            with open(cache_file, 'w') as f:
+                json.dump(tracking_info, f, indent=2, default=str)
+        except Exception:
+            pass  # Cache failures shouldn't break the main functionality
+
     def get_tracking_summary(self) -> Dict[str, Any]:
         """Get summary of all tracked datasets."""
         return {
             "total_datasets": len(self.tracked_datasets),
             "datasets": self.tracked_datasets,
-            "algorithm": self.algorithm
+            "algorithm": self.algorithm,
+            "cache_dir": str(self._cache_dir)
         }

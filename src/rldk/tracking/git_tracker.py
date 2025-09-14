@@ -5,8 +5,13 @@ Git tracking for capturing repository state and changes.
 import hashlib
 import json
 import subprocess
+import time
 from pathlib import Path
 from typing import Any, Dict, Optional
+from functools import lru_cache
+
+from ..config import settings
+from ..utils.runtime import with_timeout
 
 
 class GitTracker:
@@ -15,6 +20,10 @@ class GitTracker:
     def __init__(self, repo_path: Optional[Path] = None):
         self.repo_path = repo_path or Path.cwd()
         self.tracking_info: Dict[str, Any] = {}
+        self._settings = settings
+        self._cache_dir = self._settings.get_cache_dir() / "git_cache"
+        self._cache_dir.mkdir(parents=True, exist_ok=True)
+        self._cache_file = self._cache_dir / "git_info.json"
 
     def capture_git_state(
         self,
@@ -24,7 +33,7 @@ class GitTracker:
         capture_remote: bool = True
     ) -> Dict[str, Any]:
         """
-        Capture comprehensive Git repository state.
+        Capture comprehensive Git repository state with caching.
 
         Args:
             capture_commit: Whether to capture commit information
@@ -35,31 +44,49 @@ class GitTracker:
         Returns:
             Dictionary containing Git state information
         """
+        # Check cache first if caching is enabled
+        if self._settings.cache_git_info:
+            cached_info = self._load_from_cache()
+            if cached_info and self._is_cache_valid(cached_info):
+                # Update timestamp
+                cached_info["timestamp"] = self._get_timestamp()
+                self.tracking_info = cached_info
+                return cached_info
+
         git_info = {
             "timestamp": self._get_timestamp(),
             "repo_path": str(self.repo_path.absolute())
         }
 
-        if capture_commit:
-            git_info["commit"] = self._capture_commit_info()
+        try:
+            if capture_commit:
+                git_info["commit"] = self._capture_commit_info()
 
-        if capture_diff:
-            git_info["diff"] = self._capture_diff_info()
+            if capture_diff:
+                git_info["diff"] = self._capture_diff_info()
 
-        if capture_status:
-            git_info["status"] = self._capture_status_info()
+            if capture_status:
+                git_info["status"] = self._capture_status_info()
 
-        if capture_remote:
-            git_info["remote"] = self._capture_remote_info()
+            if capture_remote:
+                git_info["remote"] = self._capture_remote_info()
 
-        # Compute Git fingerprint
-        git_info["git_checksum"] = self._compute_git_checksum(git_info)
+            # Compute Git fingerprint
+            git_info["git_checksum"] = self._compute_git_checksum(git_info)
+
+        except Exception as e:
+            git_info["error"] = f"Failed to capture git state: {str(e)}"
+
+        # Save to cache
+        if self._settings.cache_git_info:
+            self._save_to_cache(git_info)
 
         self.tracking_info = git_info
         return git_info
 
+    @with_timeout(10.0)  # 10 second timeout for commit info capture
     def _capture_commit_info(self) -> Dict[str, Any]:
-        """Capture current commit information."""
+        """Capture current commit information with timeout."""
         commit_info = {}
 
         try:
@@ -69,7 +96,7 @@ class GitTracker:
                 cwd=self.repo_path,
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=self._settings.git_timeout
             )
             if result.returncode == 0:
                 commit_info["hash"] = result.stdout.strip()
@@ -323,6 +350,30 @@ class GitTracker:
         """Get current timestamp."""
         from datetime import datetime
         return datetime.now().isoformat()
+
+    def _load_from_cache(self) -> Optional[Dict[str, Any]]:
+        """Load git info from cache."""
+        if self._cache_file.exists():
+            try:
+                with open(self._cache_file, 'r') as f:
+                    return json.load(f)
+            except Exception:
+                return None
+        return None
+
+    def _save_to_cache(self, git_info: Dict[str, Any]) -> None:
+        """Save git info to cache."""
+        try:
+            with open(self._cache_file, 'w') as f:
+                json.dump(git_info, f, indent=2, default=str)
+        except Exception:
+            pass  # Cache failures shouldn't break the main functionality
+
+    def _is_cache_valid(self, cached_info: Dict[str, Any]) -> bool:
+        """Check if cached git info is still valid."""
+        # Cache is valid for 30 minutes
+        cache_age = time.time() - cached_info.get("cache_timestamp", 0)
+        return cache_age < 1800  # 30 minutes
 
     def get_tracking_summary(self) -> Dict[str, Any]:
         """Get summary of Git tracking."""
