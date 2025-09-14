@@ -173,7 +173,7 @@ def read_checkpoint(path: Union[str, Path]) -> Dict[str, torch.Tensor]:
 
     try:
         # Load checkpoint to CPU
-        checkpoint = torch.load(path, map_location="cpu")
+        checkpoint = torch.load(path, map_location="cpu", weights_only=False)
 
         # Handle different checkpoint formats
         if isinstance(checkpoint, dict):
@@ -207,7 +207,7 @@ def read_reward_head(dir_path: Union[str, Path]) -> Callable[[List[str]], List[f
 
     try:
         # Load model to CPU
-        model = torch.load(model_path, map_location="cpu")
+        model = torch.load(model_path, map_location="cpu", weights_only=False)
 
         # Create model-dependent scoring function
         def score_prompts(prompts: List[str]) -> List[float]:
