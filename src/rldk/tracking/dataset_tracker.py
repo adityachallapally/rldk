@@ -88,14 +88,12 @@ class DatasetTracker:
         Synchronous version of track_dataset for backward compatibility.
         """
         try:
-            loop = asyncio.get_event_loop()
+            asyncio.get_running_loop()
+            raise RuntimeError("Cannot run async method from within async context")
         except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        return loop.run_until_complete(
-            self.track_dataset_async(dataset, name, metadata)
-        )
+            return asyncio.run(
+                self.track_dataset_async(dataset, name, metadata)
+            )
 
     async def _track_dataset_internal(
         self,
@@ -137,7 +135,7 @@ class DatasetTracker:
 
     async def _track_file_dataset_async(self, dataset_path: Union[str, Path], progress_callback=None) -> Dict[str, Any]:
         """Async version of file dataset tracking."""
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             None, self._track_file_dataset, dataset_path
         )
 
@@ -278,7 +276,7 @@ class DatasetTracker:
         if progress_callback:
             progress_callback("Computing generic dataset checksum...")
 
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             None, self._track_generic_dataset, dataset
         )
 
@@ -351,25 +349,42 @@ class DatasetTracker:
 
             return await self._compute_large_dataset_checksum_mp(dataset, sample_size, progress_callback)
         else:
-            return await asyncio.get_event_loop().run_in_executor(
+            return await asyncio.get_running_loop().run_in_executor(
                 None, self._compute_dataset_checksum, dataset
             )
 
     async def _compute_large_dataset_checksum_mp(self, dataset, sample_size: int, progress_callback=None) -> str:
-        """Compute checksum for large datasets using multiprocessing."""
+        """Compute checksum for large datasets using multiprocessing with resource management."""
+        import psutil
+        import os
+        
         try:
             step = max(1, len(dataset) // sample_size)
             sample_indices = list(range(0, len(dataset), step))[:sample_size]
 
-            num_workers = min(mp.cpu_count(), 4)  # Limit workers to avoid memory issues
+            available_memory_gb = psutil.virtual_memory().available / (1024**3)
+            max_workers_by_memory = max(1, int(available_memory_gb / 0.5))  # 0.5GB per worker
+            max_workers_by_cpu = min(mp.cpu_count(), 4)
+            num_workers = min(max_workers_by_memory, max_workers_by_cpu)
+            
+            if available_memory_gb < 1.0:
+                if progress_callback:
+                    progress_callback(f"Low memory ({available_memory_gb:.1f}GB), using single-threaded processing")
+                return await asyncio.get_running_loop().run_in_executor(
+                    None, self._compute_dataset_checksum, dataset
+                )
+
             chunk_size = max(1, len(sample_indices) // num_workers)
             index_chunks = [sample_indices[i:i + chunk_size] for i in range(0, len(sample_indices), chunk_size)]
 
             if progress_callback:
-                progress_callback(f"Processing {len(sample_indices)} samples using {num_workers} workers")
+                progress_callback(f"Processing {len(sample_indices)} samples using {num_workers} workers (Memory: {available_memory_gb:.1f}GB)")
 
-            with ProcessPoolExecutor(max_workers=num_workers) as executor:
+            executor = None
+            try:
+                executor = ProcessPoolExecutor(max_workers=num_workers)
                 tasks = []
+                
                 for chunk in index_chunks:
                     chunk_samples = []
                     for idx in chunk:
@@ -380,24 +395,36 @@ class DatasetTracker:
                             continue  # Skip problematic samples
 
                     if chunk_samples:
-                        task = asyncio.get_event_loop().run_in_executor(
+                        task = asyncio.get_running_loop().run_in_executor(
                             executor, self._hash_sample_chunk, chunk_samples, self.algorithm
                         )
                         tasks.append(task)
 
-                chunk_hashes = await asyncio.gather(*tasks)
+                timeout = 60  # 60 seconds timeout
+                chunk_hashes = await asyncio.wait_for(asyncio.gather(*tasks), timeout=timeout)
 
-            final_hash = hashlib.new(self.algorithm)
-            for chunk_hash in chunk_hashes:
-                final_hash.update(chunk_hash.encode())
+                final_hash = hashlib.new(self.algorithm)
+                for chunk_hash in chunk_hashes:
+                    final_hash.update(chunk_hash.encode())
 
-            return final_hash.hexdigest()
+                return final_hash.hexdigest()
+                
+            finally:
+                if executor:
+                    executor.shutdown(wait=True)
 
+        except (asyncio.TimeoutError, MemoryError, OSError) as e:
+            if progress_callback:
+                progress_callback(f"Multiprocessing failed ({type(e).__name__}), falling back to single-threaded")
+            # Fallback to single-threaded processing
+            return await asyncio.get_running_loop().run_in_executor(
+                None, self._compute_dataset_checksum, dataset
+            )
         except Exception as e:
             if progress_callback:
                 progress_callback(f"Multiprocessing failed, falling back to single-threaded: {str(e)}")
             # Fallback to single-threaded processing
-            return await asyncio.get_event_loop().run_in_executor(
+            return await asyncio.get_running_loop().run_in_executor(
                 None, self._compute_dataset_checksum, dataset
             )
 
@@ -452,7 +479,7 @@ class DatasetTracker:
             if progress_callback:
                 progress_callback(f"Large PyTorch dataset, sampling {sample_size} items")
 
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             None, self._compute_torch_dataset_checksum, dataset
         )
 
@@ -500,7 +527,7 @@ class DatasetTracker:
             if progress_callback:
                 progress_callback(f"Large NumPy array ({dataset.size} elements), using sampling")
 
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             None, self._compute_numpy_checksum, dataset
         )
 
@@ -533,7 +560,7 @@ class DatasetTracker:
             if progress_callback:
                 progress_callback(f"Large DataFrame ({len(dataset)} rows), using sampling")
 
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             None, self._compute_pandas_checksum, dataset
         )
 

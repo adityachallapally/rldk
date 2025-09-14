@@ -137,7 +137,7 @@ class EnvironmentTracker:
 
     async def _capture_conda_environment_async(self) -> Dict[str, Any]:
         """Async version of conda environment capture."""
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             None, self._capture_conda_environment
         )
 
@@ -166,7 +166,7 @@ class EnvironmentTracker:
 
     async def _capture_pip_environment_async(self) -> Dict[str, Any]:
         """Async version of pip environment capture."""
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             None, self._capture_pip_environment
         )
 
@@ -194,7 +194,7 @@ class EnvironmentTracker:
 
     async def _capture_system_info_async(self) -> Dict[str, Any]:
         """Async version of system info capture."""
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             None, self._capture_system_info
         )
 
@@ -213,7 +213,7 @@ class EnvironmentTracker:
 
     async def _capture_ml_frameworks_async(self) -> Dict[str, Any]:
         """Async version of ML frameworks capture."""
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             None, self._capture_ml_frameworks
         )
 

@@ -5,6 +5,7 @@ Caching infrastructure for tracking system performance optimization.
 import asyncio
 import hashlib
 import pickle
+import threading
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -19,6 +20,7 @@ class TrackingCache:
         self.max_memory_mb = max_memory_mb
         self._memory_cache: Dict[str, Dict[str, Any]] = {}
         self._cache_stats = {"hits": 0, "misses": 0, "evictions": 0}
+        self._lock = threading.RLock()  # Reentrant lock for thread safety
 
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -63,84 +65,88 @@ class TrackingCache:
             self._cache_stats["evictions"] += 1
 
     def get(self, key: str) -> Optional[Any]:
-        """Get value from cache (sync version)."""
-        self._evict_expired()
+        """Get value from cache (sync version) with thread safety."""
+        with self._lock:
+            self._evict_expired()
 
-        cache_key = self._get_cache_key(key)
+            cache_key = self._get_cache_key(key)
 
-        if cache_key in self._memory_cache:
-            entry = self._memory_cache[cache_key]
-            if not self._is_expired(entry["timestamp"]):
-                self._cache_stats["hits"] += 1
-                entry["timestamp"] = time.time()
-                return entry["data"]
-            else:
-                del self._memory_cache[cache_key]
-
-        cache_file = self.cache_dir / f"{cache_key}.cache"
-        if cache_file.exists():
-            try:
-                with open(cache_file, 'rb') as f:
-                    entry = pickle.load(f)
-
+            if cache_key in self._memory_cache:
+                entry = self._memory_cache[cache_key]
                 if not self._is_expired(entry["timestamp"]):
-                    self._memory_cache[cache_key] = entry
-                    self._evict_lru()  # Manage memory
                     self._cache_stats["hits"] += 1
+                    entry["timestamp"] = time.time()
                     return entry["data"]
                 else:
-                    cache_file.unlink()
-            except Exception:
-                if cache_file.exists():
-                    cache_file.unlink()
+                    del self._memory_cache[cache_key]
 
-        self._cache_stats["misses"] += 1
-        return None
+            cache_file = self.cache_dir / f"{cache_key}.cache"
+            if cache_file.exists():
+                try:
+                    with open(cache_file, 'rb') as f:
+                        entry = pickle.load(f)
+
+                    if not self._is_expired(entry["timestamp"]):
+                        self._memory_cache[cache_key] = entry
+                        self._evict_lru()  # Manage memory
+                        self._cache_stats["hits"] += 1
+                        return entry["data"]
+                    else:
+                        cache_file.unlink()
+                except Exception:
+                    if cache_file.exists():
+                        cache_file.unlink()
+
+            self._cache_stats["misses"] += 1
+            return None
 
     async def get_async(self, key: str) -> Optional[Any]:
         """Get value from cache (async version)."""
-        return await asyncio.get_event_loop().run_in_executor(None, self.get, key)
+        return await asyncio.get_running_loop().run_in_executor(None, self.get, key)
 
     def set(self, key: str, value: Any) -> None:
-        """Set value in cache (sync version)."""
-        cache_key = self._get_cache_key(key)
-        entry = {
-            "data": value,
-            "timestamp": time.time()
-        }
+        """Set value in cache (sync version) with thread safety."""
+        with self._lock:
+            cache_key = self._get_cache_key(key)
+            entry = {
+                "data": value,
+                "timestamp": time.time()
+            }
 
-        self._memory_cache[cache_key] = entry
-        self._evict_lru()  # Manage memory
+            self._memory_cache[cache_key] = entry
+            self._evict_lru()  # Manage memory
 
-        cache_file = self.cache_dir / f"{cache_key}.cache"
-        try:
-            with open(cache_file, 'wb') as f:
-                pickle.dump(entry, f)
-        except Exception:
-            pass  # Disk cache is optional
+            cache_file = self.cache_dir / f"{cache_key}.cache"
+            try:
+                with open(cache_file, 'wb') as f:
+                    pickle.dump(entry, f)
+            except Exception:
+                pass  # Disk cache is optional
 
     async def set_async(self, key: str, value: Any) -> None:
         """Set value in cache (async version)."""
-        await asyncio.get_event_loop().run_in_executor(None, self.set, key, value)
+        await asyncio.get_running_loop().run_in_executor(None, self.set, key, value)
 
     def clear(self) -> None:
-        """Clear all cache entries."""
-        self._memory_cache.clear()
+        """Clear all cache entries with thread safety."""
+        with self._lock:
+            self._memory_cache.clear()
 
-        for cache_file in self.cache_dir.glob("*.cache"):
-            try:
-                cache_file.unlink()
-            except Exception:
-                pass
+            for cache_file in self.cache_dir.glob("*.cache"):
+                try:
+                    cache_file.unlink()
+                except Exception:
+                    pass
 
     def get_stats(self) -> Dict[str, Any]:
-        """Get cache statistics."""
-        return {
-            **self._cache_stats,
-            "memory_entries": len(self._memory_cache),
-            "estimated_memory_mb": self._estimate_memory_usage(),
-            "disk_entries": len(list(self.cache_dir.glob("*.cache")))
-        }
+        """Get cache statistics with thread safety."""
+        with self._lock:
+            return {
+                **self._cache_stats,
+                "memory_entries": len(self._memory_cache),
+                "estimated_memory_mb": self._estimate_memory_usage(),
+                "disk_entries": len(list(self.cache_dir.glob("*.cache")))
+            }
 
 
 class ProgressIndicator:

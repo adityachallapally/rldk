@@ -106,14 +106,12 @@ class ModelTracker:
         Synchronous version of track_model for backward compatibility.
         """
         try:
-            loop = asyncio.get_event_loop()
+            asyncio.get_running_loop()
+            raise RuntimeError("Cannot run async method from within async context")
         except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        return loop.run_until_complete(
-            self.track_model_async(model, name, metadata, save_architecture, save_weights)
-        )
+            return asyncio.run(
+                self.track_model_async(model, name, metadata, save_architecture, save_weights)
+            )
 
     async def _track_model_internal(
         self,
@@ -216,7 +214,7 @@ class ModelTracker:
 
     async def _get_model_architecture_info_async(self, model, progress_callback=None) -> Dict[str, Any]:
         """Async version of model architecture info extraction."""
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             None, self._get_model_architecture_info, model
         )
 
@@ -270,7 +268,7 @@ class ModelTracker:
 
     async def _compute_architecture_checksum_async(self, model, progress_callback=None) -> str:
         """Async version of architecture checksum computation."""
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             None, self._compute_architecture_checksum, model
         )
 
@@ -297,7 +295,7 @@ class ModelTracker:
 
     async def _compute_weights_checksum_async(self, model, progress_callback=None) -> str:
         """Async version of weights checksum computation."""
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             None, self._compute_weights_checksum, model
         )
 

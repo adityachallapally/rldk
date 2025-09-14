@@ -163,7 +163,7 @@ class GitTracker:
 
     async def _capture_commit_info_async(self) -> Dict[str, Any]:
         """Async version of commit info capture."""
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             None, self._capture_commit_info
         )
 
@@ -269,7 +269,7 @@ class GitTracker:
 
     async def _capture_diff_info_async(self) -> Dict[str, Any]:
         """Async version of diff info capture."""
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             None, self._capture_diff_info
         )
 
@@ -337,7 +337,7 @@ class GitTracker:
 
     async def _capture_status_info_async(self) -> Dict[str, Any]:
         """Async version of status info capture."""
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             None, self._capture_status_info
         )
 
@@ -381,7 +381,7 @@ class GitTracker:
 
     async def _capture_remote_info_async(self) -> Dict[str, Any]:
         """Async version of remote info capture."""
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             None, self._capture_remote_info
         )
 

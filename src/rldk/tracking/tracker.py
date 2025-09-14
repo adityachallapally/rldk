@@ -142,8 +142,7 @@ class ExperimentTracker:
     async def _capture_seeds_safe(self) -> Dict[str, Any]:
         """Safely capture seed state with error handling."""
         try:
-            loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(
+            return await asyncio.get_running_loop().run_in_executor(
                 None, 
                 lambda: self.seed_tracker.capture_seeds(
                     track_python=self.config.track_python_seed,
@@ -162,15 +161,10 @@ class ExperimentTracker:
         if self.config.enable_async_init:
             # Use async version if enabled
             try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    return self._start_experiment_sync()
-                else:
-                    return loop.run_until_complete(self.start_experiment_async())
+                asyncio.get_running_loop()
+                return self._start_experiment_sync()
             except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                return loop.run_until_complete(self.start_experiment_async())
+                return asyncio.run(self.start_experiment_async())
         else:
             print(f"Starting experiment: {self.experiment_name} (ID: {self.experiment_id})")
 
@@ -372,17 +366,10 @@ class ExperimentTracker:
         if self.config.enable_async_init:
             # Use async version if enabled
             try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    return self._track_model_sync(model, name, metadata, save_architecture, save_weights)
-                else:
-                    return loop.run_until_complete(
-                        self.track_model_async(model, name, metadata, save_architecture, save_weights)
-                    )
+                asyncio.get_running_loop()
+                return self._track_model_sync(model, name, metadata, save_architecture, save_weights)
             except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                return loop.run_until_complete(
+                return asyncio.run(
                     self.track_model_async(model, name, metadata, save_architecture, save_weights)
                 )
         else:
