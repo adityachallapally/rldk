@@ -41,7 +41,8 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.10", "3.11"]
-    
+    env:
+      RLDK_DISABLE_LAZY_LOADING: true
     steps:
     - uses: actions/checkout@v4
     
