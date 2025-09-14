@@ -12,6 +12,7 @@ import pandas as pd
 from rldk.ingest import ingest_runs, ingest_runs_to_events
 from rldk.diff import first_divergence
 from rldk.determinism.check import check
+from rldk.determinism.runner import run_deterministic_command
 from rldk.bisect import bisect_commits
 from rldk.io import write_json, generate_reward_health_report
 from rldk.reward import health
@@ -24,8 +25,9 @@ from rldk.utils.error_handling import (
     format_error_message, log_error_with_context, validate_file_path,
     validate_data_format, validate_required_fields, validate_adapter_source,
     print_usage_examples, print_troubleshooting_tips, check_dependencies,
-    with_retry, with_timeout, handle_graceful_degradation, safe_operation
+    with_retry, handle_graceful_degradation, safe_operation
 )
+from rldk.utils.runtime import with_timeout
 from rldk.utils.progress import (
     progress_bar, spinner, timed_operation, timed_operation_context, print_operation_status
 )

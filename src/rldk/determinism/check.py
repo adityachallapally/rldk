@@ -12,6 +12,7 @@ import pandas as pd
 import numpy as np
 
 from ..io import read_metrics_jsonl
+from .runner import run_deterministic_command
 
 
 def _deduplicate_deterministic(items: List[str]) -> List[str]:
@@ -234,87 +235,13 @@ def _get_deterministic_env(device: str) -> Dict[str, str]:
 def _run_deterministic_cmd(
     cmd: str, env: Dict[str, str], replica_id: int
 ) -> subprocess.CompletedProcess:
-    """Run a command with deterministic settings."""
-    # Create temporary output file
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
-        output_file = f.name
-
-    # Check if command already has --output
-    if "--output" in cmd:
-        # Command already specifies output, don't modify it
-        modified_cmd = cmd
-    else:
-        # Check if RLDK_METRICS_PATH is set in environment
-        if "RLDK_METRICS_PATH" in env:
-            # Export the path for user code to use
-            env["RLDK_METRICS_PATH"] = output_file
-            modified_cmd = cmd
-        else:
-            # Fallback: append --output (but this may break some commands)
-            modified_cmd = f"{cmd} --output {output_file}"
-
-    # Always wrap command to set deterministic environment and seeds
-    # This ensures seeds are set even on CPU-only runs
-    deterministic_wrapper = f"""
-        import torch
-        import random
-        import numpy as np
-        import os
-
-        # Always set seeds regardless of device
-        random.seed(42 + {replica_id})
-        np.random.seed(42 + {replica_id})
-        torch.manual_seed(42 + {replica_id})
-
-        # Set deterministic algorithms
-        torch.use_deterministic_algorithms(True)
-
-        # Set CUDA-specific settings only if CUDA is available
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed(42 + {replica_id})
-            torch.cuda.manual_seed_all(42 + {replica_id})
-            torch.backends.cudnn.deterministic = True
-            torch.backends.cudnn.benchmark = False
-            torch.backends.cuda.matmul.allow_tf32 = False
-            torch.backends.cudnn.allow_tf32 = False
-
-        # Execute the original command
-        exec('''{modified_cmd}''')
-        """
-    modified_cmd = f'python -c "{deterministic_wrapper}"'
-
-    try:
-        # Run the command
-        result = subprocess.run(
-            modified_cmd,
-            shell=True,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=300,  # 5 minute timeout
-        )
-
-        # Read output file if it exists
-        if Path(output_file).exists():
-            try:
-                df = read_metrics_jsonl(output_file)
-                result.metrics_df = df
-            except Exception as e:
-                print(f"Warning: Could not read metrics from {output_file}: {e}")
-                result.metrics_df = pd.DataFrame()
-        else:
-            result.metrics_df = pd.DataFrame()
-
-        result.output_file = output_file
-
-    except subprocess.TimeoutExpired:
-        result = subprocess.CompletedProcess(
-            args=modified_cmd, returncode=-1, stdout="", stderr="Command timed out"
-        )
-        result.metrics_df = pd.DataFrame()
-        result.output_file = output_file
-
-    return result
+    """Run a command with deterministic settings using the unified runner."""
+    return run_deterministic_command(
+        cmd=cmd,
+        env=env,
+        timeout_seconds=300,  # 5 minute timeout
+        replica_id=replica_id
+    )
 
 
 def _compare_replicas(
