@@ -95,6 +95,9 @@ def ingest_runs_to_events(*args, **kwargs):
     return ingest_runs_to_events_func(*args, **kwargs)
 
 def first_divergence(*args, **kwargs):
+    if DISABLE_LAZY_LOADING:
+        from .diff import first_divergence as first_divergence_func
+        return first_divergence_func(*args, **kwargs)
     first_divergence_func, _ = _lazy_import_diff()
     return first_divergence_func(*args, **kwargs)
 
