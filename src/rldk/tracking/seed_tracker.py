@@ -221,7 +221,7 @@ class SeedTracker:
             return output_path
         except Exception as e:
             logger.error(f"Failed to save seed state to {output_path}: {str(e)}")
-            raise RuntimeError(f"Failed to save seed state to {output_path}: {str(e)}")
+            raise RuntimeError(f"Failed to save seed state to {output_path}: {str(e)}") from e
 
     def load_seed_state(self, input_path: str) -> Dict[str, Any]:
         """Load seed state from file and restore it."""
@@ -278,15 +278,15 @@ class SeedTracker:
             logger.info(f"Seed state loaded successfully from {input_path}")
             return seed_state
 
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             logger.error(f"Seed state file not found: {input_path}")
-            raise FileNotFoundError(f"Seed state file not found: {input_path}")
+            raise FileNotFoundError(f"Seed state file not found: {input_path}") from e
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in seed state file: {str(e)}")
-            raise ValueError(f"Invalid JSON in seed state file: {str(e)}")
+            raise ValueError(f"Invalid JSON in seed state file: {str(e)}") from e
         except Exception as e:
             logger.error(f"Failed to load seed state from {input_path}: {str(e)}")
-            raise RuntimeError(f"Failed to load seed state from {input_path}: {str(e)}")
+            raise RuntimeError(f"Failed to load seed state from {input_path}: {str(e)}") from e
 
     def _compute_seed_checksum(self, seeds: Dict[str, Any]) -> str:
         """Compute checksum of seed information."""
