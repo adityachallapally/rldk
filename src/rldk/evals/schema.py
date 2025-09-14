@@ -169,9 +169,10 @@ def validate_eval_input(
     
     if missing_required:
         error_msg = f"Missing required columns: {', '.join(missing_required)}"
-        if "output" in missing_required:
+        missing_cols = [col_spec.name for col_spec in schema.required_columns if col_spec.name not in data.columns]
+        if "output" in missing_cols:
             error_msg += ". Provide one of: output, response, completion, text"
-        elif "step" in missing_required:
+        elif "step" in missing_cols:
             error_msg += ". Provide one of: step, global_step, iteration, epoch"
         raise ValueError(error_msg)
     
@@ -193,7 +194,7 @@ def validate_eval_input(
             try:
                 if col_spec.dtype == "numeric":
                     # Try to convert to numeric, keeping original if fails
-                    pd.to_numeric(data[col_spec.name], errors='raise')
+                    data[col_spec.name] = pd.to_numeric(data[col_spec.name], errors='raise')
                 elif col_spec.dtype == "text":
                     # Ensure it's string-like
                     data[col_spec.name] = data[col_spec.name].astype(str)

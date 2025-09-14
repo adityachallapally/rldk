@@ -8,7 +8,8 @@ data requirements and shows how to handle missing columns gracefully.
 
 import pandas as pd
 import numpy as np
-from rldk.evals import run, validate_eval_input, get_schema_for_suite
+from rldk.evals import run
+from rldk.evals.schema import validate_eval_input, get_schema_for_suite
 
 
 def create_sample_data():
