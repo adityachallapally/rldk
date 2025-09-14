@@ -100,7 +100,20 @@ profile = "black"
 multi_line_output = 3
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+exclude = ["build", "dist", ".venv", ".git", "*.sh", "tools/*.sh", "Makefile", "*.mk"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "T20"]
+ignore = ["E501", "B008", "B904", "T201"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["rldk"]
+force-sort-within-sections = true
