@@ -12,7 +12,6 @@ import pandas as pd
 from rldk.ingest import ingest_runs, ingest_runs_to_events
 from rldk.diff import first_divergence
 from rldk.determinism.check import check
-from rldk.determinism.runner import run_deterministic_command
 from rldk.bisect import bisect_commits
 from rldk.io import write_json, generate_reward_health_report
 from rldk.reward import health
@@ -21,15 +20,14 @@ from rldk.replay import replay
 from rldk.tracking import ExperimentTracker, TrackingConfig
 from rldk.config import settings
 from rldk.utils.error_handling import (
-    RLDKError, ValidationError, AdapterError, EvaluationError, RLDKTimeoutError,
+    EvaluationError, RLDKTimeoutError,
     format_error_message, log_error_with_context, validate_file_path,
-    validate_data_format, validate_required_fields, validate_adapter_source,
-    print_usage_examples, print_troubleshooting_tips, check_dependencies,
-    with_retry, handle_graceful_degradation, safe_operation
+    validate_adapter_source,
+    print_usage_examples, print_troubleshooting_tips
 )
 from rldk.utils.runtime import with_timeout
 from rldk.utils.progress import (
-    progress_bar, spinner, timed_operation, timed_operation_context, print_operation_status
+    timed_operation_context, print_operation_status
 )
 
 # Import card generation modules
@@ -43,6 +41,7 @@ from rldk.cards import (
 from rldk.forensics.ckpt_diff import diff_checkpoints
 from rldk.forensics.env_audit import audit_environment
 from rldk.forensics.log_scan import scan_logs
+from rldk.utils.error_handling import ValidationError, AdapterError
 from rldk.io import write_json as write_json_report, write_png, mkdir_reports, validate
 from rldk.io import DeterminismCardV1, PPOScanReportV1, CkptDiffReportV1, RewardDriftReportV1
 
@@ -92,19 +91,60 @@ app.add_typer(evals_app, name="evals")
 
 @forensics_app.command(name="compare-runs")
 def forensics_compare_runs(
-    run_a: str = typer.Argument(..., help="Path to first run directory"),
-    run_b: str = typer.Argument(..., help="Path to second run directory"),
+    run_a: str = typer.Argument(..., help="Path to first run directory or file"),
+    run_b: str = typer.Argument(..., help="Path to second run directory or file"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed format detection info"),
 ):
-    """Compare two training runs and identify divergences."""
+    """Compare two training runs and identify divergences.
+    
+    Supports multiple formats: JSONL, CSV, JSON, Parquet files or directories.
+    Automatically detects format and handles field mapping for common RL frameworks.
+    """
     try:
         ensure_config_initialized()
         typer.echo("Comparing runs:")
         typer.echo(f"  Run A: {run_a}")
         typer.echo(f"  Run B: {run_b}")
 
-        # Scan both runs
-        scan_a = scan_logs(run_a)
-        scan_b = scan_logs(run_b)
+        if verbose:
+            typer.echo("\nDetecting formats...")
+
+        # Scan both runs with enhanced error handling
+        try:
+            scan_a = scan_logs(run_a)
+            if verbose:
+                typer.echo(f"  Run A: Successfully loaded {len(scan_a.get('rules_fired', []))} anomaly rules")
+        except (ValidationError, AdapterError) as e:
+            typer.echo(f"Error loading Run A - Format/Validation issue: {e}", err=True)
+            typer.echo("Check that data contains required RL fields like 'step', 'reward'")
+            raise typer.Exit(1)
+        except (FileNotFoundError, PermissionError) as e:
+            typer.echo(f"Error loading Run A - File access issue: {e}", err=True)
+            typer.echo("Ensure the path exists and is accessible")
+            raise typer.Exit(1)
+        except Exception as e:
+            typer.echo(f"Error loading Run A: {e}", err=True)
+            typer.echo("Supported formats: JSONL, CSV, JSON, Parquet files or directories")
+            typer.echo("Use --verbose flag for detailed format detection info")
+            raise typer.Exit(1)
+
+        try:
+            scan_b = scan_logs(run_b)
+            if verbose:
+                typer.echo(f"  Run B: Successfully loaded {len(scan_b.get('rules_fired', []))} anomaly rules")
+        except (ValidationError, AdapterError) as e:
+            typer.echo(f"Error loading Run B - Format/Validation issue: {e}", err=True)
+            typer.echo("Check that data contains required RL fields like 'step', 'reward'")
+            raise typer.Exit(1)
+        except (FileNotFoundError, PermissionError) as e:
+            typer.echo(f"Error loading Run B - File access issue: {e}", err=True)
+            typer.echo("Ensure the path exists and is accessible")
+            raise typer.Exit(1)
+        except Exception as e:
+            typer.echo(f"Error loading Run B: {e}", err=True)
+            typer.echo("Supported formats: JSONL, CSV, JSON, Parquet files or directories")
+            typer.echo("Use --verbose flag for detailed format detection info")
+            raise typer.Exit(1)
 
         # Create comparison report
         comparison = {
@@ -112,6 +152,10 @@ def forensics_compare_runs(
             "run_a": {"path": run_a, "anomalies": scan_a.get("rules_fired", [])},
             "run_b": {"path": run_b, "anomalies": scan_b.get("rules_fired", [])},
             "earliest_divergent_step": None,
+            "format_info": {
+                "run_a_stats": scan_a.get("stats", {}),
+                "run_b_stats": scan_b.get("stats", {})
+            }
         }
 
         # Find earliest divergent step if both have step data
@@ -139,8 +183,21 @@ def forensics_compare_runs(
                 f"Earliest divergent step: {comparison['earliest_divergent_step']}"
             )
 
+        if verbose and comparison["format_info"]:
+            typer.echo("\nFormat Statistics:")
+            for run_name, stats in [("Run A", scan_a.get("stats", {})), ("Run B", scan_b.get("stats", {}))]:
+                if stats:
+                    typer.echo(f"  {run_name}:")
+                    for key, value in stats.items():
+                        typer.echo(f"    {key}: {value}")
+
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
+        typer.echo("\nTroubleshooting:")
+        typer.echo("- Ensure paths exist and are accessible")
+        typer.echo("- Check that data contains RL training metrics")
+        typer.echo("- Use --verbose flag for detailed format detection info")
+        typer.echo("- Supported formats: JSONL, CSV, JSON, Parquet")
         raise typer.Exit(1)
 
 
@@ -839,7 +896,7 @@ def evaluate(
         print_operation_status("Evaluation", "success", 
                              f"{summary['successful_evaluations']}/{summary['total_evaluations']} successful")
         
-        typer.echo(f"\n📊 Evaluation Results:")
+        typer.echo("\n📊 Evaluation Results:")
         typer.echo(f"  Suite: {suite}")
         typer.echo(f"  Samples: {len(data)}")
         typer.echo(f"  Successful: {summary['successful_evaluations']}")
@@ -847,7 +904,7 @@ def evaluate(
         typer.echo(f"  Overall Score: {summary['overall_score']:.3f}")
         
         if summary["errors"]:
-            typer.echo(f"\n⚠️  Failed Evaluations:")
+            typer.echo("\n⚠️  Failed Evaluations:")
             for error in summary["errors"]:
                 typer.echo(f"  - {error['evaluation']}: {error['error']}")
         
@@ -928,7 +985,7 @@ def validate_data(
         logging.info(f"Validating {input_file}")
         data = load_jsonl_data(input_file)
         
-        print(f"File validation results:")
+        print("File validation results:")
         print(f"  Total records: {len(data)}")
         print(f"  Columns: {list(data.columns)}")
         
@@ -1158,7 +1215,7 @@ def ingest(
                 ) from e
 
         # Display summary
-        typer.echo(f"\n📊 Ingestion Summary:")
+        typer.echo("\n📊 Ingestion Summary:")
         typer.echo(f"  Records: {len(df)}")
         typer.echo(f"  Columns: {', '.join(df.columns)}")
         if not df.empty and 'step' in df.columns:
@@ -1854,7 +1911,7 @@ def track(
         # Actually start the experiment tracking
         tracking_data = tracker.start_experiment()
         
-        typer.echo(f"✅ Experiment tracking started successfully")
+        typer.echo("✅ Experiment tracking started successfully")
         typer.echo(f"  Experiment: {experiment_name}")
         typer.echo(f"  Experiment ID: {tracking_data['experiment_id']}")
         typer.echo(f"  Output directory: {output_dir}")
@@ -1975,7 +2032,7 @@ def validate_format(
     # Analyze the source
     analysis = _analyze_source_format(source)
     
-    typer.echo(f"📊 Analysis results:")
+    typer.echo("📊 Analysis results:")
     typer.echo(f"  Type: {analysis['description']}")
     
     if analysis.get('files'):
@@ -2021,7 +2078,7 @@ def validate_format(
             typer.echo(f"❌ Error testing adapter: {e}")
     else:
         # Suggest adapters
-        typer.echo(f"\n💡 Adapter suggestions:")
+        typer.echo("\n💡 Adapter suggestions:")
         
         if analysis['type'] == 'jsonl':
             fields = analysis.get('fields_found', [])
@@ -2038,7 +2095,7 @@ def validate_format(
             typer.echo("  - openrlhf (for directories with log files)")
             typer.echo("  - custom_jsonl (for directories with custom JSONL files)")
         
-        typer.echo(f"\n💡 Use 'rldk format-info --adapter <name>' for detailed format requirements")
+        typer.echo("\n💡 Use 'rldk format-info --adapter <name>' for detailed format requirements")
         typer.echo(f"💡 Use 'rldk validate-format {source} --adapter <name>' to test specific adapter")
 
 
