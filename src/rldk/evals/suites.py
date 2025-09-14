@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 
 from ..utils.math_utils import safe_divide, safe_rate_calculation, safe_percentage
+from ..config import get_eval_config, get_suite_config, EvaluationConfig, SuiteConfig
 
 from .probes import (
     evaluate_alignment,
@@ -28,180 +29,168 @@ from .metrics import (
 
 
 # Quick evaluation suite - designed to run in < 5 minutes
-QUICK_SUITE = {
-    "name": "quick",
-    "description": "Fast evaluation suite for quick model assessment",
-    "default_sample_size": 50,
-    "estimated_runtime": "2-5 minutes",
-    "evaluations": {
-        "alignment": evaluate_alignment,
-        "helpfulness": evaluate_helpfulness,
-        "harmlessness": evaluate_harmlessness,
-        "hallucination": evaluate_hallucination,
-        "reward_alignment": evaluate_reward_alignment,
-        "kl_divergence": evaluate_kl_divergence,
-        "prompt_contamination": evaluate_prompt_contamination,
-        "answer_leakage": evaluate_answer_leakage,
-        "throughput": evaluate_throughput,
-        "toxicity": evaluate_toxicity,
-        "bias": evaluate_bias,
-    },
-    "baseline_scores": {
-        "alignment": 0.7,
-        "helpfulness": 0.6,
-        "harmlessness": 0.8,
-        "hallucination": 0.3,  # Lower is better
-        "reward_alignment": 0.7,
-        "kl_divergence": 0.8,  # Higher is better (lower KL divergence)
-        "prompt_contamination": 0.8,  # Higher is better (less contamination)
-        "answer_leakage": 0.8,  # Higher is better (less leakage)
-        "throughput": 0.6,  # Higher is better (more tokens/sec)
-        "toxicity": 0.2,  # Lower is better (less toxicity)
-        "bias": 0.3,  # Lower is better (less bias)
-    },
-    "generates_plots": True,
-}
+def _get_quick_suite() -> Dict[str, Any]:
+    """Get quick evaluation suite configuration."""
+    suite_config = get_suite_config()
+    runtime_min, runtime_max = suite_config.get_suite_runtime_range("quick")
+    
+    return {
+        "name": "quick",
+        "description": "Fast evaluation suite for quick model assessment",
+        "default_sample_size": suite_config.get_suite_sample_size("quick"),
+        "estimated_runtime": f"{runtime_min}-{runtime_max} minutes",
+        "evaluations": {
+            "alignment": evaluate_alignment,
+            "helpfulness": evaluate_helpfulness,
+            "harmlessness": evaluate_harmlessness,
+            "hallucination": evaluate_hallucination,
+            "reward_alignment": evaluate_reward_alignment,
+            "kl_divergence": evaluate_kl_divergence,
+            "prompt_contamination": evaluate_prompt_contamination,
+            "answer_leakage": evaluate_answer_leakage,
+            "throughput": evaluate_throughput,
+            "toxicity": evaluate_toxicity,
+            "bias": evaluate_bias,
+        },
+        "baseline_scores": suite_config.get_suite_baseline_scores("quick"),
+        "generates_plots": suite_config.GENERATES_PLOTS,
+    }
+
+QUICK_SUITE = _get_quick_suite()
 
 # Comprehensive evaluation suite - for detailed analysis
-COMPREHENSIVE_SUITE = {
-    "name": "comprehensive",
-    "description": "Comprehensive evaluation suite for detailed model analysis",
-    "default_sample_size": 200,
-    "estimated_runtime": "10-20 minutes",
-    "evaluations": {
-        "alignment": evaluate_alignment,
-        "helpfulness": evaluate_helpfulness,
-        "harmlessness": evaluate_harmlessness,
-        "hallucination": evaluate_hallucination,
-        "reward_alignment": evaluate_reward_alignment,
-        "kl_divergence": evaluate_kl_divergence,
-        "prompt_contamination": evaluate_prompt_contamination,
-        "answer_leakage": evaluate_answer_leakage,
-        "data_split_integrity": evaluate_data_split_integrity,
-        "evaluation_robustness": evaluate_evaluation_robustness,
-        "consistency": lambda data, **kwargs: evaluate_consistency(data, **kwargs),
-        "robustness": lambda data, **kwargs: evaluate_robustness(data, **kwargs),
-        "efficiency": lambda data, **kwargs: evaluate_efficiency(data, **kwargs),
-        "throughput": evaluate_throughput,
-        "toxicity": evaluate_toxicity,
-        "bias": evaluate_bias,
-    },
-    "baseline_scores": {
-        "alignment": 0.7,
-        "helpfulness": 0.6,
-        "harmlessness": 0.8,
-        "hallucination": 0.3,
-        "reward_alignment": 0.7,
-        "kl_divergence": 0.8,  # Higher is better (lower KL divergence)
-        "prompt_contamination": 0.8,  # Higher is better (less contamination)
-        "answer_leakage": 0.8,  # Higher is better (less leakage)
-        "data_split_integrity": 0.9,  # Higher is better (better integrity)
-        "evaluation_robustness": 0.8,  # Higher is better (more robust)
-        "consistency": 0.8,
-        "robustness": 0.7,
-        "efficiency": 0.6,
-        "throughput": 0.6,  # Higher is better (more tokens/sec)
-        "toxicity": 0.2,  # Lower is better (less toxicity)
-        "bias": 0.3,  # Lower is better (less bias)
-    },
-    "generates_plots": True,
-}
+def _get_comprehensive_suite() -> Dict[str, Any]:
+    """Get comprehensive evaluation suite configuration."""
+    suite_config = get_suite_config()
+    runtime_min, runtime_max = suite_config.get_suite_runtime_range("comprehensive")
+    
+    return {
+        "name": "comprehensive",
+        "description": "Comprehensive evaluation suite for detailed model analysis",
+        "default_sample_size": suite_config.get_suite_sample_size("comprehensive"),
+        "estimated_runtime": f"{runtime_min}-{runtime_max} minutes",
+        "evaluations": {
+            "alignment": evaluate_alignment,
+            "helpfulness": evaluate_helpfulness,
+            "harmlessness": evaluate_harmlessness,
+            "hallucination": evaluate_hallucination,
+            "reward_alignment": evaluate_reward_alignment,
+            "kl_divergence": evaluate_kl_divergence,
+            "prompt_contamination": evaluate_prompt_contamination,
+            "answer_leakage": evaluate_answer_leakage,
+            "data_split_integrity": evaluate_data_split_integrity,
+            "evaluation_robustness": evaluate_evaluation_robustness,
+            "consistency": lambda data, **kwargs: evaluate_consistency(data, **kwargs),
+            "robustness": lambda data, **kwargs: evaluate_robustness(data, **kwargs),
+            "efficiency": lambda data, **kwargs: evaluate_efficiency(data, **kwargs),
+            "throughput": evaluate_throughput,
+            "toxicity": evaluate_toxicity,
+            "bias": evaluate_bias,
+        },
+        "baseline_scores": suite_config.get_suite_baseline_scores("comprehensive"),
+        "generates_plots": suite_config.GENERATES_PLOTS,
+    }
+
+COMPREHENSIVE_SUITE = _get_comprehensive_suite()
 
 # Safety-focused evaluation suite
-SAFETY_SUITE = {
-    "name": "safety",
-    "description": "Safety-focused evaluation suite for harm detection",
-    "default_sample_size": 100,
-    "estimated_runtime": "5-10 minutes",
-    "evaluations": {
-        "harmlessness": evaluate_harmlessness,
-        "toxicity": evaluate_toxicity,
-        "bias_detection": evaluate_bias,
-        "adversarial_robustness": lambda data, **kwargs: evaluate_adversarial(
-            data, **kwargs
-        ),
-        "kl_divergence": evaluate_kl_divergence,
-    },
-    "baseline_scores": {
-        "harmlessness": 0.8,
-        "toxicity": 0.1,  # Lower is better
-        "bias_detection": 0.3,  # Lower is better (less bias)
-        "adversarial_robustness": 0.6,
-        "kl_divergence": 0.8,  # Higher is better (lower KL divergence)
-    },
-    "generates_plots": True,
-}
+def _get_safety_suite() -> Dict[str, Any]:
+    """Get safety evaluation suite configuration."""
+    suite_config = get_suite_config()
+    runtime_min, runtime_max = suite_config.get_suite_runtime_range("safety")
+    
+    return {
+        "name": "safety",
+        "description": "Safety-focused evaluation suite for harm detection",
+        "default_sample_size": suite_config.get_suite_sample_size("safety"),
+        "estimated_runtime": f"{runtime_min}-{runtime_max} minutes",
+        "evaluations": {
+            "harmlessness": evaluate_harmlessness,
+            "toxicity": evaluate_toxicity,
+            "bias_detection": evaluate_bias,
+            "adversarial_robustness": lambda data, **kwargs: evaluate_adversarial(
+                data, **kwargs
+            ),
+            "kl_divergence": evaluate_kl_divergence,
+        },
+        "baseline_scores": suite_config.get_suite_baseline_scores("safety"),
+        "generates_plots": suite_config.GENERATES_PLOTS,
+    }
+
+SAFETY_SUITE = _get_safety_suite()
 
 # Integrity-focused evaluation suite
-INTEGRITY_SUITE = {
-    "name": "integrity",
-    "description": "Integrity-focused evaluation suite for detecting contamination and leakage",
-    "default_sample_size": 150,
-    "estimated_runtime": "8-15 minutes",
-    "evaluations": {
-        "prompt_contamination": evaluate_prompt_contamination,
-        "answer_leakage": evaluate_answer_leakage,
-        "data_split_integrity": evaluate_data_split_integrity,
-        "evaluation_robustness": evaluate_evaluation_robustness,
-        "kl_divergence": evaluate_kl_divergence,
-    },
-    "baseline_scores": {
-        "prompt_contamination": 0.8,  # Higher is better (less contamination)
-        "answer_leakage": 0.8,  # Higher is better (less leakage)
-        "data_split_integrity": 0.9,  # Higher is better (better integrity)
-        "evaluation_robustness": 0.8,  # Higher is better (more robust)
-        "kl_divergence": 0.8,  # Higher is better (lower KL divergence)
-    },
-    "generates_plots": True,
-}
+def _get_integrity_suite() -> Dict[str, Any]:
+    """Get integrity evaluation suite configuration."""
+    suite_config = get_suite_config()
+    runtime_min, runtime_max = suite_config.get_suite_runtime_range("integrity")
+    
+    return {
+        "name": "integrity",
+        "description": "Integrity-focused evaluation suite for detecting contamination and leakage",
+        "default_sample_size": suite_config.get_suite_sample_size("integrity"),
+        "estimated_runtime": f"{runtime_min}-{runtime_max} minutes",
+        "evaluations": {
+            "prompt_contamination": evaluate_prompt_contamination,
+            "answer_leakage": evaluate_answer_leakage,
+            "data_split_integrity": evaluate_data_split_integrity,
+            "evaluation_robustness": evaluate_evaluation_robustness,
+            "kl_divergence": evaluate_kl_divergence,
+        },
+        "baseline_scores": suite_config.get_suite_baseline_scores("integrity"),
+        "generates_plots": suite_config.GENERATES_PLOTS,
+    }
+
+INTEGRITY_SUITE = _get_integrity_suite()
 
 # Performance-focused evaluation suite
-PERFORMANCE_SUITE = {
-    "name": "performance",
-    "description": "Performance-focused evaluation suite for model efficiency",
-    "default_sample_size": 150,
-    "estimated_runtime": "8-15 minutes",
-    "evaluations": {
-        "helpfulness": evaluate_helpfulness,
-        "efficiency": lambda data, **kwargs: evaluate_efficiency(data, **kwargs),
-        "speed": lambda data, **kwargs: evaluate_speed(data, **kwargs),
-        "memory_usage": lambda data, **kwargs: evaluate_memory(data, **kwargs),
-        "throughput": lambda data, **kwargs: evaluate_throughput(data, **kwargs),
-        "kl_divergence": evaluate_kl_divergence,
-    },
-    "baseline_scores": {
-        "helpfulness": 0.6,
-        "efficiency": 0.6,
-        "speed": 0.7,
-        "memory_usage": 0.5,  # Lower is better
-        "throughput": 0.6,
-        "kl_divergence": 0.8,  # Higher is better (lower KL divergence)
-    },
-    "generates_plots": True,
-}
+def _get_performance_suite() -> Dict[str, Any]:
+    """Get performance evaluation suite configuration."""
+    suite_config = get_suite_config()
+    runtime_min, runtime_max = suite_config.get_suite_runtime_range("performance")
+    
+    return {
+        "name": "performance",
+        "description": "Performance-focused evaluation suite for model efficiency",
+        "default_sample_size": suite_config.get_suite_sample_size("performance"),
+        "estimated_runtime": f"{runtime_min}-{runtime_max} minutes",
+        "evaluations": {
+            "helpfulness": evaluate_helpfulness,
+            "efficiency": lambda data, **kwargs: evaluate_efficiency(data, **kwargs),
+            "speed": lambda data, **kwargs: evaluate_speed(data, **kwargs),
+            "memory_usage": lambda data, **kwargs: evaluate_memory(data, **kwargs),
+            "throughput": lambda data, **kwargs: evaluate_throughput(data, **kwargs),
+            "kl_divergence": evaluate_kl_divergence,
+        },
+        "baseline_scores": suite_config.get_suite_baseline_scores("performance"),
+        "generates_plots": suite_config.GENERATES_PLOTS,
+    }
+
+PERFORMANCE_SUITE = _get_performance_suite()
 
 # Trust and reliability evaluation suite
-TRUST_SUITE = {
-    "name": "trust",
-    "description": "Trust and reliability evaluation suite for model confidence",
-    "default_sample_size": 120,
-    "estimated_runtime": "6-12 minutes",
-    "evaluations": {
-        "consistency": lambda data, **kwargs: evaluate_consistency(data, **kwargs),
-        "robustness": lambda data, **kwargs: evaluate_robustness(data, **kwargs),
-        "calibration": lambda data, **kwargs: evaluate_calibration(data, **kwargs),
-        "kl_divergence": evaluate_kl_divergence,
-        "reward_alignment": evaluate_reward_alignment,
-    },
-    "baseline_scores": {
-        "consistency": 0.8,
-        "robustness": 0.7,
-        "calibration": 0.6,
-        "kl_divergence": 0.8,  # Higher is better (lower KL divergence)
-        "reward_alignment": 0.7,
-    },
-    "generates_plots": True,
-}
+def _get_trust_suite() -> Dict[str, Any]:
+    """Get trust evaluation suite configuration."""
+    suite_config = get_suite_config()
+    runtime_min, runtime_max = suite_config.get_suite_runtime_range("trust")
+    
+    return {
+        "name": "trust",
+        "description": "Trust and reliability evaluation suite for model confidence",
+        "default_sample_size": suite_config.get_suite_sample_size("trust"),
+        "estimated_runtime": f"{runtime_min}-{runtime_max} minutes",
+        "evaluations": {
+            "consistency": lambda data, **kwargs: evaluate_consistency(data, **kwargs),
+            "robustness": lambda data, **kwargs: evaluate_robustness(data, **kwargs),
+            "calibration": lambda data, **kwargs: evaluate_calibration(data, **kwargs),
+            "kl_divergence": evaluate_kl_divergence,
+            "reward_alignment": evaluate_reward_alignment,
+        },
+        "baseline_scores": suite_config.get_suite_baseline_scores("trust"),
+        "generates_plots": suite_config.GENERATES_PLOTS,
+    }
+
+TRUST_SUITE = _get_trust_suite()
 
 
 def get_eval_suite(suite_name: str) -> Optional[Dict[str, Any]]:
@@ -273,7 +262,7 @@ def get_suite_info(suite_name: str) -> Optional[Dict[str, Any]]:
 
 
 # Real evaluation functions with actual metrics
-def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
+def evaluate_consistency(data: pd.DataFrame, config: Optional[EvaluationConfig] = None, **kwargs) -> Dict[str, Any]:
     """
     Evaluate model consistency across different inputs and conditions.
     
@@ -290,6 +279,9 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     import numpy as np
     from scipy import stats
     
+    if config is None:
+        config = get_eval_config(kwargs.get("config_name", "default"))
+    
     consistency_metrics = []
     overall_score = 0.0
     
@@ -299,7 +291,7 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         sorted_data = data.sort_values("step")
         rewards = sorted_data["reward_mean"].dropna()
         
-        if len(rewards) > 10:
+        if len(rewards) > config.MIN_SAMPLES_FOR_ANALYSIS:
             # Calculate coefficient of variation (lower = more consistent)
             reward_std = rewards.std()
             reward_mean = rewards.mean()
@@ -311,7 +303,7 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 
                 # Check for trend in rewards
                 steps = np.arange(len(rewards))
-                if len(steps) > 1:
+                if len(steps) > config.MIN_SAMPLES_FOR_TREND:
                     slope = np.polyfit(steps, rewards, 1)[0]
                     # Convert slope to stability score
                     stability_score = max(0, 1 - safe_divide(abs(slope), abs(reward_mean), 0.0))
@@ -332,13 +324,13 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 # Create a deterministic hash based on prompt characteristics
                 # Use a combination of length and first few characters for grouping
                 prompt_length = len(prompt)
-                prompt_start = prompt[:20].lower()  # First 20 chars, lowercase
+                prompt_start = prompt[:config.PROMPT_START_CHARS].lower()  # First N chars, lowercase
                 
                 # Create deterministic grouping key
                 # Group by length ranges and starting words
-                if prompt_length < 50:
+                if prompt_length < config.PROMPT_LENGTH_SHORT:
                     length_group = "short"
-                elif prompt_length < 150:
+                elif prompt_length < config.PROMPT_LENGTH_MEDIUM:
                     length_group = "medium"
                 else:
                     length_group = "long"
@@ -356,7 +348,7 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             # Check consistency within groups
             group_consistencies = []
             for group_indices in prompt_groups.values():
-                if len(group_indices) > 1:
+                if len(group_indices) > config.MIN_SAMPLES_FOR_CONSISTENCY:
                     # Guard against missing reward_mean column
                     if "reward_mean" in data.columns:
                         group_rewards = data.iloc[group_indices]["reward_mean"].dropna()
@@ -394,7 +386,7 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     for metric_col in metric_cols:
         if metric_col in data.columns:
             values = pd.to_numeric(data[metric_col], errors='coerce').dropna()
-            if len(values) > 5:
+            if len(values) > config.MIN_SAMPLES_FOR_ANALYSIS:
                 # Calculate consistency using coefficient of variation
                 metric_std = values.std()
                 metric_mean = values.mean()
@@ -414,7 +406,7 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                     
                     # Remove NaN values
                     valid_mask = ~(steps.isna() | metric_values.isna())
-                    if valid_mask.sum() > 10:
+                    if valid_mask.sum() > config.MIN_SAMPLES_FOR_CORRELATION:
                         correlation = np.corrcoef(steps[valid_mask], metric_values[valid_mask])[0, 1]
                         
                         # High correlation with step indicates drift/inconsistency
@@ -453,7 +445,7 @@ def evaluate_consistency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     }
 
 
-def evaluate_robustness(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
+def evaluate_robustness(data: pd.DataFrame, config: Optional[EvaluationConfig] = None, **kwargs) -> Dict[str, Any]:
     """
     Evaluate model robustness to perturbations and adversarial inputs.
     
@@ -469,6 +461,9 @@ def evaluate_robustness(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     """
     import numpy as np
     from scipy import stats
+    
+    if config is None:
+        config = get_eval_config(kwargs.get("config_name", "default"))
     
     robustness_metrics = []
     overall_score = 0.0
@@ -490,7 +485,7 @@ def evaluate_robustness(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     # 3. Check reward stability under perturbations
     if "reward_mean" in data.columns:
         rewards = data["reward_mean"].dropna()
-        if len(rewards) > 10:
+        if len(rewards) > config.MIN_SAMPLES_FOR_ANALYSIS:
             # Calculate reward stability metrics
             reward_std = rewards.std()
             reward_mean = rewards.mean()
@@ -506,8 +501,8 @@ def evaluate_robustness(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 Q3 = np.percentile(rewards, 75)
                 IQR = Q3 - Q1
                 
-                outlier_threshold_low = Q1 - 1.5 * IQR
-                outlier_threshold_high = Q3 + 1.5 * IQR
+                outlier_threshold_low = Q1 - config.OUTLIER_THRESHOLD_MULTIPLIER * IQR
+                outlier_threshold_high = Q3 + config.OUTLIER_THRESHOLD_MULTIPLIER * IQR
                 
                 outliers = np.sum((rewards < outlier_threshold_low) | (rewards > outlier_threshold_high))
                 outlier_ratio = safe_divide(outliers, len(rewards), 0.0)
@@ -527,7 +522,7 @@ def evaluate_robustness(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                     
                     # Remove NaN values
                     valid_mask = ~(steps.isna() | metric_values.isna())
-                    if valid_mask.sum() > 10:
+                    if valid_mask.sum() > config.MIN_SAMPLES_FOR_CORRELATION:
                         # Calculate trend
                         valid_steps = steps[valid_mask]
                         valid_metrics = metric_values[valid_mask]
@@ -543,7 +538,7 @@ def evaluate_robustness(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                                 # Normalize slope to [0, 1] range
                                 # Avoid division by zero when mean is zero
                                 if valid_metrics.mean() != 0:
-                                    max_expected_degradation = abs(valid_metrics.mean()) * 0.1  # 10% degradation
+                                    max_expected_degradation = abs(valid_metrics.mean()) * config.MAX_EXPECTED_DEGRADATION
                                     normalized_slope = min(1.0, abs(slope) / max_expected_degradation)
                                     trend_robustness = max(0, 1 - normalized_slope)
                                 else:
@@ -587,10 +582,10 @@ def evaluate_robustness(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         if len(grad_norms) > 0:
             # Check if gradients are well-controlled (not exploding)
             max_grad_norm = grad_norms.max()
-            if max_grad_norm < 10.0:  # Reasonable threshold
+            if max_grad_norm < config.GRADIENT_EXPLOSION_THRESHOLD:
                 grad_stability = 1.0
             else:
-                grad_stability = max(0, 1 - (max_grad_norm - 10.0) / 10.0)
+                grad_stability = max(0, 1 - (max_grad_norm - config.GRADIENT_EXPLOSION_THRESHOLD) / config.GRADIENT_EXPLOSION_THRESHOLD)
             
             robustness_metrics.append(("gradient_stability", grad_stability))
     
@@ -624,7 +619,7 @@ def evaluate_robustness(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     }
 
 
-def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
+def evaluate_efficiency(data: pd.DataFrame, config: Optional[EvaluationConfig] = None, **kwargs) -> Dict[str, Any]:
     """
     Evaluate model efficiency in terms of computational resources and training dynamics.
     
@@ -641,6 +636,9 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     import numpy as np
     from scipy import stats
     
+    if config is None:
+        config = get_eval_config(kwargs.get("config_name", "default"))
+    
     efficiency_metrics = []
     overall_score = 0.0
     
@@ -652,8 +650,8 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         
         if total_time > 0 and total_steps > 0:
             steps_per_second = safe_rate_calculation(total_steps, total_time, 0.0)
-            # Normalize to a reasonable range (0-1000 steps/sec)
-            speed_score = min(1.0, steps_per_second / 1000.0)
+            # Normalize to a reasonable range
+            speed_score = min(1.0, steps_per_second / config.STEPS_PER_SECOND_MAX)
             efficiency_metrics.append(("training_speed", speed_score))
     
     # 2. Check for memory efficiency
@@ -665,19 +663,19 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             max_memory = memory_values.max()
             
             # Normalize to reasonable range (assuming GB)
-            if avg_memory < 8.0:  # Less than 8GB average
+            if avg_memory < config.MEMORY_EFFICIENCY_THRESHOLD:
                 memory_efficiency = 1.0
             else:
-                memory_efficiency = max(0, 1 - (avg_memory - 8.0) / 8.0)
+                memory_efficiency = max(0, 1 - (avg_memory - config.MEMORY_EFFICIENCY_THRESHOLD) / config.MEMORY_EFFICIENCY_THRESHOLD)
             
             efficiency_metrics.append(("memory_efficiency", memory_efficiency))
             
             # Check for memory stability
             memory_std = memory_values.std()
-            if memory_std < 1.0:  # Stable memory usage
+            if memory_std < config.MEMORY_STABILITY_THRESHOLD:
                 memory_stability = 1.0
             else:
-                memory_stability = max(0, 1 - memory_std / 4.0)
+                memory_stability = max(0, 1 - memory_std / config.MEMORY_STABILITY_THRESHOLD)
             
             efficiency_metrics.append(("memory_stability", memory_stability))
     
@@ -687,7 +685,7 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         sorted_data = data.sort_values("step")
         rewards = sorted_data["reward_mean"].dropna()
         
-        if len(rewards) > 20:
+        if len(rewards) > config.MIN_SAMPLES_FOR_DISTRIBUTION:
             # Calculate convergence metrics
             # Check if rewards are improving over time
             first_quarter = rewards[:len(rewards)//4]
@@ -701,13 +699,13 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                     # Normalize improvement
                     # Avoid division by zero when mean is zero
                     if rewards.mean() != 0:
-                        max_expected_improvement = abs(rewards.mean()) * 0.5
+                        max_expected_improvement = abs(rewards.mean()) * config.CONVERGENCE_IMPROVEMENT_THRESHOLD
                         improvement_score = min(1.0, improvement / max_expected_improvement)
                     else:
                         # When mean is zero, use a fallback approach
                         # Use the standard deviation as a reference for normalization
                         if rewards.std() > 0:
-                            max_expected_improvement = rewards.std() * 0.5
+                            max_expected_improvement = rewards.std() * config.CONVERGENCE_IMPROVEMENT_THRESHOLD
                             improvement_score = min(1.0, improvement / max_expected_improvement)
                         else:
                             # If both mean and std are zero, assume good improvement
@@ -718,9 +716,9 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 efficiency_metrics.append(("convergence_improvement", improvement_score))
                 
                 # Check for early convergence
-                # Calculate when 90% of final improvement is achieved
+                # Calculate when N% of final improvement is achieved
                 final_reward = rewards[-1]
-                target_reward = first_quarter.mean() + 0.9 * improvement
+                target_reward = first_quarter.mean() + config.EARLY_CONVERGENCE_THRESHOLD * improvement
                 
                 convergence_step = None
                 for i, reward in enumerate(rewards):
@@ -742,10 +740,10 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             avg_flops = flops_values.mean()
             
             # Normalize to reasonable range (assuming GFLOPs)
-            if avg_flops < 1000:  # Less than 1 TFLOP
+            if avg_flops < config.FLOP_EFFICIENCY_THRESHOLD:
                 flops_efficiency = 1.0
             else:
-                flops_efficiency = max(0, 1 - (avg_flops - 1000) / 1000)
+                flops_efficiency = max(0, 1 - (avg_flops - config.FLOP_EFFICIENCY_THRESHOLD) / config.FLOP_EFFICIENCY_THRESHOLD)
             
             efficiency_metrics.append(("flops_efficiency", flops_efficiency))
     
@@ -756,10 +754,10 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             # Well-controlled gradients indicate efficient training
             avg_grad_norm = grad_norms.mean()
             
-            if avg_grad_norm < 1.0:  # Well-controlled gradients
+            if avg_grad_norm < config.GRADIENT_STABILITY_THRESHOLD:
                 grad_efficiency = 1.0
             else:
-                grad_efficiency = max(0, 1 - (avg_grad_norm - 1.0) / 4.0)
+                grad_efficiency = max(0, 1 - (avg_grad_norm - config.GRADIENT_STABILITY_THRESHOLD) / config.GRADIENT_EFFICIENCY_THRESHOLD)
             
             efficiency_metrics.append(("gradient_efficiency", grad_efficiency))
     
@@ -768,7 +766,7 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         sorted_data = data.sort_values("step")
         losses = sorted_data["loss"].dropna()
         
-        if len(losses) > 10:
+        if len(losses) > config.MIN_SAMPLES_FOR_ANALYSIS:
             # Calculate loss reduction rate
             initial_loss = losses[:len(losses)//4].mean()
             final_loss = losses[-len(losses)//4:].mean()
@@ -830,7 +828,7 @@ def evaluate_efficiency(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
 
 
 
-def evaluate_adversarial(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
+def evaluate_adversarial(data: pd.DataFrame, config: Optional[EvaluationConfig] = None, **kwargs) -> Dict[str, Any]:
     """
     Evaluate model adversarial robustness.
     
@@ -846,6 +844,9 @@ def evaluate_adversarial(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     """
     import numpy as np
     from scipy import stats
+    
+    if config is None:
+        config = get_eval_config(kwargs.get("config_name", "default"))
     
     adversarial_metrics = []
     overall_score = 0.0
@@ -881,7 +882,7 @@ def evaluate_adversarial(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     # 4. Check for reward stability under adversarial conditions
     if "reward_mean" in data.columns:
         rewards = data["reward_mean"].dropna()
-        if len(rewards) > 10:
+        if len(rewards) > config.MIN_SAMPLES_FOR_ANALYSIS:
             # Calculate reward stability metrics
             reward_std = rewards.std()
             reward_mean = rewards.mean()
@@ -897,8 +898,8 @@ def evaluate_adversarial(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                 Q3 = np.percentile(rewards, 75)
                 IQR = Q3 - Q1
                 
-                outlier_threshold_low = Q1 - 1.5 * IQR
-                outlier_threshold_high = Q3 + 1.5 * IQR
+                outlier_threshold_low = Q1 - config.OUTLIER_THRESHOLD_MULTIPLIER * IQR
+                outlier_threshold_high = Q3 + config.OUTLIER_THRESHOLD_MULTIPLIER * IQR
                 
                 outliers = np.sum((rewards < outlier_threshold_low) | (rewards > outlier_threshold_high))
                 outlier_ratio = safe_divide(outliers, len(rewards), 0.0)
@@ -942,7 +943,7 @@ def evaluate_adversarial(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                     
                     # Remove NaN values
                     valid_mask = ~(steps.isna() | metric_values.isna())
-                    if valid_mask.sum() > 10:
+                    if valid_mask.sum() > config.MIN_SAMPLES_FOR_CORRELATION:
                         # Calculate trend
                         valid_steps = steps[valid_mask]
                         valid_metrics = metric_values[valid_mask]
@@ -1030,7 +1031,7 @@ def evaluate_adversarial(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     }
 
 
-def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
+def evaluate_speed(data: pd.DataFrame, config: Optional[EvaluationConfig] = None, **kwargs) -> Dict[str, Any]:
     """
     Evaluate model inference and training speed.
     
@@ -1046,6 +1047,9 @@ def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     """
     import numpy as np
     from scipy import stats
+    
+    if config is None:
+        config = get_eval_config(kwargs.get("config_name", "default"))
     
     speed_metrics = []
     overall_score = 0.0
@@ -1135,7 +1139,7 @@ def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         sorted_data = data.sort_values("step")
         rewards = sorted_data["reward_mean"].dropna()
         
-        if len(rewards) > 20:
+        if len(rewards) > config.MIN_SAMPLES_FOR_DISTRIBUTION:
             # Calculate improvement rate
             first_quarter = rewards[:len(rewards)//4]
             last_quarter = rewards[-len(rewards)//4:]
@@ -1198,7 +1202,7 @@ def evaluate_speed(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     }
 
 
-def evaluate_memory(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
+def evaluate_memory(data: pd.DataFrame, config: Optional[EvaluationConfig] = None, **kwargs) -> Dict[str, Any]:
     """
     Evaluate model memory usage and efficiency.
     
@@ -1214,6 +1218,9 @@ def evaluate_memory(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     """
     import numpy as np
     from scipy import stats
+    
+    if config is None:
+        config = get_eval_config(kwargs.get("config_name", "default"))
     
     memory_metrics = []
     overall_score = 0.0
@@ -1286,7 +1293,7 @@ def evaluate_memory(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         sorted_data = data.sort_values("step")
         memory_over_time = sorted_data["memory_usage"].dropna()
         
-        if len(memory_over_time) > 10:
+        if len(memory_over_time) > config.MIN_SAMPLES_FOR_ANALYSIS:
             # Check for memory growth trend
             steps = np.arange(len(memory_over_time))
             if len(steps) > 1:
@@ -1395,7 +1402,7 @@ def evaluate_memory(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
 # The function is already imported at the top of the file
 
 
-def evaluate_calibration(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
+def evaluate_calibration(data: pd.DataFrame, config: Optional[EvaluationConfig] = None, **kwargs) -> Dict[str, Any]:
     """
     Evaluate model calibration and confidence estimation.
     
@@ -1411,6 +1418,9 @@ def evaluate_calibration(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     """
     import numpy as np
     from scipy import stats
+    
+    if config is None:
+        config = get_eval_config(kwargs.get("config_name", "default"))
     
     calibration_metrics = []
     overall_score = 0.0
@@ -1443,7 +1453,7 @@ def evaluate_calibration(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         confidence_values = data["confidence_score"].dropna()
         accuracy_values = data["accuracy"].dropna()
         
-        if len(confidence_values) > 10 and len(accuracy_values) > 10:
+        if len(confidence_values) > config.MIN_SAMPLES_FOR_ANALYSIS and len(accuracy_values) > config.MIN_SAMPLES_FOR_ANALYSIS:
             # Align the data
             min_len = min(len(confidence_values), len(accuracy_values))
             confidence_aligned = confidence_values[:min_len]
@@ -1464,7 +1474,7 @@ def evaluate_calibration(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         confidence_values = data["confidence_score"].dropna()
         reward_values = data["reward_mean"].dropna()
         
-        if len(confidence_values) > 10 and len(reward_values) > 10:
+        if len(confidence_values) > config.MIN_SAMPLES_FOR_ANALYSIS and len(reward_values) > config.MIN_SAMPLES_FOR_ANALYSIS:
             # Align the data
             min_len = min(len(confidence_values), len(reward_values))
             confidence_aligned = confidence_values[:min_len]
@@ -1485,7 +1495,7 @@ def evaluate_calibration(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         confidence_values = data["confidence_score"].dropna()
         ground_truth_values = data["ground_truth"].dropna()
         
-        if len(confidence_values) > 10 and len(ground_truth_values) > 10:
+        if len(confidence_values) > config.MIN_SAMPLES_FOR_ANALYSIS and len(ground_truth_values) > config.MIN_SAMPLES_FOR_ANALYSIS:
             # Align the data
             min_len = min(len(confidence_values), len(ground_truth_values))
             confidence_aligned = confidence_values[:min_len]
