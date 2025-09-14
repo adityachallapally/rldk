@@ -6,10 +6,19 @@ import hashlib
 import json
 from pathlib import Path
 from typing import Dict, Any, Optional, Union
-import torch
-import torch.nn as nn
-from transformers import PreTrainedModel, PreTrainedTokenizer
-import numpy as np
+
+def _import_torch():
+    import torch
+    import torch.nn as nn
+    return torch, nn
+
+def _import_transformers():
+    from transformers import PreTrainedModel, PreTrainedTokenizer
+    return PreTrainedModel, PreTrainedTokenizer
+
+def _import_numpy():
+    import numpy as np
+    return np
 
 
 class ModelTracker:
@@ -21,7 +30,7 @@ class ModelTracker:
     
     def track_model(
         self,
-        model: Union[nn.Module, PreTrainedModel],
+        model,
         name: str,
         metadata: Optional[Dict[str, Any]] = None,
         save_architecture: bool = True,
@@ -62,13 +71,14 @@ class ModelTracker:
             tracking_info["weights_size_bytes"] = self._get_model_size(model)
         
         # Handle special cases for different model types
+        PreTrainedModel, _ = _import_transformers()
         if isinstance(model, PreTrainedModel):
             tracking_info.update(self._get_pretrained_model_info(model))
         
         self.tracked_models[name] = tracking_info
         return tracking_info
     
-    def _get_model_architecture_info(self, model: nn.Module) -> Dict[str, Any]:
+    def _get_model_architecture_info(self, model) -> Dict[str, Any]:
         """Extract architecture information from a model."""
         info = {
             "num_parameters": sum(p.numel() for p in model.parameters()),
@@ -94,7 +104,7 @@ class ModelTracker:
         
         return info
     
-    def _get_pretrained_model_info(self, model: PreTrainedModel) -> Dict[str, Any]:
+    def _get_pretrained_model_info(self, model) -> Dict[str, Any]:
         """Get additional info for pre-trained models."""
         info = {}
         
@@ -116,7 +126,7 @@ class ModelTracker:
         
         return info
     
-    def _compute_architecture_checksum(self, model: nn.Module) -> str:
+    def _compute_architecture_checksum(self, model) -> str:
         """Compute checksum of model architecture."""
         hash_obj = hashlib.new(self.algorithm)
         
@@ -137,9 +147,10 @@ class ModelTracker:
         
         return hash_obj.hexdigest()
     
-    def _compute_weights_checksum(self, model: nn.Module) -> str:
+    def _compute_weights_checksum(self, model) -> str:
         """Compute checksum of model weights."""
         hash_obj = hashlib.new(self.algorithm)
+        np = _import_numpy()
         
         # Get parameters in a fixed order (sorted by name)
         named_params = sorted(model.named_parameters(), key=lambda x: x[0])
@@ -179,7 +190,7 @@ class ModelTracker:
         
         return hash_obj.hexdigest()
     
-    def _get_model_size(self, model: nn.Module) -> int:
+    def _get_model_size(self, model) -> int:
         """Get total size of model parameters in bytes."""
         total_size = 0
         for param in model.parameters():
@@ -188,7 +199,7 @@ class ModelTracker:
     
     def track_tokenizer(
         self,
-        tokenizer: PreTrainedTokenizer,
+        tokenizer,
         name: str,
         metadata: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
@@ -221,7 +232,7 @@ class ModelTracker:
     
     def save_model_architecture(
         self,
-        model: nn.Module,
+        model,
         output_path: Path,
         name: str
     ) -> Path:
@@ -239,11 +250,12 @@ class ModelTracker:
     
     def save_model_weights(
         self,
-        model: nn.Module,
+        model,
         output_path: Path,
         name: str
     ) -> Path:
         """Save model weights to file."""
+        torch, _ = _import_torch()
         weights_path = output_path / f"{name}_weights.pt"
         torch.save(model.state_dict(), weights_path)
         return weights_path
