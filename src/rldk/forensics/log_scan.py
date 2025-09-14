@@ -1,5 +1,6 @@
 """Log scanning for training runs."""
 
+import json
 from pathlib import Path
 from typing import Dict, Any, Iterator
 import pandas as pd
@@ -40,31 +41,34 @@ def detect_and_read_logs(path: Path) -> Iterator[Dict[str, Any]]:
     except (ValidationError, AdapterError):
         pass
     
-    
-    # Check for TensorBoard export
+    # Check for TensorBoard export (CSV files in directory)
     if path.is_dir():
         csv_files = list(path.glob("*.csv"))
         if csv_files:
-            return read_tensorboard_export(path)
+            yield from read_tensorboard_export(path)
+            return
 
-    # Check for Weights & Biases export
+    # Check for Weights & Biases export (JSONL files in directory)
     if path.is_dir():
         jsonl_files = list(path.glob("*.jsonl"))
         if jsonl_files:
-            return read_wandb_export(path)
+            yield from read_wandb_export(path)
+            return
 
-    # Check for JSONL file
+    # Check for single JSONL file
     if path.is_file() and path.suffix == ".jsonl":
-        return read_jsonl(path)
+        yield from read_jsonl(path)
+        return
 
+    # Check for single CSV file (fallback if FlexibleDataAdapter failed)
     if path.is_file() and path.suffix == ".csv":
         try:
             df = pd.read_csv(path)
             for _, row in df.iterrows():
                 yield row.to_dict()
             return
-        except Exception:
-            pass
+        except (pd.errors.EmptyDataError, pd.errors.ParserError, FileNotFoundError) as e:
+            raise ValueError(f"Failed to parse CSV file {path}: {e}")
 
     if path.is_dir():
         data_files = (
@@ -84,15 +88,38 @@ def detect_and_read_logs(path: Path) -> Iterator[Dict[str, Any]]:
             except (ValidationError, AdapterError):
                 pass
             
-            if data_files[0].suffix == ".jsonl":
-                return read_jsonl(data_files[0])
+            first_file = data_files[0]
+            if first_file.suffix == ".jsonl":
+                yield from read_jsonl(first_file)
+                return
+            elif first_file.suffix == ".csv":
+                try:
+                    df = pd.read_csv(first_file)
+                    for _, row in df.iterrows():
+                        yield row.to_dict()
+                    return
+                except (pd.errors.EmptyDataError, pd.errors.ParserError) as e:
+                    raise ValueError(f"Failed to parse CSV file {first_file}: {e}")
+            elif first_file.suffix == ".json":
+                try:
+                    with open(first_file, 'r') as f:
+                        data = json.load(f)
+                    if isinstance(data, list):
+                        for item in data:
+                            yield item
+                    elif isinstance(data, dict):
+                        yield data
+                    return
+                except (json.JSONDecodeError, FileNotFoundError) as e:
+                    raise ValueError(f"Failed to parse JSON file {first_file}: {e}")
 
-    # Check for log files
+    # Check for log files as final fallback
     if path.is_dir():
         log_files = list(path.glob("*.log")) + list(path.glob("*.txt"))
         if log_files:
             # Try to parse as JSONL
-            return read_jsonl(log_files[0])
+            yield from read_jsonl(log_files[0])
+            return
 
     raise ValueError(
         f"Could not detect log format for {path}. "
