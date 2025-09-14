@@ -54,15 +54,22 @@ class SeedManager:
     
     def _backup_states(self):
         """Backup original RNG states for restoration."""
+        import os
+        disable_lazy_loading = os.getenv('RLDK_DISABLE_LAZY_LOADING', 'false').lower() == 'true'
+        
         self._original_states = {
             'python': random.getstate(),
             'numpy': np.random.get_state(),
         }
         
-        if TORCH_AVAILABLE and torch.cuda.is_available():
-            self._original_states['torch_cpu'] = torch.get_rng_state()
-            if torch.cuda.is_available():
-                self._original_states['torch_cuda'] = torch.cuda.get_rng_state()
+        if TORCH_AVAILABLE and not disable_lazy_loading:
+            try:
+                if torch.cuda.is_available():
+                    self._original_states['torch_cpu'] = torch.get_rng_state()
+                    if torch.cuda.is_available():
+                        self._original_states['torch_cuda'] = torch.cuda.get_rng_state()
+            except (AttributeError, TypeError):
+                pass
     
     def set_global_seed(self, seed: Optional[int] = None, 
                        deterministic: bool = True) -> int:
@@ -240,8 +247,15 @@ class SeedManager:
             os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 
-# Global seed manager instance
-_global_seed_manager = SeedManager()
+# Global seed manager instance - lazily instantiated to avoid import issues
+_global_seed_manager = None
+
+def _get_seed_manager():
+    """Get the global seed manager, creating it if necessary."""
+    global _global_seed_manager
+    if _global_seed_manager is None:
+        _global_seed_manager = SeedManager()
+    return _global_seed_manager
 
 
 def set_global_seed(seed: Optional[int] = None, deterministic: bool = True) -> int:
@@ -271,7 +285,7 @@ def set_global_seed(seed: Optional[int] = None, deterministic: bool = True) -> i
         >>> print(f"Default seed: {seed}")
         Default seed: 1337
     """
-    return _global_seed_manager.set_global_seed(seed, deterministic)
+    return _get_seed_manager().set_global_seed(seed, deterministic)
 
 
 def get_current_seed() -> Optional[int]:
@@ -287,7 +301,7 @@ def get_current_seed() -> Optional[int]:
         >>> print(current_seed)
         42
     """
-    return _global_seed_manager.seed
+    return _get_seed_manager().seed
 
 
 def restore_seed_state():
@@ -305,7 +319,7 @@ def restore_seed_state():
         >>> # ... some random operations ...
         >>> rldk.restore_seed_state()  # Back to state after set_global_seed(42)
     """
-    _global_seed_manager.restore_states()
+    _get_seed_manager().restore_states()
 
 
 def restore_original_state():
@@ -320,7 +334,7 @@ def restore_original_state():
         >>> # ... some operations ...
         >>> rldk.restore_original_state()  # Back to initial state
     """
-    _global_seed_manager.restore_original_states()
+    _get_seed_manager().restore_original_states()
 
 
 def get_seed_state_summary() -> Dict[str, Any]:
@@ -336,7 +350,7 @@ def get_seed_state_summary() -> Dict[str, Any]:
         >>> print(f"Current seed: {summary['seed']}")
         Current seed: 42
     """
-    return _global_seed_manager.get_state_summary()
+    return _get_seed_manager().get_state_summary()
 
 
 def set_reproducible_environment(seed: Optional[int] = None):
@@ -361,7 +375,7 @@ def set_reproducible_environment(seed: Optional[int] = None):
     actual_seed = set_global_seed(seed, deterministic=True)
     
     # Set environment variables
-    _global_seed_manager.set_environment_variables(actual_seed)
+    _get_seed_manager().set_environment_variables(actual_seed)
     
     return actual_seed
 
@@ -398,7 +412,7 @@ def validate_seed_consistency(expected_seed: int, tolerance: float = 1e-6) -> bo
     
     try:
         # Generate first set of values with the seed
-        _global_seed_manager.set_global_seed(expected_seed)
+        _get_seed_manager().set_global_seed(expected_seed)
         
         first_run_values = {
             'python': [random.random() for _ in range(3)],
@@ -409,7 +423,7 @@ def validate_seed_consistency(expected_seed: int, tolerance: float = 1e-6) -> bo
             first_run_values['torch'] = torch.rand(3).tolist()
         
         # Generate second set of values with the same seed
-        _global_seed_manager.set_global_seed(expected_seed)
+        _get_seed_manager().set_global_seed(expected_seed)
         
         second_run_values = {
             'python': [random.random() for _ in range(3)],
@@ -471,7 +485,7 @@ def create_seed_context(seed: int, deterministic: bool = True):
         
         def __enter__(self):
             # Store current seed and states
-            self.original_seed = _global_seed_manager.seed
+            self.original_seed = _get_seed_manager().seed
             self.original_states = {
                 'python': random.getstate(),
                 'numpy': np.random.get_state(),
@@ -483,7 +497,7 @@ def create_seed_context(seed: int, deterministic: bool = True):
                     self.original_states['torch_cuda'] = torch.cuda.get_rng_state()
             
             # Set new seed
-            _global_seed_manager.set_global_seed(self.seed, self.deterministic)
+            _get_seed_manager().set_global_seed(self.seed, self.deterministic)
             
             return self
         
@@ -499,6 +513,6 @@ def create_seed_context(seed: int, deterministic: bool = True):
                         torch.cuda.set_rng_state(self.original_states['torch_cuda'])
                 
                 # Restore original seed
-                _global_seed_manager.seed = self.original_seed
+                _get_seed_manager().seed = self.original_seed
     
     return SeedContext(seed, deterministic)

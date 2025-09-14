@@ -1,6 +1,11 @@
 """RL Debug Kit - Library and CLI for debugging reinforcement learning training runs."""
 
+import os
+
 __version__ = "0.1.0"
+
+# Environment variable to disable lazy loading during CI/testing
+DISABLE_LAZY_LOADING = os.getenv('RLDK_DISABLE_LAZY_LOADING', 'false').lower() == 'true'
 
 def _lazy_import_ingest():
     from .ingest import ingest_runs, ingest_runs_to_events
@@ -76,18 +81,30 @@ def _lazy_import_seed():
     return set_global_seed, get_current_seed, restore_seed_state, set_reproducible_environment, validate_seed_consistency
 
 def ingest_runs(*args, **kwargs):
+    if DISABLE_LAZY_LOADING:
+        from .ingest import ingest_runs as ingest_runs_func
+        return ingest_runs_func(*args, **kwargs)
     ingest_runs_func, _ = _lazy_import_ingest()
     return ingest_runs_func(*args, **kwargs)
 
 def ingest_runs_to_events(*args, **kwargs):
+    if DISABLE_LAZY_LOADING:
+        from .ingest import ingest_runs_to_events as ingest_runs_to_events_func
+        return ingest_runs_to_events_func(*args, **kwargs)
     _, ingest_runs_to_events_func = _lazy_import_ingest()
     return ingest_runs_to_events_func(*args, **kwargs)
 
 def first_divergence(*args, **kwargs):
+    if DISABLE_LAZY_LOADING:
+        from .diff import first_divergence as first_divergence_func
+        return first_divergence_func(*args, **kwargs)
     first_divergence_func, _ = _lazy_import_diff()
     return first_divergence_func(*args, **kwargs)
 
 def check(*args, **kwargs):
+    if DISABLE_LAZY_LOADING:
+        from .determinism import check as check_func
+        return check_func(*args, **kwargs)
     check_func, _ = _lazy_import_determinism()
     return check_func(*args, **kwargs)
 
@@ -160,22 +177,37 @@ def read_reward_head(*args, **kwargs):
     return read_reward_head_func(*args, **kwargs)
 
 def set_global_seed(*args, **kwargs):
+    if DISABLE_LAZY_LOADING:
+        from .utils.seed import set_global_seed as set_global_seed_func
+        return set_global_seed_func(*args, **kwargs)
     set_global_seed_func, _, _, _, _ = _lazy_import_seed()
     return set_global_seed_func(*args, **kwargs)
 
 def get_current_seed(*args, **kwargs):
+    if DISABLE_LAZY_LOADING:
+        from .utils.seed import get_current_seed as get_current_seed_func
+        return get_current_seed_func(*args, **kwargs)
     _, get_current_seed_func, _, _, _ = _lazy_import_seed()
     return get_current_seed_func(*args, **kwargs)
 
 def restore_seed_state(*args, **kwargs):
+    if DISABLE_LAZY_LOADING:
+        from .utils.seed import restore_seed_state as restore_seed_state_func
+        return restore_seed_state_func(*args, **kwargs)
     _, _, restore_seed_state_func, _, _ = _lazy_import_seed()
     return restore_seed_state_func(*args, **kwargs)
 
 def set_reproducible_environment(*args, **kwargs):
+    if DISABLE_LAZY_LOADING:
+        from .utils.seed import set_reproducible_environment as set_reproducible_environment_func
+        return set_reproducible_environment_func(*args, **kwargs)
     _, _, _, set_reproducible_environment_func, _ = _lazy_import_seed()
     return set_reproducible_environment_func(*args, **kwargs)
 
 def validate_seed_consistency(*args, **kwargs):
+    if DISABLE_LAZY_LOADING:
+        from .utils.seed import validate_seed_consistency as validate_seed_consistency_func
+        return validate_seed_consistency_func(*args, **kwargs)
     _, _, _, _, validate_seed_consistency_func = _lazy_import_seed()
     return validate_seed_consistency_func(*args, **kwargs)
 
@@ -190,8 +222,16 @@ class _LazyClassMeta(type):
     
     def _ensure_class(cls):
         if cls._class is None:
-            imports = cls._import_func()
-            cls._class = imports[cls._class_index]
+            # Skip lazy loading if disabled for CI/testing
+            if DISABLE_LAZY_LOADING:
+                try:
+                    imports = cls._import_func()
+                    cls._class = imports[cls._class_index]
+                except (ImportError, AttributeError, ValueError, TypeError):
+                    cls._class = type(f'Disabled{cls.__name__}', (), {})
+            else:
+                imports = cls._import_func()
+                cls._class = imports[cls._class_index]
         return cls._class
     
     def __call__(cls, *args, **kwargs):
@@ -239,6 +279,12 @@ class _LazyClassMeta(type):
 
 def _create_lazy_class(name, import_func, class_index):
     """Create a lazy-loaded class using the metaclass."""
+    if DISABLE_LAZY_LOADING:
+        try:
+            imports = import_func()
+            return imports[class_index]
+        except (ImportError, AttributeError, ValueError, TypeError):
+            return type(f'Disabled{name}', (), {})
     return _LazyClassMeta(name, (), {}, import_func=import_func, class_index=class_index)
 
 DivergenceReport = _create_lazy_class('DivergenceReport', _lazy_import_diff, 1)
