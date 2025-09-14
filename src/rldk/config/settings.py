@@ -166,8 +166,18 @@ class _SettingsProxy:
     def __setattr__(self, name, value):
         setattr(get_settings(), name, value)
     
-    def __call__(self, *args, **kwargs):
-        return get_settings()(*args, **kwargs)
+    def __dir__(self):
+        return dir(get_settings())
+    
+    def __repr__(self):
+        return repr(get_settings())
+    
+    def __str__(self):
+        return str(get_settings())
+    
+    @property
+    def __class__(self):
+        return get_settings().__class__
 
 settings = _SettingsProxy()
 

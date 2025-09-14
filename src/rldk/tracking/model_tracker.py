@@ -150,6 +150,7 @@ class ModelTracker:
     def _compute_weights_checksum(self, model) -> str:
         """Compute checksum of model weights."""
         hash_obj = hashlib.new(self.algorithm)
+        np = _import_numpy()
         
         # Get parameters in a fixed order (sorted by name)
         named_params = sorted(model.named_parameters(), key=lambda x: x[0])
@@ -177,7 +178,6 @@ class ModelTracker:
                         
                         # Hash the sampled weights directly to avoid memory accumulation
                         sampled_weights = flat_param[sample_indices]
-                        np = _import_numpy()
                         hash_obj.update(sampled_weights.numpy().tobytes())
                     else:
                         # Hash the entire parameter if it's small
