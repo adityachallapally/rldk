@@ -9,7 +9,12 @@ from .base import BaseAdapter
 
 
 class CustomJSONLAdapter(BaseAdapter):
-    """Adapter for our custom JSONL training logs."""
+    """Adapter for our custom JSONL training logs.
+    
+    .. deprecated:: 0.1.0
+        Use :class:`FlexibleDataAdapter` instead for better field resolution
+        and support for multiple formats. This adapter will be removed in a future version.
+    """
 
     def can_handle(self) -> bool:
         """Check if source contains our custom JSONL logs."""
@@ -68,6 +73,14 @@ class CustomJSONLAdapter(BaseAdapter):
 
     def load(self) -> pd.DataFrame:
         """Load our custom JSONL logs and convert to standard format."""
+        import warnings
+        warnings.warn(
+            "CustomJSONLAdapter is deprecated. Use FlexibleDataAdapter instead for better "
+            "field resolution and support for multiple formats.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        
         if not self.can_handle():
             raise ValueError(f"Cannot handle source: {self.source}")
 
