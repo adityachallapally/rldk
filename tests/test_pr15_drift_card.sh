@@ -35,10 +35,17 @@ fi
 echo "5) Exercising CLIs individually..."
 rldk env-audit test_artifacts/logs_clean
 rldk log-scan test_artifacts/logs_doctored_kl_spike
-rldk diff-ckpt test_artifacts/ckpt_identical/a.pt test_artifacts/ckpt_identical/b.pt
-rldk diff-ckpt test_artifacts/ckpt_value_head_edit/a.pt test_artifacts/ckpt_value_head_edit/b.pt
-rldk reward-drift test_artifacts/reward_drift_demo/rmA test_artifacts/reward_drift_demo/rmB \
-  --prompts test_artifacts/reward_drift_demo/prompts.jsonl
+
+# Only run checkpoint tests if PyTorch is available
+if python3 -c "import torch" 2>/dev/null; then
+    echo "PyTorch available, running checkpoint tests..."
+    rldk diff-ckpt test_artifacts/ckpt_identical/a.pt test_artifacts/ckpt_identical/b.pt
+    rldk diff-ckpt test_artifacts/ckpt_value_head_edit/a.pt test_artifacts/ckpt_value_head_edit/b.pt
+    rldk reward-drift test_artifacts/reward_drift_demo/rmA test_artifacts/reward_drift_demo/rmB \
+      --prompts test_artifacts/reward_drift_demo/prompts.jsonl
+else
+    echo "PyTorch not available, skipping checkpoint tests..."
+fi
 
 # 6) Sanity-check JSON artifacts exist and look right (no jq needed)
 echo "6) Sanity-checking JSON artifacts..."

@@ -28,6 +28,15 @@ def run_command(cmd, description):
         return False
 
 
+def has_pytorch():
+    """Check if PyTorch is available."""
+    try:
+        import torch
+        return True
+    except ImportError:
+        return False
+
+
 def main():
     """Run acceptance tests."""
     print("🚀 RL Debug Kit Phase A Acceptance Test")
@@ -38,6 +47,11 @@ def main():
         print("❌ Test artifacts not found. Run: python3 tests/_make_fixtures.py")
         return False
 
+    # Check PyTorch availability
+    pytorch_available = has_pytorch()
+    if not pytorch_available:
+        print("⚠️  PyTorch not available, skipping checkpoint and reward drift tests")
+
     tests = [
         # Environment audit
         ("rldk env-audit test_artifacts/logs_clean", "Environment audit"),
@@ -46,16 +60,25 @@ def main():
             "rldk log-scan test_artifacts/logs_doctored_kl_spike",
             "Log scan with KL spike detection",
         ),
-        # Checkpoint diff
-        (
-            "rldk diff-ckpt test_artifacts/ckpt_identical/a.pt test_artifacts/ckpt_identical/b.pt",
-            "Checkpoint diff",
-        ),
-        # Reward drift
-        (
-            "rldk reward-drift test_artifacts/reward_drift_demo/rmA test_artifacts/reward_drift_demo/rmB --prompts test_artifacts/reward_drift_demo/prompts.jsonl",
-            "Reward drift analysis",
-        ),
+    ]
+    
+    # Only add PyTorch-dependent tests if PyTorch is available
+    if pytorch_available:
+        tests.extend([
+            # Checkpoint diff
+            (
+                "rldk diff-ckpt test_artifacts/ckpt_identical/a.pt test_artifacts/ckpt_identical/b.pt",
+                "Checkpoint diff",
+            ),
+            # Reward drift
+            (
+                "rldk reward-drift test_artifacts/reward_drift_demo/rmA test_artifacts/reward_drift_demo/rmB --prompts test_artifacts/reward_drift_demo/prompts.jsonl",
+                "Reward drift analysis",
+            ),
+        ])
+    
+    # Add non-PyTorch dependent tests
+    tests.extend([
         # Doctor
         ("rldk doctor test_artifacts/logs_clean", "Comprehensive diagnostics"),
         # Compare runs
@@ -63,7 +86,7 @@ def main():
             "rldk compare-runs test_artifacts/logs_clean test_artifacts/logs_doctored_kl_spike",
             "Compare runs",
         ),
-    ]
+    ])
 
     passed = 0
     total = len(tests)

@@ -94,11 +94,7 @@ def make_identical_checkpoints():
             torch.save(checkpoint_data, output_path)
     except ImportError:
         print("⚠️  PyTorch not available, skipping checkpoint generation")
-        # Create dummy files to prevent errors
-        for name in ["a", "b"]:
-            output_path = Path(f"test_artifacts/ckpt_identical/{name}.pt")
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_text("dummy_checkpoint")
+        # Don't create dummy files - let tests handle missing files gracefully
 
 
 def make_value_head_edit_checkpoints():
@@ -139,11 +135,7 @@ def make_value_head_edit_checkpoints():
         torch.save(modified_checkpoint, modified_path)
     except ImportError:
         print("⚠️  PyTorch not available, skipping value head checkpoint generation")
-        # Create dummy files to prevent errors
-        for name in ["a", "b"]:
-            output_path = Path(f"test_artifacts/ckpt_value_head_edit/{name}.pt")
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_text("dummy_checkpoint")
+        # Don't create dummy files - let tests handle missing files gracefully
 
 
 def make_reward_drift_demo():
@@ -193,11 +185,8 @@ def make_reward_drift_demo():
 
             torch.save(model_data, model_dir / "model.pt")
     except ImportError:
-        print("⚠️  PyTorch not available, creating dummy reward models")
-        for i, name in enumerate(["rmA", "rmB"]):
-            model_dir = Path(f"test_artifacts/reward_drift_demo/{name}")
-            model_dir.mkdir(parents=True, exist_ok=True)
-            (model_dir / "model.pt").write_text(f"dummy_model_{i}")
+        print("⚠️  PyTorch not available, skipping reward model generation")
+        # Don't create dummy files - let tests handle missing files gracefully
 
 
 def main():
