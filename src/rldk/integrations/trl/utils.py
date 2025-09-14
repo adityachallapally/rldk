@@ -19,11 +19,11 @@ def fix_generation_config(
     tokenizer: AutoTokenizer,
     generation_config: Optional[GenerationConfig] = None
 ) -> "AutoModelForCausalLMWithValueHead":
-    """Fix missing generation_config attribute on TRL models.
+    """Fix missing generation_config and base_model_prefix attributes on TRL models.
     
     This is a common issue with TRL 0.23.0+ where AutoModelForCausalLMWithValueHead
     doesn't have a generation_config attribute by default, causing AttributeError
-    when PPOTrainer tries to access it.
+    when PPOTrainer tries to access it. Also fixes missing base_model_prefix.
     
     Args:
         model: The TRL model to fix
@@ -31,7 +31,7 @@ def fix_generation_config(
         generation_config: Optional custom generation config. If None, creates a default one.
         
     Returns:
-        The model with generation_config attribute set
+        The model with generation_config and base_model_prefix attributes set
         
     Raises:
         ImportError: If TRL is not available
@@ -57,6 +57,19 @@ def fix_generation_config(
     
     # Set the generation_config attribute
     model.generation_config = generation_config
+    
+    # PPOTrainer expects this attribute to exist directly on the model
+    if not hasattr(model, 'base_model_prefix'):
+        if hasattr(model, 'pretrained_model') and hasattr(model.pretrained_model, 'base_model_prefix'):
+            model.base_model_prefix = model.pretrained_model.base_model_prefix
+        else:
+            model.base_model_prefix = "transformer"
+    
+    if hasattr(model, 'base_model_prefix') and not hasattr(model, model.base_model_prefix):
+        if hasattr(model, 'pretrained_model') and hasattr(model.pretrained_model, model.base_model_prefix):
+            setattr(model, model.base_model_prefix, getattr(model.pretrained_model, model.base_model_prefix))
+        elif hasattr(model, 'pretrained_model') and hasattr(model.pretrained_model, 'transformer'):
+            setattr(model, 'transformer', model.pretrained_model.transformer)
     
     return model
 
