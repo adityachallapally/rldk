@@ -2,10 +2,12 @@
 Main experiment tracker that coordinates all tracking components.
 """
 
+import asyncio
 import json
+import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Callable
 
 import yaml
 
@@ -15,23 +17,28 @@ from .environment_tracker import EnvironmentTracker
 from .git_tracker import GitTracker
 from .model_tracker import ModelTracker
 from .seed_tracker import SeedTracker
+from ..config import settings
+from ..utils.runtime import with_timeout
 
 
 class ExperimentTracker:
     """Main experiment tracker that coordinates all tracking components."""
 
-    def __init__(self, config: TrackingConfig):
+    def __init__(self, config: TrackingConfig, progress_callback: Optional[Callable[[str], None]] = None):
         self.config = config
         self.experiment_id = config.experiment_id
         self.experiment_name = config.experiment_name
         self.output_dir = config.output_dir
+        self.progress_callback = progress_callback
+        self._settings = settings
+        self._initialized = False
 
-        # Initialize tracking components
-        self.dataset_tracker = DatasetTracker(config.dataset_checksum_algorithm) if config.enable_dataset_tracking else None
-        self.model_tracker = ModelTracker(config.model_fingerprint_algorithm) if config.enable_model_tracking else None
-        self.environment_tracker = EnvironmentTracker() if config.enable_environment_tracking else None
-        self.seed_tracker = SeedTracker() if config.enable_seed_tracking else None
-        self.git_tracker = GitTracker(config.git_repo_path) if config.enable_git_tracking else None
+        # Initialize tracking components lazily
+        self.dataset_tracker = None
+        self.model_tracker = None
+        self.environment_tracker = None
+        self.seed_tracker = None
+        self.git_tracker = None
 
         # Storage for tracking data
         self.tracking_data: Dict[str, Any] = {
@@ -52,9 +59,143 @@ class ExperimentTracker:
         # Create output directory
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
+    async def initialize_async(self) -> None:
+        """Initialize tracking components asynchronously."""
+        if self._initialized:
+            return
+
+        start_time = time.time()
+        self._log_progress("Initializing experiment tracker...")
+
+        try:
+            # Initialize components in parallel
+            tasks = []
+            
+            if self.config.enable_dataset_tracking:
+                tasks.append(self._init_dataset_tracker())
+            
+            if self.config.enable_model_tracking:
+                tasks.append(self._init_model_tracker())
+            
+            if self.config.enable_environment_tracking:
+                tasks.append(self._init_environment_tracker())
+            
+            if self.config.enable_seed_tracking:
+                tasks.append(self._init_seed_tracker())
+            
+            if self.config.enable_git_tracking:
+                tasks.append(self._init_git_tracker())
+
+            # Wait for all components to initialize
+            if tasks:
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                # Check for exceptions and log them
+                for i, result in enumerate(results):
+                    if isinstance(result, Exception):
+                        component_names = ["dataset_tracker", "model_tracker", "environment_tracker", "seed_tracker", "git_tracker"]
+                        if i < len(component_names):
+                            print(f"Warning: Failed to initialize {component_names[i]}: {result}")
+                        else:
+                            print(f"Warning: Failed to initialize component {i}: {result}")
+
+            self._initialized = True
+            init_time = time.time() - start_time
+            self._log_progress(f"Tracker initialized in {init_time:.2f} seconds")
+
+        except Exception as e:
+            self._log_progress(f"Initialization failed: {e}")
+            raise
+
+    def _log_progress(self, message: str) -> None:
+        """Log progress message."""
+        if self.progress_callback:
+            self.progress_callback(message)
+        else:
+            print(f"[Tracker] {message}")
+
+    async def _init_dataset_tracker(self) -> None:
+        """Initialize dataset tracker asynchronously."""
+        self._log_progress("Initializing dataset tracker...")
+        self.dataset_tracker = DatasetTracker(self.config.dataset_checksum_algorithm)
+
+    async def _init_model_tracker(self) -> None:
+        """Initialize model tracker asynchronously."""
+        self._log_progress("Initializing model tracker...")
+        self.model_tracker = ModelTracker(self.config.model_fingerprint_algorithm)
+
+    async def _init_environment_tracker(self) -> None:
+        """Initialize environment tracker asynchronously."""
+        self._log_progress("Initializing environment tracker...")
+        self.environment_tracker = EnvironmentTracker()
+
+    async def _init_seed_tracker(self) -> None:
+        """Initialize seed tracker asynchronously."""
+        self._log_progress("Initializing seed tracker...")
+        self.seed_tracker = SeedTracker()
+
+    async def _init_git_tracker(self) -> None:
+        """Initialize git tracker asynchronously."""
+        self._log_progress("Initializing git tracker...")
+        self.git_tracker = GitTracker(self.config.git_repo_path)
+
+    def initialize_sync(self) -> None:
+        """Initialize tracking components synchronously (fallback)."""
+        if self._initialized:
+            return
+
+        start_time = time.time()
+        self._log_progress("Initializing experiment tracker (sync mode)...")
+
+        try:
+            if self.config.enable_dataset_tracking:
+                self._log_progress("Initializing dataset tracker...")
+                self.dataset_tracker = DatasetTracker(self.config.dataset_checksum_algorithm)
+            
+            if self.config.enable_model_tracking:
+                self._log_progress("Initializing model tracker...")
+                self.model_tracker = ModelTracker(self.config.model_fingerprint_algorithm)
+            
+            if self.config.enable_environment_tracking:
+                self._log_progress("Initializing environment tracker...")
+                self.environment_tracker = EnvironmentTracker()
+            
+            if self.config.enable_seed_tracking:
+                self._log_progress("Initializing seed tracker...")
+                self.seed_tracker = SeedTracker()
+            
+            if self.config.enable_git_tracking:
+                self._log_progress("Initializing git tracker...")
+                self.git_tracker = GitTracker(self.config.git_repo_path)
+
+            self._initialized = True
+            init_time = time.time() - start_time
+            self._log_progress(f"Tracker initialized in {init_time:.2f} seconds")
+
+        except Exception as e:
+            self._log_progress(f"Initialization failed: {e}")
+            raise
+
     def start_experiment(self) -> Dict[str, Any]:
         """Start the experiment and capture initial state."""
         print(f"Starting experiment: {self.experiment_name} (ID: {self.experiment_id})")
+
+        # Initialize components if not already done
+        if not self._initialized:
+            if self._settings.enable_async_init:
+                try:
+                    # Check if we're already in an event loop
+                    try:
+                        loop = asyncio.get_running_loop()
+                        # We're in an event loop, create a task
+                        loop.create_task(self.initialize_async())
+                    except RuntimeError:
+                        # No event loop running, use asyncio.run
+                        asyncio.run(self.initialize_async())
+                except Exception as e:
+                    print(f"Async initialization failed, falling back to sync: {e}")
+                    self.initialize_sync()
+            else:
+                self.initialize_sync()
 
         # Capture environment state
         if self.environment_tracker:

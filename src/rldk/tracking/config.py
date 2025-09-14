@@ -61,6 +61,16 @@ class TrackingConfig:
     notes: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
 
+    # Performance settings
+    enable_async_init: bool = field(default_factory=lambda: settings.enable_async_init)
+    tracking_timeout: float = field(default_factory=lambda: settings.tracking_timeout)
+    dataset_sample_size: int = field(default_factory=lambda: settings.dataset_sample_size)
+    model_fingerprint_limit: int = field(default_factory=lambda: settings.model_fingerprint_limit)
+    cache_environment: bool = field(default_factory=lambda: settings.cache_environment)
+    cache_git_info: bool = field(default_factory=lambda: settings.cache_git_info)
+    git_timeout: float = field(default_factory=lambda: settings.git_timeout)
+    environment_timeout: float = field(default_factory=lambda: settings.environment_timeout)
+
     def __post_init__(self):
         """Post-initialization validation and setup."""
         if self.experiment_id is None:
