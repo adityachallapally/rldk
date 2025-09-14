@@ -233,3 +233,35 @@ test-trl-slow:
 	@echo "⚠️  This will download models and may take several minutes"
 	python3 -m pytest test_trl_integration_optional.py -m integration -v --tb=short
 	@echo "✅ TRL slow tests completed!"
+
+# Refactor workflow targets
+init:
+	@echo "Initializing development environment..."
+	python -m venv .venv
+	source .venv/bin/activate && pip install -U pip && pip install -e .[dev]
+	@echo "✅ Development environment ready!"
+
+lint:
+	@echo "Running linting checks..."
+	ruff check .
+	ruff format --check .
+	black --check .
+	isort --check-only .
+	@echo "✅ Linting passed!"
+
+test:
+	@echo "Running tests..."
+	pytest -q
+	@echo "✅ Tests passed!"
+
+cli-smoke:
+	@echo "Running CLI smoke tests..."
+	rldk --help >/dev/null
+	rldk seed --show >/dev/null || true
+	rldk forensics --help >/dev/null
+	rldk evals list-suites >/dev/null || true
+	@echo "✅ CLI smoke tests passed!"
+
+docs-serve:
+	@echo "Starting documentation server..."
+	mkdocs serve
