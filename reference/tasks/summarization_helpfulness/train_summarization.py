@@ -10,10 +10,10 @@ It contains intentional bugs that RLDK will detect:
 3. Reward saturation (aggressive scaling)
 """
 
+import argparse
 import json
 import random
 import time
-import argparse
 from pathlib import Path
 from typing import Dict, List
 
@@ -120,8 +120,7 @@ class SummarizationDataset:
         # This is intentional for RLDK to catch
         items = list(self.data)
         random.shuffle(items)  # Always shuffle, no seed control
-        for item in items:
-            yield item
+        yield from items
 
 
 class RewardModel:
@@ -327,7 +326,7 @@ def main():
     args = parser.parse_args()
 
     # Run training
-    metrics = train_summarization(
+    train_summarization(
         model_size=args.model,
         learning_rate=args.learning_rate,
         num_steps=args.steps,

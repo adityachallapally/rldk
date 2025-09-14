@@ -12,9 +12,9 @@ Expected Results:
 - Comprehensive reports generated
 """
 
-import time
 import subprocess
 import sys
+import time
 from typing import Dict
 
 
@@ -110,10 +110,10 @@ def run_comprehensive_rldk_analysis(task_outputs: Dict[str, str]) -> Dict[str, b
         )
         if result.returncode != 0:
             print("❌ RLDK not available, skipping analysis")
-            return {task: False for task in task_outputs.keys()}
+            return dict.fromkeys(task_outputs.keys(), False)
     except (OSError, subprocess.SubprocessError) as e:
         print(f"❌ RLDK not available, skipping analysis: {e}")
-        return {task: False for task in task_outputs.keys()}
+        return dict.fromkeys(task_outputs.keys(), False)
 
     for task_name, output_dir in task_outputs.items():
         print(f"\n📊 Analyzing {task_name}...")

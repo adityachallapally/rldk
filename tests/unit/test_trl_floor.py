@@ -20,8 +20,7 @@ def test_trl_version_floor():
 def test_trl_imports():
     """Test that basic TRL imports work with the required version."""
     try:
-        from trl import PPOTrainer, PPOConfig
-        from trl import AutoModelForCausalLMWithValueHead
+        from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer
         # These imports should work with TRL 0.23+
         assert PPOTrainer is not None
         assert PPOConfig is not None
@@ -36,10 +35,10 @@ def test_trl_imports():
 if __name__ == "__main__":
     print("Testing TRL version requirements...")
     print("=" * 50)
-    
+
     version_ok = test_trl_version_floor()
     imports_ok = test_trl_imports()
-    
+
     if version_ok and imports_ok:
         print("\n🎉 All TRL tests passed!")
         exit(0)

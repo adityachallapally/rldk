@@ -1,11 +1,12 @@
 """Determinism checking for training runs."""
 
 import os
-import subprocess
 import re
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
 import pandas as pd
 
 from ..io import read_metrics_jsonl

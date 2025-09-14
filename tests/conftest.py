@@ -1,12 +1,13 @@
 """Pytest configuration and fixtures for RL Debug Kit tests."""
 
-import sys
 import os
-from pathlib import Path
-import pytest
-import tempfile
 import shutil
-from unittest.mock import patch, MagicMock
+import sys
+import tempfile
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Add src directory to Python path
 project_root = Path(__file__).parent.parent
@@ -31,9 +32,9 @@ def temp_dir():
 @pytest.fixture
 def sample_data():
     """Create sample data for testing."""
-    import pandas as pd
     import numpy as np
-    
+    import pandas as pd
+
     np.random.seed(42)
     return pd.DataFrame({
         "step": range(100),
@@ -70,9 +71,9 @@ def setup_test_environment():
     # Set environment variables for testing
     os.environ["RLDK_TEST_MODE"] = "true"
     os.environ["WANDB_MODE"] = "disabled"
-    
+
     yield
-    
+
     # Cleanup after test
     if "RLDK_TEST_MODE" in os.environ:
         del os.environ["RLDK_TEST_MODE"]

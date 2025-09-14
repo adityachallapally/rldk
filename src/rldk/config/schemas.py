@@ -1,9 +1,11 @@
 """Configuration schemas for RLDK."""
 
-from pydantic import BaseModel, Field, field_validator, ConfigDict
-from typing import Optional, List, Dict, Any, Union
-from pathlib import Path
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
 
 class LogLevel(str, Enum):
     """Logging levels."""
@@ -30,7 +32,7 @@ class LoggingConfig(BaseModel):
     format: str = Field(default="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     file: Optional[Path] = Field(default=None, description="Log file path")
     console: bool = Field(default=True, description="Enable console logging")
-    
+
     model_config = ConfigDict(use_enum_values=True)
 
 class AnalysisConfig(BaseModel):
@@ -48,7 +50,7 @@ class WandBConfig(BaseModel):
     tags: List[str] = Field(default_factory=list, description="W&B tags")
     group: Optional[str] = Field(default=None, description="W&B group")
     job_type: Optional[str] = Field(default=None, description="W&B job type")
-    
+
     def get_config_dict(self) -> Dict[str, Any]:
         """Get W&B configuration as dictionary."""
         config = {
@@ -68,7 +70,7 @@ class PerformanceConfig(BaseModel):
     num_workers: int = Field(default=4, gt=0, description="Number of parallel workers")
     memory_limit_gb: Optional[float] = Field(default=None, gt=0, description="Memory limit in GB")
     cache_size: int = Field(default=1000, gt=0, description="Cache size for data")
-    
+
 class VisualizationConfig(BaseModel):
     """Visualization configuration schema."""
     style: PlotStyle = Field(default=PlotStyle.SEABORN, description="Matplotlib style")
@@ -76,7 +78,7 @@ class VisualizationConfig(BaseModel):
     dpi: int = Field(default=100, gt=0, description="Figure DPI")
     save_format: str = Field(default="png", description="Default save format")
     show_plots: bool = Field(default=True, description="Show plots interactively")
-    
+
     @field_validator('figure_size')
     @classmethod
     def validate_figure_size(cls, v):
@@ -84,7 +86,7 @@ class VisualizationConfig(BaseModel):
         if len(v) != 2 or not all(isinstance(x, (int, float)) and x > 0 for x in v):
             raise ValueError("figure_size must be a tuple of two positive numbers")
         return v
-    
+
     model_config = ConfigDict(use_enum_values=True)
 
 class DirectoryConfig(BaseModel):
@@ -93,7 +95,7 @@ class DirectoryConfig(BaseModel):
     runs_dir: Path = Field(default="./runs", description="Runs directory")
     cache_dir: Path = Field(default="./.rldk_cache", description="Cache directory")
     data_dir: Optional[Path] = Field(default=None, description="Data directory")
-    
+
     def create_directories(self) -> None:
         """Create all configured directories."""
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -107,10 +109,10 @@ class EnvironmentConfig(BaseModel):
     seed: Optional[int] = Field(default=None, ge=0, description="Random seed")
     debug: bool = Field(default=False, description="Debug mode")
     verbose: bool = Field(default=False, description="Verbose output")
-    
+
 class ConfigSchema(BaseModel):
     """Main configuration schema combining all sub-configurations."""
-    
+
     # Sub-configurations
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     analysis: AnalysisConfig = Field(default_factory=AnalysisConfig)
@@ -119,29 +121,29 @@ class ConfigSchema(BaseModel):
     visualization: VisualizationConfig = Field(default_factory=VisualizationConfig)
     directories: DirectoryConfig = Field(default_factory=DirectoryConfig)
     environment: EnvironmentConfig = Field(default_factory=EnvironmentConfig)
-    
+
     # Additional metadata
     version: str = Field(default="1.0.0", description="Configuration version")
     created_at: Optional[str] = Field(default=None, description="Configuration creation timestamp")
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary."""
         return self.model_dump()
-    
+
     def to_json(self) -> str:
         """Convert configuration to JSON string."""
         return self.model_dump_json(indent=2)
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ConfigSchema':
         """Create configuration from dictionary."""
         return cls(**data)
-    
+
     @classmethod
     def from_json(cls, json_str: str) -> 'ConfigSchema':
         """Create configuration from JSON string."""
         return cls.model_validate_json(json_str)
-    
+
     def validate_config(self) -> bool:
         """Validate the entire configuration."""
         try:
@@ -151,7 +153,7 @@ class ConfigSchema(BaseModel):
             return True
         except Exception:
             return False
-    
+
     def get_summary(self) -> Dict[str, Any]:
         """Get a summary of the configuration."""
         return {

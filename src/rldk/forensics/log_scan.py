@@ -2,13 +2,14 @@
 
 import json
 from pathlib import Path
-from typing import Dict, Any, Iterator
+from typing import Any, Dict, Iterator
+
 import pandas as pd
 
-from rldk.io.readers import read_jsonl, read_tensorboard_export, read_wandb_export
 from rldk.adapters.flexible import FlexibleDataAdapter
 from rldk.forensics.ppo_scan import scan_ppo_events
-from rldk.utils.error_handling import ValidationError, AdapterError
+from rldk.io.readers import read_jsonl, read_tensorboard_export, read_wandb_export
+from rldk.utils.error_handling import AdapterError, ValidationError
 
 
 def scan_logs(run_or_export: str) -> Dict[str, Any]:
@@ -29,18 +30,18 @@ def scan_logs(run_or_export: str) -> Dict[str, Any]:
 
 def detect_and_read_logs(path: Path) -> Iterator[Dict[str, Any]]:
     """Detect log format and read events with enhanced format support."""
-    
+
     try:
         adapter = FlexibleDataAdapter(path)
         df = adapter.load()
-        
+
         for _, row in df.iterrows():
             yield row.to_dict()
         return
-        
+
     except (ValidationError, AdapterError):
         pass
-    
+
     # Check for TensorBoard export (CSV files in directory)
     if path.is_dir():
         csv_files = list(path.glob("*.csv"))
@@ -72,12 +73,12 @@ def detect_and_read_logs(path: Path) -> Iterator[Dict[str, Any]]:
 
     if path.is_dir():
         data_files = (
-            list(path.glob("*.jsonl")) + 
-            list(path.glob("*.csv")) + 
-            list(path.glob("*.json")) + 
+            list(path.glob("*.jsonl")) +
+            list(path.glob("*.csv")) +
+            list(path.glob("*.json")) +
             list(path.glob("*.parquet"))
         )
-        
+
         if data_files:
             try:
                 adapter = FlexibleDataAdapter(data_files[0])
@@ -87,7 +88,7 @@ def detect_and_read_logs(path: Path) -> Iterator[Dict[str, Any]]:
                 return
             except (ValidationError, AdapterError):
                 pass
-            
+
             first_file = data_files[0]
             if first_file.suffix == ".jsonl":
                 yield from read_jsonl(first_file)
@@ -102,11 +103,10 @@ def detect_and_read_logs(path: Path) -> Iterator[Dict[str, Any]]:
                     raise ValueError(f"Failed to parse CSV file {first_file}: {e}")
             elif first_file.suffix == ".json":
                 try:
-                    with open(first_file, 'r') as f:
+                    with open(first_file) as f:
                         data = json.load(f)
                     if isinstance(data, list):
-                        for item in data:
-                            yield item
+                        yield from data
                     elif isinstance(data, dict):
                         yield data
                     return

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Test API contract compliance for RLDK."""
 
-import sys
-import os
-import tempfile
 import json
-import subprocess
+import os
 import re
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 # Add src to path for imports
 sys.path.insert(0, "src")
@@ -39,13 +39,13 @@ class TestPublicSymbols:
     def test_tracking_module_imports(self):
         """Test tracking module imports."""
         from rldk.tracking import (
-            ExperimentTracker,
-            TrackingConfig,
             DatasetTracker,
-            ModelTracker,
             EnvironmentTracker,
-            SeedTracker,
+            ExperimentTracker,
             GitTracker,
+            ModelTracker,
+            SeedTracker,
+            TrackingConfig,
         )
 
         # Test classes exist
@@ -60,15 +60,15 @@ class TestPublicSymbols:
     def test_forensics_module_imports(self):
         """Test forensics module imports."""
         from rldk.forensics import (
-            scan_ppo_events,
-            KLScheduleTracker,
-            KLScheduleMetrics,
-            GradientNormsAnalyzer,
-            GradientNormsMetrics,
-            AdvantageStatisticsTracker,
             AdvantageStatisticsMetrics,
+            AdvantageStatisticsTracker,
             ComprehensivePPOForensics,
             ComprehensivePPOMetrics,
+            GradientNormsAnalyzer,
+            GradientNormsMetrics,
+            KLScheduleMetrics,
+            KLScheduleTracker,
+            scan_ppo_events,
         )
 
         # Test function
@@ -86,7 +86,7 @@ class TestPublicSymbols:
 
     def test_determinism_module_imports(self):
         """Test determinism module imports."""
-        from rldk.determinism import check, check_determinism, DeterminismReport
+        from rldk.determinism import DeterminismReport, check, check_determinism
 
         # Test functions
         assert callable(check)
@@ -97,7 +97,7 @@ class TestPublicSymbols:
 
     def test_diff_module_imports(self):
         """Test diff module imports."""
-        from rldk.diff import first_divergence, DivergenceReport
+        from rldk.diff import DivergenceReport, first_divergence
 
         # Test function
         assert callable(first_divergence)
@@ -107,7 +107,7 @@ class TestPublicSymbols:
 
     def test_bisect_module_imports(self):
         """Test bisect module imports."""
-        from rldk.bisect import bisect_commits, BisectResult
+        from rldk.bisect import BisectResult, bisect_commits
 
         # Test function
         assert callable(bisect_commits)
@@ -125,7 +125,7 @@ class TestPublicSymbols:
 
     def test_reward_module_imports(self):
         """Test reward module imports."""
-        from rldk.reward import health, RewardHealthReport
+        from rldk.reward import RewardHealthReport, health
 
         # Test function
         assert callable(health)
@@ -135,7 +135,7 @@ class TestPublicSymbols:
 
     def test_evals_module_imports(self):
         """Test evals module imports."""
-        from rldk.evals import run, EvalResult
+        from rldk.evals import EvalResult, run
 
         # Test function
         assert callable(run)
@@ -151,7 +151,7 @@ class TestCLICommands:
         """Set up test environment."""
         self.runner = CliRunner()
         self.temp_dir = tempfile.mkdtemp()
-        
+
         # Create synthetic test data
         self.create_synthetic_data()
 
@@ -168,12 +168,12 @@ class TestCLICommands:
             {"step": 100, "loss": 0.8, "reward_mean": 0.6},
             {"step": 200, "loss": 0.6, "reward_mean": 0.7},
         ]
-        
+
         run_file = Path(self.temp_dir) / "synthetic_run.jsonl"
         with open(run_file, 'w') as f:
             for item in run_data:
                 f.write(json.dumps(item) + '\n')
-        
+
         self.run_file = str(run_file)
 
         # Create synthetic prompts
@@ -182,25 +182,26 @@ class TestCLICommands:
             {"text": "How are you?"},
             {"text": "Goodbye"},
         ]
-        
+
         prompts_file = Path(self.temp_dir) / "synthetic_prompts.jsonl"
         with open(prompts_file, 'w') as f:
             for item in prompts_data:
                 f.write(json.dumps(item) + '\n')
-        
+
         self.prompts_file = str(prompts_file)
 
         # Create synthetic checkpoint files with proper PyTorch format
         try:
-            import torch
             from collections import OrderedDict
-            
+
+            import torch
+
             # Check if torch is mocked
-            if hasattr(torch, 'randn') and hasattr(torch.randn, '__call__'):
+            if hasattr(torch, 'randn') and callable(torch.randn):
                 # Real torch
                 checkpoint_a = Path(self.temp_dir) / "model_a.pt"
                 checkpoint_b = Path(self.temp_dir) / "model_b.pt"
-                
+
                 # Create minimal valid PyTorch checkpoints
                 model_a_state = OrderedDict([
                     ('layer1.weight', torch.randn(10, 5)),
@@ -208,44 +209,44 @@ class TestCLICommands:
                     ('layer2.weight', torch.randn(1, 10)),
                     ('layer2.bias', torch.randn(1))
                 ])
-                
+
                 model_b_state = OrderedDict([
                     ('layer1.weight', torch.randn(10, 5) + torch.tensor(0.1)),  # Slightly different
                     ('layer1.bias', torch.randn(10)),
                     ('layer2.weight', torch.randn(1, 10)),
                     ('layer2.bias', torch.randn(1))
                 ])
-                
+
                 torch.save(model_a_state, checkpoint_a)
                 torch.save(model_b_state, checkpoint_b)
-                
+
                 self.checkpoint_a = str(checkpoint_a)
                 self.checkpoint_b = str(checkpoint_b)
             else:
                 # Mocked torch, create dummy files
                 checkpoint_a = Path(self.temp_dir) / "model_a.pt"
                 checkpoint_b = Path(self.temp_dir) / "model_b.pt"
-                
+
                 checkpoint_a.write_text('{"dummy": "checkpoint_a"}')
                 checkpoint_b.write_text('{"dummy": "checkpoint_b"}')
-                
+
                 self.checkpoint_a = str(checkpoint_a)
                 self.checkpoint_b = str(checkpoint_b)
         except (ImportError, TypeError, AttributeError):
             # Fallback to dummy files if torch not available or mocked
             checkpoint_a = Path(self.temp_dir) / "model_a.pt"
             checkpoint_b = Path(self.temp_dir) / "model_b.pt"
-            
+
             checkpoint_a.write_text('{"dummy": "checkpoint_a"}')
             checkpoint_b.write_text('{"dummy": "checkpoint_b"}')
-            
+
             self.checkpoint_a = str(checkpoint_a)
             self.checkpoint_b = str(checkpoint_b)
 
     def test_main_help(self):
         """Test main CLI help command."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, ["--help"])
         assert result.exit_code == 0
         assert "RL Debug Kit" in result.stdout
@@ -265,13 +266,13 @@ class TestCLICommands:
     def test_ingest_command(self):
         """Test ingest command with synthetic data."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, [
-            "ingest", 
+            "ingest",
             self.run_file,
             "--output", f"{self.temp_dir}/output.jsonl"
         ])
-        
+
         # May fail with synthetic data format, but should handle gracefully
         assert result.exit_code in [0, 1]
         if result.exit_code == 0:
@@ -281,7 +282,7 @@ class TestCLICommands:
     def test_diff_command(self):
         """Test diff command with synthetic data."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, [
             "diff",
             "--a", self.run_file,
@@ -289,7 +290,7 @@ class TestCLICommands:
             "--signals", "loss,reward_mean",
             "--output-dir", f"{self.temp_dir}/diff_analysis"
         ])
-        
+
         # May fail with synthetic data format, but should handle gracefully
         assert result.exit_code in [0, 1]
         if result.exit_code == 0:
@@ -298,7 +299,7 @@ class TestCLICommands:
     def test_check_determinism_command(self):
         """Test check-determinism command."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, [
             "check-determinism",
             "--compare", "loss",
@@ -306,7 +307,7 @@ class TestCLICommands:
             "--replicas", "2",
             "--output-dir", f"{self.temp_dir}/determinism_analysis"
         ])
-        
+
         # Should succeed with simple command
         assert result.exit_code == 0
         assert "Determinism check" in result.stdout
@@ -314,27 +315,27 @@ class TestCLICommands:
     def test_bisect_command(self):
         """Test bisect command."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, [
             "bisect",
             "--good", "HEAD~1",
             "--bad", "HEAD",
             "--shell-predicate", "echo 'test'"
         ])
-        
+
         # May fail if not in git repo, but should handle gracefully
         assert result.exit_code in [0, 1]
 
     def test_reward_health_command(self):
         """Test reward-health command with synthetic data."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, [
             "reward-health",
             "--run", self.run_file,
             "--output-dir", f"{self.temp_dir}/reward_analysis"
         ])
-        
+
         # May fail with synthetic data format, but should handle gracefully
         assert result.exit_code in [0, 1]
         if result.exit_code == 0:
@@ -343,7 +344,7 @@ class TestCLICommands:
     def test_replay_command(self):
         """Test replay command."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, [
             "replay",
             "--run", self.run_file,
@@ -351,7 +352,7 @@ class TestCLICommands:
             "--metrics", "loss",
             "--output-dir", f"{self.temp_dir}/replay_results"
         ])
-        
+
         # May fail with synthetic data format, but should handle gracefully
         assert result.exit_code in [0, 1]
         if result.exit_code == 0:
@@ -360,13 +361,13 @@ class TestCLICommands:
     def test_eval_command(self):
         """Test eval command with synthetic data."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, [
             "eval",
             "--run", self.run_file,
             "--output-dir", f"{self.temp_dir}/eval_results"
         ])
-        
+
         # May fail with synthetic data format, but should handle gracefully
         assert result.exit_code in [0, 1]
         if result.exit_code == 0:
@@ -375,14 +376,14 @@ class TestCLICommands:
     def test_track_command(self):
         """Test track command."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, [
             "track",
             "test_experiment",
             "--output-dir", f"{self.temp_dir}/runs",
             "--no-wandb"
         ])
-        
+
         # Should succeed
         assert result.exit_code == 0
         assert "Experiment tracking started" in result.stdout
@@ -390,26 +391,26 @@ class TestCLICommands:
     def test_reward_drift_command(self):
         """Test reward-drift command with synthetic data."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, [
             "reward-drift",
             self.checkpoint_a,
             self.checkpoint_b,
             "--prompts", self.prompts_file
         ])
-        
+
         # May fail with dummy checkpoints, but should handle gracefully
         assert result.exit_code in [0, 1]
 
     def test_doctor_command(self):
         """Test doctor command."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, [
             "doctor",
             self.temp_dir
         ])
-        
+
         # Should succeed with directory
         assert result.exit_code == 0
         assert "diagnostics" in result.stdout.lower()
@@ -417,7 +418,7 @@ class TestCLICommands:
     def test_version_command(self):
         """Test version command."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, ["version"])
         assert result.exit_code == 0
         assert "RL Debug Kit version" in result.stdout
@@ -425,14 +426,14 @@ class TestCLICommands:
     def test_card_command(self):
         """Test card command."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, [
             "card",
             "determinism",
             self.temp_dir,
             "--output-dir", f"{self.temp_dir}/cards"
         ])
-        
+
         # Should succeed with directory
         assert result.exit_code == 0
         assert "card generated" in result.stdout
@@ -440,7 +441,7 @@ class TestCLICommands:
     def test_forensics_help(self):
         """Test forensics subcommand help."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, ["forensics", "--help"])
         assert result.exit_code == 0
         assert "Forensics commands" in result.stdout
@@ -453,13 +454,13 @@ class TestCLICommands:
     def test_forensics_compare_runs(self):
         """Test forensics compare-runs command."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, [
             "forensics", "compare-runs",
             self.temp_dir,
             self.temp_dir
         ])
-        
+
         # Should succeed with identical directories
         assert result.exit_code == 0
         assert "Comparison complete" in result.stdout
@@ -467,13 +468,13 @@ class TestCLICommands:
     def test_forensics_diff_ckpt(self):
         """Test forensics diff-ckpt command."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, [
             "forensics", "diff-ckpt",
             self.checkpoint_a,
             self.checkpoint_b
         ])
-        
+
         # Should succeed with valid PyTorch checkpoints, or fail gracefully with dummy files
         assert result.exit_code in [0, 1]
         if result.exit_code == 0:
@@ -482,12 +483,12 @@ class TestCLICommands:
     def test_forensics_env_audit(self):
         """Test forensics env-audit command."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, [
             "forensics", "env-audit",
             self.temp_dir
         ])
-        
+
         # Should succeed with directory
         assert result.exit_code == 0
         assert "Environment audit" in result.stdout
@@ -495,12 +496,12 @@ class TestCLICommands:
     def test_forensics_log_scan(self):
         """Test forensics log-scan command."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, [
             "forensics", "log-scan",
             self.temp_dir
         ])
-        
+
         # Should succeed with directory
         assert result.exit_code == 0
         assert "Log scan" in result.stdout
@@ -508,12 +509,12 @@ class TestCLICommands:
     def test_forensics_doctor(self):
         """Test forensics doctor command."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, [
             "forensics", "doctor",
             self.temp_dir
         ])
-        
+
         # Should succeed with directory
         assert result.exit_code == 0
         assert "diagnostics" in result.stdout.lower()
@@ -521,7 +522,7 @@ class TestCLICommands:
     def test_reward_help(self):
         """Test reward subcommand help."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, ["reward", "--help"])
         assert result.exit_code == 0
         assert "Reward model analysis" in result.stdout
@@ -530,14 +531,14 @@ class TestCLICommands:
     def test_reward_reward_drift(self):
         """Test reward reward-drift command."""
         from rldk.cli import app
-        
+
         result = self.runner.invoke(app, [
             "reward", "reward-drift",
             self.checkpoint_a,
             self.checkpoint_b,
             "--prompts", self.prompts_file
         ])
-        
+
         # May fail with dummy checkpoints, but should handle gracefully
         assert result.exit_code in [0, 1]
 
@@ -549,7 +550,7 @@ class TestArtifactLocations:
         """Set up test environment."""
         self.temp_dir = tempfile.mkdtemp()
         self.runner = CliRunner()
-        
+
         # Create minimal synthetic data
         run_data = [{"step": 0, "loss": 1.0}]
         run_file = Path(self.temp_dir) / "test_run.jsonl"
@@ -566,9 +567,9 @@ class TestArtifactLocations:
     def test_determinism_analysis_artifacts(self):
         """Test check-determinism produces expected artifacts."""
         from rldk.cli import app
-        
+
         output_dir = f"{self.temp_dir}/determinism_analysis"
-        
+
         result = self.runner.invoke(app, [
             "check-determinism",
             "--compare", "loss",
@@ -576,12 +577,12 @@ class TestArtifactLocations:
             "--replicas", "2",
             "--output-dir", output_dir
         ])
-        
+
         if result.exit_code == 0:
             # Check for expected artifacts
             output_path = Path(output_dir)
             assert output_path.exists()
-            
+
             # Should have determinism card
             card_file = output_path / "determinism_card.json"
             if card_file.exists():
@@ -593,9 +594,9 @@ class TestArtifactLocations:
     def test_diff_analysis_artifacts(self):
         """Test diff produces expected artifacts."""
         from rldk.cli import app
-        
+
         output_dir = f"{self.temp_dir}/diff_analysis"
-        
+
         result = self.runner.invoke(app, [
             "diff",
             "--a", self.run_file,
@@ -603,7 +604,7 @@ class TestArtifactLocations:
             "--signals", "loss",
             "--output-dir", output_dir
         ])
-        
+
         if result.exit_code == 0:
             # Check for expected artifacts
             output_path = Path(output_dir)
@@ -618,15 +619,15 @@ class TestArtifactLocations:
     def test_reward_analysis_artifacts(self):
         """Test reward-health produces expected artifacts."""
         from rldk.cli import app
-        
+
         output_dir = f"{self.temp_dir}/reward_analysis"
-        
+
         result = self.runner.invoke(app, [
             "reward-health",
             "--run", self.run_file,
             "--output-dir", output_dir
         ])
-        
+
         if result.exit_code == 0:
             # Check for expected artifacts
             output_path = Path(output_dir)
@@ -641,9 +642,9 @@ class TestArtifactLocations:
     def test_replay_results_artifacts(self):
         """Test replay produces expected artifacts."""
         from rldk.cli import app
-        
+
         output_dir = f"{self.temp_dir}/replay_results"
-        
+
         result = self.runner.invoke(app, [
             "replay",
             "--run", self.run_file,
@@ -651,7 +652,7 @@ class TestArtifactLocations:
             "--metrics", "loss",
             "--output-dir", output_dir
         ])
-        
+
         if result.exit_code == 0:
             # Check for expected artifacts
             output_path = Path(output_dir)
@@ -667,15 +668,15 @@ class TestArtifactLocations:
     def test_eval_results_artifacts(self):
         """Test eval produces expected artifacts."""
         from rldk.cli import app
-        
+
         output_dir = f"{self.temp_dir}/eval_results"
-        
+
         result = self.runner.invoke(app, [
             "eval",
             "--run", self.run_file,
             "--output-dir", output_dir
         ])
-        
+
         if result.exit_code == 0:
             # Check for expected artifacts
             output_path = Path(output_dir)
@@ -690,16 +691,16 @@ class TestArtifactLocations:
     def test_tracking_artifacts(self):
         """Test track produces expected artifacts."""
         from rldk.cli import app
-        
+
         output_dir = f"{self.temp_dir}/runs"
-        
+
         result = self.runner.invoke(app, [
             "track",
             "test_experiment",
             "--output-dir", output_dir,
             "--no-wandb"
         ])
-        
+
         if result.exit_code == 0:
             # Check for expected artifacts
             output_path = Path(output_dir)
@@ -718,14 +719,14 @@ class TestArtifactLocations:
     def test_forensics_reports_artifacts(self):
         """Test forensics commands produce expected artifacts."""
         from rldk.cli import app
-        
+
         # Test compare-runs
         result = self.runner.invoke(app, [
             "forensics", "compare-runs",
             self.temp_dir,
             self.temp_dir
         ])
-        
+
         if result.exit_code == 0:
             # Should create rldk_reports directory
             reports_dir = Path("rldk_reports")

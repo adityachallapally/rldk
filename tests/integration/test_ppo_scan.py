@@ -1,7 +1,7 @@
 """Test PPO scan functionality."""
 
 from rldk.forensics.ppo_scan import scan_ppo_events
-from rldk.io.schemas import validate, PPOScanReportV1
+from rldk.io.schemas import PPOScanReportV1, validate
 
 
 def test_ppo_scan_clean_logs():

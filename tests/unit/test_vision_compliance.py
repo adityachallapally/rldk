@@ -3,9 +3,9 @@
 Comprehensive test script to verify RLDK meets the vision requirements for intense researchers.
 """
 
+import json
 import subprocess
 import sys
-import json
 from pathlib import Path
 
 
@@ -74,7 +74,7 @@ def test_python_api():
 
     # Test imports
     try:
-        from rldk import ingest, diff, determinism, reward, evals, bisect, replay
+        from rldk import bisect, determinism, diff, evals, ingest, replay, reward
 
         print("✅ All core modules imported successfully")
 
@@ -128,8 +128,8 @@ def test_output_formats():
             # Check if JSON files are valid
             if report_file.suffix == ".json":
                 try:
-                    with open(report_file, "r") as f:
-                        data = json.load(f)
+                    with open(report_file) as f:
+                        json.load(f)
                     print("    ✅ Valid JSON structure")
                 except json.JSONDecodeError:
                     print("    ❌ Invalid JSON")

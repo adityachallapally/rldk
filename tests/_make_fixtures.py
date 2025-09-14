@@ -1,8 +1,8 @@
 """Generate test fixtures for RL Debug Kit."""
 
 import json
-import random
 import math
+import random
 from pathlib import Path
 
 
@@ -163,7 +163,7 @@ def make_reward_drift_demo():
     # Create simple reward models as PyTorch files
     try:
         import torch
-        
+
         for i, name in enumerate(["rmA", "rmB"]):
             model_dir = Path(f"test_artifacts/reward_drift_demo/{name}")
             model_dir.mkdir(parents=True, exist_ok=True)

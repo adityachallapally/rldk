@@ -1,16 +1,14 @@
 """Consolidated writers for all report types and data formats."""
 
-import json
-import csv
 from pathlib import Path
-from typing import Dict, Any, Union, List, Optional
-import pandas as pd
+from typing import Any, Dict, List, Union
+
 import matplotlib.pyplot as plt
 import numpy as np
-from datetime import datetime
+import pandas as pd
 
-from .consolidated_schemas import MetricsSchema, Event, events_to_dataframe
-from .unified_writer import UnifiedWriter, FileWriteError, SchemaValidationError
+from .consolidated_schemas import Event, MetricsSchema
+from .unified_writer import UnifiedWriter
 
 
 def write_drift_card(drift_data: Dict[str, Any], output_dir: Union[str, Path]) -> None:
@@ -109,7 +107,7 @@ def _generate_drift_card_md(drift_data: Dict[str, Any]) -> str:
 def write_reward_health_card(report, output_dir: Path) -> None:
     """Write reward health card to markdown file."""
     writer = UnifiedWriter(output_dir)
-    
+
     content = _generate_reward_health_card_md(report)
     writer.write_markdown(content, "reward_health_card.md")
 
@@ -251,7 +249,7 @@ def write_drift_analysis_csv(report, output_dir: Path) -> None:
 def write_reward_health_summary(report, output_dir: Path) -> None:
     """Write reward health summary as JSON file."""
     writer = UnifiedWriter(output_dir)
-    
+
     summary = {
         "passed": report.passed,
         "overall_status": "passed" if report.passed else "failed",
@@ -325,7 +323,7 @@ def generate_reward_health_report(
 
             # Generate calibration plots using actual reward data from the report
             writer = UnifiedWriter(output_dir)
-            
+
             # Extract reward data from the report if available
             reward_data = None
             if hasattr(report, 'reward_data') and report.reward_data is not None:
@@ -339,7 +337,7 @@ def generate_reward_health_report(
             elif hasattr(report, 'drift_metrics') and report.drift_metrics is not None:
                 # Use drift metrics as fallback if available
                 reward_data = report.drift_metrics
-            
+
             # Only generate plots if we have actual data
             if reward_data is not None and not reward_data.empty:
                 # Determine the appropriate reward column
@@ -352,7 +350,7 @@ def generate_reward_health_report(
                     else:
                         print("Warning: No reward columns found in data, skipping plot generation")
                         return
-                
+
                 generate_calibration_plots(
                     reward_data=reward_data,
                     reward_col=reward_col,
@@ -375,46 +373,46 @@ def generate_reward_health_report(
 
 
 def write_events_jsonl(
-    events: List[Event], 
+    events: List[Event],
     file_path: Union[str, Path]
 ) -> None:
     """
     Write events to JSONL file with consistent data validation.
-    
+
     Args:
         events: List of Event objects
         file_path: Output file path
     """
     file_path = Path(file_path)
     writer = UnifiedWriter(file_path.parent)
-    
+
     # Convert events to dictionaries with consistent serialization
     event_data = []
     for event in events:
         event_dict = event.to_dict()
         # Ensure consistent handling of nested data structures
         event_data.append(event_dict)
-    
+
     writer.write_jsonl(event_data, file_path.name)
 
 
 def write_metrics_jsonl(df: pd.DataFrame, file_path: Union[str, Path]) -> None:
     """
     Write metrics DataFrame to JSONL file with consistent schema validation.
-    
+
     Args:
         df: DataFrame with training metrics
         file_path: Output file path
     """
     file_path = Path(file_path)
     writer = UnifiedWriter(file_path.parent)
-    
+
     # Always use MetricsSchema for consistent validation and formatting
     writer.write_metrics_jsonl(df, file_path.name, MetricsSchema)
 
 
 def write_determinism_card(
-    card_data: Dict[str, Any], 
+    card_data: Dict[str, Any],
     output_dir: Union[str, Path]
 ) -> None:
     """Write determinism card to JSON file."""
@@ -424,7 +422,7 @@ def write_determinism_card(
 
 
 def write_ppo_scan_report(
-    report_data: Dict[str, Any], 
+    report_data: Dict[str, Any],
     output_dir: Union[str, Path]
 ) -> None:
     """Write PPO scan report to JSON file."""
@@ -434,7 +432,7 @@ def write_ppo_scan_report(
 
 
 def write_ckpt_diff_report(
-    report_data: Dict[str, Any], 
+    report_data: Dict[str, Any],
     output_dir: Union[str, Path]
 ) -> None:
     """Write checkpoint diff report to JSON file."""
@@ -444,7 +442,7 @@ def write_ckpt_diff_report(
 
 
 def write_reward_drift_report(
-    report_data: Dict[str, Any], 
+    report_data: Dict[str, Any],
     output_dir: Union[str, Path]
 ) -> None:
     """Write reward drift report to JSON file."""
@@ -454,7 +452,7 @@ def write_reward_drift_report(
 
 
 def write_run_comparison(
-    comparison_data: Dict[str, Any], 
+    comparison_data: Dict[str, Any],
     output_dir: Union[str, Path]
 ) -> None:
     """Write run comparison report to JSON file."""
@@ -464,7 +462,7 @@ def write_run_comparison(
 
 
 def write_eval_summary(
-    eval_data: Dict[str, Any], 
+    eval_data: Dict[str, Any],
     output_dir: Union[str, Path]
 ) -> None:
     """Write evaluation summary to JSON file."""
@@ -474,7 +472,7 @@ def write_eval_summary(
 
 
 def write_environment_audit(
-    audit_data: Dict[str, Any], 
+    audit_data: Dict[str, Any],
     output_dir: Union[str, Path]
 ) -> None:
     """Write environment audit report to JSON file."""
@@ -484,7 +482,7 @@ def write_environment_audit(
 
 
 def write_replay_comparison(
-    comparison_data: Dict[str, Any], 
+    comparison_data: Dict[str, Any],
     output_dir: Union[str, Path]
 ) -> None:
     """Write replay comparison report to JSON file."""
@@ -494,7 +492,7 @@ def write_replay_comparison(
 
 
 def write_tracking_data(
-    tracking_data: Dict[str, Any], 
+    tracking_data: Dict[str, Any],
     output_dir: Union[str, Path]
 ) -> None:
     """Write tracking data to JSON file."""

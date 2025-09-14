@@ -1,8 +1,9 @@
 """Test reference smoke tests produce expected outputs."""
 
 import json
-import pytest
 from pathlib import Path
+
+import pytest
 
 
 def test_reference_smoke_outputs_exist():
@@ -26,7 +27,7 @@ def test_reference_smoke_outputs_exist():
 
         # For JSON files, check they contain valid JSON
         if filename.endswith(".json"):
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 try:
                     data = json.load(f)
                     assert isinstance(
@@ -41,7 +42,7 @@ def test_determinism_card_structure():
     card_path = Path("reference/expected/determinism_card.json")
 
     if card_path.exists():
-        with open(card_path, "r") as f:
+        with open(card_path) as f:
             data = json.load(f)
 
         # Check for required keys (adjust based on actual determinism card structure)
@@ -55,7 +56,7 @@ def test_drift_card_structure():
     card_path = Path("reference/expected/drift_card.json")
 
     if card_path.exists():
-        with open(card_path, "r") as f:
+        with open(card_path) as f:
             data = json.load(f)
 
         # Check for required keys (adjust based on actual drift card structure)
@@ -69,7 +70,7 @@ def test_reward_card_structure():
     card_path = Path("reference/expected/reward_card.json")
 
     if card_path.exists():
-        with open(card_path, "r") as f:
+        with open(card_path) as f:
             data = json.load(f)
 
         # Check for required keys (adjust based on actual reward health card structure)

@@ -3,7 +3,8 @@
 import json
 import re
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
 import pandas as pd
 
 from .base import BaseAdapter
@@ -33,7 +34,7 @@ class OpenRLHFAdapter(BaseAdapter):
         """Check if a file contains OpenRLHF logs."""
         try:
             if file_path.suffix == ".jsonl":
-                with open(file_path, "r") as f:
+                with open(file_path) as f:
                     first_line = f.readline().strip()
                     if first_line:
                         data = json.loads(first_line)
@@ -55,10 +56,10 @@ class OpenRLHFAdapter(BaseAdapter):
                                 or "rlhf" in str(data).lower()
                             )
             elif file_path.suffix == ".log":
-                with open(file_path, "r") as f:
+                with open(file_path) as f:
                     content = f.read()
                     return "openrlhf" in content.lower() or "rlhf" in content.lower()
-        except (OSError, IOError, json.JSONDecodeError, UnicodeDecodeError, TypeError) as e:
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError, TypeError) as e:
             # Log the specific error for debugging but don't fail the check
             print(f"Warning: Error checking if file {file_path} is OpenRLHF format: {e}")
             return False
@@ -119,7 +120,7 @@ class OpenRLHFAdapter(BaseAdapter):
 
         try:
             if file_path.suffix == ".jsonl":
-                with open(file_path, "r") as f:
+                with open(file_path) as f:
                     for line_num, line in enumerate(f, 1):  # Start line numbering from 1
                         line = line.strip()
                         if not line:
@@ -134,13 +135,13 @@ class OpenRLHFAdapter(BaseAdapter):
                             continue
 
             elif file_path.suffix == ".log":
-                with open(file_path, "r") as f:
+                with open(file_path) as f:
                     for line_num, line in enumerate(f, 1):  # Start line numbering from 1
                         metric = self._parse_log_line(line, line_num)
                         if metric:
                             metrics.append(metric)
 
-        except (OSError, IOError, UnicodeDecodeError) as e:
+        except (OSError, UnicodeDecodeError) as e:
             print(f"Warning: Error parsing {file_path}: {e}")
             # Re-raise the exception with context
             raise RuntimeError(f"Failed to parse OpenRLHF file {file_path}: {e}") from e

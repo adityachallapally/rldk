@@ -6,12 +6,13 @@ Test script to verify the improved anomaly detection thresholds without requirin
 import sys
 from pathlib import Path
 
+
 def test_threshold_improvements():
     """Test that the threshold improvements are properly documented."""
-    
+
     print("=== Anomaly Detection Threshold Improvements ===")
     print()
-    
+
     # Document the improvements made
     improvements = {
         "Gradient Explosion": {
@@ -57,7 +58,7 @@ def test_threshold_improvements():
             "reason": "Reduce false positives from normal calibration variations"
         }
     }
-    
+
     for category, details in improvements.items():
         print(f"{category}:")
         print(f"  Old: {details['old']}")
@@ -65,15 +66,15 @@ def test_threshold_improvements():
         print(f"  Improvement: {details['improvement']}")
         print(f"  Reason: {details['reason']}")
         print()
-    
+
     return True
 
 def estimate_alert_reduction():
     """Estimate the reduction in false positive alerts."""
-    
+
     print("=== Estimated False Positive Reduction ===")
     print()
-    
+
     # Based on the test results showing 645 total alerts
     original_alerts = 645
     alert_breakdown = {
@@ -83,7 +84,7 @@ def estimate_alert_reduction():
         "batch_size": 10,
         "reward_drift": 8
     }
-    
+
     # Estimate reductions based on threshold changes
     estimated_reductions = {
         "gradient": 0.8,      # 80% reduction (5x more lenient explosion + 100x vanishing)
@@ -92,28 +93,28 @@ def estimate_alert_reduction():
         "batch_size": 0.2,    # 20% reduction (minor improvements)
         "reward_drift": 0.6   # 60% reduction (3x more lenient)
     }
-    
+
     total_reduction = 0
     for category, count in alert_breakdown.items():
         reduction = count * estimated_reductions[category]
         total_reduction += reduction
         print(f"{category}: {count} → ~{count - reduction:.0f} alerts ({estimated_reductions[category]:.0%} reduction)")
-    
+
     new_total = original_alerts - total_reduction
     overall_reduction = total_reduction / original_alerts
-    
+
     print()
     print(f"Total alerts: {original_alerts} → ~{new_total:.0f}")
     print(f"Overall reduction: ~{overall_reduction:.1%} ({total_reduction:.0f} fewer alerts)")
-    
+
     return True
 
 def document_new_features():
     """Document the new features added."""
-    
+
     print("=== New Features Added ===")
     print()
-    
+
     features = [
         "Confidence Scoring: All alerts now include confidence scores (0.0-1.0)",
         "Consecutive Change Detection: Learning rate changes require consecutive occurrences",
@@ -122,25 +123,25 @@ def document_new_features():
         "Minimum Sample Requirements: More reliable detection with sufficient history",
         "Enhanced Metadata: Alerts include more diagnostic information"
     ]
-    
+
     for i, feature in enumerate(features, 1):
         print(f"{i}. {feature}")
-    
+
     print()
     return True
 
 def main():
     """Run all documentation and estimation tests."""
-    
+
     print("Anomaly Detection System Improvements")
     print("=" * 50)
     print()
-    
+
     try:
         test_threshold_improvements()
         estimate_alert_reduction()
         document_new_features()
-        
+
         print("=" * 50)
         print("✅ Analysis Complete!")
         print()
@@ -156,9 +157,9 @@ def main():
         print("• Higher trust in the monitoring system")
         print("• Reduced alert fatigue")
         print("• Better focus on real anomalies")
-        
+
         return True
-        
+
     except Exception as e:
         print(f"\n❌ Analysis failed: {e}")
         return False

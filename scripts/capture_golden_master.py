@@ -8,29 +8,31 @@ with small synthetic inputs, then writes:
 - a summary JSON that includes command exit codes, artifact checksums, artifact JSON Schemas
 """
 
-import json
 import hashlib
+import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
-import os
-from pathlib import Path
-from typing import Dict, List, Any, Optional
-import shutil
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 import jsonschema
 from jsonschema import Draft7Validator
 
 # Add utils to path
 sys.path.insert(0, str(Path(__file__).parent / "utils"))
-from normalize import normalize_json, normalize_text, get_normalized_checksum
+from normalize import get_normalized_checksum, normalize_json, normalize_text
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 # Set deterministic execution
 import random
+
 import numpy as np
 import torch
 
@@ -42,14 +44,14 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 from rldk import (
-    ingest_runs,
-    first_divergence,
-    check,
-    bisect_commits,
-    health,
-    run,
-    RewardHealthReport,
     EvalResult,
+    RewardHealthReport,
+    bisect_commits,
+    check,
+    first_divergence,
+    health,
+    ingest_runs,
+    run,
 )
 from rldk.tracking import ExperimentTracker, TrackingConfig
 
@@ -81,7 +83,7 @@ class GoldenMasterSummary:
 def create_synthetic_data() -> Dict[str, Path]:
     """Create synthetic data for testing."""
     temp_dir = Path(tempfile.mkdtemp())
-    
+
     # Create synthetic training run data
     run_data = {
         "step": [1, 2, 3, 4, 5],
@@ -90,7 +92,7 @@ def create_synthetic_data() -> Dict[str, Path]:
         "global_step": [1, 2, 3, 4, 5],
         "reward_mean": [0.1, 0.15, 0.2, 0.25, 0.3],
     }
-    
+
     # Create run A
     run_a_path = temp_dir / "run_a"
     run_a_path.mkdir()
@@ -98,7 +100,7 @@ def create_synthetic_data() -> Dict[str, Path]:
         for i in range(len(run_data["step"])):
             record = {k: v[i] for k, v in run_data.items()}
             f.write(json.dumps(record) + "\n")
-    
+
     # Create run B (slightly different)
     run_b_path = temp_dir / "run_b"
     run_b_path.mkdir()
@@ -109,7 +111,7 @@ def create_synthetic_data() -> Dict[str, Path]:
             record["loss"] = record["loss"] + 0.01
             record["reward_scalar"] = record["reward_scalar"] + 0.005
             f.write(json.dumps(record) + "\n")
-    
+
     # Create prompts file for reward drift
     prompts_path = temp_dir / "prompts.jsonl"
     with open(prompts_path, "w") as f:
@@ -120,18 +122,18 @@ def create_synthetic_data() -> Dict[str, Path]:
         ]
         for prompt in prompts:
             f.write(json.dumps(prompt) + "\n")
-    
+
     # Create synthetic model directories for reward drift
     model_a_path = temp_dir / "model_a"
     model_a_path.mkdir()
     with open(model_a_path / "config.json", "w") as f:
         json.dump({"model_type": "test", "version": "1.0"}, f)
-    
+
     model_b_path = temp_dir / "model_b"
     model_b_path.mkdir()
     with open(model_b_path / "config.json", "w") as f:
         json.dump({"model_type": "test", "version": "1.1"}, f)
-    
+
     return {
         "temp_dir": temp_dir,
         "run_a": run_a_path,
@@ -145,7 +147,7 @@ def create_synthetic_data() -> Dict[str, Path]:
 def run_cli_command(cmd: List[str], cwd: Optional[Path] = None) -> CommandResult:
     """Run a CLI command and capture results."""
     start_time = time.time()
-    
+
     try:
         result = subprocess.run(
             cmd,
@@ -155,7 +157,7 @@ def run_cli_command(cmd: List[str], cwd: Optional[Path] = None) -> CommandResult
             timeout=30,  # 30 second timeout
         )
         duration = time.time() - start_time
-        
+
         return CommandResult(
             command=" ".join(cmd),
             exit_code=result.returncode,
@@ -196,10 +198,10 @@ def calculate_file_checksum(file_path: Path) -> str:
     """Calculate SHA256 checksum of a file using normalized content."""
     if not file_path.exists():
         return ""
-    
+
     with open(file_path, "rb") as f:
         content = f.read()
-    
+
     # Try to parse as JSON first, then fall back to text normalization
     try:
         data = json.loads(content.decode('utf-8'))
@@ -236,17 +238,17 @@ def infer_json_schema(data: Any) -> Dict[str, Any]:
 def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
     """Run programmatic entry point tests."""
     results = []
-    
+
     # Test 1: ingest_runs
     try:
         start_time = time.time()
         df = ingest_runs(str(data_paths["run_a"]))
         duration = time.time() - start_time
-        
+
         # Convert to JSON for artifact
         temp_file = data_paths["temp_dir"] / "ingest_result.json"
         df.to_json(temp_file, orient="records")
-        
+
         results.append(CommandResult(
             command="ingest_runs(run_a)",
             exit_code=0,
@@ -268,7 +270,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
             artifact_schemas={},
             duration=0,
         ))
-    
+
     # Test 2: first_divergence
     try:
         start_time = time.time()
@@ -276,7 +278,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
         df_b = ingest_runs(str(data_paths["run_b"]))
         report = first_divergence(df_a, df_b, ["loss", "reward_scalar"], 2, 3, 1.0, "temp_diff")
         duration = time.time() - start_time
-        
+
         # Create artifact
         temp_file = data_paths["temp_dir"] / "diff_result.json"
         with open(temp_file, "w") as f:
@@ -285,7 +287,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
                 "first_step": report.first_step,
                 "tripped_signals": report.tripped_signals,
             }, f)
-        
+
         results.append(CommandResult(
             command="first_divergence(run_a, run_b)",
             exit_code=0,
@@ -307,7 +309,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
             artifact_schemas={},
             duration=0,
         ))
-    
+
     # Test 3: check determinism
     try:
         start_time = time.time()
@@ -319,7 +321,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
             "cpu"
         )
         duration = time.time() - start_time
-        
+
         # Create artifact
         temp_file = data_paths["temp_dir"] / "determinism_result.json"
         with open(temp_file, "w") as f:
@@ -328,7 +330,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
                 "culprit": report.culprit,
                 "fixes": report.fixes,
             }, f)
-        
+
         results.append(CommandResult(
             command="check_determinism",
             exit_code=0,
@@ -350,7 +352,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
             artifact_schemas={},
             duration=0,
         ))
-    
+
     # Test 4: reward health
     try:
         start_time = time.time()
@@ -362,7 +364,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
             step_col="step",
         )
         duration = time.time() - start_time
-        
+
         # Create artifact
         temp_file = data_paths["temp_dir"] / "reward_health_result.json"
         with open(temp_file, "w") as f:
@@ -371,7 +373,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
                 "drift_detected": health_report.drift_detected,
                 "calibration_score": health_report.calibration_score,
             }, f)
-        
+
         results.append(CommandResult(
             command="reward_health(run_a)",
             exit_code=0,
@@ -393,7 +395,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
             artifact_schemas={},
             duration=0,
         ))
-    
+
     # Test 5: evaluation
     try:
         start_time = time.time()
@@ -406,7 +408,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
             output_dir=str(data_paths["temp_dir"] / "eval_output"),
         )
         duration = time.time() - start_time
-        
+
         # Create artifact
         temp_file = data_paths["temp_dir"] / "eval_result.json"
         with open(temp_file, "w") as f:
@@ -415,7 +417,7 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
                 "seed": eval_result.seed,
                 "scores": eval_result.scores,
             }, f)
-        
+
         results.append(CommandResult(
             command="eval_quick(run_a)",
             exit_code=0,
@@ -437,25 +439,25 @@ def run_programmatic_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
             artifact_schemas={},
             duration=0,
         ))
-    
+
     return results
 
 
 def run_cli_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
     """Run CLI command tests."""
     results = []
-    
+
     # Test 1: version
     results.append(run_cli_command(["rldk", "version"]))
-    
+
     # Test 2: help
     results.append(run_cli_command(["rldk", "--help"]))
-    
+
     # Test 3: ingest
     results.append(run_cli_command([
         "rldk", "ingest", str(data_paths["run_a"]), "--output", str(data_paths["temp_dir"] / "ingest_output.jsonl")
     ]))
-    
+
     # Test 4: diff
     results.append(run_cli_command([
         "rldk", "diff",
@@ -464,7 +466,7 @@ def run_cli_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
         "--signals", "loss,reward_scalar",
         "--output-dir", str(data_paths["temp_dir"] / "diff_output")
     ]))
-    
+
     # Test 5: check-determinism
     results.append(run_cli_command([
         "rldk", "check-determinism",
@@ -473,14 +475,14 @@ def run_cli_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
         "--replicas", "2",
         "--output-dir", str(data_paths["temp_dir"] / "determinism_output")
     ]))
-    
+
     # Test 6: reward-health
     results.append(run_cli_command([
         "rldk", "reward-health",
         "--run", str(data_paths["run_a"]),
         "--output-dir", str(data_paths["temp_dir"] / "reward_health_output")
     ]))
-    
+
     # Test 7: eval
     results.append(run_cli_command([
         "rldk", "eval",
@@ -488,7 +490,7 @@ def run_cli_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
         "--suite", "quick",
         "--output-dir", str(data_paths["temp_dir"] / "eval_output")
     ]))
-    
+
     # Test 8: track
     results.append(run_cli_command([
         "rldk", "track",
@@ -496,14 +498,14 @@ def run_cli_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
         "--output-dir", str(data_paths["temp_dir"] / "tracking_output"),
         "--no-wandb"
     ]))
-    
+
     # Test 9: forensics compare-runs
     results.append(run_cli_command([
         "rldk", "forensics", "compare-runs",
         str(data_paths["run_a"]),
         str(data_paths["run_b"])
     ]))
-    
+
     # Test 10: reward reward-drift
     results.append(run_cli_command([
         "rldk", "reward", "reward-drift",
@@ -511,7 +513,7 @@ def run_cli_tests(data_paths: Dict[str, Path]) -> List[CommandResult]:
         str(data_paths["model_b"]),
         "--prompts", str(data_paths["prompts"])
     ]))
-    
+
     return results
 
 
@@ -519,15 +521,15 @@ def capture_golden_master(output_dir: Path) -> GoldenMasterSummary:
     """Capture golden master by running all commands and programmatic entry points."""
     print("Creating synthetic test data...")
     data_paths = create_synthetic_data()
-    
+
     print("Running CLI command tests...")
     cli_results = run_cli_tests(data_paths)
-    
+
     print("Running programmatic entry point tests...")
     prog_results = run_programmatic_tests(data_paths)
-    
+
     all_results = cli_results + prog_results
-    
+
     # Create summary
     summary = GoldenMasterSummary(
         version="1.0",
@@ -537,14 +539,14 @@ def capture_golden_master(output_dir: Path) -> GoldenMasterSummary:
         successful_commands=len([r for r in all_results if r.exit_code == 0]),
         failed_commands=len([r for r in all_results if r.exit_code != 0]),
     )
-    
+
     # Write results
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Write summary
     with open(output_dir / "golden_master_summary.json", "w") as f:
         json.dump(asdict(summary), f, indent=2, default=str)
-    
+
     # Write stdout logs
     with open(output_dir / "stdout_logs.txt", "w") as f:
         for result in all_results:
@@ -554,36 +556,36 @@ def capture_golden_master(output_dir: Path) -> GoldenMasterSummary:
             f.write(f"STDOUT:\n{result.stdout}\n")
             f.write(f"STDERR:\n{result.stderr}\n")
             f.write("\n")
-    
+
     # Copy artifacts
     artifacts_dir = output_dir / "artifacts"
     artifacts_dir.mkdir(exist_ok=True)
-    
+
     for result in all_results:
         for artifact_path in result.artifacts:
             if Path(artifact_path).exists():
                 dest_path = artifacts_dir / Path(artifact_path).name
                 shutil.copy2(artifact_path, dest_path)
-    
+
     # Clean up temp data
     shutil.rmtree(data_paths["temp_dir"])
-    
+
     return summary
 
 
 def main():
     """Main entry point."""
     output_dir = Path("golden_master_output")
-    
+
     print("Starting golden master capture...")
     summary = capture_golden_master(output_dir)
-    
-    print(f"\nGolden master capture complete!")
+
+    print("\nGolden master capture complete!")
     print(f"Total commands: {summary.total_commands}")
     print(f"Successful: {summary.successful_commands}")
     print(f"Failed: {summary.failed_commands}")
     print(f"Output directory: {output_dir}")
-    
+
     # Create zip file
     import zipfile
     zip_path = Path("golden_master.zip")
@@ -591,7 +593,7 @@ def main():
         for file_path in output_dir.rglob('*'):
             if file_path.is_file():
                 zipf.write(file_path, file_path.relative_to(output_dir))
-    
+
     print(f"Created zip file: {zip_path}")
 
 

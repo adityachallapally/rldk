@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Test script to verify rldk Python API functionality."""
 
-import rldk
 import json
 from pathlib import Path
+
+import rldk
 
 
 def test_imports():
@@ -37,7 +38,7 @@ def test_reports_exist():
     assert hasattr(rldk, "generate_determinism_card")
     assert hasattr(rldk, "generate_drift_card")
     assert hasattr(rldk, "generate_reward_card")
-    
+
     print("✓ All report generation functions available")
 
 

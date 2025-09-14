@@ -1,10 +1,11 @@
 """Checkpoint diff analysis."""
 
-import torch
-import numpy as np
-from pathlib import Path
-from typing import Dict, Any
 from collections import OrderedDict
+from pathlib import Path
+from typing import Any, Dict
+
+import numpy as np
+import torch
 
 from rldk.io.readers import read_checkpoint
 
@@ -47,8 +48,8 @@ def diff_checkpoints(ckpt_a: str, ckpt_b: str) -> Dict[str, Any]:
             # Ensure same shape
             if param_a.shape != param_b.shape:
                 differences.append({
-                    "name": name, 
-                    "l2": float('inf'), 
+                    "name": name,
+                    "l2": float('inf'),
                     "cosine": 0.0,
                     "note": f"Shape mismatch: {param_a.shape} vs {param_b.shape}"
                 })
@@ -72,27 +73,27 @@ def diff_checkpoints(ckpt_a: str, ckpt_b: str) -> Dict[str, Any]:
 
             l2_norms.append(l2_norm)
             cosine_similarities.append(cosine_sim)
-            
+
         elif name in only_in_a:
             # Parameter only exists in checkpoint A
             param_a = state_a[name]
             l2_norm = torch.norm(param_a).item()
             differences.append({
-                "name": name, 
-                "l2": l2_norm, 
+                "name": name,
+                "l2": l2_norm,
                 "cosine": 0.0,
                 "note": "Only in checkpoint A"
             })
             l2_norms.append(l2_norm)
             cosine_similarities.append(0.0)
-            
+
         elif name in only_in_b:
             # Parameter only exists in checkpoint B
             param_b = state_b[name]
             l2_norm = torch.norm(param_b).item()
             differences.append({
-                "name": name, 
-                "l2": l2_norm, 
+                "name": name,
+                "l2": l2_norm,
                 "cosine": 0.0,
                 "note": "Only in checkpoint B"
             })
@@ -105,16 +106,16 @@ def diff_checkpoints(ckpt_a: str, ckpt_b: str) -> Dict[str, Any]:
     # Compute summary statistics
     l2_norms = np.array(l2_norms)
     cosine_similarities = np.array(cosine_similarities)
-    
+
     # Handle infinite values in L2 norms for percentile calculations
     finite_l2_norms = l2_norms[np.isfinite(l2_norms)]
-    
+
     # Handle empty cosine_similarities array (e.g., when all common params have shape mismatches)
     if len(cosine_similarities) > 0:
         avg_cosine = float(np.mean(cosine_similarities))
     else:
         avg_cosine = 0.0  # Default to 0 when no comparable tensors exist
-    
+
     summary = {
         "num_params": len(differences),
         "num_common_params": len(common_param_names),
@@ -122,7 +123,7 @@ def diff_checkpoints(ckpt_a: str, ckpt_b: str) -> Dict[str, Any]:
         "num_only_in_b": len(only_in_b),
         "avg_cosine": avg_cosine,
     }
-    
+
     if len(finite_l2_norms) > 0:
         summary.update({
             "l2_p05": float(np.percentile(finite_l2_norms, 5)),
@@ -146,7 +147,7 @@ def diff_checkpoints(ckpt_a: str, ckpt_b: str) -> Dict[str, Any]:
         notes.append(f"Checkpoint B has {len(only_in_b)} unique parameters: {list(only_in_b)}")
     if len(common_param_names) > 0:
         notes.append(f"Both checkpoints share {len(common_param_names)} parameters")
-    
+
     # Report if no comparable parameters exist (all have shape mismatches)
     if len(cosine_similarities) == 0 and len(common_param_names) > 0:
         notes.append("No comparable parameters found - all common parameters have shape mismatches")

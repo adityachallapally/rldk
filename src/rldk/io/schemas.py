@@ -1,7 +1,8 @@
 """JSON schemas for report validation."""
 
+from typing import Any, Dict
+
 import jsonschema
-from typing import Dict, Any
 
 
 def validate(schema: Dict[str, Any], obj: Dict[str, Any]) -> None:

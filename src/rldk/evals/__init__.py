@@ -1,5 +1,5 @@
 """Evaluation suite for RL Debug Kit."""
 
-from .runner import run, EvalResult
+from .runner import EvalResult, run
 
 __all__ = ["run", "EvalResult"]

@@ -1,7 +1,8 @@
 """Tests for determinism harness."""
 
+from unittest.mock import MagicMock, patch
+
 import pandas as pd
-from unittest.mock import patch, MagicMock
 
 from rldk.determinism.check import check
 

@@ -1,8 +1,8 @@
 """Normalized event schema for RL training runs."""
 
-from dataclasses import dataclass, field
-from typing import Dict, Any, Optional, List
 import json
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
 
 
 @dataclass

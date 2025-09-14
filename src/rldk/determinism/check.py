@@ -1,17 +1,15 @@
 """Determinism checking for training runs."""
 
 import os
-import subprocess
 import re
-import tempfile
+import subprocess
 import warnings
 from dataclasses import dataclass
-from pathlib import Path
-from typing import List, Dict, Any, Optional
-import pandas as pd
-import numpy as np
+from typing import Any, Dict, List, Optional
 
-from ..io import read_metrics_jsonl
+import numpy as np
+import pandas as pd
+
 from .runner import run_deterministic_command
 
 
@@ -129,13 +127,13 @@ def check(
 
     # Check for available determinism features and track skipped checks
     skipped_checks = []
-    
+
     if not _check_pytorch_cuda_kernels():
         skipped_checks.append("pytorch_cuda_kernels")
-    
+
     if not _check_tensorflow_determinism():
         skipped_checks.append("tensorflow_determinism")
-    
+
     if not _check_jax_determinism():
         skipped_checks.append("jax_determinism")
 

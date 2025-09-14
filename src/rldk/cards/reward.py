@@ -1,13 +1,14 @@
 """Reward card generation for RL training runs."""
 
 import json
-import matplotlib.pyplot as plt
-from pathlib import Path
-from typing import Dict, Any, List, Optional
-import pandas as pd
-import numpy as np
-from datetime import datetime
 import logging
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 from ..io.event_schema import Event
 
@@ -29,18 +30,18 @@ def _find_reward_column(df: "pd.DataFrame") -> Optional[str]:
         "total_reward",
         "cumulative_reward",
     ]
-    
+
     for candidate in reward_candidates:
         if candidate in df.columns:
             logger.debug(f"Found reward column: {candidate}")
             return candidate
-    
+
     # If no exact match, look for columns containing "reward"
     reward_cols = [col for col in df.columns if "reward" in col.lower()]
     if reward_cols:
         logger.debug(f"Found reward column by pattern: {reward_cols[0]}")
         return reward_cols[0]  # Return first match
-    
+
     logger.warning(f"No reward column found. Available columns: {list(df.columns)}")
     return None
 
@@ -55,18 +56,18 @@ def _find_kl_column(df: "pd.DataFrame") -> Optional[str]:
         "kl_mean_value",
         "kl_avg",
     ]
-    
+
     for candidate in kl_candidates:
         if candidate in df.columns:
             logger.debug(f"Found KL column: {candidate}")
             return candidate
-    
+
     # If no exact match, look for columns containing "kl"
     kl_cols = [col for col in df.columns if "kl" in col.lower()]
     if kl_cols:
         logger.debug(f"Found KL column by pattern: {kl_cols[0]}")
         return kl_cols[0]
-    
+
     logger.debug("No KL column found")
     return None
 
@@ -80,18 +81,18 @@ def _find_reward_std_column(df: "pd.DataFrame") -> Optional[str]:
         "reward_variance",
         "reward_var",
     ]
-    
+
     for candidate in std_candidates:
         if candidate in df.columns:
             logger.debug(f"Found reward std column: {candidate}")
             return candidate
-    
+
     # If no exact match, look for columns containing "reward" and "std"
     std_cols = [col for col in df.columns if "reward" in col.lower() and "std" in col.lower()]
     if std_cols:
         logger.debug(f"Found reward std column by pattern: {std_cols[0]}")
         return std_cols[0]
-    
+
     logger.debug("No reward std column found")
     return None
 
@@ -122,7 +123,7 @@ def generate_reward_card(
 
     # Analyze reward health
     reward_analysis = _analyze_reward_health(events)
-    
+
     # Check if we have any reward data to work with
     if not reward_analysis:
         logger.warning(f"No reward data found for run {run_id}. Analysis will be limited.")
@@ -304,7 +305,7 @@ def _calculate_calibration_score(events: List[Event]) -> float:
 
     reward_col = _find_reward_column(df)
     reward_std_col = _find_reward_std_column(df)
-    
+
     if reward_col is None or reward_std_col is None:
         return 0.0
 
@@ -320,7 +321,7 @@ def _calculate_calibration_score(events: List[Event]) -> float:
 
     for i in range(len(rewards)):
         if i < len(reward_stds):
-            mean_val = rewards.iloc[i]
+            rewards.iloc[i]
             std_val = reward_stds.iloc[i]
 
             if std_val > 0:
@@ -378,7 +379,7 @@ def _detect_shortcut_signals(events: List[Event]) -> List[str]:
     # Check for reward hacking patterns
     reward_col = _find_reward_column(df)
     kl_col = _find_kl_column(df)
-    
+
     if reward_col and kl_col:
         rewards = df[reward_col].dropna()
         kl_divs = df[kl_col].dropna()
@@ -592,7 +593,7 @@ def _generate_reward_visualization(
     metric_names = list(metrics.keys())
     metric_values = list(metrics.values())
 
-    bars = ax2.bar(
+    ax2.bar(
         metric_names,
         metric_values,
         color=[

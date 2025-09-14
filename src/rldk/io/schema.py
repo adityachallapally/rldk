@@ -1,8 +1,9 @@
 """Pydantic schemas for training metrics data."""
 
-from typing import Optional, List
-from pydantic import BaseModel, Field
+from typing import List, Optional
+
 import pandas as pd
+from pydantic import BaseModel, Field
 
 
 class TrainingMetrics(BaseModel):

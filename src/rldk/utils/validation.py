@@ -1,19 +1,20 @@
 """Input validation utilities for RLDK."""
 
-import os
 import json
+import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Callable, Iterator
-import pandas as pd
-import numpy as np
+from typing import Any, Callable, Dict, Iterator, List, Optional, Union
 
-from .error_handling import ValidationError, format_error_message
+import numpy as np
+import pandas as pd
+
+from .error_handling import ValidationError
 
 
 def validate_file_exists(file_path: Union[str, Path], context: str = "file") -> Path:
     """Validate that a file exists and is accessible."""
     path = Path(file_path)
-    
+
     if not path.exists():
         raise ValidationError(
             f"{context.capitalize()} does not exist: {path}",
@@ -21,7 +22,7 @@ def validate_file_exists(file_path: Union[str, Path], context: str = "file") -> 
             error_code="FILE_NOT_FOUND",
             details={"path": str(path), "absolute_path": str(path.absolute())}
         )
-    
+
     if not path.is_file():
         raise ValidationError(
             f"Path is not a file: {path}",
@@ -29,7 +30,7 @@ def validate_file_exists(file_path: Union[str, Path], context: str = "file") -> 
             error_code="NOT_A_FILE",
             details={"path": str(path)}
         )
-    
+
     # Check read permissions
     if not os.access(path, os.R_OK):
         raise ValidationError(
@@ -38,14 +39,14 @@ def validate_file_exists(file_path: Union[str, Path], context: str = "file") -> 
             error_code="PERMISSION_DENIED",
             details={"path": str(path)}
         )
-    
+
     return path
 
 
 def validate_directory_exists(dir_path: Union[str, Path], context: str = "directory") -> Path:
     """Validate that a directory exists and is accessible."""
     path = Path(dir_path)
-    
+
     if not path.exists():
         raise ValidationError(
             f"{context.capitalize()} does not exist: {path}",
@@ -53,7 +54,7 @@ def validate_directory_exists(dir_path: Union[str, Path], context: str = "direct
             error_code="DIRECTORY_NOT_FOUND",
             details={"path": str(path), "absolute_path": str(path.absolute())}
         )
-    
+
     if not path.is_dir():
         raise ValidationError(
             f"Path is not a directory: {path}",
@@ -61,7 +62,7 @@ def validate_directory_exists(dir_path: Union[str, Path], context: str = "direct
             error_code="NOT_A_DIRECTORY",
             details={"path": str(path)}
         )
-    
+
     # Check read permissions
     if not os.access(path, os.R_OK):
         raise ValidationError(
@@ -70,39 +71,39 @@ def validate_directory_exists(dir_path: Union[str, Path], context: str = "direct
             error_code="PERMISSION_DENIED",
             details={"path": str(path)}
         )
-    
+
     return path
 
 
-def validate_file_extension(file_path: Union[str, Path], 
+def validate_file_extension(file_path: Union[str, Path],
                           allowed_extensions: List[str],
                           context: str = "file") -> Path:
     """Validate that a file has an allowed extension."""
     path = Path(file_path)
-    
+
     if path.suffix.lower() not in [ext.lower() for ext in allowed_extensions]:
         raise ValidationError(
             f"File has unsupported extension: {path.suffix}",
             suggestion=f"Expected one of: {', '.join(allowed_extensions)}",
             error_code="UNSUPPORTED_EXTENSION",
             details={
-                "file": str(path), 
+                "file": str(path),
                 "actual_extension": path.suffix,
                 "expected_extensions": allowed_extensions
             }
         )
-    
+
     return path
 
 
 def validate_json_file(file_path: Union[str, Path], context: str = "JSON file") -> Dict[str, Any]:
     """Validate that a file contains valid JSON."""
     path = validate_file_exists(file_path, context)
-    
+
     try:
-        with open(path, 'r') as f:
+        with open(path) as f:
             data = json.load(f)
-        
+
         if not isinstance(data, dict):
             raise ValidationError(
                 f"JSON file does not contain a dictionary: {path}",
@@ -110,9 +111,9 @@ def validate_json_file(file_path: Union[str, Path], context: str = "JSON file") 
                 error_code="INVALID_JSON_STRUCTURE",
                 details={"path": str(path), "actual_type": type(data).__name__}
             )
-        
+
         return data
-    
+
     except json.JSONDecodeError as e:
         raise ValidationError(
             f"Invalid JSON in file: {path}",
@@ -129,16 +130,16 @@ def validate_json_file(file_path: Union[str, Path], context: str = "JSON file") 
         ) from e
 
 
-def validate_json_file_with_size_check(file_path: Union[str, Path], 
+def validate_json_file_with_size_check(file_path: Union[str, Path],
                                        context: str = "JSON file",
                                        max_size_mb: float = 100.0) -> Dict[str, Any]:
     """Validate JSON file with size limits (loads entire file into memory)."""
     path = validate_file_exists(file_path, context)
-    
+
     # Check file size
     file_size = path.stat().st_size
     max_size_bytes = max_size_mb * 1024 * 1024
-    
+
     if file_size > max_size_bytes:
         raise ValidationError(
             f"JSON file too large: {file_size / 1024 / 1024:.1f} MB > {max_size_mb} MB",
@@ -146,11 +147,11 @@ def validate_json_file_with_size_check(file_path: Union[str, Path],
             error_code="FILE_TOO_LARGE",
             details={"path": str(path), "file_size_mb": file_size / 1024 / 1024, "max_size_mb": max_size_mb}
         )
-    
+
     try:
-        with open(path, 'r') as f:
+        with open(path) as f:
             data = json.load(f)
-        
+
         if not isinstance(data, dict):
             raise ValidationError(
                 f"JSON file does not contain a dictionary: {path}",
@@ -158,9 +159,9 @@ def validate_json_file_with_size_check(file_path: Union[str, Path],
                 error_code="INVALID_JSON_STRUCTURE",
                 details={"path": str(path), "actual_type": type(data).__name__}
             )
-        
+
         return data
-    
+
     except json.JSONDecodeError as e:
         raise ValidationError(
             f"Invalid JSON in file: {path}",
@@ -180,15 +181,15 @@ def validate_json_file_with_size_check(file_path: Union[str, Path],
 def validate_jsonl_file(file_path: Union[str, Path], context: str = "JSONL file") -> List[Dict[str, Any]]:
     """Validate that a file contains valid JSONL."""
     path = validate_file_exists(file_path, context)
-    
+
     try:
         data = []
-        with open(path, 'r') as f:
+        with open(path) as f:
             for line_num, line in enumerate(f, 1):
                 line = line.strip()
                 if not line:
                     continue
-                
+
                 try:
                     record = json.loads(line)
                     if not isinstance(record, dict):
@@ -206,7 +207,7 @@ def validate_jsonl_file(file_path: Union[str, Path], context: str = "JSONL file"
                         error_code="INVALID_JSONL_LINE",
                         details={"path": str(path), "line": line_num, "error": str(e)}
                     ) from e
-        
+
         if not data:
             raise ValidationError(
                 f"No valid JSON records found in file: {path}",
@@ -214,9 +215,9 @@ def validate_jsonl_file(file_path: Union[str, Path], context: str = "JSONL file"
                 error_code="EMPTY_JSONL_FILE",
                 details={"path": str(path)}
             )
-        
+
         return data
-    
+
     except ValidationError:
         raise
     except Exception as e:
@@ -228,17 +229,17 @@ def validate_jsonl_file(file_path: Union[str, Path], context: str = "JSONL file"
         ) from e
 
 
-def validate_jsonl_file_streaming(file_path: Union[str, Path], 
+def validate_jsonl_file_streaming(file_path: Union[str, Path],
                                  context: str = "JSONL file",
                                  max_size_mb: float = 100.0,
                                  max_lines: int = 1000000) -> Iterator[Dict[str, Any]]:
     """Validate JSONL file with streaming support and size/line limits."""
     path = validate_file_exists(file_path, context)
-    
+
     # Check file size
     file_size = path.stat().st_size
     max_size_bytes = max_size_mb * 1024 * 1024
-    
+
     if file_size > max_size_bytes:
         raise ValidationError(
             f"JSONL file too large: {file_size / 1024 / 1024:.1f} MB > {max_size_mb} MB",
@@ -246,18 +247,18 @@ def validate_jsonl_file_streaming(file_path: Union[str, Path],
             error_code="FILE_TOO_LARGE",
             details={"path": str(path), "file_size_mb": file_size / 1024 / 1024, "max_size_mb": max_size_mb}
         )
-    
+
     try:
         line_count = 0
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding='utf-8') as f:
             for line_num, line in enumerate(f, 1):
                 line = line.strip()
                 if not line:
                     # Log empty lines for debugging
                     continue
-                
+
                 line_count += 1
-                
+
                 # Check for extremely long lines that could cause memory issues
                 if len(line) > 1024 * 1024:  # 1MB line limit
                     raise ValidationError(
@@ -266,7 +267,7 @@ def validate_jsonl_file_streaming(file_path: Union[str, Path],
                         error_code="LINE_TOO_LONG",
                         details={"path": str(path), "line": line_num, "line_length": len(line)}
                     )
-                
+
                 try:
                     record = json.loads(line)
                     if not isinstance(record, dict):
@@ -276,7 +277,7 @@ def validate_jsonl_file_streaming(file_path: Union[str, Path],
                             error_code="INVALID_JSONL_STRUCTURE",
                             details={"path": str(path), "line": line_num, "actual_type": type(record).__name__}
                         )
-                    
+
                     # Check line limit before yielding to prevent processing over-limit data
                     if line_count > max_lines:
                         raise ValidationError(
@@ -285,7 +286,7 @@ def validate_jsonl_file_streaming(file_path: Union[str, Path],
                             error_code="TOO_MANY_LINES",
                             details={"path": str(path), "line_count": line_count, "max_lines": max_lines}
                         )
-                    
+
                     # Yield immediately for true streaming
                     yield record
                 except json.JSONDecodeError as e:
@@ -295,7 +296,7 @@ def validate_jsonl_file_streaming(file_path: Union[str, Path],
                         error_code="INVALID_JSONL_LINE",
                         details={"path": str(path), "line": line_num, "error": str(e)}
                     ) from e
-        
+
         if line_count == 0:
             raise ValidationError(
                 f"No valid JSON records found in file: {path}",
@@ -303,7 +304,7 @@ def validate_jsonl_file_streaming(file_path: Union[str, Path],
                 error_code="EMPTY_JSONL_FILE",
                 details={"path": str(path)}
             )
-    
+
     except ValidationError:
         raise
     except Exception as e:
@@ -327,7 +328,7 @@ def validate_dataframe(df: pd.DataFrame,
             error_code="INVALID_DATAFRAME_TYPE",
             details={"actual_type": type(df).__name__}
         )
-    
+
     if len(df) < min_rows:
         raise ValidationError(
             f"{context} has too few rows: {len(df)} < {min_rows}",
@@ -335,7 +336,7 @@ def validate_dataframe(df: pd.DataFrame,
             error_code="INSUFFICIENT_ROWS",
             details={"actual_rows": len(df), "min_rows": min_rows}
         )
-    
+
     if required_columns:
         missing_columns = [col for col in required_columns if col not in df.columns]
         if missing_columns:
@@ -345,11 +346,11 @@ def validate_dataframe(df: pd.DataFrame,
                 error_code="MISSING_COLUMNS",
                 details={"missing_columns": missing_columns, "required_columns": required_columns}
             )
-    
+
     return df
 
 
-def validate_numeric_range(value: Union[int, float], 
+def validate_numeric_range(value: Union[int, float],
                           min_val: Optional[float] = None,
                           max_val: Optional[float] = None,
                           context: str = "value") -> Union[int, float]:
@@ -361,7 +362,7 @@ def validate_numeric_range(value: Union[int, float],
             error_code="INVALID_NUMERIC_TYPE",
             details={"value": value, "actual_type": type(value).__name__}
         )
-    
+
     if not np.isfinite(value):
         raise ValidationError(
             f"{context} must be finite, got: {value}",
@@ -369,7 +370,7 @@ def validate_numeric_range(value: Union[int, float],
             error_code="NON_FINITE_VALUE",
             details={"value": value}
         )
-    
+
     if min_val is not None and value < min_val:
         raise ValidationError(
             f"{context} must be >= {min_val}, got: {value}",
@@ -377,7 +378,7 @@ def validate_numeric_range(value: Union[int, float],
             error_code="VALUE_TOO_SMALL",
             details={"value": value, "min_value": min_val}
         )
-    
+
     if max_val is not None and value > max_val:
         raise ValidationError(
             f"{context} must be <= {max_val}, got: {value}",
@@ -385,7 +386,7 @@ def validate_numeric_range(value: Union[int, float],
             error_code="VALUE_TOO_LARGE",
             details={"value": value, "max_value": max_val}
         )
-    
+
     return value
 
 
@@ -398,7 +399,7 @@ def validate_string_not_empty(value: str, context: str = "string") -> str:
             error_code="INVALID_STRING_TYPE",
             details={"value": value, "actual_type": type(value).__name__}
         )
-    
+
     if not value.strip():
         raise ValidationError(
             f"{context} cannot be empty",
@@ -406,7 +407,7 @@ def validate_string_not_empty(value: str, context: str = "string") -> str:
             error_code="EMPTY_STRING",
             details={"value": value}
         )
-    
+
     return value.strip()
 
 
@@ -419,7 +420,7 @@ def validate_choice(value: Any, choices: List[Any], context: str = "value") -> A
             error_code="INVALID_CHOICE",
             details={"value": value, "choices": choices}
         )
-    
+
     return value
 
 
@@ -432,7 +433,7 @@ def validate_wandb_uri(uri: str) -> Dict[str, str]:
             error_code="INVALID_URI_TYPE",
             details={"actual_type": type(uri).__name__}
         )
-    
+
     if not uri.startswith("wandb://"):
         raise ValidationError(
             f"WandB URI must start with 'wandb://', got: {uri}",
@@ -440,11 +441,11 @@ def validate_wandb_uri(uri: str) -> Dict[str, str]:
             error_code="INVALID_URI_PREFIX",
             details={"uri": uri}
         )
-    
+
     # Remove wandb:// prefix
     path = uri[8:]
     parts = path.split("/")
-    
+
     if len(parts) != 3:
         raise ValidationError(
             f"WandB URI must have 3 parts (entity/project/run_id), got {len(parts)}: {uri}",
@@ -452,9 +453,9 @@ def validate_wandb_uri(uri: str) -> Dict[str, str]:
             error_code="INVALID_URI_FORMAT",
             details={"uri": uri, "parts": parts, "part_count": len(parts)}
         )
-    
+
     entity, project, run_id = parts
-    
+
     if not entity.strip():
         raise ValidationError(
             "WandB URI entity cannot be empty",
@@ -462,7 +463,7 @@ def validate_wandb_uri(uri: str) -> Dict[str, str]:
             error_code="EMPTY_ENTITY",
             details={"uri": uri, "entity": entity}
         )
-    
+
     if not project.strip():
         raise ValidationError(
             "WandB URI project cannot be empty",
@@ -470,7 +471,7 @@ def validate_wandb_uri(uri: str) -> Dict[str, str]:
             error_code="EMPTY_PROJECT",
             details={"uri": uri, "project": project}
         )
-    
+
     if not run_id.strip():
         raise ValidationError(
             "WandB URI run_id cannot be empty",
@@ -478,7 +479,7 @@ def validate_wandb_uri(uri: str) -> Dict[str, str]:
             error_code="EMPTY_RUN_ID",
             details={"uri": uri, "run_id": run_id}
         )
-    
+
     return {
         "entity": entity,
         "project": project,
@@ -510,7 +511,7 @@ def validate_positive_integer(value: Any, context: str = "value") -> int:
                 error_code="INVALID_NUMERIC_TYPE",
                 details={"value": value, "actual_type": type(value).__name__}
             )
-    
+
     if not isinstance(value, int):
         if value.is_integer():
             value = int(value)
@@ -521,7 +522,7 @@ def validate_positive_integer(value: Any, context: str = "value") -> int:
                 error_code="NON_INTEGER_VALUE",
                 details={"value": value}
             )
-    
+
     if value <= 0:
         raise ValidationError(
             f"{context} must be positive, got: {value}",
@@ -529,7 +530,7 @@ def validate_positive_integer(value: Any, context: str = "value") -> int:
             error_code="NON_POSITIVE_VALUE",
             details={"value": value}
         )
-    
+
     return value
 
 
@@ -545,7 +546,7 @@ def validate_non_negative_integer(value: Any, context: str = "value") -> int:
                 error_code="INVALID_NUMERIC_TYPE",
                 details={"value": value, "actual_type": type(value).__name__}
             )
-    
+
     if not isinstance(value, int):
         if value.is_integer():
             value = int(value)
@@ -556,7 +557,7 @@ def validate_non_negative_integer(value: Any, context: str = "value") -> int:
                 error_code="NON_INTEGER_VALUE",
                 details={"value": value}
             )
-    
+
     if value < 0:
         raise ValidationError(
             f"{context} must be non-negative, got: {value}",
@@ -564,7 +565,7 @@ def validate_non_negative_integer(value: Any, context: str = "value") -> int:
             error_code="NEGATIVE_VALUE",
             details={"value": value}
         )
-    
+
     return value
 
 
@@ -577,7 +578,7 @@ def validate_optional_string(value: Any, context: str = "string") -> Optional[st
     """Validate an optional string (None or non-empty string)."""
     if value is None:
         return None
-    
+
     return validate_string_not_empty(value, context)
 
 
@@ -585,21 +586,21 @@ def validate_optional_positive_integer(value: Any, context: str = "value") -> Op
     """Validate an optional positive integer (None or positive integer)."""
     if value is None:
         return None
-    
+
     return validate_positive_integer(value, context)
 
 
 def validate_file_size(file_path: Union[str, Path], max_size_mb: float = 100.0) -> Path:
     """Validate that a file is not too large."""
     path = validate_file_exists(file_path)
-    
+
     file_size = path.stat().st_size
     max_size_bytes = max_size_mb * 1024 * 1024
-    
+
     if file_size > max_size_bytes:
         raise ValidationError(
             f"File too large: {file_size / (1024*1024):.1f}MB > {max_size_mb}MB",
-            suggestion=f"Use a smaller file or increase the size limit",
+            suggestion="Use a smaller file or increase the size limit",
             error_code="FILE_TOO_LARGE",
             details={
                 "file": str(path),
@@ -607,16 +608,16 @@ def validate_file_size(file_path: Union[str, Path], max_size_mb: float = 100.0) 
                 "max_size_mb": max_size_mb
             }
         )
-    
+
     return path
 
 
-def validate_data_quality(df: pd.DataFrame, 
+def validate_data_quality(df: pd.DataFrame,
                          required_columns: List[str],
                          max_missing_ratio: float = 0.5) -> pd.DataFrame:
     """Validate data quality in a DataFrame."""
     df = validate_dataframe(df, required_columns)
-    
+
     for col in required_columns:
         if col in df.columns:
             missing_ratio = df[col].isna().sum() / len(df)
@@ -633,11 +634,11 @@ def validate_data_quality(df: pd.DataFrame,
                         "total_count": len(df)
                     }
                 )
-    
+
     return df
 
 
-def validate_with_custom_validator(value: Any, 
+def validate_with_custom_validator(value: Any,
                                  validator: Callable[[Any], bool],
                                  error_message: str,
                                  context: str = "value") -> Any:
@@ -659,5 +660,5 @@ def validate_with_custom_validator(value: Any,
             error_code="VALIDATOR_ERROR",
             details={"value": value, "context": context, "error": str(e)}
         ) from e
-    
+
     return value

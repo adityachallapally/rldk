@@ -1,15 +1,16 @@
 """Drift card generation for comparing RL training runs."""
 
 import json
-import matplotlib.pyplot as plt
-from pathlib import Path
-from typing import Dict, Any, List, Optional
-import pandas as pd
-import numpy as np
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from ..io.event_schema import Event
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
 from ..diff.diff import first_divergence_events
+from ..io.event_schema import Event
 
 
 def generate_drift_card(
@@ -386,7 +387,7 @@ def _generate_drift_visualization(card_data: Dict[str, Any], output_path: Path) 
         metrics = list(correlations.keys())
         corr_values = list(correlations.values())
 
-        bars = ax3.bar(
+        ax3.bar(
             metrics,
             corr_values,
             color=["red" if v < 0.8 else "green" for v in corr_values],

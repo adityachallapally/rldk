@@ -1,8 +1,9 @@
 """Calibration analysis for reward models."""
 
-from typing import Dict, Any, Tuple
-import pandas as pd
+from typing import Any, Dict, Tuple
+
 import numpy as np
+import pandas as pd
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import brier_score_loss
 
@@ -144,7 +145,7 @@ def _analyze_ground_truth_calibration(
     # For binary ground truth, calculate AUC and calibration
     if len(np.unique(ground_truth)) == 2:
         # Binary classification case
-        from sklearn.metrics import roc_auc_score, average_precision_score
+        from sklearn.metrics import average_precision_score, roc_auc_score
 
         try:
             auc_score = roc_auc_score(ground_truth, reward_scores)

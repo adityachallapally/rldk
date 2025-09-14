@@ -1,8 +1,9 @@
 """Test first divergence detection between runs."""
 
 import json
-import pytest
 from pathlib import Path
+
+import pytest
 
 
 def test_first_divergence_detection():
@@ -20,7 +21,7 @@ def test_first_divergence_detection():
     # Since the drift card is in markdown format, we'll check the JSON version
     drift_json = Path("reference/expected/drift_card.json")
     if drift_json.exists():
-        with open(drift_json, "r") as f:
+        with open(drift_json) as f:
             data = json.load(f)
 
         # Check that divergence was detected
@@ -67,7 +68,7 @@ def test_divergence_reproducibility():
     # Check that a minimal repro command was provided
     drift_json = Path("reference/expected/drift_card.json")
     if drift_json.exists():
-        with open(drift_json, "r") as f:
+        with open(drift_json) as f:
             data = json.load(f)
 
         # Check that repro information is available
@@ -112,7 +113,7 @@ def test_divergence_timing():
 
     drift_json = Path("reference/expected/drift_card.json")
     if drift_json.exists():
-        with open(drift_json, "r") as f:
+        with open(drift_json) as f:
             data = json.load(f)
 
         # Check that divergence was detected early

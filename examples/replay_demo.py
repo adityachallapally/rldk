@@ -8,8 +8,8 @@ demonstrates the replay workflow.
 """
 
 import json
-import tempfile
 import os
+import tempfile
 from pathlib import Path
 
 
@@ -126,10 +126,10 @@ def demonstrate_replay_workflow():
     print("\n3️⃣ Comparing metrics...")
 
     # Load both datasets
-    with open(original_file, "r") as f:
+    with open(original_file) as f:
         original_data = [json.loads(line) for line in f]
 
-    with open(replay_file, "r") as f:
+    with open(replay_file) as f:
         replay_data = [json.loads(line) for line in f]
 
     # Compare metrics

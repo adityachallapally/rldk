@@ -1,21 +1,29 @@
 """Main ingest function for training runs."""
 
-from pathlib import Path
-from typing import Union, Optional, List, Dict
-import pandas as pd
 import logging
+from pathlib import Path
+from typing import Dict, List, Optional, Union
 
-from ..adapters import TRLAdapter, OpenRLHFAdapter, WandBAdapter, CustomJSONLAdapter, FlexibleDataAdapter
+import pandas as pd
+
+from ..adapters import (
+    CustomJSONLAdapter,
+    FlexibleDataAdapter,
+    OpenRLHFAdapter,
+    TRLAdapter,
+    WandBAdapter,
+)
 from ..io.event_schema import Event, dataframe_to_events
 from ..utils.error_handling import (
-    AdapterError, ValidationError, format_error_message, 
-    validate_file_path, validate_data_format, safe_operation
+    AdapterError,
+    ValidationError,
+    validate_file_path,
 )
-from ..utils.progress import progress_bar, spinner, timed_operation_context
+from ..utils.progress import spinner
 
 
 def ingest_runs(
-    source: Union[str, Path], 
+    source: Union[str, Path],
     adapter_hint: Optional[str] = None,
     field_map: Optional[Dict[str, str]] = None,
     config_file: Optional[Union[str, Path]] = None,
@@ -35,7 +43,7 @@ def ingest_runs(
 
     Returns:
         DataFrame with standardized training metrics
-        
+
     Raises:
         ValidationError: If source validation fails
         AdapterError: If data loading fails
@@ -77,7 +85,7 @@ def ingest_runs(
             # Provide detailed suggestions for auto-detection failure
             source_analysis = _analyze_source_format(source)
             suggestions = _get_auto_detection_suggestions(source_analysis)
-            
+
             raise AdapterError(
                 f"Failed to auto-detect adapter type: {e}",
                 suggestion=f"Could not determine the correct adapter. {suggestions}",
@@ -130,7 +138,7 @@ def ingest_runs(
         # Get detailed format requirements for better error messages
         format_requirements = _get_adapter_format_requirements(adapter_hint)
         source_analysis = _analyze_source_format(source)
-        
+
         raise AdapterError(
             f"Adapter '{adapter_hint}' cannot handle source: {source}",
             suggestion=f"Expected format: {format_requirements['description']}\n"
@@ -138,7 +146,7 @@ def ingest_runs(
                       f"Try: {format_requirements['suggestions']}",
             error_code="ADAPTER_CANNOT_HANDLE_SOURCE",
             details={
-                "adapter": adapter_hint, 
+                "adapter": adapter_hint,
                 "source": str(source),
                 "expected_format": format_requirements,
                 "source_analysis": source_analysis
@@ -149,16 +157,16 @@ def ingest_runs(
     try:
         with spinner(f"Loading data with {adapter_hint} adapter"):
             df = adapter.load()
-            
+
         if df.empty:
             raise AdapterError(
                 "No data found in source",
                 suggestion="Check that the source contains valid training data",
                 error_code="NO_DATA_FOUND"
             )
-            
+
         logger.info(f"Successfully ingested {len(df)} events from {source}")
-        
+
     except AdapterError:
         raise
     except Exception as e:
@@ -187,7 +195,7 @@ def _standardize_schema(df: pd.DataFrame) -> pd.DataFrame:
     """Standardize DataFrame schema to required format."""
     required_cols = [
         "step",
-        "phase", 
+        "phase",
         "reward_mean",
         "reward_std",
         "kl_mean",
@@ -212,7 +220,7 @@ def _standardize_schema(df: pd.DataFrame) -> pd.DataFrame:
     # Ensure step column is present and numeric
     if "step" not in df.columns or df["step"].isna().all():
         df["step"] = range(len(df))
-    
+
     # Convert step to numeric, handling any non-numeric values
     try:
         df["step"] = pd.to_numeric(df["step"], errors='coerce')
@@ -233,7 +241,7 @@ def _standardize_schema(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def ingest_runs_to_events(
-    source: Union[str, Path], 
+    source: Union[str, Path],
     adapter_hint: Optional[str] = None,
     field_map: Optional[Dict[str, str]] = None,
     config_file: Optional[Union[str, Path]] = None,
@@ -256,8 +264,8 @@ def ingest_runs_to_events(
     """
     # Get the DataFrame first
     df = ingest_runs(
-        source, 
-        adapter_hint, 
+        source,
+        adapter_hint,
         field_map=field_map,
         config_file=config_file,
         validation_mode=validation_mode,
@@ -368,7 +376,7 @@ def _get_adapter_format_requirements(adapter_type: str) -> dict:
             "suggestions": "Supports automatic field resolution for common field names. Use field_map for custom schemas. Supports nested fields with dot notation."
         }
     }
-    
+
     return requirements.get(adapter_type, {
         "description": f"Unknown adapter type: {adapter_type}",
         "file_extensions": [],
@@ -382,7 +390,7 @@ def _get_adapter_format_requirements(adapter_type: str) -> dict:
 def _analyze_source_format(source: Union[str, Path]) -> dict:
     """Analyze the source format and provide detailed information."""
     source_path = Path(source)
-    
+
     if not source_path.exists():
         return {
             "description": "Source does not exist",
@@ -390,7 +398,7 @@ def _analyze_source_format(source: Union[str, Path]) -> dict:
             "files": [],
             "issues": ["Path does not exist"]
         }
-    
+
     if source_path.is_file():
         return _analyze_file_format(source_path)
     elif source_path.is_dir():
@@ -408,18 +416,18 @@ def _analyze_file_format(file_path: Path) -> dict:
     """Analyze a single file format."""
     issues = []
     file_type = "unknown"
-    
+
     if file_path.suffix == ".jsonl":
         file_type = "jsonl"
         # Try to read first few lines to analyze content
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path) as f:
                 lines = []
                 for i, line in enumerate(f):
                     if i >= 3:  # Only read first 3 lines
                         break
                     lines.append(line.strip())
-                
+
                 if lines:
                     # Try to parse JSON
                     import json
@@ -431,27 +439,27 @@ def _analyze_file_format(file_path: Path) -> dict:
                                 sample_data.append(data)
                             except json.JSONDecodeError:
                                 issues.append(f"Invalid JSON on line {line_num}")
-                    
+
                     if sample_data:
                         # Analyze field structure
                         all_fields = set()
                         for data in sample_data:
                             if isinstance(data, dict):
                                 all_fields.update(data.keys())
-                        
+
                         required_fields = ["step", "phase", "reward_mean", "kl_mean"]
                         missing_fields = [f for f in required_fields if f not in all_fields]
-                        
+
                         if missing_fields:
                             issues.append(f"Missing required fields: {missing_fields}")
-                        
+
                         # Check for custom format indicators
                         custom_indicators = ["global_step", "reward_scalar", "kl_to_ref"]
                         has_custom = any(f in all_fields for f in custom_indicators)
-                        
+
                         if has_custom:
                             issues.append("Contains custom format fields - try 'custom_jsonl' adapter")
-                        
+
                         return {
                             "description": f"JSONL file with {len(sample_data)} sample records",
                             "type": "jsonl",
@@ -466,11 +474,11 @@ def _analyze_file_format(file_path: Path) -> dict:
                     issues.append("File is empty")
         except Exception as e:
             issues.append(f"Error reading file: {e}")
-    
+
     elif file_path.suffix == ".log":
         file_type = "log"
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path) as f:
                 content = f.read(1000)  # Read first 1000 chars
                 if not content.strip():
                     issues.append("Log file is empty")
@@ -482,10 +490,10 @@ def _analyze_file_format(file_path: Path) -> dict:
                         issues.append("Contains OpenRLHF keywords - try 'openrlhf' adapter")
         except Exception as e:
             issues.append(f"Error reading log file: {e}")
-    
+
     else:
         issues.append(f"Unsupported file extension: {file_path.suffix}")
-    
+
     return {
         "description": f"{file_type} file: {file_path.name}",
         "type": file_type,
@@ -498,31 +506,31 @@ def _analyze_directory_format(dir_path: Path) -> dict:
     """Analyze a directory format."""
     issues = []
     files_found = []
-    
+
     # Look for common log files
     jsonl_files = list(dir_path.glob("*.jsonl"))
     log_files = list(dir_path.glob("*.log"))
-    
+
     files_found = jsonl_files + log_files
-    
+
     if not files_found:
         issues.append("No .jsonl or .log files found in directory")
         return {
-            "description": f"Directory with no log files",
+            "description": "Directory with no log files",
             "type": "directory",
             "files": [],
             "issues": issues
         }
-    
+
     # Analyze the first few files
     sample_issues = []
     for file_path in files_found[:3]:  # Analyze first 3 files
         file_analysis = _analyze_file_format(file_path)
         if file_analysis.get("issues"):
             sample_issues.extend(file_analysis["issues"])
-    
+
     issues.extend(sample_issues)
-    
+
     return {
         "description": f"Directory with {len(files_found)} log files ({len(jsonl_files)} JSONL, {len(log_files)} .log)",
         "type": "directory",
@@ -534,33 +542,33 @@ def _analyze_directory_format(dir_path: Path) -> dict:
 def _get_auto_detection_suggestions(source_analysis: dict) -> str:
     """Get suggestions for adapter selection based on source analysis."""
     suggestions = []
-    
+
     if source_analysis["type"] == "missing":
         suggestions.append("Ensure the source path exists and is accessible.")
         return " ".join(suggestions)
-    
+
     if source_analysis["type"] == "jsonl":
         fields_found = source_analysis.get("fields_found", [])
-        
+
         # Check for custom format indicators
         custom_indicators = ["global_step", "reward_scalar", "kl_to_ref"]
         has_custom = any(f in fields_found for f in custom_indicators)
-        
+
         if has_custom:
             suggestions.append("Your data contains custom field names (global_step, reward_scalar, kl_to_ref). Try: --adapter custom_jsonl")
         else:
             # Check for standard format
             standard_fields = ["step", "phase", "reward_mean", "kl_mean"]
             has_standard = any(f in fields_found for f in standard_fields)
-            
+
             if has_standard:
                 suggestions.append("Your data appears to be in standard format. Try: --adapter trl or --adapter openrlhf")
             else:
                 suggestions.append("Your data doesn't match standard formats. Try: --adapter custom_jsonl")
-    
+
     elif source_analysis["type"] == "log":
         suggestions.append("You have .log files. Try: --adapter trl or --adapter openrlhf")
-    
+
     elif source_analysis["type"] == "directory":
         files = source_analysis.get("files", [])
         if any(f.endswith('.jsonl') for f in files):
@@ -569,9 +577,9 @@ def _get_auto_detection_suggestions(source_analysis: dict) -> str:
             suggestions.append("Directory contains .log files. Try: --adapter trl or --adapter openrlhf")
         else:
             suggestions.append("Directory doesn't contain recognized log files.")
-    
+
     # Add general suggestions
     suggestions.append("Available adapters: trl, openrlhf, custom_jsonl, wandb")
     suggestions.append("Use --adapter <type> to specify the adapter explicitly.")
-    
+
     return " ".join(suggestions)

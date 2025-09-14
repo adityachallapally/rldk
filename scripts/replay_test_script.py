@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Test script for the seeded replay functionality."""
 
+import json
 import os
 import sys
 import tempfile
-import json
 from pathlib import Path
 
 # Add src to path for imports
@@ -41,7 +41,7 @@ for step in range(10):
     reward_std = 0.1 + 0.01 * step
     kl_mean = 0.1 + 0.01 * step
     entropy_mean = 0.8 - 0.01 * step
-    
+
     metrics = {
         "step": step,
         "phase": "train",
@@ -60,11 +60,11 @@ for step in range(10):
         "run_id": f"mock_run_{seed}",
         "git_sha": "test123"
     }
-    
+
     # Write to output file
     with open(output_path, 'a') as f:
         f.write(json.dumps(metrics) + '\\n')
-    
+
     print(f"Step {step}: reward={reward_mean:.4f}, kl={kl_mean:.4f}")
 
 print(f"Training completed with seed {seed}")

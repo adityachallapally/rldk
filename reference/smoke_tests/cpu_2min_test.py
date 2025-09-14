@@ -13,9 +13,9 @@ Expected Results:
 """
 
 import json
-import time
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Dict
 
@@ -66,7 +66,7 @@ def analyze_training_metrics(metrics_file: str) -> Dict:
     print(f"\n📊 Analyzing training metrics: {metrics_file}")
 
     try:
-        with open(metrics_file, "r") as f:
+        with open(metrics_file) as f:
             lines = f.readlines()
 
         metrics = [json.loads(line) for line in lines]
@@ -176,7 +176,7 @@ def main():
 
     # Step 3: Analyze metrics for bugs
     print("\n🐛 Step 3: Analyzing metrics for intentional bugs")
-    metrics_analysis = analyze_training_metrics(metrics_file)
+    analyze_training_metrics(metrics_file)
 
     # Step 4: Run RLDK analysis
     print("\n🔍 Step 4: Running RLDK analysis")

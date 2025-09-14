@@ -1,18 +1,18 @@
 """TRL integration for RLDK."""
 
-from .callbacks import RLDKCallback, RLDKMonitor, RLDKMetrics
-from .monitors import PPOMonitor, CheckpointMonitor, PPOMetrics, CheckpointMetrics
+from .callbacks import RLDKCallback, RLDKMetrics, RLDKMonitor
 from .dashboard import RLDKDashboard
+from .monitors import CheckpointMetrics, CheckpointMonitor, PPOMetrics, PPOMonitor
 from .utils import (
+    check_trl_compatibility,
     fix_generation_config,
     prepare_models_for_ppo,
-    check_trl_compatibility,
-    validate_ppo_setup
+    validate_ppo_setup,
 )
 
 __all__ = [
     "RLDKCallback",
-    "RLDKMonitor", 
+    "RLDKMonitor",
     "RLDKMetrics",
     "PPOMonitor",
     "PPOMetrics",

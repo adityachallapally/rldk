@@ -1,42 +1,49 @@
 """Consolidated readers for all training data formats and sources."""
 
-import json
 import csv
-import torch
+import json
 from pathlib import Path
-from typing import Union, List, Iterator, Dict, Any, Callable, Optional
-import pandas as pd
+from typing import Any, Callable, Dict, Iterator, List, Optional, Union
 
-from .consolidated_schemas import TrainingMetrics, MetricsSchema, Event, create_event_from_row
+import pandas as pd
+import torch
+
 from ..utils.torch_compat import safe_torch_load
+from .consolidated_schemas import (
+    Event,
+    MetricsSchema,
+    TrainingMetrics,
+    create_event_from_row,
+)
 
 
 def _hash_state_dict(state_dict: Dict[str, Any]) -> str:
     """
     Efficiently hash a state dictionary by sampling tensor data.
-    
+
     This function creates a deterministic hash from model weights without
     converting entire tensors to strings, which is memory-intensive and
     non-deterministic for large models.
-    
+
     Args:
         state_dict: Dictionary containing model parameters
-        
+
     Returns:
         8-character hash string
     """
     import hashlib
+
     import numpy as np
-    
+
     hash_components = []
-    
+
     for name, param in sorted(state_dict.items()):
         if hasattr(param, 'data') and hasattr(param.data, 'numpy'):
             # PyTorch tensor - sample data efficiently
             try:
                 # Convert to numpy and sample for large tensors
                 data = param.data.detach().cpu().numpy()
-                
+
                 if data.size > 1000:
                     # For large tensors, sample a subset of values
                     # Use deterministic sampling based on tensor shape
@@ -46,30 +53,30 @@ def _hash_state_dict(state_dict: Dict[str, Any]) -> str:
                 else:
                     # For small tensors, use all data
                     sampled_data = data.flatten()
-                
+
                 # Create hash from shape, dtype, and sampled data
                 shape_str = str(data.shape)
                 dtype_str = str(data.dtype)
                 data_str = str(sampled_data.tolist())
                 hash_components.append(f"{name}:{shape_str}:{dtype_str}:{data_str}")
-                
+
             except Exception:
                 # Fallback: use tensor properties
                 shape_str = str(param.shape) if hasattr(param, 'shape') else 'unknown'
                 dtype_str = str(param.dtype) if hasattr(param, 'dtype') else 'unknown'
                 hash_components.append(f"{name}:{shape_str}:{dtype_str}:fallback")
-        
+
         elif hasattr(param, 'shape') and hasattr(param, 'dtype'):
             # Tensor-like object
             shape_str = str(param.shape)
             dtype_str = str(param.dtype)
             hash_components.append(f"{name}:{shape_str}:{dtype_str}:tensor_like")
-        
+
         else:
             # Non-tensor parameter - use string representation
             param_str = str(param)[:100]  # Limit length to avoid memory issues
             hash_components.append(f"{name}:{param_str}")
-    
+
     # Create final hash from all components
     combined = "|".join(hash_components)
     return hashlib.md5(combined.encode()).hexdigest()[:8]
@@ -83,7 +90,7 @@ def read_metrics_jsonl(file_path: Union[str, Path]) -> pd.DataFrame:
         raise FileNotFoundError(f"Metrics file not found: {file_path}")
 
     metrics = []
-    with open(file_path, "r") as f:
+    with open(file_path) as f:
         for line_num, line in enumerate(f, 1):
             line = line.strip()
             if not line:
@@ -105,7 +112,7 @@ def read_jsonl(path: Union[str, Path]) -> Iterator[Dict[str, Any]]:
     if not path.exists():
         raise FileNotFoundError(f"File not found: {path}")
 
-    with open(path, "r") as f:
+    with open(path) as f:
         for line_num, line in enumerate(f, 1):
             line = line.strip()
             if not line:
@@ -132,7 +139,7 @@ def read_tensorboard_export(dir_path: Union[str, Path]) -> Iterator[Dict[str, An
         raise ValueError(f"No CSV files found in {dir_path}")
 
     for csv_file in csv_files:
-        with open(csv_file, "r") as f:
+        with open(csv_file) as f:
             reader = csv.DictReader(f)
             for row in reader:
                 # Convert numeric values
@@ -226,14 +233,14 @@ def read_reward_head(dir_path: Union[str, Path]) -> Callable[[List[str]], List[f
                     model_hash = _hash_state_dict(model.state_dict())
                 elif hasattr(model, 'parameters'):
                     # Model is a PyTorch module with parameters
-                    state_dict = {name: param for name, param in model.named_parameters()}
+                    state_dict = dict(model.named_parameters())
                     model_hash = _hash_state_dict(state_dict)
                 else:
                     # Fallback: use model type and basic properties
                     model_type = type(model).__name__
                     model_size = len(str(model)) if hasattr(model, '__len__') else 0
                     model_hash = hashlib.md5(f"{model_type}_{model_size}_{model_path}".encode()).hexdigest()[:8]
-                
+
             except Exception:
                 # Ultimate fallback: use model path and size as hash
                 model_hash = hashlib.md5(f"{model_path}_{len(str(model))}".encode()).hexdigest()[:8]
@@ -258,18 +265,18 @@ def read_reward_head(dir_path: Union[str, Path]) -> Callable[[List[str]], List[f
 
 
 def read_events_jsonl(
-    file_path: Union[str, Path], 
-    run_id: Optional[str] = None, 
+    file_path: Union[str, Path],
+    run_id: Optional[str] = None,
     git_sha: Optional[str] = None
 ) -> List[Event]:
     """
     Read events from JSONL file and return list of Event objects.
-    
+
     Args:
         file_path: Path to JSONL file
         run_id: Optional run ID for events
         git_sha: Optional git SHA for events
-        
+
     Returns:
         List of Event objects
     """
@@ -284,25 +291,25 @@ def read_events_jsonl(
             event_git_sha = data.get("git_sha")
             event = create_event_from_row(data, event_run_id, event_git_sha)
         events.append(event)
-    
+
     return events
 
 
 def read_csv_metrics(file_path: Union[str, Path]) -> pd.DataFrame:
     """
     Read metrics from CSV file.
-    
+
     Args:
         file_path: Path to CSV file
-        
+
     Returns:
         DataFrame with metrics data
     """
     file_path = Path(file_path)
-    
+
     if not file_path.exists():
         raise FileNotFoundError(f"CSV file not found: {file_path}")
-    
+
     try:
         df = pd.read_csv(file_path)
         return df
@@ -313,20 +320,20 @@ def read_csv_metrics(file_path: Union[str, Path]) -> pd.DataFrame:
 def read_json_report(file_path: Union[str, Path]) -> Dict[str, Any]:
     """
     Read JSON report file.
-    
+
     Args:
         file_path: Path to JSON file
-        
+
     Returns:
         Dictionary with report data
     """
     file_path = Path(file_path)
-    
+
     if not file_path.exists():
         raise FileNotFoundError(f"JSON file not found: {file_path}")
-    
+
     try:
-        with open(file_path, "r") as f:
+        with open(file_path) as f:
             return json.load(f)
     except Exception as e:
         raise ValueError(f"Failed to read JSON file {file_path}: {e}")
@@ -335,46 +342,46 @@ def read_json_report(file_path: Union[str, Path]) -> Dict[str, Any]:
 def read_markdown_report(file_path: Union[str, Path]) -> str:
     """
     Read markdown report file.
-    
+
     Args:
         file_path: Path to markdown file
-        
+
     Returns:
         String with markdown content
     """
     file_path = Path(file_path)
-    
+
     if not file_path.exists():
         raise FileNotFoundError(f"Markdown file not found: {file_path}")
-    
+
     try:
-        with open(file_path, "r") as f:
+        with open(file_path) as f:
             return f.read()
     except Exception as e:
         raise ValueError(f"Failed to read markdown file {file_path}: {e}")
 
 
 def read_directory_metrics(
-    dir_path: Union[str, Path], 
+    dir_path: Union[str, Path],
     pattern: str = "*.jsonl"
 ) -> pd.DataFrame:
     """
     Read all metrics files from a directory and combine into single DataFrame.
-    
+
     Args:
         dir_path: Directory containing metrics files
         pattern: File pattern to match (default: "*.jsonl")
-        
+
     Returns:
         Combined DataFrame with all metrics
     """
     dir_path = Path(dir_path)
-    
+
     if not dir_path.exists():
         raise FileNotFoundError(f"Directory not found: {dir_path}")
-    
+
     all_metrics = []
-    
+
     for file_path in dir_path.glob(pattern):
         try:
             if file_path.suffix == ".jsonl":
@@ -383,13 +390,13 @@ def read_directory_metrics(
                 df = read_csv_metrics(file_path)
             else:
                 continue
-            
+
             all_metrics.append(df)
         except Exception as e:
             print(f"Warning: Failed to read {file_path}: {e}")
             continue
-    
+
     if not all_metrics:
         raise ValueError(f"No valid metrics files found in {dir_path}")
-    
+
     return pd.concat(all_metrics, ignore_index=True)

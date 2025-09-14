@@ -1,10 +1,11 @@
 """Environment audit for determinism and reproducibility."""
 
 import os
-import sys
 import subprocess
+import sys
 from pathlib import Path
-from typing import Tuple, Dict, Any, List
+from typing import Any, Dict, List, Tuple
+
 import torch
 
 

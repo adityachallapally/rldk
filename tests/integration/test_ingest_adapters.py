@@ -1,12 +1,13 @@
 """Tests for ingest adapters."""
 
-import pytest
-import tempfile
 import json
 import os
+import tempfile
 
-from rldk.adapters.trl import TRLAdapter
+import pytest
+
 from rldk.adapters.openrlhf import OpenRLHFAdapter
+from rldk.adapters.trl import TRLAdapter
 from rldk.adapters.wandb import WandBAdapter
 from rldk.io.schema import MetricsSchema
 

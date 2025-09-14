@@ -1,17 +1,18 @@
 """Tests for evaluation integrity checks."""
 
-import pytest
-import pandas as pd
-import numpy as np
-from pathlib import Path
-import tempfile
 import shutil
+import tempfile
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import pytest
 
 from rldk.evals.integrity import (
-    evaluate_prompt_contamination,
     evaluate_answer_leakage,
     evaluate_data_split_integrity,
     evaluate_evaluation_robustness,
+    evaluate_prompt_contamination,
 )
 
 
@@ -31,7 +32,7 @@ class TestPromptContamination:
     def test_basic_functionality(self):
         """Test basic prompt contamination evaluation."""
         result = evaluate_prompt_contamination(self.sample_data, seed=42)
-        
+
         assert isinstance(result, dict)
         assert "score" in result
         assert "details" in result
@@ -46,12 +47,12 @@ class TestPromptContamination:
         # Create data with many duplicates
         duplicate_data = self.sample_data.copy()
         duplicate_data["prompt"] = ["Same prompt"] * 50 + ["Another prompt"] * 50
-        
+
         result = evaluate_prompt_contamination(duplicate_data, seed=42)
-        
+
         # Should detect high contamination due to duplicates
         assert result["score"] < 0.8  # Lower score indicates more contamination
-        
+
         # Check that duplicate metric is present
         metrics = dict(result["metrics"])
         assert "duplicate_prompts" in metrics
@@ -62,12 +63,12 @@ class TestPromptContamination:
         # Create data with metadata in prompts
         leakage_data = self.sample_data.copy()
         leakage_data["prompt"] = [
-            f"Test prompt for epoch {i} at step {i*10}" 
+            f"Test prompt for epoch {i} at step {i*10}"
             for i in range(len(leakage_data))
         ]
-        
+
         result = evaluate_prompt_contamination(leakage_data, seed=42)
-        
+
         # Should detect contamination due to metadata leakage
         assert result["score"] < 0.9  # Lower score indicates more contamination
 
@@ -77,9 +78,9 @@ class TestPromptContamination:
             "step": range(50),
             "reward_mean": np.random.normal(0.5, 0.2, 50),
         })
-        
+
         result = evaluate_prompt_contamination(no_prompt_data, seed=42)
-        
+
         assert result["score"] == 0.5  # Neutral score
         assert "no_prompt_data" in result["method"]
 
@@ -88,12 +89,12 @@ class TestPromptContamination:
         # Create data with test patterns
         test_data = self.sample_data.copy()
         test_data["prompt"] = [
-            f"Answer the following question: What is {i} + {i}?" 
+            f"Answer the following question: What is {i} + {i}?"
             for i in range(len(test_data))
         ]
-        
+
         result = evaluate_prompt_contamination(test_data, seed=42)
-        
+
         # Should detect contamination due to test patterns
         assert result["score"] < 0.9  # Lower score indicates more contamination
 
@@ -114,7 +115,7 @@ class TestAnswerLeakage:
     def test_basic_functionality(self):
         """Test basic answer leakage evaluation."""
         result = evaluate_answer_leakage(self.sample_data, seed=42)
-        
+
         assert isinstance(result, dict)
         assert "score" in result
         assert "details" in result
@@ -129,16 +130,16 @@ class TestAnswerLeakage:
         # Create data with direct answer leakage
         leakage_data = self.sample_data.copy()
         leakage_data["prompt"] = [
-            f"What is 2 + 2? The answer is 4. Please confirm." 
+            "What is 2 + 2? The answer is 4. Please confirm."
             for i in range(len(leakage_data))
         ]
         leakage_data["response"] = [
-            f"The answer is 4" 
+            "The answer is 4"
             for i in range(len(leakage_data))
         ]
-        
+
         result = evaluate_answer_leakage(leakage_data, seed=42)
-        
+
         # Should detect high leakage
         assert result["score"] < 0.8  # Lower score indicates more leakage
 
@@ -147,16 +148,16 @@ class TestAnswerLeakage:
         # Create data with numerical leakage
         leakage_data = self.sample_data.copy()
         leakage_data["prompt"] = [
-            f"Calculate the sum of {i} and {i+1}" 
+            f"Calculate the sum of {i} and {i+1}"
             for i in range(len(leakage_data))
         ]
         leakage_data["response"] = [
-            f"The sum is {i + (i+1)}" 
+            f"The sum is {i + (i+1)}"
             for i in range(len(leakage_data))
         ]
-        
+
         result = evaluate_answer_leakage(leakage_data, seed=42)
-        
+
         # Should detect some numerical leakage
         assert result["score"] < 0.9  # Lower score indicates more leakage
 
@@ -166,9 +167,9 @@ class TestAnswerLeakage:
             "step": range(50),
             "reward_mean": np.random.normal(0.5, 0.2, 50),
         })
-        
+
         result = evaluate_answer_leakage(no_response_data, seed=42)
-        
+
         assert result["score"] == 0.5  # Neutral score
         assert "no_response_data" in result["method"]
 
@@ -177,16 +178,16 @@ class TestAnswerLeakage:
         # Create data with partial answer leakage
         leakage_data = self.sample_data.copy()
         leakage_data["prompt"] = [
-            f"The answer is: What is the capital of France?" 
+            "The answer is: What is the capital of France?"
             for i in range(len(leakage_data))
         ]
         leakage_data["response"] = [
-            f"The capital of France is Paris" 
+            "The capital of France is Paris"
             for i in range(len(leakage_data))
         ]
-        
+
         result = evaluate_answer_leakage(leakage_data, seed=42)
-        
+
         # Should detect partial leakage
         assert result["score"] < 0.9  # Lower score indicates more leakage
 
@@ -208,7 +209,7 @@ class TestDataSplitIntegrity:
     def test_basic_functionality(self):
         """Test basic data split integrity evaluation."""
         result = evaluate_data_split_integrity(self.sample_data, seed=42)
-        
+
         assert isinstance(result, dict)
         assert "score" in result
         assert "details" in result
@@ -223,9 +224,9 @@ class TestDataSplitIntegrity:
         # Create data with cross-split duplicates
         duplicate_data = self.sample_data.copy()
         duplicate_data["prompt"] = ["Same prompt"] * 200  # All same prompt
-        
+
         result = evaluate_data_split_integrity(duplicate_data, seed=42)
-        
+
         # Should detect high contamination due to cross-split duplicates
         assert result["score"] < 0.8  # Lower score indicates more contamination
 
@@ -234,9 +235,9 @@ class TestDataSplitIntegrity:
         # Create data with very unbalanced splits
         unbalanced_data = self.sample_data.copy()
         unbalanced_data["split"] = ["train"] * 190 + ["val"] * 5 + ["test"] * 5
-        
+
         result = evaluate_data_split_integrity(unbalanced_data, seed=42)
-        
+
         # Should detect integrity issues due to unbalanced splits
         assert result["score"] < 0.9  # Lower score indicates more issues
 
@@ -246,9 +247,9 @@ class TestDataSplitIntegrity:
             "step": range(50),
             "reward_mean": np.random.normal(0.5, 0.2, 50),
         })
-        
+
         result = evaluate_data_split_integrity(no_split_data, seed=42)
-        
+
         assert result["score"] == 0.5  # Neutral score
         assert "no_split_data" in result["method"]
 
@@ -259,9 +260,9 @@ class TestDataSplitIntegrity:
         temporal_data["timestamp"] = pd.date_range("2023-01-01", periods=200, freq="H")
         # Reverse timestamps within some splits
         temporal_data.loc[50:100, "timestamp"] = temporal_data.loc[50:100, "timestamp"].iloc[::-1]
-        
+
         result = evaluate_data_split_integrity(temporal_data, seed=42)
-        
+
         # Should detect some temporal violations
         assert result["score"] < 1.0  # Lower score indicates more violations
 
@@ -282,7 +283,7 @@ class TestEvaluationRobustness:
     def test_basic_functionality(self):
         """Test basic evaluation robustness evaluation."""
         result = evaluate_evaluation_robustness(self.sample_data, seed=42)
-        
+
         assert isinstance(result, dict)
         assert "score" in result
         assert "details" in result
@@ -295,9 +296,9 @@ class TestEvaluationRobustness:
     def test_small_sample_size(self):
         """Test detection of small sample size."""
         small_data = self.sample_data.iloc[:5]  # Very small sample
-        
+
         result = evaluate_evaluation_robustness(small_data, seed=42)
-        
+
         # Should detect robustness issues due to small sample
         assert result["score"] < 0.8  # Lower score indicates less robust
 
@@ -306,9 +307,9 @@ class TestEvaluationRobustness:
         # Create data with high variance
         high_var_data = self.sample_data.copy()
         high_var_data["reward_mean"] = np.random.normal(0.5, 1.0, 100)  # High variance
-        
+
         result = evaluate_evaluation_robustness(high_var_data, seed=42)
-        
+
         # Should detect robustness issues due to high variance
         assert result["score"] < 0.9  # Lower score indicates less robust
 
@@ -317,9 +318,9 @@ class TestEvaluationRobustness:
         # Create data with systematic bias
         biased_data = self.sample_data.copy()
         biased_data["reward_mean"] = biased_data["step"] * 0.01  # Correlated with step
-        
+
         result = evaluate_evaluation_robustness(biased_data, seed=42)
-        
+
         # Should detect robustness issues due to systematic bias
         assert result["score"] < 0.9  # Lower score indicates less robust
 
@@ -328,9 +329,9 @@ class TestEvaluationRobustness:
         # Create data with outliers
         outlier_data = self.sample_data.copy()
         outlier_data.loc[0, "reward_mean"] = 10.0  # Extreme outlier
-        
+
         result = evaluate_evaluation_robustness(outlier_data, seed=42)
-        
+
         # Should detect robustness issues due to outliers
         assert result["score"] < 1.0  # Lower score indicates less robust
 
@@ -357,12 +358,12 @@ class TestIntegrationWithEvaluationFramework:
     def test_integrity_suite_import(self):
         """Test that integrity evaluations can be imported and used."""
         from src.rldk.evals.suites import get_eval_suite
-        
+
         # Test that integrity suite exists
         integrity_suite = get_eval_suite("integrity")
         assert integrity_suite is not None
         assert integrity_suite["name"] == "integrity"
-        
+
         # Test that integrity evaluations are included
         evaluations = integrity_suite["evaluations"]
         assert "prompt_contamination" in evaluations
@@ -373,10 +374,10 @@ class TestIntegrationWithEvaluationFramework:
     def test_quick_suite_integration(self):
         """Test that integrity checks are integrated into quick suite."""
         from src.rldk.evals.suites import get_eval_suite
-        
+
         quick_suite = get_eval_suite("quick")
         evaluations = quick_suite["evaluations"]
-        
+
         # Quick suite should include basic integrity checks
         assert "prompt_contamination" in evaluations
         assert "answer_leakage" in evaluations
@@ -384,10 +385,10 @@ class TestIntegrationWithEvaluationFramework:
     def test_comprehensive_suite_integration(self):
         """Test that integrity checks are integrated into comprehensive suite."""
         from src.rldk.evals.suites import get_eval_suite
-        
+
         comprehensive_suite = get_eval_suite("comprehensive")
         evaluations = comprehensive_suite["evaluations"]
-        
+
         # Comprehensive suite should include all integrity checks
         assert "prompt_contamination" in evaluations
         assert "answer_leakage" in evaluations
@@ -397,10 +398,10 @@ class TestIntegrationWithEvaluationFramework:
     def test_baseline_scores(self):
         """Test that baseline scores are properly set for integrity checks."""
         from src.rldk.evals.suites import get_eval_suite
-        
+
         integrity_suite = get_eval_suite("integrity")
         baseline_scores = integrity_suite["baseline_scores"]
-        
+
         # Check that baseline scores are reasonable
         assert baseline_scores["prompt_contamination"] > 0.7  # High baseline (less contamination)
         assert baseline_scores["answer_leakage"] > 0.7  # High baseline (less leakage)

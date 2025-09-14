@@ -2,9 +2,9 @@
 
 from pathlib import Path
 from typing import Union
-import pandas as pd
-import json
+
 import numpy as np
+import pandas as pd
 
 from ..reward.health_analysis import RewardHealthReport
 from .unified_writer import UnifiedWriter
@@ -13,7 +13,7 @@ from .unified_writer import UnifiedWriter
 def _json_serialize(obj):
     """
     Custom JSON serializer that converts NaN to null.
-    
+
     Note: This function is deprecated. Use UnifiedWriter._json_serializer instead
     for consistent serialization across the codebase.
     """
@@ -179,7 +179,7 @@ def write_drift_analysis_csv(report: RewardHealthReport, output_dir: Path) -> No
 def write_reward_health_summary(report: RewardHealthReport, output_dir: Path) -> None:
     """Write reward health summary as JSON file."""
 
-    summary_path = output_dir / "reward_health_summary.json"
+    output_dir / "reward_health_summary.json"
 
     summary = {
         "passed": report.passed,

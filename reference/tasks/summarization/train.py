@@ -6,18 +6,19 @@ Runs ~50 steps with GPT-2 on CPU, logs JSONL with strict schema,
 sets all seeds, and computes simple teacher forced loss.
 """
 
-import json
-import hashlib
 import argparse
+import hashlib
+import json
+import os
 import platform
 import random
-import numpy as np
-import torch
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional
+
+import numpy as np
+import torch
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
-import sys
-import os
 
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent.parent.parent / "src"))
@@ -60,7 +61,7 @@ def compute_kl_divergence(logits: torch.Tensor, ref_logits: torch.Tensor) -> flo
 def load_manifest(manifest_path: str) -> List[Dict]:
     """Load dataset manifest."""
     manifest = []
-    with open(manifest_path, "r") as f:
+    with open(manifest_path) as f:
         for line in f:
             manifest.append(json.loads(line.strip()))
     return manifest

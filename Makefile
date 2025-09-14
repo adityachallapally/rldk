@@ -1,11 +1,18 @@
 # Makefile for RL Debug Kit Reference Suite
 
-.PHONY: help reference\:cpu_smoke reference\:bisect_demo reference\:setup clean profile profile-check profile-train profile-dashboard profile-clean test-trl test-trl-unit test-trl-integration test-trl-slow golden-master-test
+.PHONY: help init lint test cli-smoke docs-serve reference\:cpu_smoke reference\:bisect_demo reference\:setup clean profile profile-check profile-train profile-dashboard profile-clean test-trl test-trl-unit test-trl-integration test-trl-slow golden-master-test
 
 help:
-	@echo "RL Debug Kit Reference Suite"
+	@echo "RL Debug Kit Development Commands"
 	@echo ""
-	@echo "Available targets:"
+	@echo "Development targets:"
+	@echo "  init                   - Initialize development environment"
+	@echo "  lint                   - Run linting and formatting checks"
+	@echo "  test                   - Run all tests"
+	@echo "  cli-smoke              - Run CLI smoke tests"
+	@echo "  docs-serve             - Serve documentation locally"
+	@echo ""
+	@echo "Reference Suite targets:"
 	@echo "  reference:setup        - Setup reference runs for testing"
 	@echo "  reference:cpu_smoke    - Run CPU smoke tests and generate cards"
 	@echo "  reference:bisect_demo  - Run bisect demonstration"
@@ -22,12 +29,52 @@ help:
 	@echo "  clean                  - Clean generated files"
 	@echo ""
 	@echo "Examples:"
+	@echo "  make init"
+	@echo "  make lint"
+	@echo "  make test"
+	@echo "  make cli-smoke"
+	@echo "  make docs-serve"
 	@echo "  make reference:setup"
 	@echo "  make reference:cpu_smoke"
 	@echo "  make reference:bisect_demo"
 	@echo "  make golden-master-test"
 	@echo "  make profile"
 	@echo "  make profile-train"
+
+# Development targets
+init:
+	@echo "Initializing development environment..."
+	python3 -m pip install --upgrade pip
+	python3 -m pip install -e ".[dev]"
+	@echo "✅ Development environment initialized!"
+
+lint:
+	@echo "Running linting and formatting checks..."
+	ruff check .
+	ruff format --check .
+	mypy src --ignore-missing-imports --no-strict-optional
+	@echo "✅ Linting complete!"
+
+test:
+	@echo "Running all tests..."
+	pytest tests/ -v --cov=src/rldk --cov-report=xml --cov-report=html
+	@echo "✅ Tests complete!"
+
+cli-smoke:
+	@echo "Running CLI smoke tests..."
+	rldk --help
+	rldk version
+	rldk seed --help
+	rldk forensics --help
+	rldk reward --help
+	rldk evals --help
+	rldk track --help
+	@echo "✅ CLI smoke tests complete!"
+
+docs-serve:
+	@echo "Starting documentation server..."
+	@echo "Documentation will be available at http://localhost:8000"
+	mkdocs serve
 
 # Setup Reference Runs Target
 reference\:setup:

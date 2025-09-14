@@ -1,10 +1,11 @@
 """Reward model drift detection."""
 
-import numpy as np
 import re
+from typing import Any, Dict, List, Tuple
+
+import numpy as np
 import pandas as pd
-from typing import Dict, Any, List, Tuple
-from scipy.stats import pearsonr, spearmanr, ks_2samp
+from scipy.stats import ks_2samp, pearsonr, spearmanr
 
 from rldk.io.readers import read_reward_head
 

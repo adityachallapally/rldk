@@ -1,15 +1,16 @@
 """Tests for standardized JSONL ingestion functionality."""
 
-import pytest
-import tempfile
 import json
 import os
+import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from rldk.adapters.trl import TRLAdapter
-from rldk.adapters.openrlhf import OpenRLHFAdapter
+import pytest
+
 from rldk.adapters.custom_jsonl import CustomJSONLAdapter
+from rldk.adapters.openrlhf import OpenRLHFAdapter
+from rldk.adapters.trl import TRLAdapter
 from rldk.ingest import ingest_runs
 from rldk.io.event_schema import Event, create_event_from_row
 
@@ -30,10 +31,10 @@ class TestJSONLIngestion:
                 "run_id": "test_run"
             }, f)
             f.write("\n")
-            
+
             # Write malformed JSON line
             f.write('{"step": 1, "phase": "train", "reward_mean": 0.6, "kl_mean": 0.2, "loss": 0.3, "run_id": "test_run"\n')  # Missing closing brace
-            
+
             # Write another valid JSON line
             json.dump({
                 "step": 2,
@@ -49,12 +50,12 @@ class TestJSONLIngestion:
         try:
             adapter = TRLAdapter(f.name)
             df = adapter.load()
-            
+
             # Should only have 2 valid records (steps 0 and 2)
             assert len(df) == 2
             assert df["step"].iloc[0] == 0
             assert df["step"].iloc[1] == 2
-            
+
         finally:
             os.unlink(f.name)
 
@@ -71,10 +72,10 @@ class TestJSONLIngestion:
                 "run_id": "test_run"
             }, f)
             f.write("\n")
-            
+
             # Write malformed JSON line
             f.write('{"step": 1, "phase": "train", "reward_mean": 0.6, "kl_mean": 0.2, "loss": 0.3, "run_id": "test_run"\n')  # Missing closing brace
-            
+
             # Write another valid JSON line
             json.dump({
                 "step": 2,
@@ -90,12 +91,12 @@ class TestJSONLIngestion:
         try:
             adapter = OpenRLHFAdapter(f.name)
             df = adapter.load()
-            
+
             # Should only have 2 valid records (steps 0 and 2)
             assert len(df) == 2
             assert df["step"].iloc[0] == 0
             assert df["step"].iloc[1] == 2
-            
+
         finally:
             os.unlink(f.name)
 
@@ -111,10 +112,10 @@ class TestJSONLIngestion:
                 "rng.python": 42
             }, f)
             f.write("\n")
-            
+
             # Write malformed JSON line
             f.write('{"global_step": 1, "reward_scalar": 0.6, "kl_to_ref": 0.2, "loss": 0.3, "rng.python": 42\n')  # Missing closing brace
-            
+
             # Write another valid JSON line
             json.dump({
                 "global_step": 2,
@@ -129,12 +130,12 @@ class TestJSONLIngestion:
         try:
             adapter = CustomJSONLAdapter(f.name)
             df = adapter.load()
-            
+
             # Should only have 2 valid records (steps 0 and 2)
             assert len(df) == 2
             assert df["step"].iloc[0] == 0
             assert df["step"].iloc[1] == 2
-            
+
             # Verify that the adapter properly maps custom fields to Event schema fields
             assert "reward_mean" in df.columns
             assert "kl_mean" in df.columns
@@ -142,12 +143,12 @@ class TestJSONLIngestion:
             assert "clip_frac" in df.columns
             assert "grad_norm" in df.columns
             assert "lr" in df.columns
-            
+
             # Verify the mapped values
             assert df["reward_mean"].iloc[0] == 0.5
             assert df["kl_mean"].iloc[0] == 0.1
             assert df["loss"].iloc[0] == 0.4
-            
+
         finally:
             os.unlink(f.name)
 
@@ -177,11 +178,11 @@ class TestJSONLIngestion:
         try:
             adapter = CustomJSONLAdapter(f.name)
             df = adapter.load()
-            
+
             # Test that we can create Event objects from the adapter output
             for _, row in df.iterrows():
                 event = create_event_from_row(row.to_dict(), "test_run", "abc123")
-                
+
                 # Verify Event object has all required fields
                 assert hasattr(event, 'step')
                 assert hasattr(event, 'wall_time')
@@ -190,7 +191,7 @@ class TestJSONLIngestion:
                 assert hasattr(event, 'data_slice')
                 assert hasattr(event, 'model_info')
                 assert hasattr(event, 'notes')
-                
+
                 # Verify metrics contain expected fields
                 assert 'reward_mean' in event.metrics
                 assert 'kl_mean' in event.metrics
@@ -199,7 +200,7 @@ class TestJSONLIngestion:
                 assert 'grad_norm' in event.metrics
                 assert 'lr' in event.metrics
                 assert 'loss' in event.metrics
-                
+
                 # Verify data types are correct
                 assert isinstance(event.step, int)
                 assert isinstance(event.wall_time, float)
@@ -208,14 +209,14 @@ class TestJSONLIngestion:
                 assert isinstance(event.data_slice, dict)
                 assert isinstance(event.model_info, dict)
                 assert isinstance(event.notes, list)
-                
+
         finally:
             os.unlink(f.name)
 
     def test_custom_jsonl_validation_with_adapter(self):
         """Test that custom JSONL validation works with the adapter."""
         from rldk.io.validator import validate_custom_jsonl_with_adapter
-        
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
             # Write custom JSONL data
             json.dump({
@@ -240,11 +241,11 @@ class TestJSONLIngestion:
         try:
             # Test validation with adapter
             is_valid, issues = validate_custom_jsonl_with_adapter(f.name)
-            
+
             # Should be valid
             assert is_valid
             assert len(issues) == 0
-            
+
         finally:
             os.unlink(f.name)
 
@@ -272,7 +273,7 @@ class TestJSONLIngestion:
         try:
             adapter = CustomJSONLAdapter(f.name)
             df = adapter.load()
-            
+
             # Verify that zeros are preserved
             assert df["step"].iloc[0] == 0, f"Expected step=0, got {df['step'].iloc[0]}"
             assert df["reward_mean"].iloc[0] == 0.0, f"Expected reward_mean=0.0, got {df['reward_mean'].iloc[0]}"
@@ -284,7 +285,7 @@ class TestJSONLIngestion:
             assert df["seed"].iloc[0] == 0, f"Expected seed=0, got {df['seed'].iloc[0]}"
             assert df["tokens_in"].iloc[0] == 0, f"Expected tokens_in=0, got {df['tokens_in'].iloc[0]}"
             assert df["tokens_out"].iloc[0] == 0, f"Expected tokens_out=0, got {df['tokens_out'].iloc[0]}"
-            
+
         finally:
             os.unlink(f.name)
 
@@ -304,16 +305,16 @@ class TestJSONLIngestion:
         try:
             adapter = CustomJSONLAdapter(f.name)
             df = adapter.load()
-            
+
             # Verify that present fields are preserved
             assert df["step"].iloc[0] == 5, f"Expected step=5, got {df['step'].iloc[0]}"
             assert df["reward_mean"].iloc[0] == 0.5, f"Expected reward_mean=0.5, got {df['reward_mean'].iloc[0]}"
-            
+
             # Verify that missing fields use defaults
             assert df["kl_mean"].iloc[0] == 0.0, f"Expected kl_mean=0.0 (default), got {df['kl_mean'].iloc[0]}"
             assert df["loss"].iloc[0] == 0.0, f"Expected loss=0.0 (default), got {df['loss'].iloc[0]}"
             assert df["seed"].iloc[0] == 42, f"Expected seed=42 (default), got {df['seed'].iloc[0]}"
-            
+
         finally:
             os.unlink(f.name)
 
@@ -434,23 +435,23 @@ class TestJSONLIngestion:
         try:
             adapter = CustomJSONLAdapter(f.name)
             df = adapter.load()
-            
+
             # Should not crash and should handle null values gracefully
             assert len(df) == 1, "Should have one row"
-            
+
             # Verify that null values are handled correctly (use defaults)
             assert df["reward_mean"].iloc[0] == 0.0, f"Expected reward_mean=0.0 (default for null), got {df['reward_mean'].iloc[0]}"
             assert df["loss"].iloc[0] == 0.0, f"Expected loss=0.0 (default for null), got {df['loss'].iloc[0]}"
             assert df["seed"].iloc[0] == 42, f"Expected seed=42 (default for null), got {df['seed'].iloc[0]}"
             assert df["lr"].iloc[0] == 0.0, f"Expected lr=0.0 (default for null), got {df['lr'].iloc[0]}"
             assert df["tokens_in"].iloc[0] == 0, f"Expected tokens_in=0 (default for null), got {df['tokens_in'].iloc[0]}"
-            
+
             # Verify that non-null values are preserved
             assert df["step"].iloc[0] == 0, f"Expected step=0, got {df['step'].iloc[0]}"
             assert df["kl_mean"].iloc[0] == 0.1, f"Expected kl_mean=0.1, got {df['kl_mean'].iloc[0]}"
             assert df["entropy_mean"].iloc[0] == 0.8, f"Expected entropy_mean=0.8, got {df['entropy_mean'].iloc[0]}"
             assert df["wall_time"].iloc[0] == 10.0, f"Expected wall_time=10.0, got {df['wall_time'].iloc[0]}"
-            
+
         finally:
             os.unlink(f.name)
 
@@ -476,17 +477,17 @@ class TestJSONLIngestion:
         try:
             adapter = CustomJSONLAdapter(f.name)
             df = adapter.load()
-            
+
             # Should not crash and should handle all null values gracefully
             assert len(df) == 1, "Should have one row"
-            
+
             # Verify that all null values use defaults
             assert df["step"].iloc[0] == 0, f"Expected step=0 (line_num), got {df['step'].iloc[0]}"
             assert df["reward_mean"].iloc[0] == 0.0, f"Expected reward_mean=0.0 (default), got {df['reward_mean'].iloc[0]}"
             assert df["kl_mean"].iloc[0] == 0.0, f"Expected kl_mean=0.0 (default), got {df['kl_mean'].iloc[0]}"
             assert df["loss"].iloc[0] == 0.0, f"Expected loss=0.0 (default), got {df['loss'].iloc[0]}"
             assert df["seed"].iloc[0] == 42, f"Expected seed=42 (default), got {df['seed'].iloc[0]}"
-            
+
         finally:
             os.unlink(f.name)
 
@@ -571,7 +572,7 @@ class TestJSONLIngestion:
 
             # Verify identical Event objects
             assert len(trl_events) == len(openrlhf_events)
-            
+
             for trl_event, openrlhf_event in zip(trl_events, openrlhf_events):
                 assert trl_event.step == openrlhf_event.step
                 assert trl_event.wall_time == openrlhf_event.wall_time
@@ -593,11 +594,11 @@ class TestJSONLIngestion:
         try:
             adapter = TRLAdapter(f.name)
             df = adapter.load()
-            
+
             # Should return empty DataFrame
             assert len(df) == 0
             assert "step" in df.columns
-            
+
         finally:
             os.unlink(f.name)
 
@@ -614,7 +615,7 @@ class TestJSONLIngestion:
                 "run_id": "test_run"
             }, f)
             f.write("\n")
-            
+
             # Write partial JSON line (incomplete)
             f.write('{"step": 1, "phase": "train", "reward_mean": 0.6')
             f.flush()
@@ -622,11 +623,11 @@ class TestJSONLIngestion:
         try:
             adapter = TRLAdapter(f.name)
             df = adapter.load()
-            
+
             # Should only have 1 valid record (step 0)
             assert len(df) == 1
             assert df["step"].iloc[0] == 0
-            
+
         finally:
             os.unlink(f.name)
 
@@ -643,10 +644,10 @@ class TestJSONLIngestion:
                 "run_id": "test_run"
             }, f)
             f.write("\n")
-            
+
             # Write completely invalid line
             f.write("This is not JSON at all\n")
-            
+
             # Write another valid JSON line
             json.dump({
                 "step": 2,
@@ -663,7 +664,7 @@ class TestJSONLIngestion:
             # Should raise an exception due to parsing error
             with pytest.raises(RuntimeError):
                 ingest_runs(f.name, adapter_hint="trl")
-                
+
         finally:
             os.unlink(f.name)
 
@@ -686,10 +687,10 @@ class TestJSONLIngestion:
         try:
             with patch('rldk.ingest.ingest.logging') as mock_logging:
                 ingest_runs(f.name, adapter_hint="trl")
-                
+
                 # Verify that logging.info was called with the correct message
                 mock_logging.info.assert_called_with("Successfully ingested 3 events from " + f.name)
-                
+
         finally:
             os.unlink(f.name)
 
@@ -711,7 +712,7 @@ class TestJSONLIngestion:
 
         # Verify all fields are primitive types
         event_dict = event.to_dict()
-        
+
         # Check that all values are primitive types (no tensors, etc.)
         def check_primitive_types(obj):
             if isinstance(obj, dict):
@@ -730,7 +731,7 @@ class TestJSONLIngestion:
     def test_utc_timestamps(self):
         """Test that loggers use UTC timestamps for reproducibility."""
         import time
-        
+
         # Create test data
         test_data = {
             "step": 0,
@@ -789,10 +790,10 @@ class TestJSONLIngestion:
             # Verify all events were written
             adapter = TRLAdapter(f.name)
             df = adapter.load()
-            
+
             # Should have 15 total events (3 threads * 5 events each)
             assert len(df) == 15
-            
+
             # Verify all run_ids are present
             run_ids = set(df["run_id"].dropna())
             assert len(run_ids) == 3
@@ -806,7 +807,7 @@ class TestJSONLIngestion:
     def test_environment_variable_override(self):
         """Test environment variable override for disabling JSONL emission."""
         import os
-        
+
         # Test with RLDK_DISABLE_JSONL set
         with patch.dict(os.environ, {'RLDK_DISABLE_JSONL': '1'}):
             # This would be tested in the actual callback implementation
@@ -857,7 +858,7 @@ class TestTRLAdapter:
         try:
             adapter = TRLAdapter(f.name)
             assert adapter.can_handle()
-            
+
             df = adapter.load()
             assert len(df) == 1
             assert df["step"].iloc[0] == 0
@@ -865,7 +866,7 @@ class TestTRLAdapter:
             assert df["kl_mean"].iloc[0] == 0.1
             assert df["wall_time"].iloc[0] == 10.0
             assert df["run_id"].iloc[0] == "test_run"
-            
+
         finally:
             os.unlink(f.name)
 
@@ -890,7 +891,7 @@ class TestTRLAdapter:
         try:
             adapter = TRLAdapter(f.name)
             assert adapter.can_handle()
-            
+
             df = adapter.load()
             assert len(df) == 1
             assert df["step"].iloc[0] == 0
@@ -898,7 +899,7 @@ class TestTRLAdapter:
             assert df["kl_mean"].iloc[0] == 0.1
             assert df["wall_time"].iloc[0] == 10.0
             assert df["run_id"].iloc[0] == "test_run"
-            
+
         finally:
             os.unlink(f.name)
 
@@ -936,7 +937,7 @@ class TestTRLAdapter:
         try:
             # Test with ingest_runs
             df = ingest_runs(f.name, adapter_hint="trl")
-            
+
             assert len(df) == 3
             assert "step" in df.columns
             assert "reward_mean" in df.columns
@@ -946,7 +947,7 @@ class TestTRLAdapter:
             assert df["step"].iloc[2] == 2
             assert df["reward_mean"].iloc[0] == 0.5
             assert df["reward_mean"].iloc[2] == 0.7
-            
+
         finally:
             os.unlink(f.name)
 
@@ -974,13 +975,13 @@ class TestTRLAdapter:
         try:
             # Test with ingest_runs
             df = ingest_runs(f.name, adapter_hint="trl")
-            
+
             # Should have exactly 5 events (one per step)
             assert len(df) == 5
-            
+
             # Steps should be 0, 1, 2, 3, 4
             assert list(df["step"]) == [0, 1, 2, 3, 4]
-            
+
         finally:
             os.unlink(f.name)
 
@@ -992,10 +993,10 @@ class TestJSONLValidator:
         """Test that JSONL validator checks for schema conformance."""
         # This would test the lightweight validator utility
         # For now, we'll create a simple validation function
-        
+
         def validate_jsonl_schema(file_path):
             """Simple JSONL schema validator."""
-            with open(file_path, 'r') as f:
+            with open(file_path) as f:
                 for line_num, line in enumerate(f, 1):
                     if line.strip():
                         try:

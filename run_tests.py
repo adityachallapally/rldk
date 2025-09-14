@@ -6,10 +6,10 @@ This script provides an easy way to run different types of tests with proper
 environment setup.
 """
 
-import os
-import sys
-import subprocess
 import argparse
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 
@@ -19,12 +19,12 @@ def setup_environment():
     project_root = Path(__file__).parent
     src_path = project_root / "src"
     tools_path = project_root / "tools"
-    
+
     if str(src_path) not in sys.path:
         sys.path.insert(0, str(src_path))
     if str(tools_path) not in sys.path:
         sys.path.insert(0, str(tools_path))
-    
+
     # Set environment variables
     os.environ["RLDK_TEST_MODE"] = "true"
     os.environ["WANDB_MODE"] = "disabled"
@@ -33,13 +33,13 @@ def setup_environment():
 def run_tests(test_type="unit", verbose=True, specific_test=None):
     """Run tests with proper environment setup."""
     setup_environment()
-    
+
     # Build pytest command
     cmd = ["python3", "-m", "pytest"]
-    
+
     if verbose:
         cmd.append("-v")
-    
+
     # Add test path based on type
     if test_type == "unit":
         cmd.append("tests/unit/")
@@ -51,21 +51,21 @@ def run_tests(test_type="unit", verbose=True, specific_test=None):
         cmd.append("tests/")
     else:
         cmd.append(f"tests/{test_type}/")
-    
+
     # Add specific test if provided
     if specific_test:
         cmd.append(specific_test)
-    
+
     # Add pytest options
     cmd.extend([
         "--tb=short",
         "--disable-warnings",
         "-x"  # Stop on first failure
     ])
-    
+
     print(f"Running command: {' '.join(cmd)}")
     print("=" * 60)
-    
+
     # Run the tests
     try:
         result = subprocess.run(cmd, cwd=Path(__file__).parent)
@@ -102,14 +102,14 @@ def main():
         action="store_true",
         help="Run tests with coverage reporting"
     )
-    
+
     args = parser.parse_args()
-    
+
     # Add coverage if requested
     if args.coverage:
         print("Note: Coverage reporting requires pytest-cov to be installed")
         print("Install with: pip install pytest-cov")
-    
+
     # Run the tests
     return run_tests(
         test_type=args.test_type,

@@ -2,12 +2,13 @@
 
 import json
 import os
-import matplotlib.pyplot as plt
-from pathlib import Path
-from typing import Dict, Any, List, Optional
-import pandas as pd
-import numpy as np
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 from ..io.event_schema import Event
 
@@ -348,7 +349,7 @@ def _generate_determinism_visualization(
         metrics = list(card_data["replica_variance"].keys())
         variances = list(card_data["replica_variance"].values())
 
-        bars = ax3.bar(
+        ax3.bar(
             metrics,
             variances,
             color=["red" if v > 0.05 else "green" for v in variances],

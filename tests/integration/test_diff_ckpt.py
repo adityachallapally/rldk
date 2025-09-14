@@ -1,12 +1,13 @@
 """Test checkpoint diff functionality."""
 
 import tempfile
-import torch
-import torch.nn as nn
 from pathlib import Path
 
+import torch
+import torch.nn as nn
+
 from rldk.forensics.ckpt_diff import diff_checkpoints
-from rldk.io.schemas import validate, CkptDiffReportV1
+from rldk.io.schemas import CkptDiffReportV1, validate
 
 
 def test_diff_identical_checkpoints():

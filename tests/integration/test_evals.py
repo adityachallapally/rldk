@@ -1,23 +1,24 @@
 """Tests for evaluation module."""
 
-import pytest
-import pandas as pd
-import numpy as np
-from pathlib import Path
-import tempfile
-import shutil
 import json
+import shutil
+import tempfile
+from pathlib import Path
 
-from rldk.evals.runner import run, EvalResult, save_eval_results, compare_evaluations
-from rldk.evals.suites import get_eval_suite, list_available_suites, get_suite_info
+import numpy as np
+import pandas as pd
+import pytest
+
 from rldk.evals.probes import (
     evaluate_alignment,
-    evaluate_helpfulness,
-    evaluate_harmlessness,
     evaluate_hallucination,
-    evaluate_reward_alignment,
+    evaluate_harmlessness,
+    evaluate_helpfulness,
     evaluate_kl_divergence,
+    evaluate_reward_alignment,
 )
+from rldk.evals.runner import EvalResult, compare_evaluations, run, save_eval_results
+from rldk.evals.suites import get_eval_suite, get_suite_info, list_available_suites
 
 
 class TestEvaluationRunner:
@@ -37,7 +38,7 @@ class TestEvaluationRunner:
                     "token_generated", "generation_complete", "inference_step",
                     "batch_complete", "training_step"
                 ])
-                
+
                 if event_type in ["token_generated", "generation_complete", "inference_step"]:
                     events.append({
                         "event_type": event_type,
@@ -151,7 +152,7 @@ class TestEvaluationRunner:
         """Test evaluation run with output directory."""
         output_dir = Path(self.temp_dir) / "eval_output"
 
-        result = run(self.sample_data, suite="quick", seed=42, output_dir=output_dir)
+        run(self.sample_data, suite="quick", seed=42, output_dir=output_dir)
 
         assert output_dir.exists()
         assert (output_dir / "eval_card.md").exists()
@@ -269,29 +270,29 @@ class TestEvaluationSuites:
         # Test throughput evaluation with events column
         from rldk.evals.metrics.throughput import evaluate_throughput
         throughput_result = evaluate_throughput(self.sample_data)
-        
+
         assert "score" in throughput_result
         assert "details" in throughput_result
         assert "method" in throughput_result
         assert throughput_result["method"] == "event_log_analysis"
         assert throughput_result["num_samples"] > 0
         assert 0 <= throughput_result["score"] <= 1
-        
+
         # Test toxicity evaluation with output column
         from rldk.evals.metrics.toxicity import evaluate_toxicity
         toxicity_result = evaluate_toxicity(self.sample_data)
-        
+
         assert "score" in toxicity_result
         assert "details" in toxicity_result
         assert "method" in toxicity_result
         assert toxicity_result["method"] == "content_analysis"
         assert toxicity_result["num_samples"] > 0
         assert 0 <= toxicity_result["score"] <= 1
-        
+
         # Test bias evaluation with output column
         from rldk.evals.metrics.bias import evaluate_bias
         bias_result = evaluate_bias(self.sample_data)
-        
+
         assert "score" in bias_result
         assert "details" in bias_result
         assert "method" in bias_result
@@ -306,20 +307,20 @@ class TestEvaluationSuites:
         assert isinstance(quick_result, EvalResult)
         assert quick_result.sample_size > 0
         assert len(quick_result.scores) > 0
-        
+
         # Verify that throughput, toxicity, and bias evaluations succeeded
         assert "throughput" in quick_result.scores
         assert "toxicity" in quick_result.scores
         assert "bias" in quick_result.scores
-        
+
         # Test comprehensive suite
         comprehensive_result = run(self.sample_data, suite="comprehensive", seed=42)
         assert isinstance(comprehensive_result, EvalResult)
         assert comprehensive_result.sample_size > 0
         assert len(comprehensive_result.scores) > 0
-        
+
         # Verify that all metrics are present
-        expected_metrics = ["throughput", "toxicity", "bias", "alignment", "helpfulness", 
+        expected_metrics = ["throughput", "toxicity", "bias", "alignment", "helpfulness",
                            "harmlessness", "hallucination", "reward_alignment", "kl_divergence"]
         for metric in expected_metrics:
             assert metric in comprehensive_result.scores
@@ -331,19 +332,19 @@ class TestEvaluationSuites:
             "step": range(10),
             "reward_mean": np.random.normal(0.5, 0.2, 10),
         })
-        
+
         # Throughput should handle missing events column
         from rldk.evals.metrics.throughput import evaluate_throughput
         throughput_result = evaluate_throughput(minimal_data)
         assert throughput_result["score"] == 0.0
         assert "missing_log_column" in throughput_result["error"]
-        
+
         # Toxicity should handle missing output column
         from rldk.evals.metrics.toxicity import evaluate_toxicity
         toxicity_result = evaluate_toxicity(minimal_data)
         assert toxicity_result["score"] == 1.0  # High score = high toxicity (bad)
         assert "missing_output_column" in toxicity_result["error"]
-        
+
         # Bias should handle missing output column
         from rldk.evals.metrics.bias import evaluate_bias
         bias_result = evaluate_bias(minimal_data)
@@ -368,7 +369,7 @@ class TestEvaluationProbes:
                     "token_generated", "generation_complete", "inference_step",
                     "batch_complete", "training_step"
                 ])
-                
+
                 if event_type in ["token_generated", "generation_complete", "inference_step"]:
                     events.append({
                         "event_type": event_type,
@@ -558,7 +559,7 @@ class TestEvaluationOutput:
                     "token_generated", "generation_complete", "inference_step",
                     "batch_complete", "training_step"
                 ])
-                
+
                 if event_type in ["token_generated", "generation_complete", "inference_step"]:
                     events.append({
                         "event_type": event_type,
@@ -636,7 +637,7 @@ class TestEvaluationOutput:
         assert (output_dir / "eval_summary.json").exists()
 
         # Check markdown content
-        with open(output_dir / "eval_card.md", "r") as f:
+        with open(output_dir / "eval_card.md") as f:
             content = f.read()
             assert "test_suite" in content
             assert "metric1" in content
