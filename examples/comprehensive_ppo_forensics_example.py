@@ -1,18 +1,19 @@
 """Comprehensive PPO forensics example with advanced tracking and analysis."""
 
-import os
-import numpy as np
 import json
+import os
 from pathlib import Path
+
+import numpy as np
 
 # Import RLDK components
 from rldk.forensics.comprehensive_ppo_forensics import ComprehensivePPOForensics
 from rldk.integrations.trl.monitors import ComprehensivePPOMonitor
 
 try:
-    from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead
-    from transformers import AutoTokenizer, TrainingArguments
     from datasets import Dataset
+    from transformers import AutoTokenizer, TrainingArguments
+    from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer
     TRL_AVAILABLE = True
 except ImportError:
     print("TRL not available. Install with: pip install trl")
@@ -28,7 +29,7 @@ def create_sample_dataset():
         "The weather today is",
         "Artificial intelligence can",
     ] * 20  # Repeat to have enough data
-    
+
     responses = [
         "Paris, the beautiful city of lights.",
         "is widely used for data science and AI.",
@@ -36,7 +37,7 @@ def create_sample_dataset():
         "sunny and warm.",
         "help solve complex problems.",
     ] * 20
-    
+
     return Dataset.from_dict({
         "prompt": prompts,
         "response": responses,
@@ -47,7 +48,7 @@ def demonstrate_comprehensive_ppo_forensics():
     """Demonstrate comprehensive PPO forensics capabilities."""
     print("🔍 Comprehensive PPO Forensics Demonstration")
     print("=" * 60)
-    
+
     # Initialize comprehensive forensics
     forensics = ComprehensivePPOForensics(
         kl_target=0.1,
@@ -56,9 +57,9 @@ def demonstrate_comprehensive_ppo_forensics():
         enable_gradient_norms_analysis=True,
         enable_advantage_statistics=True,
     )
-    
+
     print("✅ Comprehensive PPO Forensics initialized")
-    
+
     # Simulate PPO training with various scenarios
     scenarios = [
         {
@@ -90,13 +91,13 @@ def demonstrate_comprehensive_ppo_forensics():
             "steps": 30
         }
     ]
-    
+
     step_counter = 0
-    
+
     for scenario in scenarios:
         print(f"\n📊 Scenario: {scenario['name']}")
         print("-" * 40)
-        
+
         for i in range(scenario['steps']):
             # Generate synthetic data based on scenario
             kl = np.random.uniform(*scenario['kl_range'])
@@ -104,18 +105,18 @@ def demonstrate_comprehensive_ppo_forensics():
             entropy = 2.0 - 0.01 * step_counter
             reward_mean = 0.5 + 0.01 * step_counter
             reward_std = 0.2
-            
+
             policy_grad_norm = np.random.uniform(*scenario['gradient_range'])
             value_grad_norm = np.random.uniform(0.2, 0.5)
-            
+
             advantage_mean = scenario['advantage_bias'] + 0.05 * np.sin(step_counter * 0.1)
             advantage_std = 1.0 + 0.1 * np.cos(step_counter * 0.1)
             advantage_min = advantage_mean - advantage_std
             advantage_max = advantage_mean + advantage_std
-            
+
             # Generate advantage samples for distribution analysis
             advantage_samples = np.random.normal(advantage_mean, advantage_std, 100).tolist()
-            
+
             # Update forensics
             metrics = forensics.update(
                 step=step_counter,
@@ -132,14 +133,14 @@ def demonstrate_comprehensive_ppo_forensics():
                 advantage_max=advantage_max,
                 advantage_samples=advantage_samples
             )
-            
+
             step_counter += 1
-            
+
             # Log progress every 10 steps
             if step_counter % 10 == 0:
                 print(f"   Step {step_counter}: Health={metrics.overall_health_score:.3f}, "
                       f"Stability={metrics.training_stability_score:.3f}")
-        
+
         # Get anomalies for this scenario
         anomalies = forensics.get_anomalies()
         if anomalies:
@@ -148,20 +149,20 @@ def demonstrate_comprehensive_ppo_forensics():
                 print(f"      - {anomaly['type']}: {anomaly['message']}")
         else:
             print("   ✅ No anomalies detected")
-    
+
     # Generate comprehensive analysis
-    print(f"\n📋 Comprehensive Analysis")
+    print("\n📋 Comprehensive Analysis")
     print("-" * 40)
-    
+
     analysis = forensics.get_comprehensive_analysis()
     health_summary = forensics.get_health_summary()
-    
+
     print(f"Total Steps: {analysis['total_steps']}")
     print(f"Overall Health Score: {analysis['overall_health_score']:.3f}")
     print(f"Training Stability: {analysis['training_stability_score']:.3f}")
     print(f"Convergence Quality: {analysis['convergence_quality_score']:.3f}")
     print(f"Total Anomalies: {len(analysis['anomalies'])}")
-    
+
     # Show tracker-specific summaries
     for tracker_name, tracker_summary in analysis['trackers'].items():
         print(f"\n{tracker_name.replace('_', ' ').title()} Summary:")
@@ -177,18 +178,18 @@ def demonstrate_comprehensive_ppo_forensics():
             print(f"  Advantage Health: {tracker_summary.get('advantage_health_score', 0):.3f}")
             print(f"  Advantage Quality: {tracker_summary.get('advantage_quality_score', 0):.3f}")
             print(f"  Advantage Bias: {tracker_summary.get('advantage_bias', 0):.4f}")
-    
+
     # Save analysis
     output_dir = Path("./comprehensive_ppo_forensics_demo")
     output_dir.mkdir(exist_ok=True)
-    
+
     forensics.save_analysis(str(output_dir / "comprehensive_analysis.json"))
-    
+
     with open(output_dir / "health_summary.json", "w") as f:
         json.dump(health_summary, f, indent=2)
-    
+
     print(f"\n💾 Analysis saved to: {output_dir}")
-    
+
     return forensics, analysis, health_summary
 
 
@@ -197,14 +198,14 @@ def demonstrate_comprehensive_ppo_monitor():
     if not TRL_AVAILABLE:
         print("⚠️  TRL not available - skipping monitor demonstration")
         return
-    
+
     print("\n🔍 Comprehensive PPO Monitor Demonstration")
     print("=" * 60)
-    
+
     # Create output directory
     output_dir = "./comprehensive_ppo_monitor_demo"
     os.makedirs(output_dir, exist_ok=True)
-    
+
     # Initialize comprehensive PPO monitor
     monitor = ComprehensivePPOMonitor(
         output_dir=output_dir,
@@ -216,22 +217,21 @@ def demonstrate_comprehensive_ppo_monitor():
         log_interval=5,
         run_id="comprehensive_demo_run"
     )
-    
+
     print("✅ Comprehensive PPO Monitor initialized")
-    
+
     # Simulate training logs
-    from transformers import TrainingArguments
-    from transformers import TrainerState, TrainerControl
-    
+    from transformers import TrainerControl, TrainerState, TrainingArguments
+
     args = TrainingArguments(output_dir=output_dir)
     state = TrainerState()
     control = TrainerControl()
-    
+
     # Simulate training steps
     for step in range(20):
         state.global_step = step
         state.epoch = step / 10.0
-        
+
         # Simulate logs with various metrics
         logs = {
             'ppo/rewards/mean': 0.5 + 0.1 * step,
@@ -248,21 +248,21 @@ def demonstrate_comprehensive_ppo_monitor():
             'learning_rate': 1e-5,
             'grad_norm': 0.5,
         }
-        
+
         # Call monitor callbacks
         monitor.on_step_end(args, state, control)
         monitor.on_log(args, state, control, logs)
-        
+
         if step % 5 == 0:
             print(f"   Step {step} completed")
-    
+
     # Simulate training end
     monitor.on_train_end(args, state, control)
-    
+
     # Get current health summary
     health_summary = monitor.get_current_health_summary()
     print(f"\n📋 Final Health Summary: {health_summary}")
-    
+
     # Get current anomalies
     anomalies = monitor.get_anomalies()
     if anomalies:
@@ -271,7 +271,7 @@ def demonstrate_comprehensive_ppo_monitor():
             print(f"   - {anomaly['type']}: {anomaly['message']}")
     else:
         print("✅ No current anomalies")
-    
+
     print(f"💾 Monitor data saved to: {output_dir}")
 
 
@@ -279,7 +279,7 @@ def demonstrate_ppo_scan_integration():
     """Demonstrate integration with existing PPO scan functionality."""
     print("\n🔍 PPO Scan Integration Demonstration")
     print("=" * 60)
-    
+
     # Create sample PPO events
     events = []
     for step in range(50):
@@ -299,7 +299,7 @@ def demonstrate_ppo_scan_integration():
             kl = 0.1
             policy_grad_norm = 8.0
             advantage_mean = 0.0
-        
+
         event = {
             "step": step,
             "kl": kl,
@@ -313,56 +313,56 @@ def demonstrate_ppo_scan_integration():
             "reward_std": 0.2,
         }
         events.append(event)
-    
+
     # Run comprehensive scan
     forensics = ComprehensivePPOForensics()
     result = forensics.scan_ppo_events_comprehensive(iter(events))
-    
+
     print("✅ Comprehensive PPO scan completed")
     print(f"Original rules fired: {len(result['rules_fired'])}")
     print(f"Enhanced version: {result['enhanced_version']}")
-    
+
     # Show comprehensive analysis summary
     comp_analysis = result['comprehensive_analysis']
     print(f"Total steps analyzed: {comp_analysis['total_steps']}")
     print(f"Overall health score: {comp_analysis['overall_health_score']:.3f}")
     print(f"Total anomalies detected: {len(comp_analysis['anomalies'])}")
-    
+
     # Show anomaly breakdown by tracker
     anomaly_by_tracker = {}
     for anomaly in comp_analysis['anomalies']:
         tracker = anomaly.get('tracker', 'unknown')
         anomaly_by_tracker[tracker] = anomaly_by_tracker.get(tracker, 0) + 1
-    
+
     print("\nAnomaly breakdown by tracker:")
     for tracker, count in anomaly_by_tracker.items():
         print(f"  {tracker}: {count} anomalies")
-    
+
     # Save enhanced scan results
     output_dir = Path("./enhanced_ppo_scan_demo")
     output_dir.mkdir(exist_ok=True)
-    
+
     with open(output_dir / "enhanced_scan_results.json", "w") as f:
         json.dump(result, f, indent=2)
-    
+
     print(f"💾 Enhanced scan results saved to: {output_dir}")
 
 
 if __name__ == "__main__":
     print("🎯 Comprehensive PPO Forensics Demo Suite")
     print("=" * 80)
-    
+
     # Run demonstrations
     try:
         # 1. Basic comprehensive forensics
         forensics, analysis, health_summary = demonstrate_comprehensive_ppo_forensics()
-        
+
         # 2. Comprehensive PPO monitor (if TRL available)
         demonstrate_comprehensive_ppo_monitor()
-        
+
         # 3. PPO scan integration
         demonstrate_ppo_scan_integration()
-        
+
         print("\n🎉 All demonstrations completed successfully!")
         print("\nKey Features Demonstrated:")
         print("✅ KL Schedule Tracking with adaptive coefficient monitoring")
@@ -372,7 +372,7 @@ if __name__ == "__main__":
         print("✅ Health scoring and training stability assessment")
         print("✅ Integration with existing PPO scan functionality")
         print("✅ TRL callback integration for real-time monitoring")
-        
+
     except Exception as e:
         print(f"❌ Error during demonstration: {e}")
         import traceback

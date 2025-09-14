@@ -4,10 +4,12 @@ Hypothesis tests for log parsing and numeric invariants.
 
 import json
 import re
-from typing import Dict, Any, List
-from hypothesis import given, strategies as st, assume
-from hypothesis.strategies import text, floats, integers, booleans, dictionaries
+from typing import Any, Dict, List
+
 import pytest
+from hypothesis import assume, given
+from hypothesis import strategies as st
+from hypothesis.strategies import booleans, dictionaries, floats, integers, text
 
 
 class TestLogParsing:
@@ -21,7 +23,7 @@ class TestLogParsing:
     def test_log_line_parsing(self, timestamp: str, level: str, message: str):
         """Test that log lines can be parsed correctly."""
         log_line = f"{timestamp} {level} {message}"
-        
+
         # Basic parsing - should not crash
         parts = log_line.split(" ", 2)
         assert len(parts) >= 3
@@ -47,7 +49,7 @@ class TestLogParsing:
         json_str = json.dumps(metrics)
         assert isinstance(json_str, str)
         assert len(json_str) > 0
-        
+
         # Should be able to parse back
         parsed = json.loads(json_str)
         assert parsed == metrics
@@ -68,11 +70,11 @@ class TestLogParsing:
             "loss": loss,
             "timestamp": timestamp
         }
-        
+
         # Should be able to serialize to JSONL
         jsonl_line = json.dumps(metrics)
         assert isinstance(jsonl_line, str)
-        
+
         # Should be able to parse back
         parsed = json.loads(jsonl_line)
         assert parsed["step"] == step
@@ -92,11 +94,11 @@ class TestLogParsing:
         """Test that log files can be parsed without crashing."""
         # Create a log file content
         log_content = "\n".join(log_lines)
-        
+
         # Should be able to split into lines
         lines = log_content.split("\n")
         assert len(lines) == len(log_lines)
-        
+
         # Each line should be parseable (even if it's not a valid log format)
         for line in lines:
             if line.strip():  # Skip empty lines
@@ -125,11 +127,11 @@ class TestLogParsing:
         """Test that JSONL files can be parsed without crashing."""
         # Create JSONL content
         jsonl_content = "\n".join(json.dumps(line) for line in jsonl_lines)
-        
+
         # Should be able to split into lines
         lines = jsonl_content.split("\n")
         assert len(lines) == len(jsonl_lines)
-        
+
         # Each line should be parseable as JSON
         for line in lines:
             if line.strip():  # Skip empty lines
@@ -151,15 +153,15 @@ class TestNumericInvariants:
         """Test that reward statistics maintain invariants."""
         if not values:
             return
-            
+
         # Basic statistics
         mean_reward = sum(values) / len(values)
         min_reward = min(values)
         max_reward = max(values)
-        
+
         # Invariants
         assert min_reward <= mean_reward <= max_reward
-        
+
         # Variance should be non-negative
         variance = sum((x - mean_reward) ** 2 for x in values) / len(values)
         assert variance >= 0
@@ -175,15 +177,15 @@ class TestNumericInvariants:
         """Test that loss statistics maintain invariants."""
         if not values:
             return
-            
+
         # Loss should be non-negative
         assert all(v >= 0 for v in values)
-        
+
         # Basic statistics
         mean_loss = sum(values) / len(values)
         min_loss = min(values)
         max_loss = max(values)
-        
+
         # Invariants
         assert min_loss <= mean_loss <= max_loss
         assert min_loss >= 0
@@ -198,7 +200,7 @@ class TestNumericInvariants:
         # Step and episode should be non-negative
         assert step >= 0
         assert episode >= 0
-        
+
         # If we're in episode N, step should be reasonable
         # (This is a simplified assumption - in reality, steps per episode vary)
         if episode > 0:
@@ -215,13 +217,13 @@ class TestNumericInvariants:
         # Learning rate should be positive and reasonable
         assert learning_rate > 0
         assert learning_rate <= 1.0
-        
+
         # Batch size should be positive
         assert batch_size > 0
-        
+
         # Epochs should be positive
         assert epochs > 0
-        
+
         # Total updates should be reasonable
         total_updates = batch_size * epochs
         assert total_updates > 0
@@ -238,17 +240,17 @@ class TestNumericInvariants:
         """Test that convergence metrics maintain invariants."""
         if len(values) < 2:
             return
-            
+
         # Calculate differences between consecutive values
         differences = [values[i+1] - values[i] for i in range(len(values)-1)]
-        
+
         # If values are converging, differences should get smaller over time
         # (This is a simplified assumption - in reality, convergence is more complex)
         if len(differences) >= 2:
             # Check that variance of differences decreases over time
-            early_var = sum(diff**2 for diff in differences[:len(differences)//2]) / (len(differences)//2)
-            late_var = sum(diff**2 for diff in differences[len(differences)//2:]) / (len(differences) - len(differences)//2)
-            
+            sum(diff**2 for diff in differences[:len(differences)//2]) / (len(differences)//2)
+            sum(diff**2 for diff in differences[len(differences)//2:]) / (len(differences) - len(differences)//2)
+
             # This invariant might not always hold, but it's a reasonable expectation
             # for converging sequences
             # assert late_var <= early_var  # Commented out as it's too strict
@@ -260,13 +262,13 @@ class TestNumericInvariants:
         """Test that seed values maintain invariants."""
         # Seed should be non-negative
         assert seed >= 0
-        
+
         # Seed should be within reasonable bounds
         assert seed <= 2**32 - 1
-        
+
         # Seed should be an integer
         assert isinstance(seed, int)
-        
+
         # Seed should be reproducible (same seed should produce same sequence)
         # This is tested by the seed management module, but we can verify basic properties
         assert seed == seed  # Identity

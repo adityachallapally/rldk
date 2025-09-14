@@ -1,7 +1,8 @@
 """PPO forensics analysis."""
 
+from typing import Any, Dict, Iterator, List
+
 import numpy as np
-from typing import Dict, Any, Iterator, List
 
 
 def scan_ppo_events(events: Iterator[Dict[str, Any]]) -> Dict[str, Any]:

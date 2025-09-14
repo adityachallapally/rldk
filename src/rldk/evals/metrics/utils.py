@@ -1,9 +1,9 @@
 """Utility functions for evaluation metrics."""
 
-from typing import Dict, Tuple, Any
+from typing import Dict, Tuple
+
 import numpy as np
 from scipy import stats
-from scipy.stats import bootstrap
 
 
 def calculate_confidence_intervals(
@@ -41,7 +41,7 @@ def calculate_confidence_intervals(
             # Use a more robust approach for confidence intervals
             # Estimate standard error based on the score value and sample size
             # For scores in [0, 1] range, use a more appropriate standard deviation estimate
-            
+
             # Adaptive standard deviation based on score value
             if score <= 0.1 or score >= 0.9:
                 # For extreme scores, use smaller standard deviation
@@ -68,7 +68,7 @@ def calculate_confidence_intervals(
             else:
                 confidence_intervals[metric] = (float(lower_bound), float(upper_bound))
 
-        except (ValueError, ArithmeticError, OverflowError) as e:
+        except (ValueError, ArithmeticError, OverflowError):
             # Fallback to point estimate if calculation fails
             confidence_intervals[metric] = (score, score)
 

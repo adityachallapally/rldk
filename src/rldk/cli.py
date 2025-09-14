@@ -1,34 +1,16 @@
 """Command-line interface for RL Debug Kit."""
 
-import typer
-from pathlib import Path
-from typing import List, Optional
-import numpy as np
 import json
 import logging
 import sys
-import pandas as pd
+from pathlib import Path
+from typing import List, Optional
 
-from rldk.ingest import ingest_runs, ingest_runs_to_events
-from rldk.diff import first_divergence
-from rldk.determinism.check import check
+import numpy as np
+import pandas as pd
+import typer
+
 from rldk.bisect import bisect_commits
-from rldk.io import write_json, generate_reward_health_report
-from rldk.reward import health
-from rldk.evals import run
-from rldk.replay import replay
-from rldk.tracking import ExperimentTracker, TrackingConfig
-from rldk.config import settings
-from rldk.utils.error_handling import (
-    EvaluationError, RLDKTimeoutError,
-    format_error_message, log_error_with_context, validate_file_path,
-    validate_adapter_source,
-    print_usage_examples, print_troubleshooting_tips
-)
-from rldk.utils.runtime import with_timeout
-from rldk.utils.progress import (
-    timed_operation_context, print_operation_status
-)
 
 # Import card generation modules
 from rldk.cards import (
@@ -36,25 +18,58 @@ from rldk.cards import (
     generate_drift_card,
     generate_reward_card,
 )
+from rldk.config import settings
+from rldk.determinism.check import check
+from rldk.diff import first_divergence
+from rldk.evals import run
+from rldk.evals.metrics import evaluate_bias, evaluate_throughput, evaluate_toxicity
+
+# Import evaluation modules
+from rldk.evals.suites import COMPREHENSIVE_SUITE, QUICK_SUITE, SAFETY_SUITE
 
 # Import forensics modules
 from rldk.forensics.ckpt_diff import diff_checkpoints
 from rldk.forensics.env_audit import audit_environment
 from rldk.forensics.log_scan import scan_logs
-from rldk.utils.error_handling import ValidationError, AdapterError
-from rldk.io import write_json as write_json_report, write_png, mkdir_reports, validate
-from rldk.io import DeterminismCardV1, PPOScanReportV1, CkptDiffReportV1, RewardDriftReportV1
+from rldk.ingest import ingest_runs, ingest_runs_to_events
+from rldk.io import (
+    CkptDiffReportV1,
+    DeterminismCardV1,
+    PPOScanReportV1,
+    RewardDriftReportV1,
+    generate_reward_health_report,
+    mkdir_reports,
+    read_jsonl,
+    read_reward_head,
+    validate,
+    write_json,
+    write_png,
+)
+from rldk.io import write_json as write_json_report
+from rldk.replay import replay
+from rldk.reward import health
 
 # Import reward modules
 from rldk.reward.drift import compare_models
 from rldk.reward.health_analysis import health as reward_health_analysis
+from rldk.reward.health_config.config import get_legacy_thresholds, load_config
 from rldk.reward.health_config.exit_codes import raise_on_failure
-from rldk.reward.health_config.config import load_config, get_legacy_thresholds
-from rldk.io import read_jsonl, read_reward_head
+from rldk.tracking import ExperimentTracker, TrackingConfig
+from rldk.utils.error_handling import (
+    AdapterError,
+    EvaluationError,
+    RLDKTimeoutError,
+    ValidationError,
+    format_error_message,
+    log_error_with_context,
+    print_troubleshooting_tips,
+    print_usage_examples,
+    validate_adapter_source,
+    validate_file_path,
+)
+from rldk.utils.progress import print_operation_status, timed_operation_context
+from rldk.utils.runtime import with_timeout
 
-# Import evaluation modules
-from rldk.evals.suites import QUICK_SUITE, COMPREHENSIVE_SUITE, SAFETY_SUITE
-from rldk.evals.metrics import evaluate_throughput, evaluate_toxicity, evaluate_bias
 
 def ensure_config_initialized():
     """Ensure configuration is initialized for CLI operations."""
@@ -96,7 +111,7 @@ def forensics_compare_runs(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed format detection info"),
 ):
     """Compare two training runs and identify divergences.
-    
+
     Supports multiple formats: JSONL, CSV, JSON, Parquet files or directories.
     Automatically detects format and handles field mapping for common RL frameworks.
     """
@@ -230,7 +245,7 @@ def forensics_diff_ckpt(
             l2_norms = [m["l2"] for m in report["top_movers"][:10]]
 
             fig, ax = plt.subplots(figsize=(10, 6))
-            bars = ax.barh(range(len(names)), l2_norms)
+            ax.barh(range(len(names)), l2_norms)
             ax.set_yticks(range(len(names)))
             ax.set_yticklabels(names)
             ax.set_xlabel("L2 Norm of Parameter Difference")
@@ -480,7 +495,7 @@ def reward_drift(
             f"Pearson: {report['pearson']:.3f}\nSpearman: {report['spearman']:.3f}",
             transform=ax.transAxes,
             verticalalignment="top",
-            bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+            bbox={"boxstyle": "round", "facecolor": "wheat", "alpha": 0.5},
         )
 
         write_png(fig, "rldk_reports/reward_drift.png")
@@ -526,18 +541,18 @@ def reward_health_run(
     """Run reward health analysis on scores data."""
     try:
         typer.echo(f"Running reward health analysis on scores: {scores}")
-        
+
         # Ingest scores data
         typer.echo("Ingesting scores data...")
         scores_data = ingest_runs(scores, adapter_hint=adapter)
-        
+
         # Load configuration (default or user-provided)
         if config:
             typer.echo(f"Using user configuration: {config}")
         else:
             typer.echo("Using default configuration (recipes/health_default.yaml)")
         config_data = load_config(config)
-        
+
         # Extract thresholds from config
         legacy_thresholds = get_legacy_thresholds(config_data)
         threshold_drift = legacy_thresholds['threshold_drift']
@@ -545,7 +560,7 @@ def reward_health_run(
         threshold_calibration = legacy_thresholds['threshold_calibration']
         threshold_shortcut = legacy_thresholds['threshold_shortcut']
         threshold_leakage = legacy_thresholds['threshold_leakage']
-        
+
         # Run reward health analysis
         typer.echo("Running reward health analysis...")
         health_report = reward_health_analysis(
@@ -559,18 +574,18 @@ def reward_health_run(
             threshold_shortcut=threshold_shortcut,
             threshold_leakage=threshold_leakage,
         )
-        
+
         # Generate reports
         typer.echo("Generating reports...")
         generate_reward_health_report(health_report, out)
-        
+
         # Display results
         if health_report.passed:
             typer.echo("\n✅ Reward health check passed")
             exit_code = 0
         else:
             typer.echo("\n🚨 Reward health issues detected")
-            
+
             if health_report.drift_detected:
                 typer.echo("  - Reward drift detected")
             if health_report.saturation_issues:
@@ -581,26 +596,26 @@ def reward_health_run(
                 typer.echo(f"  - {len(health_report.shortcut_signals)} shortcut signals")
             if health_report.label_leakage_risk > threshold_leakage:
                 typer.echo(f"  - Label leakage risk: {health_report.label_leakage_risk:.3f}")
-            
+
             # Determine exit code based on severity
             critical_issues = 0
             if health_report.drift_detected:
                 critical_issues += 1
             if health_report.label_leakage_risk > threshold_leakage:
                 critical_issues += 1
-            
+
             if critical_issues > 0:
                 exit_code = 2  # Fail - critical issues
             else:
                 exit_code = 1  # Warn - non-critical issues
-        
+
         typer.echo(f"\nReports saved to: {out}")
         typer.echo("  - reward_health_card.md")
         typer.echo("  - reward_health_summary.json")
         if health_report.drift_metrics is not None and not health_report.drift_metrics.empty:
             typer.echo("  - drift_analysis.csv")
         typer.echo("  - calibration_plots.png")
-        
+
         # Handle gate mode
         if gate:
             if exit_code == 0:
@@ -610,7 +625,7 @@ def reward_health_run(
             else:
                 typer.echo("GATE: FAIL")
             raise typer.Exit(exit_code)
-    
+
     except typer.Exit:
         # Re-raise typer.Exit to preserve intended exit codes
         raise
@@ -646,16 +661,16 @@ def reward_health_gate(
 def load_jsonl_data(file_path: Path) -> pd.DataFrame:
     """
     Load data from JSONL file.
-    
+
     Args:
         file_path: Path to JSONL file
-        
+
     Returns:
         DataFrame with loaded data
     """
     try:
         data = []
-        with open(file_path, 'r') as f:
+        with open(file_path) as f:
             for line_num, line in enumerate(f, 1):
                 line = line.strip()
                 if not line:
@@ -665,12 +680,12 @@ def load_jsonl_data(file_path: Path) -> pd.DataFrame:
                 except json.JSONDecodeError as e:
                     logging.warning(f"Invalid JSON on line {line_num}: {e}")
                     continue
-        
+
         if not data:
             raise ValueError("No valid JSON records found in file")
-        
+
         return pd.DataFrame(data)
-    
+
     except Exception as e:
         logging.error(f"Failed to load JSONL file: {e}")
         raise
@@ -685,14 +700,14 @@ def run_evaluation_suite(
 ) -> dict:
     """
     Run evaluation suite on data.
-    
+
     Args:
         data: Input data DataFrame
         suite_name: Name of evaluation suite
         output_column: Column containing model outputs
         events_column: Column containing event logs
         **kwargs: Additional evaluation parameters
-        
+
     Returns:
         Dictionary with evaluation results
     """
@@ -704,7 +719,7 @@ def run_evaluation_suite(
         suite = SAFETY_SUITE
     else:
         raise ValueError(f"Unknown suite: {suite_name}")
-    
+
     results = {
         "suite_name": suite_name,
         "suite_description": suite["description"],
@@ -716,19 +731,19 @@ def run_evaluation_suite(
             "errors": []
         }
     }
-    
+
     # Add output column to data if not present
     if output_column not in data.columns:
         data[output_column] = "No output data available"
-    
+
     # Add events column to data if not present
     if events_column not in data.columns:
         data[events_column] = "[]"
-    
+
     for eval_name, eval_func in suite["evaluations"].items():
         try:
             logging.info(f"Running evaluation: {eval_name}")
-            
+
             # Handle different evaluation types
             if eval_name == "throughput":
                 result = evaluate_throughput(data, log_column=events_column, **kwargs)
@@ -739,16 +754,16 @@ def run_evaluation_suite(
             else:
                 # For other evaluations, try with default parameters
                 result = eval_func(data, **kwargs)
-            
+
             results["evaluations"][eval_name] = result
-            
+
             # Check if the evaluation actually succeeded (no error in result)
             if "error" in result and result["error"]:
                 logging.warning(f"Evaluation {eval_name} completed but with errors: {result['error']}")
                 results["summary"]["failed_evaluations"] += 1
             else:
                 results["summary"]["successful_evaluations"] += 1
-            
+
         except Exception as e:
             logging.error(f"Evaluation {eval_name} failed: {e}")
             results["evaluations"][eval_name] = {
@@ -761,21 +776,21 @@ def run_evaluation_suite(
                 "error": str(e)
             })
             results["summary"]["failed_evaluations"] += 1
-        
+
         results["summary"]["total_evaluations"] += 1
-    
+
     # Calculate overall score
     successful_scores = [
-        eval_result["score"] 
+        eval_result["score"]
         for eval_result in results["evaluations"].values()
         if "score" in eval_result and "error" not in eval_result
     ]
-    
+
     if successful_scores:
         results["summary"]["overall_score"] = sum(successful_scores) / len(successful_scores)
     else:
         results["summary"]["overall_score"] = 0.0
-    
+
     return results
 
 
@@ -792,7 +807,7 @@ def evaluate(
 ):
     """
     Run evaluation suite on JSONL data.
-    
+
     Examples:
         rldk evals evaluate data.jsonl --suite comprehensive --output results.json
         rldk evals evaluate data.jsonl --suite quick --min-samples 50 --verbose
@@ -801,14 +816,14 @@ def evaluate(
     # Setup logging
     log_level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(level=log_level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    
+
     try:
         # Validate input
         print_operation_status("Validating input", "start")
-        
+
         # Validate input file
-        input_path = validate_file_path(input_file, must_exist=True, file_extensions=[".jsonl"])
-        
+        validate_file_path(input_file, must_exist=True, file_extensions=[".jsonl"])
+
         # Validate suite
         valid_suites = ["quick", "comprehensive", "safety"]
         if suite not in valid_suites:
@@ -817,7 +832,7 @@ def evaluate(
                 suggestion=f"Use one of: {', '.join(valid_suites)}",
                 error_code="INVALID_SUITE"
             )
-        
+
         # Validate min_samples
         if min_samples < 1:
             raise ValidationError(
@@ -825,23 +840,23 @@ def evaluate(
                 suggestion="Use a positive integer for minimum samples",
                 error_code="INVALID_MIN_SAMPLES"
             )
-        
+
         print_operation_status("Input validation", "success")
-        
+
         # Load data with progress indication
         with timed_operation_context("Data loading"):
             logging.info(f"Loading data from {input_file}")
             data = load_jsonl_data(input_file)
-            
+
             if data.empty:
                 raise ValidationError(
                     "No data found in input file",
                     suggestion="Ensure the JSONL file contains valid data",
                     error_code="NO_DATA_FOUND"
                 )
-            
+
             logging.info(f"Loaded {len(data)} records")
-        
+
         # Validate data has required columns
         required_columns = [output_column, events_column]
         missing_columns = [col for col in required_columns if col not in data.columns]
@@ -853,12 +868,12 @@ def evaluate(
                     data[col] = "No output data available"
                 elif col == events_column:
                     data[col] = "[]"
-        
+
         # Check if we have enough samples
         if len(data) < min_samples:
-            print_operation_status("Sample validation", "warning", 
+            print_operation_status("Sample validation", "warning",
                                  f"Only {len(data)} samples available, minimum is {min_samples}")
-        
+
         # Run evaluation with timeout and progress indication
         @with_timeout(timeout)
         def run_evaluation():
@@ -869,11 +884,11 @@ def evaluate(
                 events_column=events_column,
                 min_samples=min_samples
             )
-        
+
         with timed_operation_context(f"{suite} evaluation suite"):
             logging.info(f"Running {suite} evaluation suite")
             results = run_evaluation()
-        
+
         # Output results
         if output_file:
             print_operation_status("Saving results", "start")
@@ -890,28 +905,28 @@ def evaluate(
         else:
             # Print to stdout
             print(json.dumps(results, indent=2))
-        
+
         # Print summary
         summary = results["summary"]
-        print_operation_status("Evaluation", "success", 
+        print_operation_status("Evaluation", "success",
                              f"{summary['successful_evaluations']}/{summary['total_evaluations']} successful")
-        
+
         typer.echo("\n📊 Evaluation Results:")
         typer.echo(f"  Suite: {suite}")
         typer.echo(f"  Samples: {len(data)}")
         typer.echo(f"  Successful: {summary['successful_evaluations']}")
         typer.echo(f"  Failed: {summary['failed_evaluations']}")
         typer.echo(f"  Overall Score: {summary['overall_score']:.3f}")
-        
+
         if summary["errors"]:
             typer.echo("\n⚠️  Failed Evaluations:")
             for error in summary["errors"]:
                 typer.echo(f"  - {error['evaluation']}: {error['error']}")
-        
+
         # Exit with error code if any evaluations failed
         if summary["failed_evaluations"] > 0:
             raise typer.Exit(1)
-    
+
     except ValidationError as e:
         typer.echo(format_error_message(e), err=True)
         print_usage_examples("evaluate", [
@@ -956,10 +971,10 @@ def list_suites():
         "comprehensive": COMPREHENSIVE_SUITE,
         "safety": SAFETY_SUITE
     }
-    
+
     print("Available evaluation suites:")
     print()
-    
+
     for name, suite in suites.items():
         print(f"  {name}:")
         print(f"    Description: {suite['description']}")
@@ -977,36 +992,36 @@ def validate_data(
 ):
     """
     Validate JSONL file structure and data.
-    
+
     Example:
         rldk evals validate-data data.jsonl
     """
     try:
         logging.info(f"Validating {input_file}")
         data = load_jsonl_data(input_file)
-        
+
         print("File validation results:")
         print(f"  Total records: {len(data)}")
         print(f"  Columns: {list(data.columns)}")
-        
+
         # Check required columns
         if output_column in data.columns:
             output_count = data[output_column].notna().sum()
             print(f"  Output column '{output_column}': {output_count} non-null values")
         else:
             print(f"  Output column '{output_column}': NOT FOUND")
-        
+
         if events_column in data.columns:
             events_count = data[events_column].notna().sum()
             print(f"  Events column '{events_column}': {events_count} non-null values")
         else:
             print(f"  Events column '{events_column}': NOT FOUND")
-        
+
         # Check data quality
         print(f"  Missing values: {data.isnull().sum().sum()}")
-        
+
         logging.info("Validation complete")
-    
+
     except Exception as e:
         logging.error(f"Validation failed: {e}")
         sys.exit(1)
@@ -1021,7 +1036,7 @@ def validate_alias(
 ):
     """
     Validate JSONL file structure and data (alias for validate-data).
-    
+
     Example:
         rldk evals validate data.jsonl
     """
@@ -1063,7 +1078,7 @@ def ingest(
     ),
 ):
     """Ingest training runs from various sources.
-    
+
     Examples:
         rldk ingest /path/to/logs --adapter trl
         rldk ingest wandb://entity/project/run_id --adapter wandb
@@ -1076,13 +1091,13 @@ def ingest(
         # Setup logging
         if verbose:
             logging.basicConfig(level=logging.DEBUG)
-        
+
         ensure_config_initialized()
-        
+
         # Validate input
         if validate:
             print_operation_status("Validating input", "start")
-            
+
             # Check if source exists and is accessible
             if runs.startswith("wandb://"):
                 validate_adapter_source(runs, ["wandb:// URI"])
@@ -1099,7 +1114,7 @@ def ingest(
                             suggestion="Ensure the directory contains .jsonl or .log files",
                             error_code="NO_LOG_FILES_FOUND"
                         )
-            
+
             # Validate adapter if specified
             if adapter:
                 valid_adapters = ["trl", "openrlhf", "wandb", "custom_jsonl", "flexible"]
@@ -1109,9 +1124,9 @@ def ingest(
                         suggestion=f"Use one of: {', '.join(valid_adapters)}",
                         error_code="INVALID_ADAPTER"
                     )
-            
+
             print_operation_status("Input validation", "success")
-        
+
         parsed_field_map = None
         if field_map:
             if field_map.startswith('{'):
@@ -1126,8 +1141,9 @@ def ingest(
                     )
             else:
                 import json
-                import yaml
                 from pathlib import Path
+
+                import yaml
                 field_map_path = Path(field_map)
                 if not field_map_path.exists():
                     raise ValidationError(
@@ -1137,11 +1153,11 @@ def ingest(
                     )
                 try:
                     if field_map_path.suffix.lower() in ['.yaml', '.yml']:
-                        with open(field_map_path, 'r') as f:
+                        with open(field_map_path) as f:
                             config = yaml.safe_load(f)
                             parsed_field_map = config.get('field_map', {})
                     else:
-                        with open(field_map_path, 'r') as f:
+                        with open(field_map_path) as f:
                             parsed_field_map = json.load(f)
                 except Exception as e:
                     raise ValidationError(
@@ -1149,11 +1165,11 @@ def ingest(
                         suggestion="Ensure the file contains valid JSON or YAML",
                         error_code="FIELD_MAP_PARSE_ERROR"
                     )
-        
+
         parsed_required_fields = None
         if required_fields:
             parsed_required_fields = [f.strip() for f in required_fields.split(',')]
-        
+
         # Validate validation mode
         valid_validation_modes = ["strict", "flexible", "lenient"]
         if validation_mode not in valid_validation_modes:
@@ -1162,7 +1178,7 @@ def ingest(
                 suggestion=f"Use one of: {', '.join(valid_validation_modes)}",
                 error_code="INVALID_VALIDATION_MODE"
             )
-        
+
         if parsed_field_map or config_file:
             if not adapter:
                 adapter = "flexible"
@@ -1175,25 +1191,25 @@ def ingest(
         # Ingest the runs with progress indication
         with timed_operation_context("Data ingestion"):
             typer.echo(f"Ingesting runs from: {runs}")
-            
+
             if adapter:
                 typer.echo(f"Using adapter: {adapter}")
-            
+
             if parsed_field_map and verbose:
                 typer.echo(f"Field mapping: {parsed_field_map}")
-            
+
             if validation_mode != "flexible" and verbose:
                 typer.echo(f"Validation mode: {validation_mode}")
-            
+
             df = ingest_runs(
-                runs, 
-                adapter, 
+                runs,
+                adapter,
                 field_map=parsed_field_map,
                 config_file=config_file,
                 validation_mode=validation_mode,
                 required_fields=parsed_required_fields
             )
-            
+
             if df.empty:
                 raise ValidationError(
                     "No data found in source",
@@ -1220,7 +1236,7 @@ def ingest(
         typer.echo(f"  Columns: {', '.join(df.columns)}")
         if not df.empty and 'step' in df.columns:
             typer.echo(f"  Steps range: {df['step'].min()} to {df['step'].max()}")
-        
+
         # Show sample data
         if not df.empty and verbose:
             typer.echo("\n📋 Sample data:")
@@ -1339,7 +1355,11 @@ def diff(
         if report.diverged:
             typer.echo(f"\n🚨 Divergence detected at step {report.first_step}")
             # Format tripped signals (now a list of dicts with 'signal' key)
-            signal_names = [signal_info["signal"] for signal_info in report.tripped_signals]
+            signal_names = [
+                signal_info.get("signal", str(signal_info)) if isinstance(signal_info, dict)
+                else str(signal_info)
+                for signal_info in report.tripped_signals
+            ]
             typer.echo(f"Tripped signals: {', '.join(signal_names)}")
         else:
             typer.echo("\n✅ No significant divergence detected")
@@ -1393,7 +1413,7 @@ def check_determinism_cmd(
     try:
         # Use runs parameter if provided, otherwise use replicas
         actual_replicas = runs if runs is not None else replicas
-        
+
         # Handle simplified interface for gate mode
         if gate and not cmd and not compare:
             # For gate mode, use default values
@@ -1405,7 +1425,7 @@ def check_determinism_cmd(
             if not compare:
                 raise ValueError("--compare parameter is required when not in gate mode")
             compare_list = [c.strip() for c in compare.split(",")]
-        
+
         steps_list = None
         if steps:
             steps_list = [int(s.strip()) for s in steps.split(",")]
@@ -1422,7 +1442,7 @@ def check_determinism_cmd(
 
         # Check determinism
         typer.echo("\nRunning determinism check...")
-        report = check(cmd, compare_list, steps_list, actual_replicas, device)
+        report = check(cmd or "", compare_list, steps_list, actual_replicas, device)
 
         # Write report
         output_path = Path(output_dir)
@@ -1453,7 +1473,7 @@ def check_determinism_cmd(
                 typer.echo("\nRecommended fixes:")
                 for fix in report.fixes[:3]:  # Show first 3 fixes
                     typer.echo(f"  - {fix}")
-            
+
             # Determine exit code based on severity and tolerance
             if len(report.mismatches) > 0:
                 # Check if mismatches exceed tolerance
@@ -1466,7 +1486,7 @@ def check_determinism_cmd(
                 exit_code = 1  # Warn - potential issues but no hard failures
 
         typer.echo(f"\nReport saved to: {output_dir}/determinism_card.json")
-        
+
         # Handle gate mode
         if gate:
             if exit_code == 0:
@@ -1640,14 +1660,14 @@ def reward_health(
                 typer.echo(
                     f"  - Label leakage risk: {health_report.label_leakage_risk:.3f}"
                 )
-            
+
             # Determine exit code based on severity
             critical_issues = 0
             if health_report.drift_detected:
                 critical_issues += 1
             if health_report.label_leakage_risk > threshold_leakage:
                 critical_issues += 1
-            
+
             if critical_issues > 0:
                 exit_code = 2  # Fail - critical issues
             else:
@@ -1662,7 +1682,7 @@ def reward_health(
         ):
             typer.echo("  - drift_analysis.csv")
         typer.echo("  - calibration_plots.png")
-        
+
         # Handle gate mode
         if gate:
             if exit_code == 0:
@@ -1712,7 +1732,7 @@ def replay_cmd(
     """Replay a training run with the original seed and verify reproducibility."""
     try:
         # Parse comma-separated metrics
-        metrics_list = [m.strip() for m in metrics.split(",")]
+        metrics_list = [m.strip() for m in (metrics.split(",") if isinstance(metrics, str) else metrics)]
 
         typer.echo(f"Replaying training run: {run_path}")
         typer.echo(f"Training command: {command}")
@@ -1889,12 +1909,12 @@ def track(
     """Start tracking an experiment with W&B (default) or file logging."""
     try:
         typer.echo(f"Starting experiment tracking: {experiment_name}")
-        
+
         # Parse tags if provided
         tag_list = []
         if tags:
             tag_list = [tag.strip() for tag in tags.split(",")]
-        
+
         # Create tracking configuration
         config = TrackingConfig(
             experiment_name=experiment_name,
@@ -1904,13 +1924,13 @@ def track(
             tags=tag_list,
             notes=notes,
         )
-        
+
         # Create tracker
         tracker = ExperimentTracker(config)
-        
+
         # Actually start the experiment tracking
         tracking_data = tracker.start_experiment()
-        
+
         typer.echo("✅ Experiment tracking started successfully")
         typer.echo(f"  Experiment: {experiment_name}")
         typer.echo(f"  Experiment ID: {tracking_data['experiment_id']}")
@@ -1920,7 +1940,7 @@ def track(
             typer.echo(f"  W&B project: {config.wandb_project}")
         if tag_list:
             typer.echo(f"  Tags: {', '.join(tag_list)}")
-        
+
         if interactive:
             typer.echo("\n🔄 Interactive mode enabled. Tracker is ready for use.")
             typer.echo("Available commands:")
@@ -1930,7 +1950,7 @@ def track(
             typer.echo("  tracker.track_model(model, 'my_model')")
             typer.echo("  tracker.finish_experiment()")
             typer.echo("\nPress Ctrl+C to finish the experiment and exit.")
-            
+
             try:
                 # Keep the process alive for interactive use
                 import time
@@ -1938,19 +1958,19 @@ def track(
                     time.sleep(1)
             except KeyboardInterrupt:
                 typer.echo("\n\nFinishing experiment...")
-                summary = tracker.finish_experiment()
+                tracker.finish_experiment()
                 typer.echo("✅ Experiment completed successfully!")
         else:
             # Non-interactive mode - finish immediately
             typer.echo("\n📊 Experiment tracking completed.")
             typer.echo("Environment, Git, and seed state have been captured.")
             typer.echo("Use --interactive flag to keep tracker running for manual logging.")
-            
-            summary = tracker.finish_experiment()
+
+            tracker.finish_experiment()
             typer.echo("✅ Experiment completed successfully!")
-        
+
         return tracker
-        
+
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(1)
@@ -1983,18 +2003,18 @@ def format_info(
 ):
     """Show data format information for adapters."""
     from .ingest.ingest import _get_adapter_format_requirements
-    
+
     if adapter:
         # Show info for specific adapter
         requirements = _get_adapter_format_requirements(adapter)
-        
+
         typer.echo(f"📋 Format requirements for '{adapter}' adapter:")
         typer.echo(f"  Description: {requirements['description']}")
         typer.echo(f"  File extensions: {', '.join(requirements['file_extensions'])}")
         typer.echo(f"  Required fields: {', '.join(requirements['required_fields'])}")
         typer.echo(f"  Optional fields: {', '.join(requirements['optional_fields'])}")
         typer.echo(f"  Suggestions: {requirements['suggestions']}")
-        
+
         if examples and requirements['examples']:
             typer.echo("\n📝 Examples:")
             for i, example in enumerate(requirements['examples'], 1):
@@ -2002,10 +2022,10 @@ def format_info(
     else:
         # Show info for all adapters
         adapters = ["trl", "openrlhf", "custom_jsonl", "wandb"]
-        
+
         typer.echo("📋 Available adapters and their format requirements:")
         typer.echo()
-        
+
         for adapter_name in adapters:
             requirements = _get_adapter_format_requirements(adapter_name)
             typer.echo(f"🔧 {adapter_name.upper()}:")
@@ -2013,7 +2033,7 @@ def format_info(
             typer.echo(f"  File extensions: {', '.join(requirements['file_extensions'])}")
             typer.echo(f"  Required fields: {', '.join(requirements['required_fields'])}")
             typer.echo()
-        
+
         typer.echo("💡 Use --adapter <name> to see detailed info for a specific adapter")
         typer.echo("💡 Use --examples to see example data formats")
 
@@ -2026,36 +2046,41 @@ def validate_format(
 ):
     """Validate data format and suggest appropriate adapter."""
     from .ingest.ingest import _analyze_source_format, _get_adapter_format_requirements
-    
+
     typer.echo(f"🔍 Analyzing data format: {source}")
-    
+
     # Analyze the source
     analysis = _analyze_source_format(source)
-    
+
     typer.echo("📊 Analysis results:")
     typer.echo(f"  Type: {analysis['description']}")
-    
+
     if analysis.get('files'):
         typer.echo(f"  Files found: {len(analysis['files'])}")
         if verbose:
             for file in analysis['files'][:5]:  # Show first 5 files
                 typer.echo(f"    - {file}")
-    
+
     if analysis.get('fields_found'):
         typer.echo(f"  Fields found: {', '.join(analysis['fields_found'])}")
-    
+
     if analysis.get('issues'):
         typer.echo(f"  Issues detected: {len(analysis['issues'])}")
         if verbose:
             for issue in analysis['issues']:
                 typer.echo(f"    - {issue}")
-    
+
     # Test specific adapter if provided
     if adapter:
         typer.echo(f"\n🧪 Testing with '{adapter}' adapter...")
         try:
-            from .adapters import TRLAdapter, OpenRLHFAdapter, CustomJSONLAdapter, WandBAdapter
-            
+            from .adapters import (
+                CustomJSONLAdapter,
+                OpenRLHFAdapter,
+                TRLAdapter,
+                WandBAdapter,
+            )
+
             if adapter == "trl":
                 adapter_instance = TRLAdapter(source)
             elif adapter == "openrlhf":
@@ -2067,7 +2092,7 @@ def validate_format(
             else:
                 typer.echo(f"❌ Unknown adapter: {adapter}")
                 raise typer.Exit(1)
-            
+
             if adapter_instance.can_handle():
                 typer.echo(f"✅ '{adapter}' adapter can handle this source")
             else:
@@ -2079,7 +2104,7 @@ def validate_format(
     else:
         # Suggest adapters
         typer.echo("\n💡 Adapter suggestions:")
-        
+
         if analysis['type'] == 'jsonl':
             fields = analysis.get('fields_found', [])
             if any(f in fields for f in ['global_step', 'reward_scalar', 'kl_to_ref']):
@@ -2094,7 +2119,7 @@ def validate_format(
             typer.echo("  - trl (for directories with log files)")
             typer.echo("  - openrlhf (for directories with log files)")
             typer.echo("  - custom_jsonl (for directories with custom JSONL files)")
-        
+
         typer.echo("\n💡 Use 'rldk format-info --adapter <name>' for detailed format requirements")
         typer.echo(f"💡 Use 'rldk validate-format {source} --adapter <name>' to test specific adapter")
 
@@ -2116,7 +2141,7 @@ def seed_cmd(
     validate: bool = typer.Option(False, "--validate", help="Validate seed consistency"),
 ):
     """Manage global seed for reproducible experiments.
-    
+
     Examples:
         rldk seed --seed 42                    # Set seed to 42
         rldk seed --show                       # Show current seed state
@@ -2125,10 +2150,13 @@ def seed_cmd(
     """
     try:
         from rldk.utils.seed import (
-            set_global_seed, get_current_seed, get_seed_state_summary,
-            set_reproducible_environment, validate_seed_consistency
+            get_current_seed,
+            get_seed_state_summary,
+            set_global_seed,
+            set_reproducible_environment,
+            validate_seed_consistency,
         )
-        
+
         if show:
             # Show current seed state
             summary = get_seed_state_summary()
@@ -2138,27 +2166,27 @@ def seed_cmd(
             typer.echo(f"  Libraries: {', '.join(summary['libraries'])}")
             typer.echo(f"  PyTorch available: {summary['torch_available']}")
             typer.echo(f"  CUDA available: {summary['cuda_available']}")
-            
+
             if summary['torch_available'] and summary['deterministic']:
                 typer.echo(f"  CUDNN deterministic: {summary.get('cudnn_deterministic', False)}")
                 typer.echo(f"  CUDNN benchmark: {summary.get('cudnn_benchmark', True)}")
-        
+
         elif validate:
             # Validate seed consistency
             current_seed = get_current_seed()
             if current_seed is None:
                 typer.echo("❌ No seed has been set")
                 raise typer.Exit(1)
-            
+
             typer.echo(f"🔍 Validating seed consistency for seed: {current_seed}")
             is_consistent = validate_seed_consistency(current_seed)
-            
+
             if is_consistent:
                 typer.echo("✅ Seed consistency validated successfully")
             else:
                 typer.echo("❌ Seed consistency validation failed")
                 raise typer.Exit(1)
-        
+
         else:
             # Set seed
             if env:
@@ -2170,12 +2198,12 @@ def seed_cmd(
                 # Just set the seed
                 actual_seed = set_global_seed(seed_value, deterministic)
                 typer.echo(f"🌱 Global seed set to: {actual_seed}")
-            
+
             if deterministic:
                 typer.echo("  Deterministic behavior enabled")
             else:
                 typer.echo("  Non-deterministic behavior enabled")
-    
+
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(1)

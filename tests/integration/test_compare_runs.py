@@ -84,7 +84,7 @@ def test_compare_runs_empty_logs():
         empty_dir = Path(temp_dir) / "empty"
         empty_dir.mkdir()
 
-        with open(empty_dir / "training.jsonl", "w") as f:
+        with open(empty_dir / "training.jsonl", "w"):
             pass  # Empty file
 
         # Scan empty run

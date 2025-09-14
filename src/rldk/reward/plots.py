@@ -1,11 +1,12 @@
 """Plotting utilities for reward health analysis."""
 
-from typing import Dict, Any, Optional
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 from pathlib import Path
+from typing import Any, Dict, Optional
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
 
 
 def generate_calibration_plots(
@@ -226,7 +227,7 @@ def _plot_calibration_curve(
             0.95,
             f"Correlation: {corr:.3f}",
             transform=ax.transAxes,
-            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+            bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
         )
 
     except Exception as e:
@@ -284,7 +285,7 @@ def _plot_correlation(
         0.95,
         f"Correlation: {corr:.3f}",
         transform=ax.transAxes,
-        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
     )
 
 
@@ -324,7 +325,7 @@ Count: {len(clean_values)}"""
         0.95,
         stats_text,
         transform=ax.transAxes,
-        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
         verticalalignment="top",
         fontsize=9,
     )

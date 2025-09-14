@@ -126,35 +126,35 @@ import sys
 try:
     # Read metrics
     df = pd.read_json('metrics.jsonl', lines=True)
-    
+
     if '{metric}' not in df.columns:
         print('Metric {metric} not found in data')
         sys.exit(1)
-    
+
     # Calculate window statistic
     if len(df) >= {window}:
         recent_data = df.tail({window})['{metric}']
     else:
         recent_data = df['{metric}']
-    
+
     if recent_data.isna().all():
         print('No valid data for metric {metric}')
         sys.exit(1)
-    
+
     # Calculate mean over window
     metric_value = recent_data.mean()
-    
+
     # Apply comparison
     cmp_expr = f'{{metric_value}} {cmp}'
     result = eval(cmp_expr)
-    
+
     if result:
         print(f'Metric {metric} = {{metric_value}} {cmp} - GOOD')
         sys.exit(0)
     else:
         print(f'Metric {metric} = {{metric_value}} {cmp} - BAD')
         sys.exit(1)
-        
+
 except Exception as e:
     print(f'Error evaluating metric: {{e}}')
     sys.exit(1)

@@ -5,7 +5,8 @@ Model tracking for architecture fingerprinting and versioning.
 import hashlib
 import json
 from pathlib import Path
-from typing import Dict, Any, Optional, Union
+from typing import Any, Dict, Optional
+
 
 def _import_torch():
     import torch
@@ -23,11 +24,11 @@ def _import_numpy():
 
 class ModelTracker:
     """Tracks model architecture, weights, and metadata."""
-    
+
     def __init__(self, algorithm: str = "sha256"):
         self.algorithm = algorithm
         self.tracked_models: Dict[str, Dict[str, Any]] = {}
-    
+
     def track_model(
         self,
         model,
@@ -38,14 +39,14 @@ class ModelTracker:
     ) -> Dict[str, Any]:
         """
         Track a model and compute its fingerprint.
-        
+
         Args:
             model: The model to track
             name: Name identifier for the model
             metadata: Additional metadata to store
             save_architecture: Whether to save model architecture
             save_weights: Whether to save model weights (usually too large)
-            
+
         Returns:
             Dictionary containing tracking information
         """
@@ -58,26 +59,26 @@ class ModelTracker:
             "save_architecture": save_architecture,
             "save_weights": save_weights
         }
-        
+
         # Get model architecture info
         tracking_info.update(self._get_model_architecture_info(model))
-        
+
         # Compute architecture fingerprint
         tracking_info["architecture_checksum"] = self._compute_architecture_checksum(model)
-        
+
         # Compute weights fingerprint if requested
         if save_weights:
             tracking_info["weights_checksum"] = self._compute_weights_checksum(model)
             tracking_info["weights_size_bytes"] = self._get_model_size(model)
-        
+
         # Handle special cases for different model types
         PreTrainedModel, _ = _import_transformers()
         if isinstance(model, PreTrainedModel):
             tracking_info.update(self._get_pretrained_model_info(model))
-        
+
         self.tracked_models[name] = tracking_info
         return tracking_info
-    
+
     def _get_model_architecture_info(self, model) -> Dict[str, Any]:
         """Extract architecture information from a model."""
         info = {
@@ -86,7 +87,7 @@ class ModelTracker:
             "num_layers": len(list(model.modules())),
             "device": next(model.parameters()).device.type if list(model.parameters()) else "cpu"
         }
-        
+
         # Get layer information
         layer_info = []
         for name, module in model.named_modules():
@@ -96,18 +97,18 @@ class ModelTracker:
                     "type": type(module).__name__,
                     "parameters": sum(p.numel() for p in module.parameters())
                 })
-        
+
         info["layers"] = layer_info
-        
+
         # Get model structure as string
         info["structure"] = str(model)
-        
+
         return info
-    
+
     def _get_pretrained_model_info(self, model) -> Dict[str, Any]:
         """Get additional info for pre-trained models."""
         info = {}
-        
+
         # Try to get config info
         if hasattr(model, 'config'):
             config = model.config
@@ -119,47 +120,47 @@ class ModelTracker:
                 "vocab_size": getattr(config, 'vocab_size', None),
                 "max_position_embeddings": getattr(config, 'max_position_embeddings', None),
             }
-        
+
         # Try to get model name/identifier
         if hasattr(model, 'name_or_path'):
             info["model_name"] = model.name_or_path
-        
+
         return info
-    
+
     def _compute_architecture_checksum(self, model) -> str:
         """Compute checksum of model architecture."""
         hash_obj = hashlib.new(self.algorithm)
-        
+
         # Hash the model structure
         structure_str = str(model)
         hash_obj.update(structure_str.encode())
-        
+
         # Hash parameter shapes and types
         for name, param in model.named_parameters():
             param_info = f"{name}:{param.shape}:{param.dtype}"
             hash_obj.update(param_info.encode())
-        
+
         # Hash layer information
         for name, module in model.named_modules():
             if len(list(module.children())) == 0:  # Leaf modules only
                 module_info = f"{name}:{type(module).__name__}"
                 hash_obj.update(module_info.encode())
-        
+
         return hash_obj.hexdigest()
-    
+
     def _compute_weights_checksum(self, model) -> str:
         """Compute checksum of model weights."""
         hash_obj = hashlib.new(self.algorithm)
-        np = _import_numpy()
-        
+        _import_numpy()
+
         # Get parameters in a fixed order (sorted by name)
         named_params = sorted(model.named_parameters(), key=lambda x: x[0])
         total_params = sum(p.numel() for _, p in named_params)
-        
+
         if total_params > 100000000:  # 100M parameters
             # For very large models, sample tensors by fixed stride per parameter
             # Use streaming approach to avoid memory pressure
-            
+
             for name, param in named_params:
                 if param.numel() > 0:
                     flat_param = param.detach().cpu().flatten()
@@ -175,7 +176,7 @@ class ModelTracker:
                         # If we still need more samples, fill from the end
                         while len(sample_indices) < 10000 and len(sample_indices) < len(flat_param):
                             sample_indices.append(len(flat_param) - 1 - len(sample_indices))
-                        
+
                         # Hash the sampled weights directly to avoid memory accumulation
                         sampled_weights = flat_param[sample_indices]
                         hash_obj.update(sampled_weights.numpy().tobytes())
@@ -187,16 +188,16 @@ class ModelTracker:
             for name, param in named_params:
                 if param.numel() > 0:
                     hash_obj.update(param.detach().cpu().numpy().tobytes())
-        
+
         return hash_obj.hexdigest()
-    
+
     def _get_model_size(self, model) -> int:
         """Get total size of model parameters in bytes."""
         total_size = 0
         for param in model.parameters():
             total_size += param.numel() * param.element_size()
         return total_size
-    
+
     def track_tokenizer(
         self,
         tokenizer,
@@ -211,7 +212,7 @@ class ModelTracker:
             "metadata": metadata or {},
             "timestamp": self._get_timestamp()
         }
-        
+
         # Get tokenizer info
         tracking_info.update({
             "vocab_size": getattr(tokenizer, 'vocab_size', None),
@@ -219,7 +220,7 @@ class ModelTracker:
             "padding_side": getattr(tokenizer, 'padding_side', None),
             "truncation_side": getattr(tokenizer, 'truncation_side', None),
         })
-        
+
         # Compute checksum
         try:
             # Serialize tokenizer config
@@ -227,9 +228,9 @@ class ModelTracker:
             tracking_info["checksum"] = hashlib.sha256(config_str.encode()).hexdigest()
         except Exception as e:
             tracking_info["checksum"] = f"error: {str(e)}"
-        
+
         return tracking_info
-    
+
     def save_model_architecture(
         self,
         model,
@@ -238,16 +239,16 @@ class ModelTracker:
     ) -> Path:
         """Save model architecture to file."""
         arch_path = output_path / f"{name}_architecture.txt"
-        
+
         with open(arch_path, 'w') as f:
             f.write(f"Model: {name}\n")
             f.write(f"Type: {type(model).__name__}\n")
             f.write(f"Timestamp: {self._get_timestamp()}\n")
             f.write("=" * 50 + "\n\n")
             f.write(str(model))
-        
+
         return arch_path
-    
+
     def save_model_weights(
         self,
         model,
@@ -259,12 +260,12 @@ class ModelTracker:
         weights_path = output_path / f"{name}_weights.pt"
         torch.save(model.state_dict(), weights_path)
         return weights_path
-    
+
     def _get_timestamp(self) -> str:
         """Get current timestamp."""
         from datetime import datetime
         return datetime.now().isoformat()
-    
+
     def get_tracking_summary(self) -> Dict[str, Any]:
         """Get summary of all tracked models."""
         return {

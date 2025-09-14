@@ -2,7 +2,8 @@
 
 import logging
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
 import pandas as pd
 
 try:
@@ -13,7 +14,6 @@ except ImportError:
     WANDB_AVAILABLE = False
 
 from .base import BaseAdapter
-from ..config import settings
 
 logger = logging.getLogger(__name__)
 

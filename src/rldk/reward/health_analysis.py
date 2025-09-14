@@ -1,9 +1,10 @@
 """Main reward health checking functionality."""
 
 from dataclasses import dataclass
-from typing import List, Dict, Any, Optional, Tuple
-import pandas as pd
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
+import pandas as pd
 
 from .calibration import analyze_calibration
 from .drift import detect_reward_drift

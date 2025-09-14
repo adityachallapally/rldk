@@ -2,21 +2,19 @@
 
 import signal
 import subprocess
-import time
 from contextlib import contextmanager
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional, Union
-from pathlib import Path
+from typing import Callable, List, Union
 
 from .error_handling import RLDKTimeoutError
 
 
 def with_timeout(timeout_seconds: float):
     """Decorator to add timeout to operations.
-    
+
     Args:
         timeout_seconds: Maximum time to wait for the operation to complete
-        
+
     Returns:
         Decorated function that will raise RLDKTimeoutError if timeout is exceeded
     """
@@ -30,13 +28,13 @@ def with_timeout(timeout_seconds: float):
                     error_code="OPERATION_TIMEOUT",
                     details={"timeout_seconds": timeout_seconds}
                 )
-            
+
             # Set up timeout - use ceiling to ensure we don't timeout early
             import math
             timeout_int = max(1, math.ceil(timeout_seconds))
             old_handler = signal.signal(signal.SIGALRM, timeout_handler)
             signal.alarm(timeout_int)
-            
+
             try:
                 result = func(*args, **kwargs)
                 return result
@@ -44,26 +42,26 @@ def with_timeout(timeout_seconds: float):
                 # Restore old handler
                 signal.alarm(0)
                 signal.signal(signal.SIGALRM, old_handler)
-        
+
         return wrapper
     return decorator
 
 
 def run_with_timeout_subprocess(
-    cmd: Union[str, List[str]], 
+    cmd: Union[str, List[str]],
     timeout_seconds: float = 300,
     **subprocess_kwargs
 ) -> subprocess.CompletedProcess:
     """Run a subprocess command with timeout.
-    
+
     Args:
         cmd: Command to run (string or list of arguments)
         timeout_seconds: Maximum time to wait for command completion
         **subprocess_kwargs: Additional arguments passed to subprocess.run
-        
+
     Returns:
         CompletedProcess result from subprocess.run
-        
+
     Raises:
         RLDKTimeoutError: If the command times out
     """
@@ -90,13 +88,13 @@ def run_with_timeout_subprocess(
 @contextmanager
 def timeout_context(timeout_seconds: float):
     """Context manager for timeout operations.
-    
+
     Args:
         timeout_seconds: Maximum time to wait
-        
+
     Yields:
         None
-        
+
     Raises:
         RLDKTimeoutError: If timeout is exceeded
     """
@@ -107,11 +105,11 @@ def timeout_context(timeout_seconds: float):
             error_code="OPERATION_TIMEOUT",
             details={"timeout_seconds": timeout_seconds}
         )
-    
+
     # Set up timeout
     old_handler = signal.signal(signal.SIGALRM, timeout_handler)
     signal.alarm(int(timeout_seconds))
-    
+
     try:
         yield
     finally:

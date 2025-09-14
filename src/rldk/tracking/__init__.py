@@ -9,17 +9,17 @@ This module provides comprehensive tracking capabilities for:
 - Git commit hash integration
 """
 
-from .tracker import ExperimentTracker
 from .config import TrackingConfig
 from .dataset_tracker import DatasetTracker
-from .model_tracker import ModelTracker
 from .environment_tracker import EnvironmentTracker
-from .seed_tracker import SeedTracker
 from .git_tracker import GitTracker
+from .model_tracker import ModelTracker
+from .seed_tracker import SeedTracker
+from .tracker import ExperimentTracker
 
 __all__ = [
     "ExperimentTracker",
-    "TrackingConfig", 
+    "TrackingConfig",
     "DatasetTracker",
     "ModelTracker",
     "EnvironmentTracker",

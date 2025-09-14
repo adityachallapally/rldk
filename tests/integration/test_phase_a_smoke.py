@@ -2,6 +2,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
@@ -18,7 +19,7 @@ def sh(args):
 
 
 def load_json(p):
-    with open(p, "r") as f:
+    with open(p) as f:
         return json.load(f)
 
 
@@ -64,7 +65,7 @@ def test_phase_a_end_to_end(tmp_path):
     # Only run checkpoint tests if PyTorch is available
     if not has_pytorch():
         pytest.skip("PyTorch not available, skipping checkpoint diff tests")
-    
+
     sh(
         [
             "rldk",

@@ -2,27 +2,27 @@
 Environment tracking for capturing system state and dependencies.
 """
 
+import hashlib
+import json
+import platform
 import subprocess
 import sys
-import platform
-import json
-import hashlib
-from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict
+
 try:
     from importlib import metadata
 except ImportError:
     import importlib_metadata as metadata
-import torch
 import numpy as np
+import torch
 
 
 class EnvironmentTracker:
     """Tracks environment state including dependencies and system info."""
-    
+
     def __init__(self):
         self.tracking_info: Dict[str, Any] = {}
-    
+
     def capture_environment(
         self,
         capture_conda: bool = True,
@@ -31,12 +31,12 @@ class EnvironmentTracker:
     ) -> Dict[str, Any]:
         """
         Capture comprehensive environment information.
-        
+
         Args:
             capture_conda: Whether to capture conda environment
             capture_pip: Whether to capture pip freeze
             capture_system: Whether to capture system information
-            
+
         Returns:
             Dictionary containing environment information
         """
@@ -45,29 +45,29 @@ class EnvironmentTracker:
             "python_version": sys.version,
             "python_executable": sys.executable
         }
-        
+
         if capture_conda:
             env_info["conda"] = self._capture_conda_environment()
-        
+
         if capture_pip:
             env_info["pip"] = self._capture_pip_environment()
-        
+
         if capture_system:
             env_info["system"] = self._capture_system_info()
-        
+
         # Capture ML framework versions
         env_info["ml_frameworks"] = self._capture_ml_frameworks()
-        
+
         # Compute environment fingerprint
         env_info["environment_checksum"] = self._compute_environment_checksum(env_info)
-        
+
         self.tracking_info = env_info
         return env_info
-    
+
     def _capture_conda_environment(self) -> Dict[str, Any]:
         """Capture conda environment information."""
         conda_info = {}
-        
+
         try:
             # Get conda info
             result = subprocess.run(
@@ -80,7 +80,7 @@ class EnvironmentTracker:
                 conda_info["info"] = json.loads(result.stdout)
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
             conda_info["info"] = "conda not available"
-        
+
         try:
             # Get current environment
             result = subprocess.run(
@@ -93,7 +93,7 @@ class EnvironmentTracker:
                 conda_info["packages"] = json.loads(result.stdout)
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
             conda_info["packages"] = "conda list failed"
-        
+
         try:
             # Get environment name
             result = subprocess.run(
@@ -113,13 +113,13 @@ class EnvironmentTracker:
                 conda_info["active_environment"] = active_env
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
             conda_info["active_environment"] = "unknown"
-        
+
         return conda_info
-    
+
     def _capture_pip_environment(self) -> Dict[str, Any]:
         """Capture pip environment information."""
         pip_info = {}
-        
+
         try:
             # Get pip freeze output
             result = subprocess.run(
@@ -134,7 +134,7 @@ class EnvironmentTracker:
                 pip_info["freeze"] = f"pip freeze failed: {result.stderr}"
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
             pip_info["freeze"] = "pip freeze failed"
-        
+
         try:
             # Get pip list with versions
             result = subprocess.run(
@@ -149,7 +149,7 @@ class EnvironmentTracker:
                 pip_info["list"] = f"pip list failed: {result.stderr}"
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
             pip_info["list"] = "pip list failed"
-        
+
         # Get installed packages using importlib.metadata
         try:
             installed_packages = []
@@ -169,13 +169,13 @@ class EnvironmentTracker:
                                     break
                             except Exception:
                                 continue
-                    
+
                     # If that didn't work, try to get from the distribution's origin
                     if location == "unknown" and hasattr(dist, 'origin') and dist.origin:
                         location = str(dist.origin.parent)
                 except Exception:
                     pass
-                
+
                 installed_packages.append({
                     "name": dist.metadata.get("Name", "unknown"),
                     "version": dist.version,
@@ -184,9 +184,9 @@ class EnvironmentTracker:
             pip_info["installed_packages"] = installed_packages
         except Exception as e:
             pip_info["installed_packages"] = f"Error getting installed packages: {str(e)}"
-        
+
         return pip_info
-    
+
     def _capture_system_info(self) -> Dict[str, Any]:
         """Capture system information."""
         system_info = {
@@ -201,7 +201,7 @@ class EnvironmentTracker:
             "python_implementation": platform.python_implementation(),
             "python_compiler": platform.python_compiler(),
         }
-        
+
         # Get CPU info
         try:
             import psutil
@@ -213,7 +213,7 @@ class EnvironmentTracker:
             }
         except ImportError:
             system_info["cpu"] = "psutil not available"
-        
+
         # Get memory info
         try:
             import psutil
@@ -227,7 +227,7 @@ class EnvironmentTracker:
             }
         except ImportError:
             system_info["memory"] = "psutil not available"
-        
+
         # Get disk info
         try:
             import psutil
@@ -240,13 +240,13 @@ class EnvironmentTracker:
             }
         except ImportError:
             system_info["disk"] = "psutil not available"
-        
+
         return system_info
-    
+
     def _capture_ml_frameworks(self) -> Dict[str, Any]:
         """Capture ML framework versions and configurations."""
         frameworks = {}
-        
+
         # PyTorch
         try:
             frameworks["torch"] = {
@@ -257,7 +257,7 @@ class EnvironmentTracker:
                 "device_count": torch.cuda.device_count() if torch.cuda.is_available() else 0,
                 "current_device": torch.cuda.current_device() if torch.cuda.is_available() else None
             }
-            
+
             if torch.cuda.is_available():
                 frameworks["torch"]["device_properties"] = []
                 for i in range(torch.cuda.device_count()):
@@ -271,7 +271,7 @@ class EnvironmentTracker:
                     })
         except Exception as e:
             frameworks["torch"] = f"Error getting torch info: {str(e)}"
-        
+
         # NumPy
         try:
             frameworks["numpy"] = {
@@ -280,7 +280,7 @@ class EnvironmentTracker:
             }
         except Exception as e:
             frameworks["numpy"] = f"Error getting numpy info: {str(e)}"
-        
+
         # Transformers
         try:
             import transformers
@@ -291,7 +291,7 @@ class EnvironmentTracker:
             frameworks["transformers"] = "not installed"
         except Exception as e:
             frameworks["transformers"] = f"Error getting transformers info: {str(e)}"
-        
+
         # Datasets
         try:
             import datasets
@@ -302,7 +302,7 @@ class EnvironmentTracker:
             frameworks["datasets"] = "not installed"
         except Exception as e:
             frameworks["datasets"] = f"Error getting datasets info: {str(e)}"
-        
+
         # Scikit-learn
         try:
             import sklearn
@@ -313,9 +313,9 @@ class EnvironmentTracker:
             frameworks["sklearn"] = "not installed"
         except Exception as e:
             frameworks["sklearn"] = f"Error getting sklearn info: {str(e)}"
-        
+
         return frameworks
-    
+
     def _compute_environment_checksum(self, env_info: Dict[str, Any]) -> str:
         """Compute checksum of environment information."""
         # Create a simplified version for hashing
@@ -328,16 +328,16 @@ class EnvironmentTracker:
                 for name, info in env_info.get("ml_frameworks", {}).items()
             }
         }
-        
+
         # Convert to JSON string and hash
         json_str = json.dumps(hash_info, sort_keys=True, default=str)
         return hashlib.sha256(json_str.encode()).hexdigest()
-    
+
     def _get_timestamp(self) -> str:
         """Get current timestamp."""
         from datetime import datetime
         return datetime.now().isoformat()
-    
+
     def get_tracking_summary(self) -> Dict[str, Any]:
         """Get summary of environment tracking."""
         return self.tracking_info

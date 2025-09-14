@@ -1,7 +1,8 @@
 """Tests for first divergence detection."""
 
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
 
 from rldk.diff import first_divergence
 

@@ -6,6 +6,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+
 import pytest
 
 
@@ -23,20 +24,20 @@ def rldk_cmd():
 
 class TestCLIMinirun:
     """Test CLI functionality against minimal run fixture."""
-    
+
     def _check_cli_result(self, result, test_name):
         """Helper function to check CLI results with proper error reporting."""
         # Check that CLI doesn't crash with unexpected errors
         if result.returncode not in [0, 1]:
             pytest.fail(f"CLI crashed with unexpected return code {result.returncode} in {test_name}. "
                        f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
-        
+
         # If it fails, it should be a known/expected failure, not a crash
         if result.returncode == 1:
             # Should not contain Python tracebacks or unexpected errors
             assert "Traceback" not in result.stderr, f"Unexpected Python traceback in {test_name}: {result.stderr}"
             assert "Exception" not in result.stderr or "RLDKError" in result.stderr, f"Unexpected exception in {test_name}: {result.stderr}"
-    
+
     @pytest.mark.parametrize("command,args", [
         (["ingest"], ["--adapter", "generic"]),
         (["diff"], []),
@@ -117,7 +118,7 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        
+
         self._check_cli_result(result, "test_cli_ingest_minirun")
 
     def test_cli_diff_minirun(self, rldk_cmd, minirun_path):
@@ -127,7 +128,7 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        
+
         self._check_cli_result(result, "test_cli_diff_minirun")
 
     def test_cli_replay_minirun(self, rldk_cmd, minirun_path):
@@ -137,7 +138,7 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        
+
         self._check_cli_result(result, "test_cli_replay_minirun")
 
     def test_cli_forensics_minirun(self, rldk_cmd, minirun_path):
@@ -147,6 +148,6 @@ class TestCLIMinirun:
             capture_output=True,
             text=True
         )
-        
+
         self._check_cli_result(result, "test_cli_forensics_minirun")
 

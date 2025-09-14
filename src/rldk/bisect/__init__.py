@@ -1,5 +1,5 @@
 """Git bisect wrapper for finding regressions."""
 
-from .bisect import bisect_commits, BisectResult
+from .bisect import BisectResult, bisect_commits
 
 __all__ = ["bisect_commits", "BisectResult"]

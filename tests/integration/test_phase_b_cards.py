@@ -1,20 +1,21 @@
 """Tests for Phase B card functionality."""
 
-import pytest
 import json
 import tempfile
 from pathlib import Path
 
-from rldk.io.event_schema import (
-    Event,
-    create_event_from_row,
-    events_to_dataframe,
-    dataframe_to_events,
-)
+import pytest
+
 from rldk.cards.determinism import generate_determinism_card
 from rldk.cards.drift import generate_drift_card
 from rldk.cards.reward import generate_reward_card
-from rldk.io.schemas import validate, DeterminismCardV2, DriftCardV1, RewardCardV1
+from rldk.io.event_schema import (
+    Event,
+    create_event_from_row,
+    dataframe_to_events,
+    events_to_dataframe,
+)
+from rldk.io.schemas import DeterminismCardV2, DriftCardV1, RewardCardV1, validate
 
 
 @pytest.fixture
@@ -239,7 +240,7 @@ class TestDeterminismCard:
             assert png_file.exists()
 
             # Verify JSON content
-            with open(json_file, "r") as f:
+            with open(json_file) as f:
                 saved_data = json.load(f)
             assert saved_data["run_id"] == "test_run"
 
@@ -298,7 +299,7 @@ class TestDriftCard:
             assert png_file.exists()
 
             # Verify JSON content
-            with open(json_file, "r") as f:
+            with open(json_file) as f:
                 saved_data = json.load(f)
             assert saved_data["run_a"] == "test_run"
             assert saved_data["run_b"] == "divergent_run"
@@ -348,7 +349,7 @@ class TestRewardCard:
             assert png_file.exists()
 
             # Verify JSON content
-            with open(json_file, "r") as f:
+            with open(json_file) as f:
                 saved_data = json.load(f)
             assert saved_data["run_id"] == "test_run"
             assert isinstance(saved_data["calibration_score"], (int, float))

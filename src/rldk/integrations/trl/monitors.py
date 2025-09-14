@@ -2,15 +2,19 @@
 
 import json
 import time
-import warnings
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Tuple
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
 import torch
-from transformers import TrainerCallback, TrainerControl, TrainerState, TrainingArguments
+from transformers import (
+    TrainerCallback,
+    TrainerControl,
+    TrainerState,
+    TrainingArguments,
+)
 
 try:
     from trl import PPOTrainer
@@ -32,7 +36,7 @@ except ImportError:
 @dataclass
 class PPOMetrics:
     """Container for PPO-specific metrics."""
-    
+
     # Rollout metrics
     rollout_reward_mean: float = 0.0
     rollout_reward_std: float = 0.0
@@ -40,7 +44,7 @@ class PPOMetrics:
     rollout_reward_max: float = 0.0
     rollout_length_mean: float = 0.0
     rollout_length_std: float = 0.0
-    
+
     # Policy metrics
     policy_kl_mean: float = 0.0
     policy_kl_std: float = 0.0
@@ -48,40 +52,40 @@ class PPOMetrics:
     policy_entropy_std: float = 0.0
     policy_clip_frac: float = 0.0
     policy_loss: float = 0.0
-    
+
     # Value function metrics
     value_loss: float = 0.0
     value_mean: float = 0.0
     value_std: float = 0.0
     advantage_mean: float = 0.0
     advantage_std: float = 0.0
-    
+
     # Learning metrics
     learning_rate: float = 0.0
     gradient_norm: float = 0.0
     clip_ratio: float = 0.0
-    
+
     # Efficiency metrics
     tokens_per_second: float = 0.0
     samples_per_second: float = 0.0
     gpu_utilization: float = 0.0
-    
+
     # Health indicators
     policy_collapse_risk: float = 0.0
     reward_hacking_risk: float = 0.0
     training_stability: float = 1.0
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
-            field.name: getattr(self, field.name) 
+            field.name: getattr(self, field.name)
             for field in self.__dataclass_fields__.values()
         }
 
 
 class PPOMonitor(TrainerCallback):
     """Specialized monitor for PPO training with advanced analytics."""
-    
+
     def __init__(
         self,
         output_dir: Optional[Union[str, Path]] = None,
@@ -93,7 +97,7 @@ class PPOMonitor(TrainerCallback):
         run_id: Optional[str] = None,
     ):
         """Initialize PPO monitor.
-        
+
         Args:
             output_dir: Directory to save PPO analysis
             kl_threshold: KL divergence alert threshold
@@ -107,47 +111,47 @@ class PPOMonitor(TrainerCallback):
             raise ImportError(
                 "TRL is required for PPOMonitor. Install with: pip install trl"
             )
-        
+
         self.output_dir = Path(output_dir) if output_dir else Path("./rldk_ppo_logs")
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Thresholds
         self.kl_threshold = kl_threshold
         self.reward_threshold = reward_threshold
         self.gradient_threshold = gradient_threshold
         self.clip_frac_threshold = clip_frac_threshold
-        
+
         self.enable_advanced_analytics = enable_advanced_analytics
         self.run_id = run_id or f"ppo_run_{int(time.time())}"
-        
+
         # Metrics storage
         self.ppo_metrics_history: List[PPOMetrics] = []
         self.current_ppo_metrics = PPOMetrics()
-        
+
         # Advanced analytics
         self.reward_distribution_history: List[List[float]] = []
         self.kl_divergence_history: List[float] = []
         self.policy_entropy_history: List[float] = []
-        
+
         # Alert system
         self.ppo_alerts: List[Dict[str, Any]] = []
-        
+
         print(f"🎯 PPO Monitor initialized - Run ID: {self.run_id}")
         print(f"📊 PPO thresholds: KL={kl_threshold}, Reward={reward_threshold}, "
               f"Gradient={gradient_threshold}, ClipFrac={clip_frac_threshold}")
-    
+
     def on_step_end(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
         """Monitor PPO-specific metrics at step end."""
         # Extract PPO metrics from logs
         self._extract_ppo_metrics_from_logs(state)
-        
+
         # Note: We don't store metrics here because on_log is called after on_step_end
         # and contains the actual logged values. We'll store metrics in on_log instead.
-        
+
         # Log PPO metrics
         if state.global_step % 10 == 0:
             self._log_ppo_metrics()
-    
+
     def on_log(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, logs: Dict[str, float], **kwargs):
         """Extract PPO metrics from training logs."""
         # PPO rollout metrics
@@ -159,7 +163,7 @@ class PPOMonitor(TrainerCallback):
             self.current_ppo_metrics.rollout_reward_min = logs['ppo/rewards/min']
         if 'ppo/rewards/max' in logs:
             self.current_ppo_metrics.rollout_reward_max = logs['ppo/rewards/max']
-        
+
         # PPO policy metrics
         if 'ppo/policy/kl_mean' in logs:
             self.current_ppo_metrics.policy_kl_mean = logs['ppo/policy/kl_mean']
@@ -176,7 +180,7 @@ class PPOMonitor(TrainerCallback):
             self.current_ppo_metrics.policy_loss = logs['ppo/policy/policy_loss']
         elif 'ppo/val/policy_loss' in logs:
             self.current_ppo_metrics.policy_loss = logs['ppo/val/policy_loss']
-        
+
         # PPO value function metrics
         if 'ppo/val/value_loss' in logs:
             self.current_ppo_metrics.value_loss = logs['ppo/val/value_loss']
@@ -184,135 +188,135 @@ class PPOMonitor(TrainerCallback):
             self.current_ppo_metrics.value_mean = logs['ppo/val/mean']
         if 'ppo/val/std' in logs:
             self.current_ppo_metrics.value_std = logs['ppo/val/std']
-        
+
         # Learning metrics
         if 'learning_rate' in logs:
             self.current_ppo_metrics.learning_rate = logs['learning_rate']
         if 'grad_norm' in logs:
             self.current_ppo_metrics.gradient_norm = logs['grad_norm']
-        
+
         # Advanced analytics
         if self.enable_advanced_analytics:
             self._analyze_policy_health()
             self._detect_reward_hacking()
             self._monitor_convergence()
-        
+
         # Store metrics AFTER log values are applied
         self.ppo_metrics_history.append(PPOMetrics(**self.current_ppo_metrics.to_dict()))
-        
+
         # Check for PPO-specific alerts AFTER metrics are stored
         self._check_ppo_alerts()
-    
+
     def _extract_ppo_metrics_from_logs(self, state: TrainerState):
         """Extract PPO metrics from trainer state."""
         if hasattr(state, 'log_history') and state.log_history:
             latest_log = state.log_history[-1]
-            
+
             # Extract rollout length if available
             if 'ppo/rollout/length_mean' in latest_log:
                 self.current_ppo_metrics.rollout_length_mean = latest_log['ppo/rollout/length_mean']
             if 'ppo/rollout/length_std' in latest_log:
                 self.current_ppo_metrics.rollout_length_std = latest_log['ppo/rollout/length_std']
-    
+
     def _analyze_policy_health(self):
         """Analyze policy health indicators."""
         # Policy collapse detection
         if len(self.kl_divergence_history) > 10:
             recent_kl = self.kl_divergence_history[-10:]
             kl_trend = np.polyfit(range(len(recent_kl)), recent_kl, 1)[0]
-            
+
             # High KL divergence trend indicates potential policy collapse
             if kl_trend > 0.01 and np.mean(recent_kl) > 0.05:
                 self.current_ppo_metrics.policy_collapse_risk = min(1.0, np.mean(recent_kl) * 10)
             else:
                 self.current_ppo_metrics.policy_collapse_risk = 0.0
-        
+
         # Training stability based on entropy
         if len(self.policy_entropy_history) > 20:
             recent_entropy = self.policy_entropy_history[-20:]
             entropy_std = np.std(recent_entropy)
             self.current_ppo_metrics.training_stability = max(0, 1 - entropy_std)
-    
+
     def _detect_reward_hacking(self):
         """Detect potential reward hacking patterns."""
         if len(self.ppo_metrics_history) > 50:
-            recent_rewards = [m.rollout_reward_mean for m in self.ppo_metrics_history[-50:] 
+            recent_rewards = [m.rollout_reward_mean for m in self.ppo_metrics_history[-50:]
                             if m.rollout_reward_mean != 0]
-            
+
             if len(recent_rewards) > 10:
                 # Check for suspicious reward patterns
                 reward_std = np.std(recent_rewards)
                 reward_mean = np.mean(recent_rewards)
-                
+
                 # High variance with low mean might indicate reward hacking
                 if reward_std > 2 * abs(reward_mean) and reward_mean < 0:
                     self.current_ppo_metrics.reward_hacking_risk = min(1.0, reward_std / abs(reward_mean))
                 else:
                     self.current_ppo_metrics.reward_hacking_risk = 0.0
-    
+
     def _monitor_convergence(self):
         """Monitor training convergence."""
         if len(self.ppo_metrics_history) > 100:
             # Analyze reward trend over last 100 steps
-            recent_rewards = [m.rollout_reward_mean for m in self.ppo_metrics_history[-100:] 
+            recent_rewards = [m.rollout_reward_mean for m in self.ppo_metrics_history[-100:]
                             if m.rollout_reward_mean != 0]
-            
+
             if len(recent_rewards) > 50:
                 # Calculate convergence indicator
                 reward_trend = np.polyfit(range(len(recent_rewards)), recent_rewards, 1)[0]
                 reward_variance = np.var(recent_rewards)
-                
+
                 # Convergence: low trend and low variance
                 convergence_score = max(0, 1 - abs(reward_trend) - reward_variance)
                 # Store in a way that can be accessed by the main callback
                 self.current_ppo_metrics.training_stability = convergence_score
-    
+
     def _check_ppo_alerts(self):
         """Check for PPO-specific training issues."""
         current = self.current_ppo_metrics
-        
+
         # KL divergence alert
         if current.policy_kl_mean > self.kl_threshold:
             self._add_ppo_alert(
                 "high_kl_divergence",
                 f"Policy KL divergence {current.policy_kl_mean:.4f} exceeds threshold {self.kl_threshold}"
             )
-        
+
         # Reward variance alert
         if current.rollout_reward_std > self.reward_threshold:
             self._add_ppo_alert(
                 "high_reward_variance",
                 f"Reward std {current.rollout_reward_std:.4f} exceeds threshold {self.reward_threshold}"
             )
-        
+
         # Gradient norm alert
         if current.gradient_norm > self.gradient_threshold:
             self._add_ppo_alert(
                 "high_gradient_norm",
                 f"Gradient norm {current.gradient_norm:.4f} exceeds threshold {self.gradient_threshold}"
             )
-        
+
         # Clip fraction alert
         if current.policy_clip_frac > self.clip_frac_threshold:
             self._add_ppo_alert(
                 "high_clip_fraction",
                 f"Clip fraction {current.policy_clip_frac:.4f} exceeds threshold {self.clip_frac_threshold}"
             )
-        
+
         # Policy collapse alert
         if current.policy_collapse_risk > 0.7:
             self._add_ppo_alert(
                 "policy_collapse_risk",
                 f"High policy collapse risk: {current.policy_collapse_risk:.3f}"
             )
-        
+
         # Reward hacking alert
         if current.reward_hacking_risk > 0.5:
             self._add_ppo_alert(
                 "reward_hacking_risk",
                 f"Potential reward hacking detected: {current.reward_hacking_risk:.3f}"
             )
-    
+
     def _add_ppo_alert(self, alert_type: str, message: str):
         """Add a PPO-specific alert."""
         alert = {
@@ -325,7 +329,7 @@ class PPOMonitor(TrainerCallback):
         }
         self.ppo_alerts.append(alert)
         print(f"🚨 PPO Alert: {message}")
-    
+
     def _log_ppo_metrics(self):
         """Log PPO-specific metrics."""
         current = self.current_ppo_metrics
@@ -335,33 +339,33 @@ class PPOMonitor(TrainerCallback):
               f"Entropy={current.policy_entropy_mean:.4f}, "
               f"ClipFrac={current.policy_clip_frac:.4f}, "
               f"CollapseRisk={current.policy_collapse_risk:.3f}")
-    
+
     def save_ppo_analysis(self):
         """Save comprehensive PPO analysis."""
         if not self.ppo_metrics_history:
             return
-        
+
         # Save metrics
         df = pd.DataFrame([m.to_dict() for m in self.ppo_metrics_history])
         metrics_path = self.output_dir / f"{self.run_id}_ppo_metrics.csv"
         df.to_csv(metrics_path, index=False)
-        
+
         # Save alerts
         if self.ppo_alerts:
             alerts_path = self.output_dir / f"{self.run_id}_ppo_alerts.json"
             with open(alerts_path, "w") as f:
                 json.dump(self.ppo_alerts, f, indent=2)
-        
+
         # Generate PPO summary report
         self._generate_ppo_report()
-    
+
     def _generate_ppo_report(self):
         """Generate comprehensive PPO training report."""
         if not self.ppo_metrics_history:
             return
-        
+
         df = pd.DataFrame([m.to_dict() for m in self.ppo_metrics_history])
-        
+
         report = {
             "run_id": self.run_id,
             "total_steps": len(self.ppo_metrics_history),
@@ -373,56 +377,56 @@ class PPOMonitor(TrainerCallback):
             "max_reward_hacking_risk": df['reward_hacking_risk'].max() if len(df) > 0 else 0,
             "average_training_stability": df['training_stability'].mean() if len(df) > 0 else 0,
             "total_alerts": len(self.ppo_alerts),
-            "alert_types": list(set(alert['type'] for alert in self.ppo_alerts))
+            "alert_types": list({alert['type'] for alert in self.ppo_alerts})
         }
-        
+
         report_path = self.output_dir / f"{self.run_id}_ppo_report.json"
         with open(report_path, "w") as f:
             json.dump(report, f, indent=2)
-        
+
         print(f"📋 PPO Report: {report}")
 
 
 @dataclass
 class CheckpointMetrics:
     """Container for checkpoint analysis metrics."""
-    
+
     step: int = 0
     epoch: float = 0.0
     timestamp: float = 0.0
-    
+
     # Model metrics
     total_parameters: int = 0
     trainable_parameters: int = 0
     model_size_mb: float = 0.0
-    
+
     # Parameter analysis
     weight_mean: float = 0.0
     weight_std: float = 0.0
     weight_min: float = 0.0
     weight_max: float = 0.0
-    
+
     # Gradient analysis
     gradient_mean: float = 0.0
     gradient_std: float = 0.0
     gradient_norm: float = 0.0
-    
+
     # Health indicators
     parameter_drift: float = 0.0
     gradient_flow_health: float = 1.0
     model_health_score: float = 1.0
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
-            field.name: getattr(self, field.name) 
+            field.name: getattr(self, field.name)
             for field in self.__dataclass_fields__.values()
         }
 
 
 class CheckpointMonitor(TrainerCallback):
     """Monitor for checkpoint analysis and model health."""
-    
+
     def __init__(
         self,
         output_dir: Optional[Union[str, Path]] = None,
@@ -433,93 +437,93 @@ class CheckpointMonitor(TrainerCallback):
         """Initialize checkpoint monitor."""
         self.output_dir = Path(output_dir) if output_dir else Path("./rldk_checkpoint_logs")
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         self.enable_parameter_analysis = enable_parameter_analysis
         self.enable_gradient_analysis = enable_gradient_analysis
         self.run_id = run_id or f"checkpoint_run_{int(time.time())}"
-        
+
         # Metrics storage
         self.checkpoint_metrics_history: List[CheckpointMetrics] = []
         self.previous_weights: Optional[Dict[str, torch.Tensor]] = None
-        
+
         print(f"💾 Checkpoint Monitor initialized - Run ID: {self.run_id}")
-    
+
     def on_save(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
         """Analyze checkpoint when saved."""
         model = kwargs.get('model')
         if model is None:
             return
-        
+
         # Create checkpoint metrics
         checkpoint_metrics = CheckpointMetrics(
             step=state.global_step,
             epoch=state.epoch,
             timestamp=time.time()
         )
-        
+
         # Analyze model parameters
         if self.enable_parameter_analysis:
             self._analyze_parameters(model, checkpoint_metrics)
-        
+
         # Analyze gradients
         if self.enable_gradient_analysis:
             self._analyze_gradients(model, checkpoint_metrics)
-        
+
         # Calculate health indicators
         self._calculate_health_indicators(checkpoint_metrics)
-        
+
         # Store metrics
         self.checkpoint_metrics_history.append(checkpoint_metrics)
-        
+
         # Save checkpoint analysis
         self._save_checkpoint_analysis(checkpoint_metrics, model, state)
-        
+
         print(f"💾 Checkpoint {state.global_step} analyzed - "
               f"Health Score: {checkpoint_metrics.model_health_score:.3f}")
-    
+
     def _analyze_parameters(self, model, metrics: CheckpointMetrics):
         """Analyze model parameters."""
         all_weights = []
         total_params = 0
         trainable_params = 0
-        
+
         for name, param in model.named_parameters():
             if param.requires_grad:
                 trainable_params += param.numel()
                 all_weights.extend(param.data.flatten().cpu().numpy())
             total_params += param.numel()
-        
+
         metrics.total_parameters = total_params
         metrics.trainable_parameters = trainable_params
-        
+
         if all_weights:
             all_weights = np.array(all_weights)
             metrics.weight_mean = float(np.mean(all_weights))
             metrics.weight_std = float(np.std(all_weights))
             metrics.weight_min = float(np.min(all_weights))
             metrics.weight_max = float(np.max(all_weights))
-        
+
         # Estimate model size
         metrics.model_size_mb = total_params * 4 / (1024 * 1024)  # Assuming float32
-    
+
     def _analyze_gradients(self, model, metrics: CheckpointMetrics):
         """Analyze model gradients."""
         all_gradients = []
         total_grad_norm = 0.0
-        
+
         for param in model.parameters():
             if param.grad is not None:
                 grad_norm = param.grad.data.norm(2).item()
                 total_grad_norm += grad_norm ** 2
                 all_gradients.extend(param.grad.data.flatten().cpu().numpy())
-        
+
         metrics.gradient_norm = total_grad_norm ** 0.5
-        
+
         if all_gradients:
             all_gradients = np.array(all_gradients)
             metrics.gradient_mean = float(np.mean(all_gradients))
             metrics.gradient_std = float(np.std(all_gradients))
-    
+
     def _calculate_health_indicators(self, metrics: CheckpointMetrics):
         """Calculate model health indicators."""
         # Parameter drift detection
@@ -527,7 +531,7 @@ class CheckpointMonitor(TrainerCallback):
             # This is a simplified drift calculation
             # In practice, you'd compare with the previous checkpoint's weights
             metrics.parameter_drift = 0.0  # Placeholder
-        
+
         # Gradient flow health
         if metrics.gradient_norm > 0:
             # Healthy gradient norms are typically between 0.1 and 10
@@ -535,13 +539,13 @@ class CheckpointMonitor(TrainerCallback):
                 metrics.gradient_flow_health = 1.0
             else:
                 metrics.gradient_flow_health = max(0, 1 - abs(np.log10(metrics.gradient_norm)))
-        
+
         # Overall model health score
         metrics.model_health_score = (
             metrics.gradient_flow_health * 0.6 +
             (1 - min(1, metrics.parameter_drift)) * 0.4
         )
-    
+
     def _save_checkpoint_analysis(self, metrics: CheckpointMetrics, model, state: TrainerState):
         """Save detailed checkpoint analysis."""
         analysis = {
@@ -555,20 +559,20 @@ class CheckpointMonitor(TrainerCallback):
             "step": state.global_step,
             "epoch": state.epoch
         }
-        
+
         analysis_path = self.output_dir / f"{self.run_id}_checkpoint_{state.global_step}.json"
         with open(analysis_path, "w") as f:
             json.dump(analysis, f, indent=2)
-    
+
     def save_checkpoint_summary(self):
         """Save checkpoint monitoring summary."""
         if not self.checkpoint_metrics_history:
             return
-        
+
         df = pd.DataFrame([m.to_dict() for m in self.checkpoint_metrics_history])
         summary_path = self.output_dir / f"{self.run_id}_checkpoint_summary.csv"
         df.to_csv(summary_path, index=False)
-        
+
         # Generate summary report
         report = {
             "run_id": self.run_id,
@@ -579,17 +583,17 @@ class CheckpointMonitor(TrainerCallback):
             "average_gradient_norm": df['gradient_norm'].mean(),
             "model_size_mb": df['model_size_mb'].iloc[-1] if len(df) > 0 else 0,
         }
-        
+
         report_path = self.output_dir / f"{self.run_id}_checkpoint_report.json"
         with open(report_path, "w") as f:
             json.dump(report, f, indent=2)
-        
+
         print(f"📋 Checkpoint Report: {report}")
 
 
 class ComprehensivePPOMonitor(TrainerCallback):
     """Comprehensive PPO monitor with advanced forensics capabilities."""
-    
+
     def __init__(
         self,
         output_dir: Optional[Union[str, Path]] = None,
@@ -602,7 +606,7 @@ class ComprehensivePPOMonitor(TrainerCallback):
         run_id: Optional[str] = None,
     ):
         """Initialize comprehensive PPO monitor.
-        
+
         Args:
             output_dir: Directory to save analysis results
             kl_target: Target KL divergence value
@@ -617,18 +621,18 @@ class ComprehensivePPOMonitor(TrainerCallback):
             raise ImportError(
                 "TRL is required for ComprehensivePPOMonitor. Install with: pip install trl"
             )
-        
+
         if not COMPREHENSIVE_FORENSICS_AVAILABLE:
             raise ImportError(
                 "Comprehensive PPO forensics is required. Ensure all forensics modules are available."
             )
-        
+
         self.output_dir = Path(output_dir) if output_dir else Path("./rldk_comprehensive_ppo_logs")
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         self.log_interval = log_interval
         self.run_id = run_id or f"comprehensive_ppo_run_{int(time.time())}"
-        
+
         # Initialize comprehensive forensics
         self.forensics = ComprehensivePPOForensics(
             kl_target=kl_target,
@@ -637,23 +641,23 @@ class ComprehensivePPOMonitor(TrainerCallback):
             enable_gradient_norms_analysis=enable_gradient_norms_analysis,
             enable_advantage_statistics=enable_advantage_statistics,
         )
-        
+
         # Metrics storage
         self.comprehensive_metrics_history: List[Dict[str, Any]] = []
-        
+
         print(f"🔍 Comprehensive PPO Monitor initialized - Run ID: {self.run_id}")
         print(f"📊 KL Target: {kl_target}±{kl_target_tolerance}")
         print(f"📁 Output directory: {self.output_dir}")
-    
+
     def on_step_end(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
         """Monitor PPO training at step end."""
         # Extract metrics from trainer state if available
         self._extract_metrics_from_state(state)
-        
+
         # Log comprehensive metrics at intervals
         if state.global_step % self.log_interval == 0:
             self._log_comprehensive_metrics()
-    
+
     def on_log(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, logs: Dict[str, float], **kwargs):
         """Extract and analyze PPO metrics from training logs."""
         # Extract basic PPO metrics
@@ -663,18 +667,18 @@ class ComprehensivePPOMonitor(TrainerCallback):
         entropy = logs.get('ppo/policy/entropy', 0.0)
         reward_mean = logs.get('ppo/rewards/mean', 0.0)
         reward_std = logs.get('ppo/rewards/std', 0.0)
-        
+
         # Extract gradient norms
         policy_grad_norm = logs.get('ppo/policy/grad_norm', None)
         value_grad_norm = logs.get('ppo/val/grad_norm', None)
         total_grad_norm = logs.get('grad_norm', None)
-        
+
         # Extract advantage statistics
         advantage_mean = logs.get('ppo/advantages/mean', None)
         advantage_std = logs.get('ppo/advantages/std', None)
         advantage_min = logs.get('ppo/advantages/min', None)
         advantage_max = logs.get('ppo/advantages/max', None)
-        
+
         # Update comprehensive forensics
         comprehensive_metrics = self.forensics.update(
             step=step,
@@ -691,76 +695,76 @@ class ComprehensivePPOMonitor(TrainerCallback):
             advantage_min=advantage_min,
             advantage_max=advantage_max,
         )
-        
+
         # Store metrics
         self.comprehensive_metrics_history.append(comprehensive_metrics.to_dict())
-        
+
         # Check for anomalies
         anomalies = self.forensics.get_anomalies()
         if anomalies:
             self._handle_anomalies(anomalies, step)
-    
+
     def on_save(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
         """Save comprehensive analysis when checkpoint is saved."""
         # Save comprehensive analysis
         analysis_path = self.output_dir / f"{self.run_id}_comprehensive_analysis_step_{state.global_step}.json"
         self.forensics.save_analysis(str(analysis_path))
-        
+
         # Save metrics history
         self._save_metrics_history()
-        
+
         print(f"💾 Comprehensive PPO analysis saved at step {state.global_step}")
-    
+
     def on_train_end(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
         """Generate final comprehensive analysis."""
         print("🏁 Comprehensive PPO Monitor: Training completed")
-        
+
         # Generate final analysis
         final_analysis = self.forensics.get_comprehensive_analysis()
         health_summary = self.forensics.get_health_summary()
-        
+
         # Save final analysis
         final_analysis_path = self.output_dir / f"{self.run_id}_final_comprehensive_analysis.json"
         with open(final_analysis_path, "w") as f:
             json.dump(final_analysis, f, indent=2)
-        
+
         # Save health summary
         health_summary_path = self.output_dir / f"{self.run_id}_health_summary.json"
         with open(health_summary_path, "w") as f:
             json.dump(health_summary, f, indent=2)
-        
+
         # Save metrics history
         self._save_metrics_history()
-        
+
         # Print final summary
         print(f"📋 Final Health Summary: {health_summary}")
         print(f"📁 Comprehensive analysis saved to: {self.output_dir}")
-    
+
     def _extract_metrics_from_state(self, state: TrainerState):
         """Extract additional metrics from trainer state."""
         # Extract basic training state information
         if hasattr(state, 'global_step'):
             self.forensics.current_metrics.step = state.global_step
-        
+
         if hasattr(state, 'epoch'):
             self.forensics.current_metrics.epoch = state.epoch
-        
+
         # Extract learning rate from log history if available
         if hasattr(state, 'log_history') and state.log_history:
             latest_log = state.log_history[-1]
-            
+
             # Extract learning rate
             if 'learning_rate' in latest_log:
                 self.forensics.current_metrics.learning_rate = latest_log['learning_rate']
-            
+
             # Extract loss information
             if 'train_loss' in latest_log:
                 self.forensics.current_metrics.loss = latest_log['train_loss']
-            
+
             # Extract gradient norm
             if 'grad_norm' in latest_log:
                 self.forensics.current_metrics.grad_norm = latest_log['grad_norm']
-            
+
             # Extract PPO-specific metrics from log history
             if 'ppo/rewards/mean' in latest_log:
                 self.forensics.current_metrics.reward_mean = latest_log['ppo/rewards/mean']
@@ -791,16 +795,16 @@ class ComprehensivePPOMonitor(TrainerCallback):
                 self.forensics.current_metrics.advantage_std = latest_log['ppo/advantages/std']
             if 'ppo/policy/kl_coef' in latest_log:
                 self.forensics.current_metrics.kl_coef = latest_log['ppo/policy/kl_coef']
-            
+
             # Extract rollout information if available
             if 'ppo/rollout/length_mean' in latest_log:
                 self.forensics.current_metrics.rollout_length_mean = latest_log['ppo/rollout/length_mean']
             if 'ppo/rollout/length_std' in latest_log:
                 self.forensics.current_metrics.rollout_length_std = latest_log['ppo/rollout/length_std']
-        
+
         # Calculate derived metrics
         self._calculate_derived_metrics()
-    
+
     def _calculate_derived_metrics(self):
         """Calculate derived metrics from extracted state information."""
         # Calculate KL divergence if both mean and std are available
@@ -810,22 +814,22 @@ class ComprehensivePPOMonitor(TrainerCallback):
                 if not hasattr(self, 'kl_divergence_history'):
                     self.kl_divergence_history = []
                 self.kl_divergence_history.append(self.forensics.current_metrics.kl)
-        
+
         # Calculate policy entropy trend if available
         if hasattr(self.forensics.current_metrics, 'entropy') and self.forensics.current_metrics.entropy is not None:
             if not hasattr(self, 'policy_entropy_history'):
                 self.policy_entropy_history = []
             self.policy_entropy_history.append(self.forensics.current_metrics.entropy)
-        
+
         # Calculate reward trend if available
         if hasattr(self.forensics.current_metrics, 'reward_mean') and self.forensics.current_metrics.reward_mean is not None:
             if not hasattr(self, 'reward_history'):
                 self.reward_history = []
             self.reward_history.append(self.forensics.current_metrics.reward_mean)
-        
+
         # Calculate advantage statistics if available
         if hasattr(self.forensics.current_metrics, 'advantage_mean') and hasattr(self.forensics.current_metrics, 'advantage_std'):
-            if (self.forensics.current_metrics.advantage_mean is not None and 
+            if (self.forensics.current_metrics.advantage_mean is not None and
                 self.forensics.current_metrics.advantage_std is not None):
                 if not hasattr(self, 'advantage_history'):
                     self.advantage_history = []
@@ -833,77 +837,77 @@ class ComprehensivePPOMonitor(TrainerCallback):
                     'mean': self.forensics.current_metrics.advantage_mean,
                     'std': self.forensics.current_metrics.advantage_std
                 })
-        
+
         # Calculate gradient norm ratio if both policy and value gradients are available
-        if (hasattr(self.forensics.current_metrics, 'policy_grad_norm') and 
+        if (hasattr(self.forensics.current_metrics, 'policy_grad_norm') and
             hasattr(self.forensics.current_metrics, 'value_grad_norm')):
-            if (self.forensics.current_metrics.policy_grad_norm is not None and 
+            if (self.forensics.current_metrics.policy_grad_norm is not None and
                 self.forensics.current_metrics.value_grad_norm is not None):
                 if self.forensics.current_metrics.value_grad_norm > 0:
                     self.forensics.current_metrics.policy_value_grad_ratio = (
                         self.forensics.current_metrics.policy_grad_norm / self.forensics.current_metrics.value_grad_norm
                     )
-    
+
     def _log_comprehensive_metrics(self):
         """Log comprehensive metrics at intervals."""
         current_metrics = self.forensics.current_metrics
-        
+
         print(f"🔍 Comprehensive PPO Step {current_metrics.step}:")
         print(f"   Overall Health: {current_metrics.overall_health_score:.3f}")
         print(f"   Training Stability: {current_metrics.training_stability_score:.3f}")
         print(f"   Convergence Quality: {current_metrics.convergence_quality_score:.3f}")
         print(f"   KL: {current_metrics.kl:.4f}, KL Coef: {current_metrics.kl_coef:.4f}")
         print(f"   Reward: {current_metrics.reward_mean:.4f}±{current_metrics.reward_std:.4f}")
-        
+
         # Log tracker-specific metrics
         if current_metrics.kl_schedule_metrics:
             kl_metrics = current_metrics.kl_schedule_metrics
             print(f"   KL Health: {kl_metrics.kl_health_score:.3f}, "
                   f"Schedule Health: {kl_metrics.schedule_health_score:.3f}")
-        
+
         if current_metrics.gradient_norms_metrics:
             grad_metrics = current_metrics.gradient_norms_metrics
             print(f"   Gradient Health: {grad_metrics.gradient_health_score:.3f}, "
                   f"Policy/Value Ratio: {grad_metrics.policy_value_ratio:.3f}")
-        
+
         if current_metrics.advantage_statistics_metrics:
             adv_metrics = current_metrics.advantage_statistics_metrics
             print(f"   Advantage Health: {adv_metrics.advantage_health_score:.3f}, "
                   f"Bias: {adv_metrics.advantage_bias:.4f}")
-    
+
     def _handle_anomalies(self, anomalies: List[Dict[str, Any]], step: int):
         """Handle detected anomalies."""
         for anomaly in anomalies:
             severity = anomaly.get("severity", "warning")
             message = anomaly.get("message", "Unknown anomaly")
             tracker = anomaly.get("tracker", "unknown")
-            
+
             if severity == "critical":
                 print(f"🚨 CRITICAL ANOMALY [{tracker}]: {message}")
             elif severity == "warning":
                 print(f"⚠️  WARNING [{tracker}]: {message}")
-    
+
     def _save_metrics_history(self):
         """Save comprehensive metrics history."""
         if not self.comprehensive_metrics_history:
             return
-        
+
         # Save as CSV
         df = pd.DataFrame(self.comprehensive_metrics_history)
         csv_path = self.output_dir / f"{self.run_id}_comprehensive_metrics.csv"
         df.to_csv(csv_path, index=False)
-        
+
         # Save as JSON
         json_path = self.output_dir / f"{self.run_id}_comprehensive_metrics.json"
         with open(json_path, "w") as f:
             json.dump(self.comprehensive_metrics_history, f, indent=2)
-        
+
         print(f"💾 Comprehensive metrics saved: {csv_path}")
-    
+
     def get_current_health_summary(self) -> Dict[str, Any]:
         """Get current health summary."""
         return self.forensics.get_health_summary()
-    
+
     def get_anomalies(self) -> List[Dict[str, Any]]:
         """Get current anomalies."""
         return self.forensics.get_anomalies()

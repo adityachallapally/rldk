@@ -5,18 +5,19 @@ This module provides a high-level interface to PyTorch's profiler
 with additional functionality for training-specific profiling.
 """
 
-import json
 import csv
+import json
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Callable
+from typing import Any, Dict, Optional
+
 import torch
 import torch.profiler
 
 
 class TorchProfiler:
     """Wrapper around PyTorch profiler with training-specific features."""
-    
+
     def __init__(
         self,
         output_dir: str,
@@ -29,7 +30,7 @@ class TorchProfiler:
     ):
         """
         Initialize the PyTorch profiler.
-        
+
         Args:
             output_dir: Directory to save profiler outputs
             warmup_steps: Number of warmup steps before profiling
@@ -46,20 +47,20 @@ class TorchProfiler:
         self.record_shapes = record_shapes
         self.profile_memory = profile_memory
         self.with_stack = with_stack
-        
+
         self.profiler: Optional[torch.profiler.profile] = None
         self.step_count = 0
         self.is_active = False
-        
+
         # Create output directory
         self.output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     def start(self):
         """Start profiling."""
         activities = [torch.profiler.ProfilerActivity.CPU]
         if torch.cuda.is_available():
             activities.append(torch.profiler.ProfilerActivity.CUDA)
-        
+
         try:
             # Check if profiler is already running to avoid Kineto warnings
             if hasattr(torch.profiler, '_current_profiler') and torch.profiler._current_profiler is not None:
@@ -69,7 +70,7 @@ class TorchProfiler:
                 except Exception as e:
                     print(f"Warning: Error stopping existing profiler: {e}")
                     pass
-            
+
             self.profiler = torch.profiler.profile(
                 activities=activities,
                 schedule=torch.profiler.schedule(
@@ -83,7 +84,7 @@ class TorchProfiler:
                 profile_memory=self.profile_memory,
                 with_stack=self.with_stack
             )
-            
+
             # Start the profiler context
             self.profiler.__enter__()
             self.is_active = True
@@ -93,7 +94,7 @@ class TorchProfiler:
             print(f"Warning: Failed to start profiler: {e}")
             self.profiler = None
             self.is_active = False
-    
+
     def step(self):
         """Step the profiler (call at each training step)."""
         if self.profiler is not None:
@@ -105,7 +106,7 @@ class TorchProfiler:
                 # Disable profiler on error
                 self.profiler = None
                 self.is_active = False
-    
+
     def stop(self):
         """Stop profiling and save results."""
         if self.profiler is not None:
@@ -113,7 +114,7 @@ class TorchProfiler:
                 # Only stop if profiler is actually active
                 if self.is_active:
                     self.profiler.__exit__(None, None, None)
-                    
+
                     # If trace_ready callback wasn't triggered, manually save memory stats
                     if not (self.output_dir / "memory_stats.json").exists():
                         self._save_basic_memory_stats()
@@ -122,26 +123,26 @@ class TorchProfiler:
             finally:
                 self.profiler = None
                 self.is_active = False
-    
+
     def _on_trace_ready(self, prof):
         """Callback when trace is ready."""
         try:
             # Save Chrome trace
             trace_path = self.output_dir / "trace.json"
             prof.export_chrome_trace(str(trace_path))
-            
+
             # Save operation statistics
             self._save_operation_stats(prof)
-            
+
             # Save memory usage
             self._save_memory_stats(prof)
         except Exception as e:
             print(f"Warning: Error saving profiler trace data: {e}")
-    
+
     def _save_operation_stats(self, prof):
         """Save operation statistics to CSV."""
         op_stats_path = self.output_dir / "op_stats.csv"
-        
+
         try:
             with open(op_stats_path, 'w', newline='') as csvfile:
                 writer = csv.writer(csvfile)
@@ -151,7 +152,7 @@ class TorchProfiler:
                     'Self CPU Memory (bytes)', 'CPU Memory (bytes)',
                     'Self CUDA Memory (bytes)', 'CUDA Memory (bytes)'
                 ])
-                
+
                 for event in prof.events():
                     try:
                         # Use new device attributes if available, otherwise fall back to cuda attributes
@@ -159,7 +160,7 @@ class TorchProfiler:
                         device_time = getattr(event, 'device_time_total', 0)
                         self_device_memory = getattr(event, 'self_device_memory_usage', 0)
                         device_memory = getattr(event, 'device_memory_usage', 0)
-                        
+
                         writer.writerow([
                             event.name,
                             getattr(event, 'self_cpu_time_total', 0),
@@ -177,16 +178,16 @@ class TorchProfiler:
                         continue
         except Exception as e:
             print(f"Warning: Error saving operation statistics: {e}")
-    
+
     def _save_memory_stats(self, prof):
         """Save memory usage statistics."""
         memory_stats_path = self.output_dir / "memory_stats.json"
-        
+
         try:
             # Get memory usage from profiler events, using current PyTorch API
             peak_cpu_memory = 0
             peak_cuda_memory = 0
-            
+
             for event in prof.events():
                 try:
                     # Use device_memory_usage instead of cuda_memory_usage for current PyTorch versions
@@ -194,13 +195,13 @@ class TorchProfiler:
                         peak_cuda_memory = max(peak_cuda_memory, event.device_memory_usage)
                     elif hasattr(event, 'cuda_memory_usage'):
                         peak_cuda_memory = max(peak_cuda_memory, event.cuda_memory_usage)
-                    
+
                     if hasattr(event, 'cpu_memory_usage'):
                         peak_cpu_memory = max(peak_cpu_memory, event.cpu_memory_usage)
                 except Exception as e:
                     print(f"Warning: Error processing memory event: {e}")
                     continue
-            
+
             memory_data = {
                 "step_count": self.step_count,
                 "peak_memory_usage": {
@@ -209,16 +210,16 @@ class TorchProfiler:
                 },
                 "timestamp": time.time()
             }
-            
+
             with open(memory_stats_path, 'w') as f:
                 json.dump(memory_data, f, indent=2)
         except Exception as e:
             print(f"Warning: Error saving memory statistics: {e}")
-    
+
     def _save_basic_memory_stats(self):
         """Save basic memory statistics when trace_ready callback wasn't triggered."""
         memory_stats_path = self.output_dir / "memory_stats.json"
-        
+
         try:
             memory_data = {
                 "step_count": self.step_count,
@@ -229,12 +230,12 @@ class TorchProfiler:
                 "timestamp": time.time(),
                 "note": "Basic memory stats - trace_ready callback not triggered"
             }
-            
+
             with open(memory_stats_path, 'w') as f:
                 json.dump(memory_data, f, indent=2)
         except Exception as e:
             print(f"Warning: Error saving basic memory statistics: {e}")
-    
+
     def get_summary(self) -> Dict[str, Any]:
         """Get profiler summary."""
         return {

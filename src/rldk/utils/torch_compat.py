@@ -1,29 +1,30 @@
 """PyTorch compatibility utilities for handling version differences."""
 
-import torch
-from typing import Any, Dict, Optional, Union
 from pathlib import Path
+from typing import Any, Dict, Optional, Union
+
+import torch
 
 
 def safe_torch_load(
-    f: Union[str, Path], 
+    f: Union[str, Path],
     map_location: Optional[Union[str, torch.device]] = None,
     **kwargs
 ) -> Any:
     """
     Load a PyTorch checkpoint with version compatibility handling.
-    
+
     This function handles the weights_only parameter introduced in PyTorch 2.6+
     for security reasons. For older versions, it falls back to the original behavior.
-    
+
     Args:
         f: Path to the checkpoint file
         map_location: Device to map tensors to
         **kwargs: Additional arguments passed to torch.load
-        
+
     Returns:
         Loaded checkpoint data
-        
+
     Raises:
         ValueError: If checkpoint loading fails
     """
@@ -31,9 +32,9 @@ def safe_torch_load(
         if _supports_weights_only():
             if 'weights_only' not in kwargs:
                 kwargs['weights_only'] = False
-        
+
         return torch.load(f, map_location=map_location, **kwargs)
-        
+
     except Exception as e:
         if 'weights_only' in kwargs:
             try:
@@ -42,20 +43,20 @@ def safe_torch_load(
                 return torch.load(f, map_location=map_location, **kwargs_fallback)
             except Exception:
                 pass  # Fall through to original error
-        
+
         raise ValueError(f"Failed to load checkpoint {f}: {e}")
 
 
 def get_torch_version_info() -> Dict[str, Any]:
     """
     Get PyTorch version information for compatibility checks.
-    
+
     Returns:
         Dictionary with version information
     """
     version_str = torch.__version__
     major, minor, patch = _parse_version_string(version_str)
-    
+
     return {
         'version_string': version_str,
         'major': major,
@@ -68,15 +69,15 @@ def get_torch_version_info() -> Dict[str, Any]:
 def _parse_version_string(version_str: str) -> tuple[int, int, int]:
     """
     Parse PyTorch version string robustly, handling non-standard formats.
-    
+
     Args:
         version_str: Version string like '2.6.0+cu118' or '2.6.0.dev20240101'
-        
+
     Returns:
         Tuple of (major, minor, patch) as integers
     """
     import re
-    
+
     try:
         match = re.match(r'^(\d+)\.(\d+)(?:\.(\d+))?', version_str)
         if match:

@@ -7,71 +7,91 @@ def _lazy_import_ingest():
     return ingest_runs, ingest_runs_to_events
 
 def _lazy_import_diff():
-    from .diff import first_divergence, DivergenceReport
+    from .diff import DivergenceReport, first_divergence
     return first_divergence, DivergenceReport
 
 def _lazy_import_determinism():
-    from .determinism import check, DeterminismReport
+    from .determinism import DeterminismReport, check
     return check, DeterminismReport
 
 def _lazy_import_bisect():
-    from .bisect import bisect_commits, BisectResult
+    from .bisect import BisectResult, bisect_commits
     return bisect_commits, BisectResult
 
 def _lazy_import_reward():
-    from .reward import health, RewardHealthReport, compare_models
+    from .reward import RewardHealthReport, compare_models, health
     return health, RewardHealthReport, compare_models
 
 def _lazy_import_evals():
-    from .evals import run, EvalResult
+    from .evals import EvalResult, run
     return run, EvalResult
 
 def _lazy_import_replay():
-    from .replay import replay, ReplayReport
+    from .replay import ReplayReport, replay
     return replay, ReplayReport
 
 def _lazy_import_forensics():
     from .forensics import (
-        scan_logs, diff_checkpoints, audit_environment,
-        ComprehensivePPOForensics, ComprehensivePPOMetrics
+        ComprehensivePPOForensics,
+        ComprehensivePPOMetrics,
+        audit_environment,
+        diff_checkpoints,
+        scan_logs,
     )
     return scan_logs, diff_checkpoints, audit_environment, ComprehensivePPOForensics, ComprehensivePPOMetrics
 
 def _lazy_import_tracking():
     from .tracking import (
-        ExperimentTracker, TrackingConfig,
-        DatasetTracker, ModelTracker, EnvironmentTracker,
-        SeedTracker, GitTracker
+        DatasetTracker,
+        EnvironmentTracker,
+        ExperimentTracker,
+        GitTracker,
+        ModelTracker,
+        SeedTracker,
+        TrackingConfig,
     )
     return ExperimentTracker, TrackingConfig, DatasetTracker, ModelTracker, EnvironmentTracker, SeedTracker, GitTracker
 
 def _lazy_import_cards():
     from .cards import (
-        generate_determinism_card, generate_drift_card, generate_reward_card
+        generate_determinism_card,
+        generate_drift_card,
+        generate_reward_card,
     )
     return generate_determinism_card, generate_drift_card, generate_reward_card
 
 def _lazy_import_adapters():
     from .adapters import (
-        BaseAdapter, TRLAdapter, OpenRLHFAdapter, WandBAdapter, CustomJSONLAdapter
+        BaseAdapter,
+        CustomJSONLAdapter,
+        OpenRLHFAdapter,
+        TRLAdapter,
+        WandBAdapter,
     )
     return BaseAdapter, TRLAdapter, OpenRLHFAdapter, WandBAdapter, CustomJSONLAdapter
 
 def _lazy_import_config():
-    from .config import settings, RLDKSettings, ConfigSchema
+    from .config import ConfigSchema, RLDKSettings, settings
     return settings, RLDKSettings, ConfigSchema
 
 def _lazy_import_io():
     from .io import (
-        write_json, write_png, mkdir_reports, validate,
-        read_jsonl, read_reward_head
+        mkdir_reports,
+        read_jsonl,
+        read_reward_head,
+        validate,
+        write_json,
+        write_png,
     )
     return write_json, write_png, mkdir_reports, validate, read_jsonl, read_reward_head
 
 def _lazy_import_seed():
     from .utils.seed import (
-        set_global_seed, get_current_seed, restore_seed_state,
-        set_reproducible_environment, validate_seed_consistency
+        get_current_seed,
+        restore_seed_state,
+        set_global_seed,
+        set_reproducible_environment,
+        validate_seed_consistency,
     )
     return set_global_seed, get_current_seed, restore_seed_state, set_reproducible_environment, validate_seed_consistency
 
@@ -181,61 +201,61 @@ def validate_seed_consistency(*args, **kwargs):
 
 class _LazyClassMeta(type):
     """Metaclass for lazy-loaded classes that properly handles isinstance checks."""
-    
+
     def __new__(mcs, name, bases, namespace, import_func=None, class_index=None):
         namespace['_import_func'] = import_func
         namespace['_class_index'] = class_index
         namespace['_class'] = None
         return super().__new__(mcs, name, bases, namespace)
-    
+
     def _ensure_class(cls):
         if cls._class is None:
             imports = cls._import_func()
             cls._class = imports[cls._class_index]
         return cls._class
-    
+
     def __call__(cls, *args, **kwargs):
         real_cls = cls._ensure_class()
         return real_cls(*args, **kwargs)
-    
+
     def __getattr__(cls, name):
         if name in ('__class__', '__module__', '__name__', '__qualname__', '__doc__'):
             real_cls = cls._ensure_class()
             return getattr(real_cls, name)
         real_cls = cls._ensure_class()
         return getattr(real_cls, name)
-    
+
     def __instancecheck__(cls, instance):
         real_cls = cls._ensure_class()
         return isinstance(instance, real_cls)
-    
+
     def __subclasscheck__(cls, subclass):
         real_cls = cls._ensure_class()
         return issubclass(subclass, real_cls)
-    
+
     def __repr__(cls):
         real_cls = cls._ensure_class()
         return repr(real_cls)
-    
+
     def __str__(cls):
         real_cls = cls._ensure_class()
         return str(real_cls)
-    
+
     def __eq__(cls, other):
         real_cls = cls._ensure_class()
         return real_cls == other
-    
+
     def __hash__(cls):
         real_cls = cls._ensure_class()
         return hash(real_cls)
-    
+
     def __bool__(cls):
         return True
-    
+
     def __dir__(cls):
         real_cls = cls._ensure_class()
         return dir(real_cls)
-    
+
 
 def _create_lazy_class(name, import_func, class_index):
     """Create a lazy-loaded class using the metaclass."""
@@ -263,13 +283,14 @@ WandBAdapter = _create_lazy_class('WandBAdapter', _lazy_import_adapters, 3)
 CustomJSONLAdapter = _create_lazy_class('CustomJSONLAdapter', _lazy_import_adapters, 4)
 
 from .config.settings import settings
+
 RLDKSettings = _create_lazy_class('RLDKSettings', _lazy_import_config, 1)
 ConfigSchema = _create_lazy_class('ConfigSchema', _lazy_import_config, 2)
 
 __all__ = [
     # Core functionality
     "ingest_runs",
-    "ingest_runs_to_events", 
+    "ingest_runs_to_events",
     "first_divergence",
     "DivergenceReport",
     "check",
@@ -283,40 +304,40 @@ __all__ = [
     "EvalResult",
     "replay",
     "ReplayReport",
-    
+
     # Forensics functionality
     "scan_logs",
-    "diff_checkpoints", 
+    "diff_checkpoints",
     "audit_environment",
     "ComprehensivePPOForensics",
     "ComprehensivePPOMetrics",
-    
+
     # Tracking functionality
     "ExperimentTracker",
     "TrackingConfig",
     "DatasetTracker",
-    "ModelTracker", 
+    "ModelTracker",
     "EnvironmentTracker",
     "SeedTracker",
     "GitTracker",
-    
+
     # Card generation
     "generate_determinism_card",
-    "generate_drift_card", 
+    "generate_drift_card",
     "generate_reward_card",
-    
+
     # Adapters
     "BaseAdapter",
     "TRLAdapter",
     "OpenRLHFAdapter",
     "WandBAdapter",
     "CustomJSONLAdapter",
-    
+
     # Configuration
     "settings",
     "RLDKSettings",
     "ConfigSchema",
-    
+
     # Utility functions
     "write_json",
     "write_png",
@@ -324,7 +345,7 @@ __all__ = [
     "validate",
     "read_jsonl",
     "read_reward_head",
-    
+
     # Seed management
     "set_global_seed",
     "get_current_seed",

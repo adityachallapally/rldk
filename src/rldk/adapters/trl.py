@@ -3,11 +3,12 @@
 import json
 import re
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
 import pandas as pd
 
+from ..utils.error_handling import AdapterError
 from .base import BaseAdapter
-from ..utils.error_handling import AdapterError, ValidationError
 
 
 class TRLAdapter(BaseAdapter):
@@ -24,7 +25,7 @@ class TRLAdapter(BaseAdapter):
                 return self._is_trl_file(self.source)
             elif self.source.is_dir():
                 # Check for common TRL log files including new RLDK JSONL events
-                trl_files = (list(self.source.glob("*.log")) + 
+                trl_files = (list(self.source.glob("*.log")) +
                             list(self.source.glob("trainer_log.jsonl")) +
                             list(self.source.glob("*_events.jsonl")) +
                             list(self.source.glob("*.jsonl")))  # Be more permissive
@@ -39,9 +40,9 @@ class TRLAdapter(BaseAdapter):
         """Check if a file contains TRL logs."""
         try:
             self._handle_file_error(file_path, "read")
-            
+
             if file_path.suffix == ".jsonl":
-                with open(file_path, "r") as f:
+                with open(file_path) as f:
                     first_line = f.readline().strip()
                     if first_line:
                         data = json.loads(first_line)
@@ -69,10 +70,10 @@ class TRLAdapter(BaseAdapter):
                                 or "trainer" in str(data).lower()
                             )
             elif file_path.suffix == ".log":
-                with open(file_path, "r") as f:
+                with open(file_path) as f:
                     content = f.read()
                     return "trl" in content.lower() or "trainer" in content.lower()
-        except (OSError, IOError, UnicodeDecodeError, TypeError) as e:
+        except (OSError, UnicodeDecodeError, TypeError) as e:
             # Log the specific error for debugging but don't fail the check
             self.logger.warning(f"Error checking if file {file_path} is TRL format: {e}")
             return False
@@ -115,7 +116,7 @@ class TRLAdapter(BaseAdapter):
                         suggestion="Ensure the directory contains .log or .jsonl files",
                         error_code="NO_LOG_FILES_FOUND"
                     )
-                
+
                 for log_file in log_files:
                     try:
                         file_metrics = self._parse_file(log_file)
@@ -181,7 +182,7 @@ class TRLAdapter(BaseAdapter):
 
         try:
             if file_path.suffix == ".jsonl":
-                with open(file_path, "r") as f:
+                with open(file_path) as f:
                     for line_num, line in enumerate(f, 1):  # Start line numbering from 1
                         line = line.strip()
                         if not line:
@@ -196,13 +197,13 @@ class TRLAdapter(BaseAdapter):
                             continue
 
             elif file_path.suffix == ".log":
-                with open(file_path, "r") as f:
+                with open(file_path) as f:
                     for line_num, line in enumerate(f, 1):  # Start line numbering from 1
                         metric = self._parse_log_line(line, line_num)
                         if metric:
                             metrics.append(metric)
 
-        except (OSError, IOError, UnicodeDecodeError) as e:
+        except (OSError, UnicodeDecodeError) as e:
             print(f"Warning: Error parsing {file_path}: {e}")
             # Re-raise the exception with context
             raise RuntimeError(f"Failed to parse TRL file {file_path}: {e}") from e
@@ -220,7 +221,7 @@ class TRLAdapter(BaseAdapter):
             model_info = data.get("model_info", {})
             rng = data.get("rng", {})
             data_slice = data.get("data_slice", {})
-            
+
             metric = {
                 "step": data.get("step", line_num),
                 "phase": model_info.get("phase", "train"),
@@ -310,7 +311,7 @@ class TRLAdapter(BaseAdapter):
     def _fallback_parse(self) -> List[Dict[str, Any]]:
         """Fallback parsing with more lenient requirements."""
         metrics = []
-        
+
         try:
             if self.source.is_file():
                 metrics = self._fallback_parse_file(self.source)
@@ -326,23 +327,23 @@ class TRLAdapter(BaseAdapter):
                         continue
         except Exception as e:
             self.logger.warning(f"Fallback parsing failed: {e}")
-        
+
         return metrics
 
     def _fallback_parse_file(self, file_path: Path) -> List[Dict[str, Any]]:
         """Fallback parsing for a single file with lenient requirements."""
         metrics = []
-        
+
         if file_path.suffix != ".jsonl":
             return metrics
-        
+
         try:
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 for line_num, line in enumerate(f, 1):  # Start line numbering from 1
                     line = line.strip()
                     if not line:
                         continue
-                    
+
                     try:
                         data = json.loads(line)
                         if isinstance(data, dict):
@@ -355,7 +356,7 @@ class TRLAdapter(BaseAdapter):
                         continue
         except Exception as e:
             self.logger.warning(f"Error in fallback parsing {file_path}: {e}")
-        
+
         return metrics
 
     def _extract_metric_lenient(self, data: Dict[str, Any], line_num: int) -> Dict[str, Any]:
@@ -363,26 +364,26 @@ class TRLAdapter(BaseAdapter):
         # Check if we have at least a step and some meaningful data
         if "step" not in data:
             return None
-        
+
         # Try to extract any available metrics
         metric = {
             "step": data.get("step", line_num),
             "phase": data.get("phase", "train"),
         }
-        
+
         # Add any available metrics
         metric_fields = [
-            "reward_mean", "reward_std", "kl_mean", "entropy_mean", 
-            "clip_frac", "grad_norm", "lr", "loss", "tokens_in", 
+            "reward_mean", "reward_std", "kl_mean", "entropy_mean",
+            "clip_frac", "grad_norm", "lr", "loss", "tokens_in",
             "tokens_out", "wall_time", "seed", "run_id", "git_sha"
         ]
-        
+
         for field in metric_fields:
             if field in data:
                 metric[field] = data[field]
-        
+
         # Only return if we have at least step and one other metric
         if len(metric) > 2:
             return metric
-        
+
         return None

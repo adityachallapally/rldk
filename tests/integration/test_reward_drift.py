@@ -1,12 +1,13 @@
 """Test reward drift functionality."""
 
 import tempfile
-import torch
-import torch.nn as nn
 from pathlib import Path
 
+import torch
+import torch.nn as nn
+
+from rldk.io.schemas import RewardDriftReportV1, validate
 from rldk.reward.drift import compare_models
-from rldk.io.schemas import validate, RewardDriftReportV1
 
 
 def test_reward_drift_identical_models():

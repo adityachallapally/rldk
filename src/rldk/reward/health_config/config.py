@@ -1,8 +1,10 @@
 """Configuration loading and merging for reward health analysis."""
 
-import yaml
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
+import yaml
+
 try:
     from importlib import metadata
 except ImportError:
@@ -33,13 +35,13 @@ def get_default_config_path() -> Path:
             return Path(config_path)
     except Exception:
         pass
-    
+
     # Fallback: look for it relative to the current file
     current_dir = Path(__file__).parent
     config_path = current_dir / 'data' / 'health_default.yaml'
     if config_path.exists():
         return config_path
-    
+
     # If not found, raise an error
     raise FileNotFoundError(
         "Default health configuration file not found. "
@@ -50,74 +52,74 @@ def get_default_config_path() -> Path:
 def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     """
     Load health configuration, merging user overrides on top of defaults.
-    
+
     Args:
         config_path: Optional path to user configuration file
-        
+
     Returns:
         Merged configuration dictionary
     """
     # Load default configuration
     default_path = get_default_config_path()
-    with open(default_path, 'r') as f:
+    with open(default_path) as f:
         default_config = yaml.safe_load(f)
-    
+
     # If no user config provided, return defaults
     if config_path is None:
         return default_config
-    
+
     # Load user configuration
     user_path = Path(config_path)
     if not user_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
-    
-    with open(user_path, 'r') as f:
+
+    with open(user_path) as f:
         user_config = yaml.safe_load(f)
-    
+
     # Merge configurations (user config takes precedence)
     merged_config = _deep_merge(default_config, user_config)
-    
+
     return merged_config
 
 
 def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
     """
     Deep merge two dictionaries, with override taking precedence.
-    
+
     Args:
         base: Base dictionary
         override: Override dictionary
-        
+
     Returns:
         Merged dictionary
     """
     result = base.copy()
-    
+
     for key, value in override.items():
         if key in result and isinstance(result[key], dict) and isinstance(value, dict):
             result[key] = _deep_merge(result[key], value)
         else:
             result[key] = value
-    
+
     return result
 
 
 def get_detector_thresholds(config: Dict[str, Any], detector_name: str) -> Dict[str, float]:
     """
     Extract thresholds for a specific detector from the configuration.
-    
+
     Args:
         config: Configuration dictionary
         detector_name: Name of the detector
-        
+
     Returns:
         Dictionary with 'warn' and 'fail' thresholds
     """
     detectors = config.get('detectors', {})
     detector_config = detectors.get(detector_name, {})
-    
+
     thresholds = detector_config.get('thresholds', {})
-    
+
     return {
         'warn': thresholds.get('warn', 0.0),
         'fail': thresholds.get('fail', 0.0),
@@ -128,10 +130,10 @@ def get_detector_thresholds(config: Dict[str, Any], detector_name: str) -> Dict[
 def get_legacy_thresholds(config: Dict[str, Any]) -> Dict[str, float]:
     """
     Extract legacy thresholds for backward compatibility.
-    
+
     Args:
         config: Configuration dictionary
-        
+
     Returns:
         Dictionary with legacy threshold values
     """
@@ -147,29 +149,29 @@ def get_legacy_thresholds(config: Dict[str, Any]) -> Dict[str, float]:
 def validate_config(config: Dict[str, Any]) -> None:
     """
     Validate the configuration structure and values.
-    
+
     Args:
         config: Configuration dictionary
-        
+
     Raises:
         ValueError: If configuration is invalid
     """
     # Check required top-level keys
     if 'detectors' not in config:
         raise ValueError("Configuration must contain 'detectors' section")
-    
+
     # Validate detector configurations
     detectors = config['detectors']
     for detector_name, detector_config in detectors.items():
         if not isinstance(detector_config, dict):
             raise ValueError(f"Detector '{detector_name}' must be a dictionary")
-        
+
         # Check for thresholds
         if 'thresholds' in detector_config:
             thresholds = detector_config['thresholds']
             if not isinstance(thresholds, dict):
                 raise ValueError(f"Detector '{detector_name}' thresholds must be a dictionary")
-            
+
             # Validate threshold values
             for threshold_type in ['warn', 'fail']:
                 if threshold_type in thresholds:
@@ -178,7 +180,7 @@ def validate_config(config: Dict[str, Any]) -> None:
                         raise ValueError(
                             f"Detector '{detector_name}' {threshold_type} threshold must be a non-negative number"
                         )
-            
+
             # Ensure fail threshold is higher than warn threshold
             if 'warn' in thresholds and 'fail' in thresholds:
                 if thresholds['fail'] <= thresholds['warn']:

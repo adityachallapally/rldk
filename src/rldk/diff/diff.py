@@ -1,10 +1,11 @@
 """Diff analysis for training runs using rolling z-score detection."""
 
+import json
+import os
 from dataclasses import dataclass
 from typing import List, Optional
+
 import pandas as pd
-import os
-import json
 
 from ..io.event_schema import Event
 
@@ -57,7 +58,7 @@ def first_divergence(
             details=pd.DataFrame(),
             suspected_causes=["Empty dataframes provided"],
         )
-    
+
     if "step" not in df_a.columns or "step" not in df_b.columns:
         return DivergenceReport(
             diverged=False,
@@ -87,43 +88,43 @@ def first_divergence(
             details=pd.DataFrame(),
             suspected_causes=[f"Insufficient common steps for analysis: {len(common_steps)} < {window}"],
         )
-    
+
     # Filter dataframes to common steps
     df_a_common = df_a.loc[common_steps]
     df_b_common = df_b.loc[common_steps]
-    
+
     # Initialize tracking variables
     diverged = False
     first_step = None
     tripped_signals = []
     all_violations = []
     notes = []
-    
+
     # Analyze each signal
     for signal in signals:
         if signal not in df_a_common.columns or signal not in df_b_common.columns:
             continue
-        
+
         try:
             # Calculate rolling z-scores for this signal
             z_scores = _calculate_rolling_z_scores(
                 df_a_common[signal], df_b_common[signal], window
             )
-            
+
             # Find violations
             violations = _find_k_consecutive_violations(z_scores, k_consecutive, tolerance)
-            
+
             if violations:
                 diverged = True
                 signal_violations = []
-                
+
                 for violation in violations:
                     # Convert index position to actual step value
                     if violation["start_idx"] < len(common_steps):
                         step_idx = common_steps.tolist()[violation["start_idx"]]
                         if first_step is None or step_idx < first_step:
                             first_step = step_idx
-                        
+
                         signal_violations.append({
                             "signal": signal,
                             "step": step_idx,
@@ -131,29 +132,29 @@ def first_divergence(
                             "type": violation["type"],
                             "consecutive_count": violation["consecutive_count"]
                         })
-                
+
                 if signal_violations:  # Only add if we have valid violations
                     tripped_signals.append({
                         "signal": signal,
                         "violations": signal_violations
                     })
-                    
+
                     all_violations.extend(signal_violations)
-                    
+
         except Exception as e:
             # If analysis fails for this signal, add a note but continue
             notes.append(f"Warning: Analysis failed for signal '{signal}': {str(e)}")
             continue
-    
+
     # Create details DataFrame
     if all_violations:
         details = pd.DataFrame(all_violations)
     else:
         details = pd.DataFrame()
-    
+
     # Analyze suspected causes
     suspected_causes = _analyze_suspected_causes(all_violations, df_a_common, df_b_common)
-    
+
     # Create and return report first (before file operations)
     report = DivergenceReport(
         diverged=diverged,
@@ -165,21 +166,21 @@ def first_divergence(
         details=details,
         suspected_causes=suspected_causes,
     )
-    
+
     # Try to create output files, but don't fail if unable to
     try:
         # Create output directory
         os.makedirs(output_dir, exist_ok=True)
-        
+
         # Generate file paths
         report_path = os.path.join(output_dir, "divergence_report.json")
         events_csv_path = os.path.join(output_dir, "divergence_events.csv")
-        
+
         # Save details to CSV
         if not details.empty:
             details.to_csv(events_csv_path, index=False)
             report.events_csv_path = events_csv_path
-        
+
         # Save report
         def json_serializer(obj):
             """Custom JSON serializer for numpy types."""
@@ -189,16 +190,16 @@ def first_divergence(
                 return obj.tolist()
             else:
                 return str(obj)
-        
+
         with open(report_path, 'w') as f:
             json.dump(report.__dict__, f, indent=2, default=json_serializer)
-        
+
         report.report_path = report_path
-        
+
     except Exception as e:
         # If file operations fail, add a note but still return the report
         report.notes.append(f"Warning: Could not save report files: {str(e)}")
-    
+
     return report
 
 
@@ -251,11 +252,11 @@ def _calculate_rolling_z_scores(
 
     # Calculate z-scores, handling division by zero
     z_scores = pd.Series(index=diff.index, dtype=float)
-    
+
     # Only calculate z-scores where rolling_std is not zero or NaN
     valid_mask = (rolling_std > 1e-10) & (~rolling_std.isna()) & (~rolling_mean.isna())
     z_scores[valid_mask] = (diff[valid_mask] - rolling_mean[valid_mask]) / rolling_std[valid_mask]
-    
+
     # Set invalid z-scores to NaN
     z_scores[~valid_mask] = float('nan')
 
@@ -275,7 +276,7 @@ def _find_k_consecutive_violations(
     # Find consecutive violations
     consecutive_count = 0
     start_idx = None
-    
+
     for i, z_score in enumerate(z_scores):
         if pd.isna(z_score):
             consecutive_count = 0
@@ -284,12 +285,12 @@ def _find_k_consecutive_violations(
 
         # Check if current value is a violation
         is_violation = z_score > upper_threshold or z_score < lower_threshold
-        
+
         if is_violation:
             if consecutive_count == 0:
                 start_idx = i
             consecutive_count += 1
-            
+
             # Check if we have k consecutive violations
             if consecutive_count >= k:
                 violations.append({
@@ -347,7 +348,7 @@ def _analyze_suspected_causes(
                 continue
         else:
             continue
-            
+
         signal_counts[signal] = signal_counts.get(signal, 0) + 1
 
     if signal_counts:

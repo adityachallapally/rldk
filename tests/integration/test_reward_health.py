@@ -1,12 +1,12 @@
 """Tests for reward health analysis module."""
 
-import pytest
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
 
-from rldk.reward.health_analysis import health, RewardHealthReport
 from rldk.reward.calibration import analyze_calibration
 from rldk.reward.drift import detect_reward_drift
+from rldk.reward.health_analysis import RewardHealthReport, health
 
 
 class TestRewardHealth:

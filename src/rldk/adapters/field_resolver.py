@@ -1,16 +1,15 @@
 """Field resolver utility for flexible data adapter schema mapping."""
 
 import difflib
-from typing import Dict, List, Optional, Set, Any, Union
-from pathlib import Path
 import logging
+from typing import Any, Dict, List, Optional, Set
 
-from ..utils.error_handling import AdapterError, ValidationError
+from ..utils.error_handling import AdapterError
 
 
 class FieldResolver:
     """Resolves field names using synonyms and provides helpful error messages."""
-    
+
     # Canonical field names and their synonyms
     FIELD_SYNONYMS = {
         "step": [
@@ -65,35 +64,35 @@ class FieldResolver:
             "tokens_out", "output_tokens", "output_length", "response_length"
         ]
     }
-    
+
     def __init__(self, allow_dot_paths: bool = True):
         """Initialize the field resolver.
-        
+
         Args:
             allow_dot_paths: Whether to support nested field access with dot notation
         """
         self.allow_dot_paths = allow_dot_paths
         self.logger = logging.getLogger(self.__class__.__name__)
-        
+
         # Create reverse mapping from synonym to canonical name
         self._synonym_to_canonical = {}
         for canonical, synonyms in self.FIELD_SYNONYMS.items():
             for synonym in synonyms:
                 self._synonym_to_canonical[synonym] = canonical
-    
+
     def resolve_field(
-        self, 
-        canonical_name: str, 
-        available_headers: List[str], 
+        self,
+        canonical_name: str,
+        available_headers: List[str],
         field_map: Optional[Dict[str, str]] = None
     ) -> Optional[str]:
         """Resolve a canonical field name to an actual header name.
-        
+
         Args:
             canonical_name: The canonical field name (e.g., 'step', 'reward')
             available_headers: List of available column/field names
             field_map: Optional explicit mapping from canonical to actual names
-            
+
         Returns:
             The resolved field name if found, None otherwise
         """
@@ -106,7 +105,7 @@ class FieldResolver:
             else:
                 self.logger.warning(f"Field map specifies '{mapped_name}' for '{canonical_name}' but it's not found in headers")
                 return None
-        
+
         # Try synonyms in order of preference
         synonyms = self.FIELD_SYNONYMS.get(canonical_name, [canonical_name])
         for synonym in synonyms:
@@ -114,40 +113,40 @@ class FieldResolver:
                 return synonym
             elif self.allow_dot_paths and self._check_nested_field(synonym, available_headers):
                 return synonym
-        
+
         return None
-    
+
     def _check_nested_field(self, field_path: str, available_headers: List[str]) -> bool:
         """Check if a nested field path exists in the data structure.
-        
+
         Args:
             field_path: Dot-separated field path (e.g., 'metrics.reward')
             available_headers: List of available top-level field names
-            
+
         Returns:
             True if the nested field path is valid
         """
         if not self.allow_dot_paths or '.' not in field_path:
             return False
-        
+
         # For now, we'll assume nested fields are valid if the top-level key exists
         # The actual validation will happen during data extraction
         top_level_key = field_path.split('.')[0]
         return top_level_key in available_headers
-    
+
     def get_missing_fields(
-        self, 
-        required_fields: List[str], 
+        self,
+        required_fields: List[str],
         available_headers: List[str],
         field_map: Optional[Dict[str, str]] = None
     ) -> List[str]:
         """Get list of required fields that cannot be resolved.
-        
+
         Args:
             required_fields: List of canonical field names that are required
             available_headers: List of available column/field names
             field_map: Optional explicit mapping from canonical to actual names
-            
+
         Returns:
             List of canonical field names that could not be resolved
         """
@@ -156,29 +155,29 @@ class FieldResolver:
             if not self.resolve_field(field, available_headers, field_map):
                 missing.append(field)
         return missing
-    
+
     def get_suggestions(
-        self, 
-        canonical_name: str, 
-        available_headers: List[str], 
+        self,
+        canonical_name: str,
+        available_headers: List[str],
         max_suggestions: int = 3
     ) -> List[str]:
         """Get suggestions for field names based on approximate matching.
-        
+
         Args:
             canonical_name: The canonical field name that couldn't be resolved
             available_headers: List of available column/field names
             max_suggestions: Maximum number of suggestions to return
-            
+
         Returns:
             List of suggested field names sorted by similarity
         """
         if not available_headers:
             return []
-        
+
         # Get all synonyms for the canonical field
         synonyms = self.FIELD_SYNONYMS.get(canonical_name, [canonical_name])
-        
+
         # Find approximate matches
         suggestions = []
         for synonym in synonyms:
@@ -186,28 +185,28 @@ class FieldResolver:
                 synonym, available_headers, n=max_suggestions, cutoff=0.6
             )
             suggestions.extend(matches)
-        
+
         # Also try matching against the canonical name itself
         canonical_matches = difflib.get_close_matches(
             canonical_name, available_headers, n=max_suggestions, cutoff=0.6
         )
         suggestions.extend(canonical_matches)
-        
+
         # Remove duplicates and limit results
         unique_suggestions = list(dict.fromkeys(suggestions))
         return unique_suggestions[:max_suggestions]
-    
+
     def create_field_map_suggestion(
-        self, 
-        missing_fields: List[str], 
+        self,
+        missing_fields: List[str],
         available_headers: List[str]
     ) -> Dict[str, str]:
         """Create a field map suggestion for missing fields.
-        
+
         Args:
             missing_fields: List of canonical field names that are missing
             available_headers: List of available column/field names
-            
+
         Returns:
             Dictionary mapping canonical names to suggested actual names
         """
@@ -217,18 +216,18 @@ class FieldResolver:
             if suggestions:
                 suggestion[field] = suggestions[0]
         return suggestion
-    
+
     def validate_field_map(
-        self, 
-        field_map: Dict[str, str], 
+        self,
+        field_map: Dict[str, str],
         available_headers: List[str]
     ) -> Dict[str, Any]:
         """Validate a field map against available headers.
-        
+
         Args:
             field_map: Dictionary mapping canonical names to actual names
             available_headers: List of available column/field names
-            
+
         Returns:
             Dictionary with validation results
         """
@@ -238,7 +237,7 @@ class FieldResolver:
             "invalid_mappings": [],
             "warnings": []
         }
-        
+
         for canonical, actual in field_map.items():
             if actual not in available_headers:
                 if self.allow_dot_paths and self._check_nested_field(actual, available_headers):
@@ -248,48 +247,48 @@ class FieldResolver:
                 else:
                     results["invalid_mappings"].append(f"'{actual}' for '{canonical}'")
                     results["valid"] = False
-        
+
         return results
-    
+
     def get_canonical_fields(self) -> Set[str]:
         """Get the set of all canonical field names.
-        
+
         Returns:
             Set of canonical field names
         """
         return set(self.FIELD_SYNONYMS.keys())
-    
+
     def get_synonyms(self, canonical_name: str) -> List[str]:
         """Get all synonyms for a canonical field name.
-        
+
         Args:
             canonical_name: The canonical field name
-            
+
         Returns:
             List of synonyms for the field
         """
         return self.FIELD_SYNONYMS.get(canonical_name, [canonical_name])
-    
+
     def log_resolution_summary(
-        self, 
-        resolved_fields: Dict[str, str], 
+        self,
+        resolved_fields: Dict[str, str],
         missing_fields: List[str],
         total_records: int
     ) -> None:
         """Log a summary of field resolution results.
-        
+
         Args:
             resolved_fields: Dictionary of resolved field mappings
             missing_fields: List of fields that could not be resolved
             total_records: Total number of records processed
         """
         self.logger.info(f"Loaded {total_records} records")
-        
+
         if resolved_fields:
             self.logger.info("Field mappings resolved:")
             for canonical, actual in resolved_fields.items():
                 self.logger.info(f"  {canonical} -> {actual}")
-        
+
         if missing_fields:
             self.logger.warning(f"Missing fields: {', '.join(missing_fields)}")
         else:
@@ -298,17 +297,17 @@ class FieldResolver:
 
 class SchemaError(AdapterError):
     """Error raised when schema validation fails."""
-    
+
     def __init__(
-        self, 
-        message: str, 
-        missing_fields: List[str], 
+        self,
+        message: str,
+        missing_fields: List[str],
         available_headers: List[str],
         field_resolver: FieldResolver,
         suggestion: Optional[str] = None
     ):
         """Initialize schema error with helpful suggestions.
-        
+
         Args:
             message: Error message
             missing_fields: List of missing canonical field names
@@ -319,29 +318,29 @@ class SchemaError(AdapterError):
         self.missing_fields = missing_fields
         self.available_headers = available_headers
         self.field_resolver = field_resolver
-        
+
         # Generate suggestions for missing fields
         suggestions = []
         field_map_suggestion = {}
-        
+
         for field in missing_fields:
             field_suggestions = field_resolver.get_suggestions(field, available_headers)
             if field_suggestions:
                 suggestions.append(f"  {field}: {', '.join(field_suggestions)}")
                 field_map_suggestion[field] = field_suggestions[0]
-        
+
         # Create detailed error message
         detailed_message = message
         if suggestions:
-            detailed_message += f"\n\nFound similar fields:\n" + "\n".join(suggestions)
-        
+            detailed_message += "\n\nFound similar fields:\n" + "\n".join(suggestions)
+
         if field_map_suggestion:
             field_map_str = ", ".join([f'"{k}": "{v}"' for k, v in field_map_suggestion.items()])
             detailed_message += f"\n\nTry this field_map: {{{field_map_str}}}"
-        
+
         if not suggestion:
             suggestion = "Check field names and provide a field_map if needed"
-        
+
         super().__init__(
             detailed_message,
             suggestion=suggestion,

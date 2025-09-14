@@ -1,19 +1,18 @@
 """Error handling utilities for RLDK."""
 
 import logging
-import sys
-import traceback
-from typing import Any, Dict, List, Optional, Union, Callable
-from pathlib import Path
 import time
+import traceback
 from contextlib import contextmanager
 from functools import wraps
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Union
 
 
 class RLDKError(Exception):
     """Base exception for RLDK-specific errors."""
-    
-    def __init__(self, message: str, suggestion: Optional[str] = None, 
+
+    def __init__(self, message: str, suggestion: Optional[str] = None,
                  error_code: Optional[str] = None, details: Optional[Dict[str, Any]] = None):
         super().__init__(message)
         self.message = message
@@ -56,7 +55,7 @@ def format_error_message(error: Exception, context: Optional[str] = None) -> str
         message = f"❌ {str(error)}"
         if context:
             message = f"❌ {context}: {str(error)}"
-    
+
     return message
 
 
@@ -64,21 +63,21 @@ def log_error_with_context(error: Exception, context: str, logger: Optional[logg
     """Log error with full context for debugging."""
     if logger is None:
         logger = logging.getLogger(__name__)
-    
+
     logger.error(f"Error in {context}: {error}")
     logger.debug(f"Full traceback:\n{traceback.format_exc()}")
 
 
 def sanitize_path(path: Union[str, Path], base_path: Optional[Path] = None) -> Path:
     """Sanitize a path to prevent path traversal attacks.
-    
+
     Args:
         path: The path to sanitize
         base_path: Optional base path to restrict access to
-        
+
     Returns:
         Sanitized Path object
-        
+
     Raises:
         ValidationError: If path contains traversal attempts or is invalid
     """
@@ -90,7 +89,7 @@ def sanitize_path(path: Union[str, Path], base_path: Optional[Path] = None) -> P
             error_code="PATH_TRAVERSAL_DETECTED",
             details={"original_path": str(path)}
         )
-    
+
     try:
         path_obj = Path(path).resolve()
     except Exception as e:
@@ -99,7 +98,7 @@ def sanitize_path(path: Union[str, Path], base_path: Optional[Path] = None) -> P
             suggestion="Please provide a valid file or directory path",
             error_code="INVALID_PATH"
         ) from e
-    
+
     # If base_path is provided, ensure the path is within it
     if base_path is not None:
         base_path = Path(base_path).resolve()
@@ -112,17 +111,17 @@ def sanitize_path(path: Union[str, Path], base_path: Optional[Path] = None) -> P
                 error_code="PATH_OUTSIDE_BASE",
                 details={"path": str(path_obj), "base_path": str(base_path)}
             )
-    
+
     return path_obj
 
 
-def validate_file_path(path: Union[str, Path], must_exist: bool = True, 
+def validate_file_path(path: Union[str, Path], must_exist: bool = True,
                       file_extensions: Optional[List[str]] = None,
                       base_path: Optional[Path] = None) -> Path:
     """Validate file path with helpful error messages and path sanitization."""
     # First sanitize the path
     path_obj = sanitize_path(path, base_path)
-    
+
     if must_exist and not path_obj.exists():
         raise ValidationError(
             f"Path does not exist: {path_obj}",
@@ -130,7 +129,7 @@ def validate_file_path(path: Union[str, Path], must_exist: bool = True,
             error_code="PATH_NOT_FOUND",
             details={"path": str(path_obj), "absolute_path": str(path_obj.absolute())}
         )
-    
+
     if file_extensions and path_obj.is_file():
         if path_obj.suffix not in file_extensions:
             raise ValidationError(
@@ -139,7 +138,7 @@ def validate_file_path(path: Union[str, Path], must_exist: bool = True,
                 error_code="UNSUPPORTED_EXTENSION",
                 details={"file": str(path_obj), "expected_extensions": file_extensions}
             )
-    
+
     return path_obj
 
 
@@ -171,7 +170,7 @@ def progress_indicator(operation: str, total: Optional[int] = None):
     """Context manager for showing progress indicators."""
     start_time = time.time()
     print(f"🔄 Starting {operation}...")
-    
+
     try:
         yield
         elapsed = time.time() - start_time
@@ -189,7 +188,7 @@ def with_retry(max_retries: int = 3, delay: float = 1.0, backoff: float = 2.0):
         def wrapper(*args, **kwargs):
             last_exception = None
             current_delay = delay
-            
+
             for attempt in range(max_retries + 1):
                 try:
                     return func(*args, **kwargs)
@@ -202,7 +201,7 @@ def with_retry(max_retries: int = 3, delay: float = 1.0, backoff: float = 2.0):
                         current_delay *= backoff
                     else:
                         print(f"❌ All {max_retries + 1} attempts failed")
-            
+
             raise last_exception
         return wrapper
     return decorator
@@ -220,7 +219,7 @@ def handle_graceful_degradation(operation_name: str, fallback_value: Any = None)
                 return func(*args, **kwargs)
             except Exception as e:
                 print(f"⚠️  {operation_name} failed: {e}")
-                print(f"🔄 Continuing with degraded functionality...")
+                print("🔄 Continuing with degraded functionality...")
                 return fallback_value
         return wrapper
     return decorator
@@ -229,7 +228,7 @@ def handle_graceful_degradation(operation_name: str, fallback_value: Any = None)
 def validate_adapter_source(source: Union[str, Path], expected_formats: List[str]) -> None:
     """Validate that source can be handled by available adapters."""
     source_str = str(source)
-    
+
     # Handle remote URIs (like WandB) separately
     if source_str.startswith("wandb://"):
         # Validate WandB URI format
@@ -246,17 +245,17 @@ def validate_adapter_source(source: Union[str, Path], expected_formats: List[str
                 error_code="INVALID_WANDB_URI",
                 details={"uri": source_str, "error": str(e)}
             ) from e
-    
+
     # Handle local filesystem paths
     source_path = Path(source)
-    
+
     if not source_path.exists():
         raise ValidationError(
             f"Source does not exist: {source_path}",
             suggestion="Please check the path and ensure the file/directory exists",
             error_code="SOURCE_NOT_FOUND"
         )
-    
+
     # Check if source matches any expected format
     format_hints = []
     if source_path.is_file():
@@ -266,7 +265,7 @@ def validate_adapter_source(source: Union[str, Path], expected_formats: List[str
             format_hints.append("Log format")
     elif source_path.is_dir():
         format_hints.append("Directory with log files")
-    
+
     if not format_hints:
         raise ValidationError(
             f"Unsupported source format: {source_path}",
@@ -285,7 +284,7 @@ def print_usage_examples(command: str, examples: List[str]) -> None:
 
 def print_troubleshooting_tips(tips: List[str]) -> None:
     """Print troubleshooting tips."""
-    print(f"\n🔧 Troubleshooting tips:")
+    print("\n🔧 Troubleshooting tips:")
     for i, tip in enumerate(tips, 1):
         print(f"  {i}. {tip}")
 
@@ -293,13 +292,13 @@ def print_troubleshooting_tips(tips: List[str]) -> None:
 def check_dependencies(required_packages: List[str]) -> None:
     """Check if required packages are installed."""
     missing_packages = []
-    
+
     for package in required_packages:
         try:
             __import__(package)
         except ImportError:
             missing_packages.append(package)
-    
+
     if missing_packages:
         raise ValidationError(
             f"Missing required packages: {', '.join(missing_packages)}",
@@ -309,7 +308,7 @@ def check_dependencies(required_packages: List[str]) -> None:
         )
 
 
-def safe_operation(operation_name: str, fallback_value: Any = None, 
+def safe_operation(operation_name: str, fallback_value: Any = None,
                   log_errors: bool = True) -> Callable:
     """Decorator for safe operations that can fail gracefully."""
     def decorator(func: Callable) -> Callable:
@@ -328,12 +327,12 @@ def safe_operation(operation_name: str, fallback_value: Any = None,
 
 def safe_divide(numerator: float, denominator: float, fallback: float = 0.0) -> float:
     """Safely divide two numbers, avoiding division by zero and negative denominators.
-    
+
     Args:
         numerator: The number to divide
         denominator: The number to divide by
         fallback: Value to return if denominator is zero or negative
-        
+
     Returns:
         The result of division or fallback value
     """
@@ -344,12 +343,12 @@ def safe_divide(numerator: float, denominator: float, fallback: float = 0.0) -> 
 
 def safe_rate_calculation(count: float, time_interval: float, fallback: float = 0.0) -> float:
     """Safely calculate rate (count per unit time), avoiding division by zero and negative denominators.
-    
+
     Args:
         count: The count or amount
         time_interval: The time interval
         fallback: Value to return if time_interval is zero or negative
-        
+
     Returns:
         The rate or fallback value
     """
@@ -358,12 +357,12 @@ def safe_rate_calculation(count: float, time_interval: float, fallback: float = 
 
 def safe_percentage(numerator: float, denominator: float, fallback: float = 0.0) -> float:
     """Safely calculate percentage, avoiding division by zero and negative denominators.
-    
+
     Args:
         numerator: The numerator
         denominator: The denominator
         fallback: Value to return if denominator is zero or negative
-        
+
     Returns:
         The percentage or fallback value
     """
@@ -372,12 +371,12 @@ def safe_percentage(numerator: float, denominator: float, fallback: float = 0.0)
 
 def safe_ratio(numerator: float, denominator: float, fallback: float = 0.0) -> float:
     """Safely calculate ratio, avoiding division by zero and negative denominators.
-    
+
     Args:
         numerator: The numerator
         denominator: The denominator
         fallback: Value to return if denominator is zero or negative
-        
+
     Returns:
         The ratio or fallback value
     """

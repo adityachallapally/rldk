@@ -23,33 +23,33 @@ def demo_wandb_default():
     print("=" * 60)
     print("DEMO: W&B Enabled by Default")
     print("=" * 60)
-    
+
     # Create config with default settings
     config = TrackingConfig(
         experiment_name="wandb_default_demo",
         tags=["demo", "wandb-default"]
     )
-    
+
     print(f"W&B enabled: {config.save_to_wandb}")
     print(f"W&B project: {config.wandb_project}")
     print(f"Output directory: {config.output_dir}")
-    
+
     # Create tracker
     tracker = ExperimentTracker(config)
-    
+
     # Start experiment
     start_info = tracker.start_experiment()
     print(f"Experiment started with ID: {start_info['experiment_id']}")
-    
+
     # Log some metrics
     tracker.log_metric("loss", 0.5)
     tracker.log_metric("accuracy", 0.8)
     tracker.log_metric("learning_rate", 0.001)
-    
+
     # Add some metadata
     tracker.add_metadata("model_type", "transformer")
     tracker.add_metadata("dataset_size", 10000)
-    
+
     # Finish experiment
     summary = tracker.finish_experiment()
     print(f"Experiment finished. Summary: {summary['experiment_name']}")
@@ -61,38 +61,38 @@ def demo_no_wandb():
     print("=" * 60)
     print("DEMO: --no-wandb Flag (File Logging Only)")
     print("=" * 60)
-    
+
     # Create config with W&B disabled
     config = TrackingConfig(
         experiment_name="no_wandb_demo",
         save_to_wandb=False,  # This is what --no-wandb does
         tags=["demo", "file-only"]
     )
-    
+
     print(f"W&B enabled: {config.save_to_wandb}")
     print(f"W&B project: {config.wandb_project}")
     print(f"Output directory: {config.output_dir}")
-    
+
     # Create tracker
     tracker = ExperimentTracker(config)
-    
+
     # Start experiment
     start_info = tracker.start_experiment()
     print(f"Experiment started with ID: {start_info['experiment_id']}")
-    
+
     # Log some metrics
     tracker.log_metric("loss", 0.3)
     tracker.log_metric("accuracy", 0.9)
     tracker.log_metric("learning_rate", 0.0005)
-    
+
     # Add some metadata
     tracker.add_metadata("model_type", "cnn")
     tracker.add_metadata("dataset_size", 5000)
-    
+
     # Finish experiment
     summary = tracker.finish_experiment()
     print(f"Experiment finished. Summary: {summary['experiment_name']}")
-    
+
     # Check that files were created
     json_files = list(config.output_dir.glob("*.json"))
     yaml_files = list(config.output_dir.glob("*.yaml"))
@@ -106,29 +106,29 @@ def demo_custom_wandb_project():
     print("=" * 60)
     print("DEMO: Custom W&B Project")
     print("=" * 60)
-    
+
     # Create config with custom W&B project
     config = TrackingConfig(
         experiment_name="custom_project_demo",
         wandb_project="my-custom-project",
         tags=["demo", "custom-project"]
     )
-    
+
     print(f"W&B enabled: {config.save_to_wandb}")
     print(f"W&B project: {config.wandb_project}")
     print(f"Output directory: {config.output_dir}")
-    
+
     # Create tracker
     tracker = ExperimentTracker(config)
-    
+
     # Start experiment
     start_info = tracker.start_experiment()
     print(f"Experiment started with ID: {start_info['experiment_id']}")
-    
+
     # Log some metrics
     tracker.log_metric("loss", 0.7)
     tracker.log_metric("accuracy", 0.75)
-    
+
     # Finish experiment
     summary = tracker.finish_experiment()
     print(f"Experiment finished. Summary: {summary['experiment_name']}")
@@ -144,12 +144,12 @@ def main():
     print("- Graceful fallback to file logging")
     print("- Custom W&B project support")
     print()
-    
+
     # Run demos
     demo_wandb_default()
     demo_no_wandb()
     demo_custom_wandb_project()
-    
+
     print("=" * 60)
     print("DEMO COMPLETE")
     print("=" * 60)

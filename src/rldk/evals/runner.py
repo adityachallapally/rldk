@@ -1,21 +1,22 @@
 """Main evaluation runner for RL Debug Kit."""
 
-from dataclasses import dataclass
-from typing import Dict, List, Any, Optional, Tuple, Union
-import pandas as pd
-import numpy as np
 import json
-from pathlib import Path
 import logging
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from .suites import get_eval_suite
-from .metrics import calculate_confidence_intervals, calculate_effect_sizes
-from .schema import validate_eval_input, get_schema_for_suite
+import numpy as np
+import pandas as pd
+
 from ..utils.error_handling import (
-    EvaluationError, ValidationError, format_error_message,
-    handle_graceful_degradation, safe_operation
+    EvaluationError,
+    ValidationError,
 )
-from ..utils.progress import progress_bar, spinner
+from ..utils.progress import progress_bar
+from .metrics import calculate_confidence_intervals, calculate_effect_sizes
+from .schema import get_schema_for_suite, validate_eval_input
+from .suites import get_eval_suite
 
 
 @dataclass
@@ -31,21 +32,21 @@ class EvalResult:
     metadata: Dict[str, Any]
     raw_results: List[Dict[str, Any]]
     warnings: List[str] = None
-    
+
     def __post_init__(self):
         if self.warnings is None:
             self.warnings = []
-    
+
     @property
     def overall_score(self) -> Optional[float]:
         """
         Calculate overall score as unweighted mean of available numeric metrics.
-        
+
         Returns:
             Overall score or None if no metrics available
         """
         from .schema import safe_mean
-        
+
         valid_scores = []
         for metric, score in self.scores.items():
             if score is not None:
@@ -57,26 +58,26 @@ class EvalResult:
                 except (ValueError, TypeError):
                     # Skip non-numeric scores
                     continue
-        
+
         if not valid_scores:
             return None
-        
+
         return safe_mean(valid_scores)
-    
+
     @property
     def available_fraction(self) -> float:
         """
         Fraction of metrics that produced valid values.
-        
+
         Returns:
             Float between 0 and 1 indicating fraction of available metrics
         """
         if not self.scores:
             return 0.0
-        
+
         total_metrics = len(self.scores)
         valid_metrics = 0
-        
+
         for score in self.scores.values():
             if score is not None:
                 try:
@@ -87,7 +88,7 @@ class EvalResult:
                 except (ValueError, TypeError):
                     # Skip non-numeric scores
                     continue
-        
+
         return valid_metrics / total_metrics if total_metrics > 0 else 0.0
 
 
@@ -110,13 +111,13 @@ def run(
 
     Returns:
         EvalResult with comprehensive evaluation metrics
-        
+
     Raises:
         ValidationError: If input validation fails
         EvaluationError: If evaluation fails
     """
     logger = logging.getLogger(__name__)
-    
+
     # Validate inputs
     if run_data is None or not isinstance(run_data, pd.DataFrame):
         raise ValidationError(
@@ -124,7 +125,7 @@ def run(
             suggestion="Ensure you're passing a valid DataFrame",
             error_code="INVALID_RUN_DATA"
         )
-    
+
     if run_data.empty:
         raise ValidationError(
             "run_data is empty",
@@ -146,11 +147,11 @@ def run(
     try:
         validated_data = validate_eval_input(run_data, schema, suite)
         logger.info(f"Data validation completed with {len(validated_data.warnings)} warnings")
-        
+
         # Log warnings
         for warning in validated_data.warnings:
             logger.warning(f"Data validation warning: {warning}")
-            
+
     except ValueError as e:
         raise ValidationError(
             str(e),
@@ -204,13 +205,13 @@ def run(
     else:
         # Run evaluations with progress tracking
         evaluations = list(eval_suite["evaluations"].items())
-        
+
         with progress_bar(len(evaluations), f"Running {suite} evaluations") as bar:
             for eval_name, eval_func in evaluations:
                 try:
                     logger.debug(f"Running evaluation: {eval_name}")
                     result = eval_func(sampled_data, seed=seed)
-                    
+
                     raw_results.append(
                         {
                             "evaluation": eval_name,
@@ -231,7 +232,7 @@ def run(
                 except Exception as e:
                     logger.error(f"Evaluation {eval_name} failed: {e}")
                     failed_evaluations.append(eval_name)
-                    
+
                     raw_results.append(
                         {
                             "evaluation": eval_name,
@@ -240,7 +241,7 @@ def run(
                         }
                     )
                     scores[eval_name] = np.nan
-                
+
                 bar.update(1)
 
     # Check if too many evaluations failed
@@ -268,11 +269,11 @@ def run(
 
     # Collect all warnings
     all_warnings = list(validated_data.warnings)
-    
+
     # Add warnings for failed evaluations
     if failed_evaluations:
         all_warnings.append(f"Failed evaluations: {', '.join(failed_evaluations)}")
-    
+
     # Add warning if no metrics are available
     if not scores or all(np.isnan(score) if isinstance(score, (int, float)) else score is None for score in scores.values()):
         all_warnings.append("No valid metrics computed - check data quality and evaluation requirements")
@@ -358,7 +359,7 @@ def generate_eval_card(result: EvalResult, output_dir: Path) -> None:
         f.write("## 📊 Overall Scores\n\n")
         f.write(f"**Overall Score:** {result.overall_score:.3f}" if result.overall_score is not None else "**Overall Score:** Not available")
         f.write(f"\n**Available Metrics:** {result.available_fraction:.1%}\n\n")
-        
+
         f.write("| Metric | Score | Confidence Interval | Effect Size |\n")
         f.write("|--------|-------|-------------------|-------------|\n")
 

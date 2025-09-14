@@ -1,9 +1,9 @@
 """Statistical metrics for evaluation results."""
 
-from typing import Dict, Tuple, Any
-import numpy as np
-import pandas as pd
 import warnings
+from typing import Any, Dict, Tuple
+
+import numpy as np
 from scipy import stats
 from scipy.stats import bootstrap
 
@@ -373,68 +373,68 @@ def calculate_kl_divergence(
     # Convert to numpy arrays with higher precision
     p = np.array(p, dtype=np.float64)
     q = np.array(q, dtype=np.float64)
-    
+
     # Input validation: finite values
     if np.any(np.isnan(p)) or np.any(np.isnan(q)):
         raise ValueError("Input distributions contain NaN values")
-    
+
     if np.any(np.isinf(p)) or np.any(np.isinf(q)):
         raise ValueError("Input distributions contain infinite values")
-    
+
     # Input validation: non-negative values
     if np.any(p < 0) or np.any(q < 0):
         raise ValueError("Probability distributions must be non-negative")
-    
+
     # Handle all zero cases
     p_sum = np.sum(p)
     q_sum = np.sum(q)
-    
+
     if p_sum == 0 and q_sum == 0:
         return 0.0  # Both distributions are zero
-    
+
     if p_sum == 0:
         return 0.0  # KL divergence is 0 when P is zero everywhere
-    
+
     if q_sum == 0:
         return float('inf')  # KL divergence is infinite when Q is zero but P is not
-    
+
     # Normalize once as (x + eps) over (sum + len*eps)
     p_normalized = (p + epsilon) / (p_sum + len(p) * epsilon)
     q_normalized = (q + epsilon) / (q_sum + len(q) * epsilon)
-    
+
     # Mask small p values to avoid numerical issues
     mask = p_normalized > epsilon
-    
+
     if not np.any(mask):
         return 0.0
-    
+
     # Calculate log ratio
     log_ratio = np.log(p_normalized[mask] / q_normalized[mask])
-    
+
     # Check for numerical issues and fallback with larger epsilon if needed
     if np.any(np.isnan(log_ratio)) or np.any(np.isinf(log_ratio)):
         # Fallback with larger epsilon (1e-6)
         epsilon_large = 1e-6
         p_safe = (p + epsilon_large) / (p_sum + len(p) * epsilon_large)
         q_safe = (q + epsilon_large) / (q_sum + len(q) * epsilon_large)
-        
+
         mask_large = p_safe > epsilon_large
         if not np.any(mask_large):
             return 0.0
-        
+
         log_ratio = np.log(p_safe[mask_large] / q_safe[mask_large])
         kl_div = np.sum(p_safe[mask_large] * log_ratio)
     else:
         kl_div = np.sum(p_normalized[mask] * log_ratio)
-    
+
     # Ensure non-negative result
     kl_div = max(0.0, float(kl_div))
-    
+
     # Cap result to 1e6
     if kl_div > 1e6:
-        warnings.warn(f"KL divergence value {kl_div} is extremely large, capping to 1e6")
+        warnings.warn(f"KL divergence value {kl_div} is extremely large, capping to 1e6", stacklevel=2)
         kl_div = 1e6
-    
+
     return kl_div
 
 

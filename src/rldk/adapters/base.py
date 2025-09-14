@@ -1,12 +1,13 @@
 """Base adapter class for training log formats."""
 
+import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Union, Dict, Any, Optional
-import pandas as pd
-import logging
+from typing import Any, Dict, Optional, Union
 
-from ..utils.error_handling import AdapterError, ValidationError, safe_operation
+import pandas as pd
+
+from ..utils.error_handling import AdapterError, ValidationError
 
 
 class BaseAdapter(ABC):
@@ -68,7 +69,7 @@ class BaseAdapter(ABC):
                 suggestion="Check that the source contains valid training data",
                 error_code="NO_DATA_FOUND"
             )
-        
+
         # Check for required columns
         required_columns = ["step"]
         missing_columns = [col for col in required_columns if col not in df.columns]
@@ -78,7 +79,7 @@ class BaseAdapter(ABC):
             for col in missing_columns:
                 if col == "step":
                     df[col] = range(len(df))
-        
+
         return df
 
     def _handle_file_error(self, file_path: Path, operation: str) -> None:
@@ -89,16 +90,16 @@ class BaseAdapter(ABC):
                 suggestion="Check that the file path is correct and the file exists",
                 error_code="FILE_NOT_FOUND"
             )
-        
+
         if not file_path.is_file():
             raise AdapterError(
                 f"Path is not a file: {file_path}",
                 suggestion="Ensure the path points to a file, not a directory",
                 error_code="NOT_A_FILE"
             )
-        
+
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path) as f:
                 f.read(1)  # Try to read one character
         except PermissionError:
             raise AdapterError(

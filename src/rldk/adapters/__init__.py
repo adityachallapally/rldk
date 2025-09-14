@@ -1,12 +1,12 @@
 """Adapters for different training log formats."""
 
 from .base import BaseAdapter
-from .trl import TRLAdapter
-from .openrlhf import OpenRLHFAdapter
-from .wandb import WandBAdapter
 from .custom_jsonl import CustomJSONLAdapter
-from .flexible import FlexibleDataAdapter, FlexibleJSONLAdapter
 from .field_resolver import FieldResolver, SchemaError
+from .flexible import FlexibleDataAdapter, FlexibleJSONLAdapter
+from .openrlhf import OpenRLHFAdapter
+from .trl import TRLAdapter
+from .wandb import WandBAdapter
 
 __all__ = [
     "BaseAdapter",

@@ -61,7 +61,7 @@ def main():
             "Log scan with KL spike detection",
         ),
     ]
-    
+
     # Only add PyTorch-dependent tests if PyTorch is available
     if pytorch_available:
         tests.extend([
@@ -76,7 +76,7 @@ def main():
                 "Reward drift analysis",
             ),
         ])
-    
+
     # Add non-PyTorch dependent tests
     tests.extend([
         # Doctor

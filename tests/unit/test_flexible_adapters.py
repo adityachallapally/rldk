@@ -1,20 +1,21 @@
 """Tests for flexible data adapters."""
 
-import pytest
-import tempfile
-import json
 import csv
-import yaml
-import pandas as pd
+import json
+import tempfile
 from pathlib import Path
 
-from rldk.adapters.flexible import FlexibleDataAdapter, FlexibleJSONLAdapter
+import pandas as pd
+import pytest
+import yaml
+
 from rldk.adapters.field_resolver import SchemaError
+from rldk.adapters.flexible import FlexibleDataAdapter, FlexibleJSONLAdapter
 
 
 class TestFlexibleDataAdapter:
     """Test flexible data adapter functionality."""
-    
+
     def test_init_with_field_map(self):
         """Test initialization with field map."""
         adapter = FlexibleDataAdapter(
@@ -24,7 +25,7 @@ class TestFlexibleDataAdapter:
         assert adapter.field_map == {"step": "global_step", "reward": "reward_scalar"}
         assert adapter.required_fields == ["step", "reward"]
         assert adapter.allow_dot_paths is True
-    
+
     def test_init_with_config_file(self):
         """Test initialization with config file."""
         config_data = {
@@ -34,17 +35,17 @@ class TestFlexibleDataAdapter:
                 "kl": "kl_to_ref"
             }
         }
-        
+
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             yaml.dump(config_data, f)
             config_path = f.name
-        
+
         try:
             adapter = FlexibleDataAdapter("test.jsonl", config_file=config_path)
             assert adapter.field_map == config_data["field_map"]
         finally:
             Path(config_path).unlink()
-    
+
     def test_init_with_custom_required_fields(self):
         """Test initialization with custom required fields."""
         adapter = FlexibleDataAdapter(
@@ -52,29 +53,29 @@ class TestFlexibleDataAdapter:
             required_fields=["step", "reward", "kl", "entropy"]
         )
         assert adapter.required_fields == ["step", "reward", "kl", "entropy"]
-    
+
     def test_can_handle_jsonl_file(self):
         """Test can_handle with JSONL file."""
         with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
             f.write('{"step": 0, "reward": 0.5}\n')
             f.flush()
-            
+
             adapter = FlexibleDataAdapter(f.name)
             assert adapter.can_handle() is True
-        
+
         Path(f.name).unlink()
-    
+
     def test_can_handle_json_file(self):
         """Test can_handle with JSON file."""
         with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as f:
             json.dump([{"step": 0, "reward": 0.5}], f)
             f.flush()
-            
+
             adapter = FlexibleDataAdapter(f.name)
             assert adapter.can_handle() is True
-        
+
         Path(f.name).unlink()
-    
+
     def test_can_handle_csv_file(self):
         """Test can_handle with CSV file."""
         with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as f:
@@ -82,48 +83,48 @@ class TestFlexibleDataAdapter:
             writer.writerow(["step", "reward"])
             writer.writerow([0, 0.5])
             f.flush()
-            
+
             adapter = FlexibleDataAdapter(f.name)
             assert adapter.can_handle() is True
-        
+
         Path(f.name).unlink()
-    
+
     def test_can_handle_parquet_file(self):
         """Test can_handle with Parquet file."""
         with tempfile.NamedTemporaryFile(suffix='.parquet', delete=False) as f:
             df = pd.DataFrame({"step": [0], "reward": [0.5]})
             df.to_parquet(f.name, index=False)
             f.flush()
-            
+
             adapter = FlexibleDataAdapter(f.name)
             assert adapter.can_handle() is True
-        
+
         Path(f.name).unlink()
-    
+
     def test_can_handle_directory(self):
         """Test can_handle with directory containing supported files."""
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
-            
+
             # Create a JSONL file
             jsonl_file = temp_path / "data.jsonl"
             with open(jsonl_file, 'w') as f:
                 f.write('{"step": 0, "reward": 0.5}\n')
-            
+
             adapter = FlexibleDataAdapter(temp_path)
             assert adapter.can_handle() is True
-    
+
     def test_can_handle_unsupported_file(self):
         """Test can_handle with unsupported file."""
         with tempfile.NamedTemporaryFile(suffix='.txt', delete=False) as f:
             f.write("some text")
             f.flush()
-            
+
             adapter = FlexibleDataAdapter(f.name)
             assert adapter.can_handle() is False
-        
+
         Path(f.name).unlink()
-    
+
     def test_load_jsonl_data(self):
         """Test loading JSONL data."""
         with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
@@ -135,10 +136,10 @@ class TestFlexibleDataAdapter:
             for record in data:
                 f.write(json.dumps(record) + '\n')
             f.flush()
-            
+
             adapter = FlexibleDataAdapter(f.name)
             df = adapter.load()
-            
+
             assert len(df) == 3
             assert "step" in df.columns
             assert "reward" in df.columns
@@ -146,9 +147,9 @@ class TestFlexibleDataAdapter:
             assert df["step"].iloc[0] == 0
             assert df["reward"].iloc[0] == 0.5
             assert df["kl"].iloc[0] == 0.1
-        
+
         Path(f.name).unlink()
-    
+
     def test_load_jsonl_with_synonyms(self):
         """Test loading JSONL data with field synonyms."""
         with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
@@ -159,10 +160,10 @@ class TestFlexibleDataAdapter:
             for record in data:
                 f.write(json.dumps(record) + '\n')
             f.flush()
-            
+
             adapter = FlexibleDataAdapter(f.name)
             df = adapter.load()
-            
+
             assert len(df) == 2
             assert "step" in df.columns
             assert "reward" in df.columns
@@ -170,9 +171,9 @@ class TestFlexibleDataAdapter:
             assert df["step"].iloc[0] == 0
             assert df["reward"].iloc[0] == 0.5
             assert df["kl"].iloc[0] == 0.1
-        
+
         Path(f.name).unlink()
-    
+
     def test_load_jsonl_with_field_map(self):
         """Test loading JSONL data with explicit field mapping."""
         with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
@@ -183,7 +184,7 @@ class TestFlexibleDataAdapter:
             for record in data:
                 f.write(json.dumps(record) + '\n')
             f.flush()
-            
+
             field_map = {
                 "step": "iteration",
                 "reward": "score",
@@ -191,7 +192,7 @@ class TestFlexibleDataAdapter:
             }
             adapter = FlexibleDataAdapter(f.name, field_map=field_map)
             df = adapter.load()
-            
+
             assert len(df) == 2
             assert "step" in df.columns
             assert "reward" in df.columns
@@ -199,9 +200,9 @@ class TestFlexibleDataAdapter:
             assert df["step"].iloc[0] == 0
             assert df["reward"].iloc[0] == 0.5
             assert df["kl"].iloc[0] == 0.1
-        
+
         Path(f.name).unlink()
-    
+
     def test_load_jsonl_with_nested_fields(self):
         """Test loading JSONL data with nested fields."""
         with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
@@ -220,7 +221,7 @@ class TestFlexibleDataAdapter:
             for record in data:
                 f.write(json.dumps(record) + '\n')
             f.flush()
-            
+
             field_map = {
                 "reward": "metrics.reward",
                 "kl": "metrics.kl",
@@ -228,7 +229,7 @@ class TestFlexibleDataAdapter:
             }
             adapter = FlexibleDataAdapter(f.name, field_map=field_map)
             df = adapter.load()
-            
+
             assert len(df) == 2
             assert "step" in df.columns
             assert "reward" in df.columns
@@ -238,9 +239,9 @@ class TestFlexibleDataAdapter:
             assert df["reward"].iloc[0] == 0.5
             assert df["kl"].iloc[0] == 0.1
             assert df["entropy"].iloc[0] == 0.8
-        
+
         Path(f.name).unlink()
-    
+
     def test_load_json_data(self):
         """Test loading JSON data."""
         with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as f:
@@ -250,34 +251,34 @@ class TestFlexibleDataAdapter:
             ]
             json.dump(data, f)
             f.flush()
-            
+
             adapter = FlexibleDataAdapter(f.name)
             df = adapter.load()
-            
+
             assert len(df) == 2
             assert "step" in df.columns
             assert "reward" in df.columns
             assert "kl" in df.columns
-        
+
         Path(f.name).unlink()
-    
+
     def test_load_json_single_record(self):
         """Test loading JSON data with single record."""
         with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as f:
             data = {"step": 0, "reward": 0.5, "kl": 0.1}
             json.dump(data, f)
             f.flush()
-            
+
             adapter = FlexibleDataAdapter(f.name)
             df = adapter.load()
-            
+
             assert len(df) == 1
             assert "step" in df.columns
             assert "reward" in df.columns
             assert "kl" in df.columns
-        
+
         Path(f.name).unlink()
-    
+
     def test_load_csv_data(self):
         """Test loading CSV data."""
         with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as f:
@@ -286,10 +287,10 @@ class TestFlexibleDataAdapter:
             writer.writerow([0, 0.5, 0.1])
             writer.writerow([1, 0.6, 0.12])
             f.flush()
-            
+
             adapter = FlexibleDataAdapter(f.name)
             df = adapter.load()
-            
+
             assert len(df) == 2
             assert "step" in df.columns
             assert "reward" in df.columns
@@ -297,9 +298,9 @@ class TestFlexibleDataAdapter:
             assert df["step"].iloc[0] == 0
             assert df["reward"].iloc[0] == 0.5
             assert df["kl"].iloc[0] == 0.1
-        
+
         Path(f.name).unlink()
-    
+
     def test_load_parquet_data(self):
         """Test loading Parquet data."""
         with tempfile.NamedTemporaryFile(suffix='.parquet', delete=False) as f:
@@ -310,10 +311,10 @@ class TestFlexibleDataAdapter:
             })
             df_input.to_parquet(f.name, index=False)
             f.flush()
-            
+
             adapter = FlexibleDataAdapter(f.name)
             df = adapter.load()
-            
+
             assert len(df) == 2
             assert "step" in df.columns
             assert "reward" in df.columns
@@ -321,37 +322,37 @@ class TestFlexibleDataAdapter:
             assert df["step"].iloc[0] == 0
             assert df["reward"].iloc[0] == 0.5
             assert df["kl"].iloc[0] == 0.1
-        
+
         Path(f.name).unlink()
-    
+
     def test_load_missing_required_fields(self):
         """Test loading data with missing required fields."""
         with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
             data = {"unrelated_field": "value"}
             f.write(json.dumps(data) + '\n')
             f.flush()
-            
+
             adapter = FlexibleDataAdapter(f.name)
-            
+
             with pytest.raises(SchemaError) as exc_info:
                 adapter.load()
-            
+
             assert "step" in str(exc_info.value)
             assert "reward" in str(exc_info.value)
-    
+
     def test_load_empty_file(self):
         """Test loading empty file."""
         with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
             # Empty file
             pass
-            
+
             adapter = FlexibleDataAdapter(f.name)
-            
+
             with pytest.raises(Exception):  # Should raise some error
                 adapter.load()
-        
+
         Path(f.name).unlink()
-    
+
     def test_get_metadata(self):
         """Test getting adapter metadata."""
         adapter = FlexibleDataAdapter(
@@ -359,7 +360,7 @@ class TestFlexibleDataAdapter:
             field_map={"step": "global_step"},
             required_fields=["step", "reward", "kl"]
         )
-        
+
         metadata = adapter.get_metadata()
         assert metadata["source"] == "test.jsonl"
         assert metadata["field_map"] == {"step": "global_step"}
@@ -370,7 +371,7 @@ class TestFlexibleDataAdapter:
 
 class TestFlexibleJSONLAdapter:
     """Test flexible JSONL adapter functionality."""
-    
+
     def test_init_with_streaming(self):
         """Test initialization with streaming enabled."""
         adapter = FlexibleJSONLAdapter(
@@ -378,27 +379,27 @@ class TestFlexibleJSONLAdapter:
             stream_large_files=True
         )
         assert adapter.stream_large_files is True
-    
+
     def test_can_handle_jsonl_only(self):
         """Test that JSONL adapter only handles JSONL files."""
         with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
             f.write('{"step": 0, "reward": 0.5}\n')
             f.flush()
-            
+
             adapter = FlexibleJSONLAdapter(f.name)
             assert adapter.can_handle() is True
-        
+
         Path(f.name).unlink()
-        
+
         with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as f:
             json.dump({"step": 0, "reward": 0.5}, f)
             f.flush()
-            
+
             adapter = FlexibleJSONLAdapter(f.name)
             assert adapter.can_handle() is False
-        
+
         Path(f.name).unlink()
-    
+
     def test_load_small_jsonl_file(self):
         """Test loading small JSONL file (no streaming)."""
         with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
@@ -409,17 +410,17 @@ class TestFlexibleJSONLAdapter:
             for record in data:
                 f.write(json.dumps(record) + '\n')
             f.flush()
-            
+
             adapter = FlexibleJSONLAdapter(f.name, stream_large_files=True)
             df = adapter.load()
-            
+
             assert len(df) == 2
             assert "step" in df.columns
             assert "reward" in df.columns
             assert "kl" in df.columns
-        
+
         Path(f.name).unlink()
-    
+
     def test_load_jsonl_with_invalid_json(self):
         """Test loading JSONL file with some invalid JSON lines."""
         with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
@@ -427,17 +428,17 @@ class TestFlexibleJSONLAdapter:
             f.write('invalid json line\n')
             f.write('{"step": 1, "reward": 0.6}\n')
             f.flush()
-            
+
             adapter = FlexibleJSONLAdapter(f.name)
             df = adapter.load()
-            
+
             # Should skip invalid line and load valid ones
             assert len(df) == 2
             assert df["step"].iloc[0] == 0
             assert df["step"].iloc[1] == 1
-        
+
         Path(f.name).unlink()
-    
+
     def test_load_jsonl_with_non_dict_records(self):
         """Test loading JSONL file with non-dict records."""
         with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
@@ -445,21 +446,21 @@ class TestFlexibleJSONLAdapter:
             f.write('"string record"\n')
             f.write('{"step": 1, "reward": 0.6}\n')
             f.flush()
-            
+
             adapter = FlexibleJSONLAdapter(f.name)
             df = adapter.load()
-            
+
             # Should skip non-dict records and load valid ones
             assert len(df) == 2
             assert df["step"].iloc[0] == 0
             assert df["step"].iloc[1] == 1
-        
+
         Path(f.name).unlink()
 
 
 class TestFlexibleAdapterIntegration:
     """Integration tests for flexible adapters."""
-    
+
     def test_real_world_trl_scenario(self):
         """Test real-world TRL data scenario."""
         with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
@@ -486,10 +487,10 @@ class TestFlexibleAdapterIntegration:
             for record in data:
                 f.write(json.dumps(record) + '\n')
             f.flush()
-            
+
             adapter = FlexibleDataAdapter(f.name)
             df = adapter.load()
-            
+
             assert len(df) == 2
             assert "step" in df.columns
             assert "reward" in df.columns
@@ -500,9 +501,9 @@ class TestFlexibleAdapterIntegration:
             assert df["step"].iloc[0] == 0
             assert df["reward"].iloc[0] == 0.5
             assert df["kl"].iloc[0] == 0.1
-        
+
         Path(f.name).unlink()
-    
+
     def test_real_world_custom_jsonl_scenario(self):
         """Test real-world custom JSONL data scenario."""
         with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
@@ -527,10 +528,10 @@ class TestFlexibleAdapterIntegration:
             for record in data:
                 f.write(json.dumps(record) + '\n')
             f.flush()
-            
+
             adapter = FlexibleDataAdapter(f.name)
             df = adapter.load()
-            
+
             assert len(df) == 2
             assert "step" in df.columns
             assert "reward" in df.columns
@@ -541,9 +542,9 @@ class TestFlexibleAdapterIntegration:
             assert df["step"].iloc[0] == 0
             assert df["reward"].iloc[0] == 0.5
             assert df["kl"].iloc[0] == 0.1
-        
+
         Path(f.name).unlink()
-    
+
     def test_real_world_nested_data_scenario(self):
         """Test real-world nested data scenario."""
         with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
@@ -576,7 +577,7 @@ class TestFlexibleAdapterIntegration:
             for record in data:
                 f.write(json.dumps(record) + '\n')
             f.flush()
-            
+
             field_map = {
                 "reward": "metrics.reward",
                 "kl": "metrics.kl",
@@ -586,7 +587,7 @@ class TestFlexibleAdapterIntegration:
             }
             adapter = FlexibleDataAdapter(f.name, field_map=field_map)
             df = adapter.load()
-            
+
             assert len(df) == 2
             assert "step" in df.columns
             assert "reward" in df.columns
@@ -600,9 +601,9 @@ class TestFlexibleAdapterIntegration:
             assert df["entropy"].iloc[0] == 0.8
             assert df["loss"].iloc[0] == 0.4
             assert df["lr"].iloc[0] == 0.001
-        
+
         Path(f.name).unlink()
-    
+
     def test_error_handling_with_suggestions(self):
         """Test error handling with helpful suggestions."""
         with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
@@ -613,12 +614,12 @@ class TestFlexibleAdapterIntegration:
             }
             f.write(json.dumps(data) + '\n')
             f.flush()
-            
+
             adapter = FlexibleDataAdapter(f.name)
-            
+
             with pytest.raises(SchemaError) as exc_info:
                 adapter.load()
-            
+
             error_message = str(exc_info.value)
             # Should contain suggestions for similar field names
             assert "step_count" in error_message

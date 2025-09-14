@@ -1,9 +1,9 @@
 """Writers for reports and visualizations."""
 
-import json
-import matplotlib.pyplot as plt
 from pathlib import Path
-from typing import Dict, Any, Union
+from typing import Any, Dict, Union
+
+import matplotlib.pyplot as plt
 
 
 def mkdir_reports() -> Path:

@@ -1,12 +1,12 @@
 """Minimal thread safety tests for network monitoring components with mocked dependencies."""
 
+import os
+import sys
 import threading
 import time
-import sys
-import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import deque
-from unittest.mock import MagicMock, patch
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from unittest.mock import MagicMock
 
 # Mock the required dependencies before importing
 sys.modules['psutil'] = MagicMock()
@@ -19,8 +19,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 # Import only the network monitor module directly
 import importlib.util
+
 spec = importlib.util.spec_from_file_location(
-    "network_monitor", 
+    "network_monitor",
     os.path.join(os.path.dirname(__file__), 'src', 'rldk', 'integrations', 'openrlhf', 'network_monitor.py')
 )
 network_monitor = importlib.util.module_from_spec(spec)
@@ -39,7 +40,7 @@ def test_network_diagnostics_thread_safety():
     """Test NetworkDiagnostics thread safety with concurrent access."""
     print("Testing NetworkDiagnostics thread safety...")
     diagnostics = NetworkDiagnostics(sampling_frequency=1)
-    
+
     def run_diagnostics():
         """Run diagnostics in a thread."""
         try:
@@ -48,20 +49,20 @@ def test_network_diagnostics_thread_safety():
         except Exception as e:
             print(f"Error in diagnostics thread: {e}")
             return False
-    
+
     # Test with 10 concurrent threads
     num_threads = 10
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
         futures = [executor.submit(run_diagnostics) for _ in range(num_threads)]
         results = [future.result() for future in as_completed(futures)]
-    
+
     # All threads should complete without exceptions
     assert all(results), "Some diagnostics threads failed"
-    
+
     # Check that we have a single lock instance
     assert hasattr(diagnostics, '_lock')
     assert hasattr(diagnostics._lock, 'acquire')  # Check it's a lock-like object
-    
+
     # Verify invocation count is correct
     assert diagnostics._invocation_count == num_threads
     print("✓ NetworkDiagnostics thread safety test passed")
@@ -71,7 +72,7 @@ def test_network_interface_monitor_thread_safety():
     """Test NetworkInterfaceMonitor thread safety with concurrent access."""
     print("Testing NetworkInterfaceMonitor thread safety...")
     monitor = NetworkInterfaceMonitor(sampling_frequency=1)
-    
+
     def get_stats():
         """Get interface stats in a thread."""
         try:
@@ -80,20 +81,20 @@ def test_network_interface_monitor_thread_safety():
         except Exception as e:
             print(f"Error in interface monitor thread: {e}")
             return False
-    
+
     # Test with 10 concurrent threads
     num_threads = 10
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
         futures = [executor.submit(get_stats) for _ in range(num_threads)]
         results = [future.result() for future in as_completed(futures)]
-    
+
     # All threads should complete without exceptions
     assert all(results), "Some interface monitor threads failed"
-    
+
     # Check that we have a single lock instance
     assert hasattr(monitor, '_lock')
     assert hasattr(monitor._lock, 'acquire')  # Check it's a lock-like object
-    
+
     # Verify invocation count is correct
     assert monitor._invocation_count == num_threads
     print("✓ NetworkInterfaceMonitor thread safety test passed")
@@ -103,7 +104,7 @@ def test_network_latency_monitor_thread_safety():
     """Test NetworkLatencyMonitor thread safety with concurrent access."""
     print("Testing NetworkLatencyMonitor thread safety...")
     monitor = NetworkLatencyMonitor(sampling_frequency=1)
-    
+
     def measure_latency():
         """Measure latency in a thread."""
         try:
@@ -112,23 +113,23 @@ def test_network_latency_monitor_thread_safety():
         except Exception as e:
             print(f"Error in latency monitor thread: {e}")
             return False
-    
+
     # Test with 10 concurrent threads
     num_threads = 10
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
         futures = [executor.submit(measure_latency) for _ in range(num_threads)]
         results = [future.result() for future in as_completed(futures)]
-    
+
     # All threads should complete without exceptions
     assert all(results), "Some latency monitor threads failed"
-    
+
     # Check that we have a single lock instance
     assert hasattr(monitor, '_lock')
     assert hasattr(monitor._lock, 'acquire')  # Check it's a lock-like object
-    
+
     # Verify invocation count is correct
     assert monitor._invocation_count == num_threads
-    
+
     # Check that latency history uses deque with maxlen
     assert isinstance(monitor.latency_history, dict)
     for host, history in monitor.latency_history.items():
@@ -141,7 +142,7 @@ def test_network_bandwidth_monitor_thread_safety():
     """Test NetworkBandwidthMonitor thread safety with concurrent access."""
     print("Testing NetworkBandwidthMonitor thread safety...")
     monitor = NetworkBandwidthMonitor(sampling_frequency=1)
-    
+
     def measure_bandwidth():
         """Measure bandwidth in a thread."""
         try:
@@ -150,23 +151,23 @@ def test_network_bandwidth_monitor_thread_safety():
         except Exception as e:
             print(f"Error in bandwidth monitor thread: {e}")
             return False
-    
+
     # Test with 10 concurrent threads
     num_threads = 10
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
         futures = [executor.submit(measure_bandwidth) for _ in range(num_threads)]
         results = [future.result() for future in as_completed(futures)]
-    
+
     # All threads should complete without exceptions
     assert all(results), "Some bandwidth monitor threads failed"
-    
+
     # Check that we have a single lock instance
     assert hasattr(monitor, '_lock')
     assert hasattr(monitor._lock, 'acquire')  # Check it's a lock-like object
-    
+
     # Verify invocation count is correct
     assert monitor._invocation_count == num_threads
-    
+
     # Check that bandwidth history uses deque with maxlen
     assert isinstance(monitor.bandwidth_history, deque)
     assert monitor.bandwidth_history.maxlen == 100
@@ -177,7 +178,7 @@ def test_distributed_network_monitor_thread_safety():
     """Test DistributedNetworkMonitor thread safety with concurrent access."""
     print("Testing DistributedNetworkMonitor thread safety...")
     monitor = DistributedNetworkMonitor(sampling_frequency=1)
-    
+
     def measure_metrics():
         """Measure distributed metrics in a thread."""
         try:
@@ -186,23 +187,23 @@ def test_distributed_network_monitor_thread_safety():
         except Exception as e:
             print(f"Error in distributed monitor thread: {e}")
             return False
-    
+
     # Test with 10 concurrent threads
     num_threads = 10
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
         futures = [executor.submit(measure_metrics) for _ in range(num_threads)]
         results = [future.result() for future in as_completed(futures)]
-    
+
     # All threads should complete without exceptions
     assert all(results), "Some distributed monitor threads failed"
-    
+
     # Check that we have distributed lock
     assert hasattr(monitor, '_distributed_lock')
     assert hasattr(monitor._distributed_lock, 'acquire')  # Check it's a lock-like object
-    
+
     # Verify invocation count is correct
     assert monitor._invocation_count == num_threads
-    
+
     # Check that all distributed lists use deque with maxlen
     assert isinstance(monitor.allreduce_times, deque)
     assert monitor.allreduce_times.maxlen == 100
@@ -221,7 +222,7 @@ def test_real_network_monitor_thread_safety():
     """Test RealNetworkMonitor thread safety with concurrent access."""
     print("Testing RealNetworkMonitor thread safety...")
     monitor = RealNetworkMonitor(sampling_frequency=1)
-    
+
     def get_metrics():
         """Get current metrics in a thread."""
         try:
@@ -230,23 +231,23 @@ def test_real_network_monitor_thread_safety():
         except Exception as e:
             print(f"Error in real network monitor thread: {e}")
             return False
-    
+
     # Test with 10 concurrent threads
     num_threads = 10
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
         futures = [executor.submit(get_metrics) for _ in range(num_threads)]
         results = [future.result() for future in as_completed(futures)]
-    
+
     # All threads should complete without exceptions
     assert all(results), "Some real network monitor threads failed"
-    
+
     # Check that we have history lock
     assert hasattr(monitor, '_history_lock')
     assert hasattr(monitor._history_lock, 'acquire')  # Check it's a lock-like object
-    
+
     # Verify invocation count is correct
     assert monitor._invocation_count == num_threads
-    
+
     # Check that history uses deque with maxlen
     assert isinstance(monitor.bandwidth_history, deque)
     assert monitor.bandwidth_history.maxlen == 100
@@ -258,36 +259,36 @@ def test_real_network_monitor_thread_safety():
 def test_memory_bounds_enforcement():
     """Test that memory bounds are enforced with deque maxlen."""
     print("Testing memory bounds enforcement...")
-    
+
     # Test latency monitor history bounds
     latency_monitor = NetworkLatencyMonitor(sampling_frequency=1)
-    
+
     # Fill history beyond maxlen
     for i in range(150):  # More than maxlen=100
         with latency_monitor._lock:
             for host in latency_monitor.target_hosts:
                 latency_monitor.latency_history[host].append(i)
-    
+
     # Check that history is bounded
     for host in latency_monitor.target_hosts:
         assert len(latency_monitor.latency_history[host]) == 100
         assert latency_monitor.latency_history[host].maxlen == 100
-    
+
     # Test bandwidth monitor history bounds
     bandwidth_monitor = NetworkBandwidthMonitor(sampling_frequency=1)
-    
+
     # Fill history beyond maxlen
     for i in range(150):  # More than maxlen=100
         with bandwidth_monitor._lock:
             bandwidth_monitor.bandwidth_history.append(i)
-    
+
     # Check that history is bounded
     assert len(bandwidth_monitor.bandwidth_history) == 100
     assert bandwidth_monitor.bandwidth_history.maxlen == 100
-    
+
     # Test distributed monitor history bounds
     distributed_monitor = DistributedNetworkMonitor(sampling_frequency=1)
-    
+
     # Fill all distributed histories beyond maxlen
     for i in range(150):  # More than maxlen=100
         with distributed_monitor._distributed_lock:
@@ -295,7 +296,7 @@ def test_memory_bounds_enforcement():
             distributed_monitor.broadcast_times.append(i)
             distributed_monitor.gather_times.append(i)
             distributed_monitor.scatter_times.append(i)
-    
+
     # Check that all histories are bounded
     assert len(distributed_monitor.allreduce_times) == 100
     assert distributed_monitor.allreduce_times.maxlen == 100
@@ -305,12 +306,12 @@ def test_memory_bounds_enforcement():
     assert distributed_monitor.gather_times.maxlen == 100
     assert len(distributed_monitor.scatter_times) == 100
     assert distributed_monitor.scatter_times.maxlen == 100
-    
+
     # Test performance history bounds (maxlen=1000)
     for i in range(1100):  # More than maxlen=1000
         with distributed_monitor._distributed_lock:
             distributed_monitor.performance_history.append(i)
-    
+
     assert len(distributed_monitor.performance_history) == 1000
     assert distributed_monitor.performance_history.maxlen == 1000
     print("✓ Memory bounds enforcement test passed")
@@ -319,20 +320,20 @@ def test_memory_bounds_enforcement():
 def test_sampling_frequency_control():
     """Test that sampling frequency parameter works correctly."""
     print("Testing sampling frequency control...")
-    
+
     # Test with sampling frequency of 3
     sampling_freq = 3
     monitor = NetworkInterfaceMonitor(sampling_frequency=sampling_freq)
-    
+
     # Call get_interface_stats multiple times
     results = []
     for i in range(10):
         result = monitor.get_interface_stats()
         results.append(result)
-    
+
     # Check that invocation count is correct
     assert monitor._invocation_count == 10
-    
+
     # With sampling_frequency=3, only every 3rd call should do real work
     # The others should return empty stats
     empty_stats = {
@@ -351,7 +352,7 @@ def test_sampling_frequency_control():
         'errin': 0.0,
         'errout': 0.0,
     }
-    
+
     # Most calls should return empty stats due to sampling
     empty_count = sum(1 for result in results if result == empty_stats)
     assert empty_count >= 6  # At least 6 out of 10 should be empty due to sampling
@@ -361,17 +362,17 @@ def test_sampling_frequency_control():
 def test_lock_uniqueness():
     """Test that each monitor instance has its own unique lock."""
     print("Testing lock uniqueness...")
-    
+
     # Create multiple instances
     monitor1 = NetworkInterfaceMonitor()
     monitor2 = NetworkInterfaceMonitor()
     monitor3 = NetworkLatencyMonitor()
-    
+
     # Each should have its own lock
     assert monitor1._lock is not monitor2._lock
     assert monitor1._lock is not monitor3._lock
     assert monitor2._lock is not monitor3._lock
-    
+
     # All should be RLock instances
     assert isinstance(monitor1._lock, threading.RLock)
     assert isinstance(monitor2._lock, threading.RLock)
@@ -382,9 +383,9 @@ def test_lock_uniqueness():
 def test_concurrent_read_write_operations():
     """Test concurrent read and write operations on shared state."""
     print("Testing concurrent read/write operations...")
-    
+
     monitor = NetworkLatencyMonitor(sampling_frequency=1)
-    
+
     def writer():
         """Write to latency history."""
         for i in range(50):
@@ -392,7 +393,7 @@ def test_concurrent_read_write_operations():
                 for host in monitor.target_hosts:
                     monitor.latency_history[host].append(i)
             time.sleep(0.001)  # Small delay
-    
+
     def reader():
         """Read from latency history."""
         for i in range(50):
@@ -402,7 +403,7 @@ def test_concurrent_read_write_operations():
                     # Should not raise exception
                     assert isinstance(history, list)
             time.sleep(0.001)  # Small delay
-    
+
     # Run readers and writers concurrently
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = []
@@ -412,11 +413,11 @@ def test_concurrent_read_write_operations():
         # 5 readers
         for _ in range(5):
             futures.append(executor.submit(reader))
-        
+
         # Wait for all to complete
         for future in as_completed(futures):
             future.result()  # This will raise any exceptions
-    
+
     # Verify no data corruption occurred
     for host in monitor.target_hosts:
         history = list(monitor.latency_history[host])
@@ -430,7 +431,7 @@ def test_concurrent_read_write_operations():
 def main():
     """Run all tests."""
     print("Running network monitoring thread safety tests...\n")
-    
+
     try:
         test_network_diagnostics_thread_safety()
         test_network_interface_monitor_thread_safety()
@@ -442,15 +443,15 @@ def main():
         test_sampling_frequency_control()
         test_lock_uniqueness()
         test_concurrent_read_write_operations()
-        
+
         print("\n🎉 All tests passed! Network monitoring is thread-safe and memory-bounded.")
-        
+
     except Exception as e:
         print(f"\n❌ Test failed: {e}")
         import traceback
         traceback.print_exc()
         return 1
-    
+
     return 0
 
 

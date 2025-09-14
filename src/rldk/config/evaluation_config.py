@@ -1,69 +1,69 @@
 """Centralized configuration for evaluation parameters."""
 
-from dataclasses import dataclass
-from typing import Dict, Any, Optional, List
-import os
 import logging
+import os
+from dataclasses import dataclass
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
 @dataclass
 class EvaluationConfig:
     """Configuration for evaluation parameters."""
-    
+
     # KL Divergence thresholds
     KL_DIVERGENCE_MIN: float = 0.01
     KL_DIVERGENCE_MAX: float = 0.5
     KL_DIVERGENCE_TARGET: float = 0.1
-    
+
     # Improvement score normalization
     IMPROVEMENT_RANGE_MIN: float = -1.0
     IMPROVEMENT_RANGE_MAX: float = 1.0
-    
+
     # Loss score normalization
     MAX_LOSS_THRESHOLD: float = 10.0
-    
+
     # Memory thresholds (GB)
     MEMORY_EFFICIENCY_THRESHOLD: float = 8.0
     MEMORY_STABILITY_THRESHOLD: float = 1.0
     GPU_MEMORY_EFFICIENCY_THRESHOLD: float = 6.0
     MEMORY_RANGE_THRESHOLD: float = 2.0
     MEMORY_CONSISTENCY_THRESHOLD: float = 16.0
-    
+
     # Gradient thresholds
     GRADIENT_STABILITY_THRESHOLD: float = 1.0
     GRADIENT_EXPLOSION_THRESHOLD: float = 10.0
     GRADIENT_EFFICIENCY_THRESHOLD: float = 4.0
-    
+
     # Toxicity thresholds
     HIGH_TOXICITY_THRESHOLD: float = 0.7
     CONFIDENCE_CALIBRATION_MIN: float = 0.3
     CONFIDENCE_CALIBRATION_MAX: float = 0.8
     CONFIDENCE_STABILITY_THRESHOLD: float = 0.2
-    
+
     # Performance thresholds
     INFERENCE_TIME_THRESHOLD: float = 0.1  # seconds
     LATENCY_THRESHOLD: float = 0.05  # seconds
     STEPS_PER_SECOND_MAX: float = 1000.0
     SPEED_CONSISTENCY_THRESHOLD: float = 0.01
     BATCH_SPEED_THRESHOLD: float = 1000.0
-    
+
     # Consistency thresholds
     CV_CONSISTENCY_THRESHOLD: float = 0.2
     OUTLIER_THRESHOLD_MULTIPLIER: float = 1.5
     STABILITY_THRESHOLD: float = 0.1
-    
+
     # Robustness thresholds
     TREND_DEGRADATION_THRESHOLD: float = 0.1
     MAX_EXPECTED_DEGRADATION: float = 0.1
     LOW_ROBUSTNESS_THRESHOLD: float = 0.3
-    
+
     # Efficiency thresholds
     CONVERGENCE_IMPROVEMENT_THRESHOLD: float = 0.5
     EARLY_CONVERGENCE_THRESHOLD: float = 0.9
     FLOP_EFFICIENCY_THRESHOLD: float = 1000.0
     SAMPLE_EFFICIENCY_MAX: float = 2.0
-    
+
     # Calibration thresholds
     UNCERTAINTY_CALIBRATION_MIN: float = 0.1
     UNCERTAINTY_CALIBRATION_MAX: float = 0.5
@@ -72,42 +72,42 @@ class EvaluationConfig:
     TEMPERATURE_CALIBRATION_MIN: float = 0.8
     TEMPERATURE_CALIBRATION_MAX: float = 1.2
     ECE_THRESHOLD: float = 0.1
-    
+
     # Memory access and allocation
     MEMORY_ACCESS_THRESHOLD: float = 0.001  # seconds
     ALLOCATION_EFFICIENCY_THRESHOLD: float = 1000
     BANDWIDTH_EFFICIENCY_MIN: float = 0.3
     BANDWIDTH_EFFICIENCY_MAX: float = 0.8
-    
+
     # GPU utilization
     GPU_UTILIZATION_MIN: float = 0.3
     GPU_UTILIZATION_MAX: float = 0.8
-    
+
     # Sample size thresholds
     MIN_SAMPLES_FOR_ANALYSIS: int = 10
     MIN_SAMPLES_FOR_CONSISTENCY: int = 5
     MIN_SAMPLES_FOR_DISTRIBUTION: int = 50
     MIN_SAMPLES_FOR_TREND: int = 20
-    
+
     # Prompt analysis thresholds
     PROMPT_LENGTH_SHORT: int = 50
     PROMPT_LENGTH_MEDIUM: int = 150
     PROMPT_START_CHARS: int = 20
-    
+
     # Percentile thresholds
     PERCENTILES: List[int] = None
-    
+
     # Correlation thresholds
     MIN_SAMPLES_FOR_CORRELATION: int = 10
-    
+
     # Bootstrap confidence level
     BOOTSTRAP_CONFIDENCE_LEVEL: float = 0.95
-    
+
     def __post_init__(self):
         """Initialize default values for mutable fields."""
         if self.PERCENTILES is None:
             self.PERCENTILES = [5, 10, 25, 50, 75, 90, 95]
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert config to dictionary."""
         return {
@@ -158,7 +158,7 @@ def get_eval_config(config_name: str = "default") -> EvaluationConfig:
 def load_config_from_env() -> EvaluationConfig:
     """Load configuration from environment variables."""
     config = EvaluationConfig()
-    
+
     # Override with environment variables if they exist
     for field in config.__dataclass_fields__:
         env_var = f"RLDK_{field}"
@@ -188,7 +188,7 @@ def load_config_from_env() -> EvaluationConfig:
                     logger.warning(f"Unsupported field type {field_type} for {field}")
             except (ValueError, TypeError) as e:
                 logger.warning(f"Failed to parse environment variable {env_var}={value}: {e}")
-    
+
     return config
 
 def create_custom_config(**kwargs) -> EvaluationConfig:

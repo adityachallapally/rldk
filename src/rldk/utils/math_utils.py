@@ -21,12 +21,12 @@ from typing import Union
 
 def safe_divide(numerator: Union[int, float], denominator: Union[int, float], fallback: float = 0.0) -> float:
     """Safely divide two numbers, avoiding division by zero and negative denominators.
-    
+
     Args:
         numerator: The number to divide
         denominator: The number to divide by
         fallback: Value to return if denominator is zero or negative
-        
+
     Returns:
         The result of division or fallback value
     """
@@ -37,12 +37,12 @@ def safe_divide(numerator: Union[int, float], denominator: Union[int, float], fa
 
 def safe_rate_calculation(count: Union[int, float], time_interval: Union[int, float], fallback: float = 0.0) -> float:
     """Safely calculate rate (count per unit time), avoiding division by zero and negative denominators.
-    
+
     Args:
         count: The count or amount
         time_interval: The time interval
         fallback: Value to return if time_interval is zero or negative
-        
+
     Returns:
         The rate or fallback value
     """
@@ -51,12 +51,12 @@ def safe_rate_calculation(count: Union[int, float], time_interval: Union[int, fl
 
 def safe_percentage(numerator: Union[int, float], denominator: Union[int, float], fallback: float = 0.0) -> float:
     """Safely calculate percentage, avoiding division by zero and negative denominators.
-    
+
     Args:
         numerator: The numerator
         denominator: The denominator
         fallback: Value to return if denominator is zero or negative
-        
+
     Returns:
         The percentage or fallback value
     """
@@ -65,12 +65,12 @@ def safe_percentage(numerator: Union[int, float], denominator: Union[int, float]
 
 def safe_ratio(numerator: Union[int, float], denominator: Union[int, float], fallback: float = 0.0) -> float:
     """Safely calculate ratio, avoiding division by zero and negative denominators.
-    
+
     Args:
         numerator: The numerator
         denominator: The denominator
         fallback: Value to return if denominator is zero or negative
-        
+
     Returns:
         The ratio or fallback value
     """
@@ -79,15 +79,15 @@ def safe_ratio(numerator: Union[int, float], denominator: Union[int, float], fal
 
 def try_divide(numerator: Union[int, float], denominator: Union[int, float], fallback: float = 0.0) -> float:
     """Safely divide two numbers, avoiding division by zero and negative denominators.
-    
+
     This function is consistent with safe_percentage and safe_rate_calculation
     by skipping negative denominators and returning the fallback value.
-    
+
     Args:
         numerator: The number to divide
         denominator: The number to divide by
         fallback: Value to return if denominator is zero or negative
-        
+
     Returns:
         The result of division or fallback value
     """
@@ -98,15 +98,15 @@ def try_divide(numerator: Union[int, float], denominator: Union[int, float], fal
 
 def safe_divide_with_negative_support(numerator: Union[int, float], denominator: Union[int, float], fallback: float = 0.0) -> float:
     """Safely divide two numbers, allowing negative denominators but avoiding division by zero.
-    
+
     This is an alternative implementation that only checks for zero denominators,
     allowing negative denominators to proceed with normal division.
-    
+
     Args:
         numerator: The number to divide
         denominator: The number to divide by
         fallback: Value to return if denominator is zero
-        
+
     Returns:
         The result of division or fallback value
     """

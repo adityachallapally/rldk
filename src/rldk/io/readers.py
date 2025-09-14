@@ -1,14 +1,15 @@
 """Readers and writers for training metrics data."""
 
-import json
 import csv
-import torch
+import json
 from pathlib import Path
-from typing import Union, List, Iterator, Dict, Any, Callable
-import pandas as pd
+from typing import Any, Callable, Dict, Iterator, List, Union
 
-from .schema import TrainingMetrics, MetricsSchema
+import pandas as pd
+import torch
+
 from ..utils.torch_compat import safe_torch_load
+from .schema import MetricsSchema, TrainingMetrics
 
 
 def read_metrics_jsonl(file_path: Union[str, Path]) -> pd.DataFrame:
@@ -19,7 +20,7 @@ def read_metrics_jsonl(file_path: Union[str, Path]) -> pd.DataFrame:
         raise FileNotFoundError(f"Metrics file not found: {file_path}")
 
     metrics = []
-    with open(file_path, "r") as f:
+    with open(file_path) as f:
         for line_num, line in enumerate(f, 1):
             line = line.strip()
             if not line:
@@ -45,7 +46,7 @@ def read_jsonl(path: Union[str, Path]) -> Iterator[Dict[str, Any]]:
     if not path.exists():
         raise FileNotFoundError(f"File not found: {path}")
 
-    with open(path, "r") as f:
+    with open(path) as f:
         for line_num, line in enumerate(f, 1):
             line = line.strip()
             if not line:
@@ -72,7 +73,7 @@ def read_tensorboard_export(dir_path: Union[str, Path]) -> Iterator[Dict[str, An
         raise ValueError(f"No CSV files found in {dir_path}")
 
     for csv_file in csv_files:
-        with open(csv_file, "r") as f:
+        with open(csv_file) as f:
             reader = csv.DictReader(f)
             for row in reader:
                 # Convert numeric values
