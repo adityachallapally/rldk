@@ -1,6 +1,5 @@
 """Test CSV format detection and processing."""
 
-import json
 import tempfile
 import csv
 from pathlib import Path
@@ -77,7 +76,7 @@ def test_csv_error_handling():
             f.write("invalid,data,too,many,columns\n")
         
         try:
-            events = list(detect_and_read_logs(csv_file))
+            list(detect_and_read_logs(csv_file))
             assert False, "Expected ValueError for malformed CSV"
         except ValueError as e:
             assert "Failed to parse CSV file" in str(e)
@@ -99,4 +98,12 @@ def test_mixed_format_directory():
         
         events = list(detect_and_read_logs(Path(temp_dir)))
         
-        assert len(events) >= 1
+        assert len(events) >= 1, "Should process at least one file from mixed format directory"
+        
+        steps = [event.get('step') for event in events if 'step' in event]
+        assert len(steps) >= 1, "Should have at least one event with step data"
+        assert any(step in [0, 1] for step in steps), "Should process data from either CSV (step=0) or JSONL (step=1) file"
+        
+        rewards = [event.get('reward') for event in events if 'reward' in event]
+        assert len(rewards) >= 1, "Should have at least one event with reward data"
+        assert any(reward in [0.1, 0.2] for reward in rewards), "Should process reward data from either CSV (0.1) or JSONL (0.2) file"
