@@ -1,7 +1,7 @@
 """Main ingest function for training runs."""
 
 from pathlib import Path
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Dict
 import pandas as pd
 import logging
 
