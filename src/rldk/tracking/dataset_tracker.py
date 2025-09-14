@@ -637,5 +637,5 @@ class DatasetTracker:
                 return hashlib.md5(content.encode()).hexdigest()[:16]
         except Exception:
             import hashlib
-            content = f"{type(dataset).__name__}_{id(dataset)}"
+            content = f"{type(dataset).__name__}_{hash(str(type(dataset)))}"
             return hashlib.md5(content.encode()).hexdigest()[:16]
