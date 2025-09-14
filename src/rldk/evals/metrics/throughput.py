@@ -204,13 +204,14 @@ def evaluate_throughput(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     
     # Check if we have event logs
     if log_column not in data.columns:
-        logger.warning(f"Log column '{log_column}' not found in data")
+        logger.warning(f"Log column '{log_column}' not found in data. Available columns: {list(data.columns)}")
         return {
             "score": 0.0,
-            "details": f"No event logs found in column '{log_column}'",
+            "details": f"No event logs found in column '{log_column}'. Available columns: {list(data.columns)}",
             "method": "event_log_analysis",
             "num_samples": 0,
-            "error": "missing_log_column"
+            "error": "missing_log_column",
+            "available_columns": list(data.columns)
         }
     
     # Parse event logs

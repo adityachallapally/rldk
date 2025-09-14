@@ -60,7 +60,24 @@ def evaluate_alignment(data: pd.DataFrame, seed: int = 42, **kwargs) -> Dict[str
             else:
                 overall_score = 0.5
         else:
-            overall_score = 0.5
+            # If no reward data, use other available metrics
+            available_metrics = []
+            for col in data.columns:
+                if data[col].dtype in ['float64', 'int64'] and not data[col].isna().all():
+                    try:
+                        metric_std = data[col].std()
+                        metric_mean = data[col].mean()
+                        if metric_mean != 0:
+                            cv = metric_std / abs(metric_mean)
+                            stability_score = max(0, 1 - cv)
+                            available_metrics.append(stability_score)
+                    except:
+                        continue
+            
+            if available_metrics:
+                overall_score = np.mean(available_metrics)
+            else:
+                overall_score = 0.5
 
     return {
         "score": float(overall_score),
@@ -126,7 +143,27 @@ def evaluate_helpfulness(
             else:
                 overall_score = 0.5
         else:
-            overall_score = 0.5
+            # If no reward data, use other available metrics
+            available_metrics = []
+            for col in data.columns:
+                if data[col].dtype in ['float64', 'int64'] and not data[col].isna().all():
+                    try:
+                        metric_values = data[col].dropna()
+                        if len(metric_values) > 0:
+                            # Normalize to [0, 1] range
+                            min_val = metric_values.min()
+                            max_val = metric_values.max()
+                            if max_val > min_val:
+                                normalized = (metric_values - min_val) / (max_val - min_val)
+                                overall_score = float(normalized.mean())
+                                available_metrics.append(overall_score)
+                    except:
+                        continue
+            
+            if available_metrics:
+                overall_score = np.mean(available_metrics)
+            else:
+                overall_score = 0.5
 
     return {
         "score": float(overall_score),
@@ -576,5 +613,140 @@ def evaluate_reward_alignment(
         "details": f"Reward alignment evaluation based on {len(alignment_metrics)} metrics",
         "method": "correlation_and_stability",
         "metrics": alignment_metrics,
+        "sample_size": len(data),
+    }
+
+
+def evaluate_rl_training_quality(data: pd.DataFrame, seed: int = 42, **kwargs) -> Dict[str, Any]:
+    """
+    Evaluate RL training quality using standard training metrics.
+    
+    This function works with standard RL training data columns like:
+    - reward_mean, reward_std, reward_min, reward_max
+    - loss, kl, entropy_mean, entropy_std
+    - step, epoch, batch_idx
+    
+    Args:
+        data: Training run data
+        seed: Random seed for reproducibility
+        **kwargs: Additional arguments
+        
+    Returns:
+        Dictionary with training quality score and details
+    """
+    np.random.seed(seed)
+    
+    quality_metrics = []
+    
+    # 1. Reward quality metrics
+    if "reward_mean" in data.columns:
+        rewards = data["reward_mean"].dropna()
+        if len(rewards) > 0:
+            # Reward improvement over time
+            if "step" in data.columns:
+                sorted_data = data.sort_values("step")
+                sorted_rewards = sorted_data["reward_mean"].dropna()
+                if len(sorted_rewards) > 10:
+                    # Calculate improvement from first quarter to last quarter
+                    first_quarter = sorted_rewards[:len(sorted_rewards)//4]
+                    last_quarter = sorted_rewards[-len(sorted_rewards)//4:]
+                    if len(first_quarter) > 0 and len(last_quarter) > 0:
+                        improvement = last_quarter.mean() - first_quarter.mean()
+                        # Normalize improvement to [0, 1] range
+                        improvement_score = max(0, min(1, (improvement + 1) / 2))  # Assume [-1, 1] range
+                        quality_metrics.append(("reward_improvement", improvement_score))
+            
+            # Reward stability (lower variance = more stable)
+            reward_std = rewards.std()
+            reward_mean = rewards.mean()
+            if reward_mean != 0:
+                cv = reward_std / abs(reward_mean)
+                stability_score = max(0, 1 - cv)
+                quality_metrics.append(("reward_stability", stability_score))
+            
+            # Reward magnitude (higher rewards = better)
+            normalized_rewards = (rewards + 1) / 2  # Assume [-1, 1] range
+            reward_magnitude = normalized_rewards.mean()
+            quality_metrics.append(("reward_magnitude", reward_magnitude))
+    
+    # 2. Loss metrics
+    if "loss" in data.columns:
+        losses = data["loss"].dropna()
+        if len(losses) > 0:
+            # Loss reduction over time
+            if "step" in data.columns:
+                sorted_data = data.sort_values("step")
+                sorted_losses = sorted_data["loss"].dropna()
+                if len(sorted_losses) > 10:
+                    first_quarter = sorted_losses[:len(sorted_losses)//4]
+                    last_quarter = sorted_losses[-len(sorted_losses)//4:]
+                    if len(first_quarter) > 0 and len(last_quarter) > 0:
+                        loss_reduction = (first_quarter.mean() - last_quarter.mean()) / first_quarter.mean()
+                        loss_reduction_score = max(0, min(1, loss_reduction))
+                        quality_metrics.append(("loss_reduction", loss_reduction_score))
+            
+            # Final loss level (lower is better)
+            final_loss = losses.iloc[-1] if len(losses) > 0 else losses.mean()
+            # Normalize loss to [0, 1] range (assuming loss is positive)
+            loss_score = max(0, 1 - final_loss / 10)  # Assume max loss of 10
+            quality_metrics.append(("final_loss_score", loss_score))
+    
+    # 3. KL divergence metrics
+    if "kl" in data.columns:
+        kl_values = data["kl"].dropna()
+        if len(kl_values) > 0:
+            # KL divergence should be moderate (not too high, not too low)
+            kl_mean = kl_values.mean()
+            if 0.01 <= kl_mean <= 0.5:  # Good range for KL divergence
+                kl_score = 1.0
+            elif kl_mean < 0.01:  # Too low (no learning)
+                kl_score = 0.3
+            else:  # Too high (unstable)
+                kl_score = max(0, 1 - (kl_mean - 0.5) / 0.5)
+            quality_metrics.append(("kl_divergence_score", kl_score))
+    
+    # 4. Entropy metrics
+    if "entropy_mean" in data.columns:
+        entropy_values = data["entropy_mean"].dropna()
+        if len(entropy_values) > 0:
+            # Entropy should be moderate (not too high, not too low)
+            entropy_mean = entropy_values.mean()
+            if 0.5 <= entropy_mean <= 2.0:  # Good range for entropy
+                entropy_score = 1.0
+            else:
+                entropy_score = max(0, 1 - abs(entropy_mean - 1.25) / 1.25)
+            quality_metrics.append(("entropy_score", entropy_score))
+    
+    # 5. Training stability metrics
+    if "step" in data.columns:
+        # Check for training stability across different metrics
+        stability_scores = []
+        for col in data.columns:
+            if data[col].dtype in ['float64', 'int64'] and col != 'step':
+                values = data[col].dropna()
+                if len(values) > 10:
+                    # Calculate coefficient of variation
+                    if values.mean() != 0:
+                        cv = values.std() / abs(values.mean())
+                        stability = max(0, 1 - cv)
+                        stability_scores.append(stability)
+        
+        if stability_scores:
+            avg_stability = np.mean(stability_scores)
+            quality_metrics.append(("training_stability", avg_stability))
+    
+    # Calculate overall quality score
+    if quality_metrics:
+        scores = [score for _, score in quality_metrics]
+        overall_score = np.mean(scores)
+    else:
+        # Fallback: use basic data quality
+        overall_score = 0.5
+    
+    return {
+        "score": float(overall_score),
+        "details": f"RL training quality evaluation based on {len(quality_metrics)} metrics",
+        "method": "reward_loss_kl_entropy_analysis",
+        "metrics": quality_metrics,
         "sample_size": len(data),
     }

@@ -29,6 +29,14 @@ class EvalResult:
     seed: int
     metadata: Dict[str, Any]
     raw_results: List[Dict[str, Any]]
+    
+    @property
+    def overall_score(self) -> float:
+        """Calculate overall score as the mean of all valid scores."""
+        valid_scores = [score for score in self.scores.values() if not np.isnan(score)]
+        if not valid_scores:
+            return 0.0
+        return float(np.mean(valid_scores))
 
 
 def run(
