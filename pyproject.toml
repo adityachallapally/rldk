@@ -73,7 +73,7 @@ openrlhf = [
 ]
 
 [project.scripts]
-rldk = "rldk.cli:app"
+rldk = "rldk.cli_main:app"
 
 [project.urls]
 Homepage = "https://github.com/your-org/rldk"
