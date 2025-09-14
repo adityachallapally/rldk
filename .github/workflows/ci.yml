@@ -25,7 +25,7 @@ jobs:
     - name: Install dependencies
       run: |
         python3 -m pip install --upgrade pip
-        pip install -e ".[dev]"
+        python3 -m pip install -e ".[dev]"
     
     - name: Run linting
       run: |
@@ -55,7 +55,7 @@ jobs:
     - name: Install dependencies
       run: |
         python3 -m pip install --upgrade pip
-        pip install -e ".[dev]"
+        python3 -m pip install -e ".[dev]"
     
     - name: Generate test fixtures
       run: |
@@ -136,6 +136,67 @@ jobs:
         path: rldk_reports/
         retention-days: 7
 
+  test-no-pytorch:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+    env:
+      RLDK_DISABLE_LAZY_LOADING: true
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+    
+    - name: Install dependencies (without PyTorch)
+      run: |
+        python3 -m pip install --upgrade pip
+        # Install only non-PyTorch dependencies
+        python3 -m pip install -e ".[dev]" --no-deps
+        python3 -m pip install typer pydantic pydantic-settings numpy pandas scipy rich wandb pyyaml matplotlib seaborn scikit-learn transformers datasets nltk tokenizers jsonschema packaging streamlit plotly accelerate flask psutil detoxify vaderSentiment pytest pytest-cov black isort mypy ruff hypothesis pyarrow openrlhf
+    
+    - name: Generate test fixtures
+      run: |
+        python3 tests/_make_fixtures.py
+    
+    - name: Run unit tests (no PyTorch)
+      run: |
+        pytest tests/unit/ -v --cov=src/rldk --cov-report=xml --cov-report=html -k "not torch"
+    
+    - name: Run integration tests (no PyTorch)
+      run: |
+        pytest tests/integration/ -v -k "not torch"
+    
+    - name: Test CLI smoke tests (no PyTorch)
+      run: |
+        rldk --help
+        rldk seed --help
+        rldk forensics --help
+        rldk reward --help
+        rldk evals --help
+        rldk track --help
+    
+    - name: Test acceptance script (no PyTorch)
+      run: |
+        chmod +x scripts/dev/acceptance.sh
+        # Run a subset of acceptance checks (full run would be too slow for CI)
+        python3 -c "
+        import sys
+        sys.path.insert(0, 'src')
+        from rldk.utils.seed import set_global_seed, get_current_seed
+        set_global_seed(42)
+        assert get_current_seed() == 42
+        print('✅ Seed management test passed')
+        "
+    
+    - name: Test MkDocs build
+      run: |
+        mkdocs build
+
   security:
     runs-on: ubuntu-latest
     steps:
@@ -150,7 +211,7 @@ jobs:
     - name: Install dependencies
       run: |
         python3 -m pip install --upgrade pip
-        pip install safety bandit
+        python3 -m pip install safety bandit
     
     - name: Run security checks
       run: |

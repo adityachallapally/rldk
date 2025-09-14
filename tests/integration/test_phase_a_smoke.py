@@ -62,32 +62,30 @@ def test_phase_a_end_to_end(tmp_path):
 
     # 4) Checkpoint diffs
     # Only run checkpoint tests if PyTorch is available
-    if has_pytorch():
-        sh(
-            [
-                "rldk",
-                "diff-ckpt",
-                "test_artifacts/ckpt_identical/a.pt",
-                "test_artifacts/ckpt_identical/b.pt",
-            ]
-        )
-        diff_ident = load_json(REPORTS / "ckpt_diff.json")
-        avg_cos = diff_ident.get("summary", {}).get("avg_cosine", 0.0)
-        assert avg_cos >= 0.9999
+    if not has_pytorch():
+        pytest.skip("PyTorch not available, skipping checkpoint diff tests")
+    
+    sh(
+        [
+            "rldk",
+            "diff-ckpt",
+            "test_artifacts/ckpt_identical/a.pt",
+            "test_artifacts/ckpt_identical/b.pt",
+        ]
+    )
+    diff_ident = load_json(REPORTS / "ckpt_diff.json")
+    avg_cos = diff_ident.get("summary", {}).get("avg_cosine", 0.0)
+    assert avg_cos >= 0.9999
 
-        sh(
-            [
-                "rldk",
-                "diff-ckpt",
-                "test_artifacts/ckpt_value_head_edit/a.pt",
-                "test_artifacts/ckpt_value_head_edit/b.pt",
-            ]
-        )
-        diff_edit = load_json(REPORTS / "ckpt_diff.json")
-    else:
-        print("⚠️  PyTorch not available, skipping checkpoint diff tests")
-        # Create dummy diff results for the rest of the test
-        diff_edit = {"summary": {"avg_cosine": 0.5}}
+    sh(
+        [
+            "rldk",
+            "diff-ckpt",
+            "test_artifacts/ckpt_value_head_edit/a.pt",
+            "test_artifacts/ckpt_value_head_edit/b.pt",
+        ]
+    )
+    diff_edit = load_json(REPORTS / "ckpt_diff.json")
     movers = [m.get("name", "").lower() for m in diff_edit.get("top_movers", [])]
     assert any(("value" in n) or ("v_head" in n) for n in movers)
 
