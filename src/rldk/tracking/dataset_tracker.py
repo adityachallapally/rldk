@@ -47,7 +47,7 @@ class DatasetTracker:
         timeout = timeout or (self.config.tracking_timeout if self.config else 30)
 
         if self._cache:
-            cache_key = f"dataset_{name}_{hash(str(dataset))}"
+            cache_key = f"dataset_{name}_{self._get_dataset_cache_key(dataset)}"
             cached_result = await self._cache.get_async(cache_key)
             if cached_result:
                 if progress_callback:
@@ -66,7 +66,7 @@ class DatasetTracker:
             )
 
             if self._cache and not result.get("error"):
-                cache_key = f"dataset_{name}_{hash(str(dataset))}"
+                cache_key = f"dataset_{name}_{self._get_dataset_cache_key(dataset)}"
                 await self._cache.set_async(cache_key, result)
 
             return result
@@ -589,3 +589,26 @@ class DatasetTracker:
             "datasets": self.tracked_datasets,
             "algorithm": self.algorithm
         }
+
+    def _get_dataset_cache_key(self, dataset) -> str:
+        """Generate a deterministic cache key for a dataset."""
+        try:
+            if hasattr(dataset, '__len__') and hasattr(dataset, '__getitem__'):
+                return f"{type(dataset).__name__}_{len(dataset)}"
+            elif hasattr(dataset, 'shape'):
+                return f"{type(dataset).__name__}_{dataset.shape}"
+            elif isinstance(dataset, (str, Path)):
+                path = Path(dataset)
+                if path.exists():
+                    return f"file_{path.name}_{path.stat().st_mtime}"
+                else:
+                    return f"file_{path.name}"
+            else:
+                # Fallback to type and string representation hash
+                import hashlib
+                content = f"{type(dataset).__name__}_{str(dataset)}"
+                return hashlib.md5(content.encode()).hexdigest()[:16]
+        except Exception:
+            import hashlib
+            content = f"{type(dataset).__name__}_{id(dataset)}"
+            return hashlib.md5(content.encode()).hexdigest()[:16]

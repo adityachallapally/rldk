@@ -124,11 +124,42 @@ class GitTracker:
                     self.capture_git_state_async(capture_commit, capture_diff, capture_status, capture_remote)
                 )
         except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            return loop.run_until_complete(
+            return asyncio.run(
                 self.capture_git_state_async(capture_commit, capture_diff, capture_status, capture_remote)
             )
+
+    def _capture_git_state_sync(
+        self,
+        capture_commit: bool = True,
+        capture_diff: bool = True,
+        capture_status: bool = True,
+        capture_remote: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Synchronous fallback implementation for when event loop is running.
+        """
+        git_info = {
+            "timestamp": self._get_timestamp(),
+            "repo_path": str(self.repo_path.absolute())
+        }
+
+        if capture_commit:
+            git_info["commit"] = self._capture_commit_info()
+
+        if capture_diff:
+            git_info["diff"] = self._capture_diff_info()
+
+        if capture_status:
+            git_info["status"] = self._capture_status_info()
+
+        if capture_remote:
+            git_info["remote"] = self._capture_remote_info()
+
+        # Compute Git fingerprint
+        git_info["git_checksum"] = self._compute_git_checksum(git_info)
+
+        self.tracking_info = git_info
+        return git_info
 
     async def _capture_commit_info_async(self) -> Dict[str, Any]:
         """Async version of commit info capture."""

@@ -135,11 +135,15 @@ class ExperimentTracker:
     async def _capture_seeds_safe(self) -> Dict[str, Any]:
         """Safely capture seed state with error handling."""
         try:
-            return self.seed_tracker.capture_seeds(
-                track_python=self.config.track_python_seed,
-                track_numpy=self.config.track_numpy_seed,
-                track_torch=self.config.track_torch_seed,
-                track_cuda=self.config.track_cuda_seed
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(
+                None, 
+                lambda: self.seed_tracker.capture_seeds(
+                    track_python=self.config.track_python_seed,
+                    track_numpy=self.config.track_numpy_seed,
+                    track_torch=self.config.track_torch_seed,
+                    track_cuda=self.config.track_cuda_seed
+                )
             )
         except Exception as e:
             return {"error": f"Seed capture failed: {str(e)}"}

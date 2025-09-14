@@ -54,7 +54,7 @@ class ModelTracker:
         timeout = timeout or (self.config.tracking_timeout if self.config else 30)
 
         if self._cache:
-            cache_key = f"model_{name}_{hash(str(model))}"
+            cache_key = f"model_{name}_{self._get_model_cache_key(model)}"
             cached_result = await self._cache.get_async(cache_key)
             if cached_result:
                 if progress_callback:
@@ -82,7 +82,7 @@ class ModelTracker:
             )
 
             if self._cache and not result.get("error"):
-                cache_key = f"model_{name}_{hash(str(model))}"
+                cache_key = f"model_{name}_{self._get_model_cache_key(model)}"
                 await self._cache.set_async(cache_key, result)
 
             return result
@@ -426,3 +426,24 @@ class ModelTracker:
             "models": self.tracked_models,
             "algorithm": self.algorithm
         }
+
+    def _get_model_cache_key(self, model) -> str:
+        """Generate a deterministic cache key for a model."""
+        try:
+            import hashlib
+            
+            if hasattr(model, 'parameters'):
+                param_count = sum(p.numel() for p in model.parameters())
+                model_type = type(model).__name__
+                return f"{model_type}_{param_count}"
+            elif hasattr(model, 'get_config'):
+                config_str = str(model.get_config())
+                return hashlib.md5(config_str.encode()).hexdigest()[:16]
+            elif hasattr(model, '__dict__'):
+                model_type = type(model).__name__
+                attr_hash = hashlib.md5(str(sorted(model.__dict__.keys())).encode()).hexdigest()[:8]
+                return f"{model_type}_{attr_hash}"
+            else:
+                return f"{type(model).__name__}_{id(model)}"
+        except Exception:
+            return f"{type(model).__name__}_{id(model)}"
