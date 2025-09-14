@@ -15,6 +15,7 @@ import torch
 
 from .callbacks import OpenRLHFMetrics, OpenRLHFCallback
 from .distributed import DistributedMetricsCollector, MultiNodeMonitor, GPUMemoryMonitor
+from ...utils.torch_compat import safe_torch_load
 
 
 @dataclass
@@ -375,7 +376,7 @@ class OpenRLHFCheckpointMonitor:
         try:
             # Try to load as PyTorch checkpoint
             if checkpoint_path.suffix == '.pt' or checkpoint_path.suffix == '.pth':
-                checkpoint = torch.load(checkpoint_path, map_location='cpu')
+                checkpoint = safe_torch_load(checkpoint_path, map_location='cpu')
                 return checkpoint.get('metadata', {})
             
             # Try to load as JSON metadata
@@ -393,7 +394,7 @@ class OpenRLHFCheckpointMonitor:
         try:
             # Basic validation - check if checkpoint can be loaded
             if checkpoint_path.suffix in ['.pt', '.pth']:
-                checkpoint = torch.load(checkpoint_path, map_location='cpu')
+                checkpoint = safe_torch_load(checkpoint_path, map_location='cpu')
                 if isinstance(checkpoint, dict) and 'model' in checkpoint:
                     return 1.0  # Valid checkpoint
                 else:
