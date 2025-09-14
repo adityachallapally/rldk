@@ -238,7 +238,7 @@ test-trl-slow:
 init:
 	@echo "Initializing development environment..."
 	python -m venv .venv
-	source .venv/bin/activate && pip install -U pip && pip install -e .[dev]
+	. .venv/bin/activate && pip install -U pip && pip install -e .[dev]
 	@echo "✅ Development environment ready!"
 
 lint:
@@ -249,7 +249,7 @@ lint:
 	isort --check-only .
 	@echo "✅ Linting passed!"
 
-test:
+test-quick:
 	@echo "Running tests..."
 	pytest -q
 	@echo "✅ Tests passed!"
