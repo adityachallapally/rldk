@@ -766,7 +766,7 @@ def evaluate_efficiency(data: pd.DataFrame, config: Optional[EvaluationConfig] =
         sorted_data = data.sort_values("step")
         losses = sorted_data["loss"].dropna()
         
-        if len(losses) > 10:
+        if len(losses) > config.MIN_SAMPLES_FOR_ANALYSIS:
             # Calculate loss reduction rate
             initial_loss = losses[:len(losses)//4].mean()
             final_loss = losses[-len(losses)//4:].mean()
@@ -882,7 +882,7 @@ def evaluate_adversarial(data: pd.DataFrame, config: Optional[EvaluationConfig] 
     # 4. Check for reward stability under adversarial conditions
     if "reward_mean" in data.columns:
         rewards = data["reward_mean"].dropna()
-        if len(rewards) > 10:
+        if len(rewards) > config.MIN_SAMPLES_FOR_ANALYSIS:
             # Calculate reward stability metrics
             reward_std = rewards.std()
             reward_mean = rewards.mean()
@@ -1293,7 +1293,7 @@ def evaluate_memory(data: pd.DataFrame, config: Optional[EvaluationConfig] = Non
         sorted_data = data.sort_values("step")
         memory_over_time = sorted_data["memory_usage"].dropna()
         
-        if len(memory_over_time) > 10:
+        if len(memory_over_time) > config.MIN_SAMPLES_FOR_ANALYSIS:
             # Check for memory growth trend
             steps = np.arange(len(memory_over_time))
             if len(steps) > 1:
@@ -1453,7 +1453,7 @@ def evaluate_calibration(data: pd.DataFrame, config: Optional[EvaluationConfig] 
         confidence_values = data["confidence_score"].dropna()
         accuracy_values = data["accuracy"].dropna()
         
-        if len(confidence_values) > 10 and len(accuracy_values) > 10:
+        if len(confidence_values) > config.MIN_SAMPLES_FOR_ANALYSIS and len(accuracy_values) > config.MIN_SAMPLES_FOR_ANALYSIS:
             # Align the data
             min_len = min(len(confidence_values), len(accuracy_values))
             confidence_aligned = confidence_values[:min_len]
@@ -1474,7 +1474,7 @@ def evaluate_calibration(data: pd.DataFrame, config: Optional[EvaluationConfig] 
         confidence_values = data["confidence_score"].dropna()
         reward_values = data["reward_mean"].dropna()
         
-        if len(confidence_values) > 10 and len(reward_values) > 10:
+        if len(confidence_values) > config.MIN_SAMPLES_FOR_ANALYSIS and len(reward_values) > config.MIN_SAMPLES_FOR_ANALYSIS:
             # Align the data
             min_len = min(len(confidence_values), len(reward_values))
             confidence_aligned = confidence_values[:min_len]
@@ -1495,7 +1495,7 @@ def evaluate_calibration(data: pd.DataFrame, config: Optional[EvaluationConfig] 
         confidence_values = data["confidence_score"].dropna()
         ground_truth_values = data["ground_truth"].dropna()
         
-        if len(confidence_values) > 10 and len(ground_truth_values) > 10:
+        if len(confidence_values) > config.MIN_SAMPLES_FOR_ANALYSIS and len(ground_truth_values) > config.MIN_SAMPLES_FOR_ANALYSIS:
             # Align the data
             min_len = min(len(confidence_values), len(ground_truth_values))
             confidence_aligned = confidence_values[:min_len]

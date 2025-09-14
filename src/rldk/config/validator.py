@@ -327,15 +327,6 @@ class ConfigValidator:
         if config.TREND_POLYFIT_DEGREE < 0:
             issues.append("TREND_POLYFIT_DEGREE must be non-negative")
         
-        if config.TREND_SLOPE_MULTIPLIER <= 0:
-            issues.append("TREND_SLOPE_MULTIPLIER must be positive")
-        
-        if config.TREND_VOLATILITY_MULTIPLIER <= 0:
-            issues.append("TREND_VOLATILITY_MULTIPLIER must be positive")
-        
-        if config.TREND_SKEWNESS_DIVISOR <= 0:
-            issues.append("TREND_SKEWNESS_DIVISOR must be positive")
-        
         return issues
     
     @staticmethod

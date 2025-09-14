@@ -69,7 +69,6 @@ class VisualizationConfig:
     
     # Grid settings
     GRID_ENABLED: bool = True
-    GRID_ALPHA: float = 0.3
     
     # Legend settings
     LEGEND_LOCATION: str = "best"
