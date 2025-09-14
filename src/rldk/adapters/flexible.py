@@ -41,6 +41,7 @@ class FlexibleDataAdapter(BaseAdapter):
         self.config_file = Path(config_file) if config_file else None
         self.allow_dot_paths = allow_dot_paths
         self.required_fields = required_fields or ['step', 'reward']
+        self.flexible_mode = len(self.required_fields) == 1  # Flexible if only step required
         self.logger = logging.getLogger(self.__class__.__name__)
         
         # Load field map from config file if provided
@@ -261,10 +262,14 @@ class FlexibleDataAdapter(BaseAdapter):
         )
         
         if missing_fields:
-            raise SchemaError(
-                f"Missing required fields: {', '.join(missing_fields)}",
-                missing_fields, available_headers, self.field_resolver
-            )
+            if self.flexible_mode and 'step' not in missing_fields:
+                self.logger.warning(f"Optional fields not found: {', '.join(missing_fields)}")
+            else:
+                suggestions = self._generate_field_suggestions(missing_fields, available_headers)
+                raise SchemaError(
+                    f"Missing required fields: {', '.join(missing_fields)}\n{suggestions}",
+                    missing_fields, available_headers, self.field_resolver
+                )
         
         # Resolve field names and create new DataFrame with canonical names
         resolved_data = {}
@@ -343,8 +348,39 @@ class FlexibleDataAdapter(BaseAdapter):
             "config_file": str(self.config_file) if self.config_file else None,
             "allow_dot_paths": self.allow_dot_paths,
             "required_fields": self.required_fields,
-            "supported_extensions": list(self.SUPPORTED_EXTENSIONS)
+            "supported_extensions": list(self.SUPPORTED_EXTENSIONS),
+            "flexible_mode": self.flexible_mode
         }
+    
+    def _generate_field_suggestions(self, missing_fields: List[str], available_headers: List[str]) -> str:
+        """Generate helpful suggestions for missing fields."""
+        suggestions = []
+        
+        for field in missing_fields:
+            field_suggestions = self.field_resolver.get_suggestions(field, available_headers, max_suggestions=2)
+            if field_suggestions:
+                suggestions.append(f"  • For '{field}', try: {', '.join(field_suggestions)}")
+        
+        field_map_suggestion = {}
+        for field in missing_fields:
+            field_suggestions = self.field_resolver.get_suggestions(field, available_headers, max_suggestions=1)
+            if field_suggestions:
+                field_map_suggestion[field] = field_suggestions[0]
+        
+        result = []
+        if suggestions:
+            result.append("💡 Found similar fields:")
+            result.extend(suggestions)
+        
+        if field_map_suggestion:
+            field_map_str = ", ".join([f'"{k}": "{v}"' for k, v in field_map_suggestion.items()])
+            result.append(f"\n🔧 Try this field map: {{{field_map_str}}}")
+        
+        result.append(f"\n📋 Available fields: {', '.join(available_headers[:10])}")
+        if len(available_headers) > 10:
+            result.append(f" (and {len(available_headers) - 10} more)")
+        
+        return "\n".join(result)
 
 
 class FlexibleJSONLAdapter(FlexibleDataAdapter):

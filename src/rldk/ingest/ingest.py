@@ -1,7 +1,7 @@
 """Main ingest function for training runs."""
 
 from pathlib import Path
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Dict
 import pandas as pd
 import logging
 
@@ -15,14 +15,19 @@ from ..utils.progress import progress_bar, spinner, timed_operation_context
 
 
 def ingest_runs(
-    source: Union[str, Path], adapter_hint: Optional[str] = None
+    source: Union[str, Path], adapter_hint: Optional[str] = None,
+    field_map: Optional[Dict[str, str]] = None,
+    strict_validation: bool = False, auto_detect_fields: bool = True
 ) -> pd.DataFrame:
     """
     Ingest training runs from various sources.
 
     Args:
         source: Path to logs directory, file, or wandb:// URI
-        adapter_hint: Optional hint for adapter type ('trl', 'openrlhf', 'wandb', 'custom_jsonl')
+        adapter_hint: Optional hint for adapter type ('trl', 'openrlhf', 'wandb', 'custom_jsonl', 'flexible')
+        field_map: Optional mapping from canonical field names to actual field names
+        strict_validation: Whether to require all canonical fields (strict mode)
+        auto_detect_fields: Whether to automatically detect field mappings
 
     Returns:
         DataFrame with standardized training metrics
@@ -96,7 +101,11 @@ def ingest_runs(
         elif adapter_hint == "custom_jsonl":
             adapter = CustomJSONLAdapter(source)
         elif adapter_hint == "flexible":
-            adapter = FlexibleDataAdapter(source)
+            adapter = FlexibleDataAdapter(
+                source, 
+                field_map=field_map,
+                required_fields=['step'] if not strict_validation else ['step', 'reward', 'kl', 'entropy']
+            )
         else:
             raise ValidationError(
                 f"Unknown adapter type: {adapter_hint}",

@@ -981,7 +981,16 @@ def ingest(
         ..., help="Path to runs directory, file, or wandb:// URI"
     ),
     adapter: Optional[str] = typer.Option(
-        None, "--adapter", "-a", help="Adapter type (trl, openrlhf, wandb, custom_jsonl)"
+        None, "--adapter", "-a", help="Adapter type (trl, openrlhf, wandb, custom_jsonl, flexible)"
+    ),
+    field_map_file: Optional[str] = typer.Option(
+        None, "--field-map", help="Path to YAML/JSON file with field mappings"
+    ),
+    strict_validation: bool = typer.Option(
+        False, "--strict", help="Require all canonical fields (strict validation mode)"
+    ),
+    auto_detect: bool = typer.Option(
+        True, "--auto-detect/--no-auto-detect", help="Auto-detect field mappings from data"
     ),
     output: Optional[str] = typer.Option(
         "metrics.jsonl", "--output", "-o", help="Output file path"
@@ -1030,7 +1039,7 @@ def ingest(
             
             # Validate adapter if specified
             if adapter:
-                valid_adapters = ["trl", "openrlhf", "wandb", "custom_jsonl"]
+                valid_adapters = ["trl", "openrlhf", "wandb", "custom_jsonl", "flexible"]
                 if adapter not in valid_adapters:
                     raise ValidationError(
                         f"Invalid adapter: {adapter}",
