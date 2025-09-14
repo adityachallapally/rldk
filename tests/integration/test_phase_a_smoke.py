@@ -2,6 +2,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+import pytest
 
 REPO = Path(__file__).resolve().parents[1]
 REPORTS = REPO / "rldk_reports"
@@ -19,6 +20,15 @@ def sh(args):
 def load_json(p):
     with open(p, "r") as f:
         return json.load(f)
+
+
+def has_pytorch():
+    """Check if PyTorch is available."""
+    try:
+        import torch
+        return True
+    except ImportError:
+        return False
 
 
 def test_phase_a_end_to_end(tmp_path):
@@ -51,6 +61,10 @@ def test_phase_a_end_to_end(tmp_path):
     assert any("controller" in r or "coef" in r for r in rules)
 
     # 4) Checkpoint diffs
+    # Only run checkpoint tests if PyTorch is available
+    if not has_pytorch():
+        pytest.skip("PyTorch not available, skipping checkpoint diff tests")
+    
     sh(
         [
             "rldk",
