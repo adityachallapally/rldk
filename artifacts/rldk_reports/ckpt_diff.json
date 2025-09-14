@@ -1,0 +1,38 @@
+{
+  "version": "1",
+  "summary": {
+    "num_params": 4,
+    "num_common_params": 4,
+    "num_only_in_a": 0,
+    "num_only_in_b": 0,
+    "avg_cosine": 1.0000000068707011,
+    "l2_p05": 0.0,
+    "l2_p50": 0.0,
+    "l2_p95": 0.0
+  },
+  "top_movers": [
+    {
+      "name": "layer2.weight",
+      "l2": 0.0,
+      "cosine": 0.9999999466792094
+    },
+    {
+      "name": "layer1.bias",
+      "l2": 0.0,
+      "cosine": 1.0000001133545728
+    },
+    {
+      "name": "layer2.bias",
+      "l2": 0.0,
+      "cosine": 1.0
+    },
+    {
+      "name": "layer1.weight",
+      "l2": 0.0,
+      "cosine": 0.9999999674490221
+    }
+  ],
+  "notes": [
+    "Both checkpoints share 4 parameters"
+  ]
+}

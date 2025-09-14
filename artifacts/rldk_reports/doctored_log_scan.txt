@@ -1,0 +1,10 @@
+Scanning logs: test_artifacts/logs_doctored_kl_spike
+Missing optional fields in flexible mode: reward
+Required field 'reward' not found, filled with None values
+
+Log scan complete. Report saved to rldk_reports/ppo_scan.json
+Rules fired: 1
+Anomalies detected:
+  - kl_controller_stuck: KL controller stuck: 136 consecutive updates with KL outside [0.01, 0.15] and coef change < 5.0%
+    Steps: 864 to 1000
+Earliest step with data: 1

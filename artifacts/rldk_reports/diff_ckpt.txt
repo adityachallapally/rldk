@@ -1,0 +1,15 @@
+Comparing checkpoints:
+  Checkpoint A: test_artifacts/ckpt_identical/a.pt
+  Checkpoint B: test_artifacts/ckpt_identical/b.pt
+
+Checkpoint diff complete. Report saved to rldk_reports/ckpt_diff.json
+Total parameters: 4
+Common parameters: 4
+Average cosine similarity: 1.0000
+L2 norm percentiles - 5%: 0.000000, 50%: 0.000000, 95%: 0.000000
+
+Top parameter changes:
+  1. layer2.weight: L2=0.000000, cosine=1.0000
+  2. layer1.bias: L2=0.000000, cosine=1.0000
+  3. layer2.bias: L2=0.000000, cosine=1.0000
+  4. layer1.weight: L2=0.000000, cosine=1.0000

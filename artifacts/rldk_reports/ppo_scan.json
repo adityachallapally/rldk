@@ -1,0 +1,18 @@
+{
+  "version": "1",
+  "rules_fired": [
+    {
+      "rule": "kl_controller_stuck",
+      "description": "KL controller stuck: 136 consecutive updates with KL outside [0.01, 0.15] and coef change < 5.0%",
+      "step_range": [
+        864,
+        1000
+      ]
+    }
+  ],
+  "earliest_step": 1,
+  "stats": {
+    "kl_median": 0.052414,
+    "entropy_trend": "stable"
+  }
+}

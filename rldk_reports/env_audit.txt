@@ -1,0 +1,14 @@
+Auditing environment for: .
+
+Environment audit complete.
+  Determinism card: rldk_reports/determinism_card.json
+  Lock file: rldk.lock
+
+Key findings:
+  Deterministic: False
+  CUDNN deterministic: False
+  Tokenizers parallelism: None
+  Nondeterminism hints: 4
+    - TOKENIZERS_PARALLELISM not set to 'false'
+    - CUDNN deterministic mode not enabled
+    - Python random seed not set

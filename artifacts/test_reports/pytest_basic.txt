@@ -1,0 +1,34 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.3, pytest-8.4.2, pluggy-1.6.0 -- /workspace/.venv_dev/bin/python3
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /workspace
+configfile: pytest.ini
+plugins: cov-7.0.0, hypothesis-6.138.16
+collecting ... collected 3 items
+
+tests/unit/test_basic_imports.py::test_imports PASSED                    [ 33%]
+tests/unit/test_basic_imports.py::test_distributed_imports PASSED        [ 66%]
+tests/unit/test_basic_imports.py::test_dashboard_imports PASSED          [100%]
+
+=============================== warnings summary ===============================
+tests/unit/test_basic_imports.py::test_imports
+  /workspace/.venv_dev/lib/python3.13/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/unit/test_basic_imports.py::test_imports returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/unit/test_basic_imports.py::test_distributed_imports
+  /workspace/.venv_dev/lib/python3.13/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/unit/test_basic_imports.py::test_distributed_imports returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/unit/test_basic_imports.py::test_dashboard_imports
+  /workspace/.venv_dev/lib/python3.13/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/unit/test_basic_imports.py::test_dashboard_imports returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 3 passed, 3 warnings in 0.10s =========================
