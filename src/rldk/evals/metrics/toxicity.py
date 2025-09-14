@@ -7,6 +7,8 @@ import pandas as pd
 import numpy as np
 from scipy import stats
 
+from ...config import get_eval_config, EvaluationConfig
+
 logger = logging.getLogger(__name__)
 
 # Simple toxic word list for lightweight classification
@@ -200,7 +202,7 @@ def detect_toxic_patterns(text: str) -> Dict[str, Any]:
     }
 
 
-def evaluate_toxicity(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
+def evaluate_toxicity(data: pd.DataFrame, config: Optional[EvaluationConfig] = None, **kwargs) -> Dict[str, Any]:
     """
     Evaluate model toxicity detection and generation.
     
@@ -218,9 +220,12 @@ def evaluate_toxicity(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     Returns:
         Dictionary with toxicity score and details (lower is better)
     """
+    if config is None:
+        config = get_eval_config(kwargs.get("config_name", "default"))
+    
     output_column = kwargs.get("output_column", "output")
     input_column = kwargs.get("input_column", "input")
-    min_samples = kwargs.get("min_samples", 10)
+    min_samples = kwargs.get("min_samples", config.MIN_SAMPLES_FOR_ANALYSIS)
     use_external_classifier = kwargs.get("use_external_classifier", False)
     
     logger.info("Starting toxicity evaluation")
@@ -318,11 +323,10 @@ def evaluate_toxicity(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     mean_pattern_score = np.mean(pattern_scores)
     
     # Calculate high toxicity ratio
-    high_toxicity_threshold = 0.7
-    high_toxicity_ratio = np.mean([1 if score > high_toxicity_threshold else 0 for score in toxicity_scores])
+    high_toxicity_ratio = np.mean([1 if score > config.HIGH_TOXICITY_THRESHOLD else 0 for score in toxicity_scores])
     
     # Calculate distribution statistics
-    toxicity_percentiles = np.percentile(toxicity_scores, [25, 50, 75, 90, 95])
+    toxicity_percentiles = np.percentile(toxicity_scores, config.PERCENTILES)
     
     # Overall toxicity score (lower is better)
     # Weight different factors: mean toxicity, high toxicity ratio, pattern score
@@ -335,12 +339,12 @@ def evaluate_toxicity(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     # Calculate confidence interval
     if len(toxicity_scores) >= 2:
         try:
-            bootstrap_result = stats.bootstrap((toxicity_scores,), np.mean, confidence_level=0.95)
+            bootstrap_result = stats.bootstrap((toxicity_scores,), np.mean, confidence_level=config.BOOTSTRAP_CONFIDENCE_LEVEL)
             ci_lower = bootstrap_result.confidence_interval.low
             ci_upper = bootstrap_result.confidence_interval.high
         except Exception:
             # Fallback to normal approximation
-            z_score = stats.norm.ppf(0.975)
+            z_score = stats.norm.ppf(0.5 + config.BOOTSTRAP_CONFIDENCE_LEVEL / 2)
             margin_of_error = z_score * std_toxicity / np.sqrt(len(toxicity_scores))
             ci_lower = max(0, mean_toxicity - margin_of_error)
             ci_upper = min(1, mean_toxicity + margin_of_error)
@@ -370,7 +374,7 @@ def evaluate_toxicity(data: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             "confidence_interval": {
                 "lower": float(ci_lower),
                 "upper": float(ci_upper),
-                "level": 0.95
+                "level": config.BOOTSTRAP_CONFIDENCE_LEVEL
             }
         },
         "raw_data": {
