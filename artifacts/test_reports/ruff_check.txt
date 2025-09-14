@@ -1,0 +1,1447 @@
+invalid-syntax: Expected a Jupyter Notebook, which must be internally stored as JSON, but this file isn't valid JSON: expected value at line 1 column 1
+--> examples/basic_ppo_cartpole.ipynb:1:1
+ |
+ |
+
+E402 Module level import not at top of file
+  --> examples/benchmark_comparison.py:40:1
+   |
+38 | warnings.filterwarnings('ignore')
+39 |
+40 | import gymnasium as gym
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+41 |
+42 | # RLDK imports
+   |
+
+E402 Module level import not at top of file
+  --> examples/benchmark_comparison.py:43:1
+   |
+42 | # RLDK imports
+43 | import rldk
+   | ^^^^^^^^^^^
+44 | from rldk.diff import first_divergence
+45 | from rldk.forensics import ComprehensivePPOForensics
+   |
+
+E402 Module level import not at top of file
+  --> examples/benchmark_comparison.py:44:1
+   |
+42 | # RLDK imports
+43 | import rldk
+44 | from rldk.diff import first_divergence
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+45 | from rldk.forensics import ComprehensivePPOForensics
+46 | from rldk.tracking import ExperimentTracker, TrackingConfig
+   |
+
+E402 Module level import not at top of file
+  --> examples/benchmark_comparison.py:45:1
+   |
+43 | import rldk
+44 | from rldk.diff import first_divergence
+45 | from rldk.forensics import ComprehensivePPOForensics
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+46 | from rldk.tracking import ExperimentTracker, TrackingConfig
+47 | from rldk.utils import set_global_seed, validate_numeric_range
+   |
+
+E402 Module level import not at top of file
+  --> examples/benchmark_comparison.py:46:1
+   |
+44 | from rldk.diff import first_divergence
+45 | from rldk.forensics import ComprehensivePPOForensics
+46 | from rldk.tracking import ExperimentTracker, TrackingConfig
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+47 | from rldk.utils import set_global_seed, validate_numeric_range
+   |
+
+E402 Module level import not at top of file
+  --> examples/benchmark_comparison.py:47:1
+   |
+45 | from rldk.forensics import ComprehensivePPOForensics
+46 | from rldk.tracking import ExperimentTracker, TrackingConfig
+47 | from rldk.utils import set_global_seed, validate_numeric_range
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+F402 Import `stats` from line 36 shadowed by loop variable
+   --> examples/benchmark_comparison.py:543:18
+    |
+541 |         algorithm_stats = df.groupby('algorithm')['final_avg_reward'].agg(['mean', 'std', 'count'])
+542 |         print("\nAlgorithm Performance:")
+543 |         for alg, stats in algorithm_stats.iterrows():
+    |                  ^^^^^
+544 |             print(f"   {alg}: {stats['mean']:.3f} ± {stats['std']:.3f} (n={stats['count']})")
+    |
+
+E741 Ambiguous variable name: `l`
+   --> examples/distributed_training_guide.py:632:52
+    |
+631 |         print(f"   Round loss: {round_loss:.4f}")
+632 |         print(f"   Client losses: {[f'{l:.4f}' for l in federated_trainer.metrics['client_losses']]}")
+    |                                                    ^
+633 |         if federated_trainer.metrics['model_divergence']:
+634 |             print(f"   Model divergence: {federated_trainer.metrics['model_divergence'][-1]:.4f}")
+    |
+
+B023 Function definition does not bind loop variable `col`
+   --> examples/multi_run_analysis.py:348:63
+    |
+346 |     for col in ['lr', 'gamma', 'eps_clip']:
+347 |         if col in df['hyperparams'].iloc[0]:
+348 |             df[col] = df['hyperparams'].apply(lambda x: x.get(col, 0))
+    |                                                               ^^^
+349 |             hyperparam_cols.append(col)
+    |
+
+E402 Module level import not at top of file
+  --> examples/production_deployment_checklist.py:36:1
+   |
+34 | warnings.filterwarnings('ignore')
+35 |
+36 | import gymnasium as gym
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+37 |
+38 | # RLDK imports
+   |
+
+E402 Module level import not at top of file
+  --> examples/production_deployment_checklist.py:39:1
+   |
+38 | # RLDK imports
+39 | import rldk
+   | ^^^^^^^^^^^
+40 | from rldk.diff import first_divergence
+41 | from rldk.forensics import ComprehensivePPOForensics
+   |
+
+E402 Module level import not at top of file
+  --> examples/production_deployment_checklist.py:40:1
+   |
+38 | # RLDK imports
+39 | import rldk
+40 | from rldk.diff import first_divergence
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+41 | from rldk.forensics import ComprehensivePPOForensics
+42 | from rldk.tracking import ExperimentTracker, TrackingConfig
+   |
+
+E402 Module level import not at top of file
+  --> examples/production_deployment_checklist.py:41:1
+   |
+39 | import rldk
+40 | from rldk.diff import first_divergence
+41 | from rldk.forensics import ComprehensivePPOForensics
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+42 | from rldk.tracking import ExperimentTracker, TrackingConfig
+43 | from rldk.utils import set_global_seed, validate_numeric_range
+   |
+
+E402 Module level import not at top of file
+  --> examples/production_deployment_checklist.py:42:1
+   |
+40 | from rldk.diff import first_divergence
+41 | from rldk.forensics import ComprehensivePPOForensics
+42 | from rldk.tracking import ExperimentTracker, TrackingConfig
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+43 | from rldk.utils import set_global_seed, validate_numeric_range
+   |
+
+E402 Module level import not at top of file
+  --> examples/production_deployment_checklist.py:43:1
+   |
+41 | from rldk.forensics import ComprehensivePPOForensics
+42 | from rldk.tracking import ExperimentTracker, TrackingConfig
+43 | from rldk.utils import set_global_seed, validate_numeric_range
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E402 Module level import not at top of file
+  --> examples/research_reproducibility_workflow.py:42:1
+   |
+40 | warnings.filterwarnings('ignore')
+41 |
+42 | import gymnasium as gym
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+43 |
+44 | # RLDK imports
+   |
+
+E402 Module level import not at top of file
+  --> examples/research_reproducibility_workflow.py:45:1
+   |
+44 | # RLDK imports
+45 | import rldk
+   | ^^^^^^^^^^^
+46 | from rldk.diff import first_divergence
+47 | from rldk.forensics import ComprehensivePPOForensics
+   |
+
+E402 Module level import not at top of file
+  --> examples/research_reproducibility_workflow.py:46:1
+   |
+44 | # RLDK imports
+45 | import rldk
+46 | from rldk.diff import first_divergence
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+47 | from rldk.forensics import ComprehensivePPOForensics
+48 | from rldk.tracking import ExperimentTracker, TrackingConfig
+   |
+
+E402 Module level import not at top of file
+  --> examples/research_reproducibility_workflow.py:47:1
+   |
+45 | import rldk
+46 | from rldk.diff import first_divergence
+47 | from rldk.forensics import ComprehensivePPOForensics
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+48 | from rldk.tracking import ExperimentTracker, TrackingConfig
+49 | from rldk.utils import set_global_seed, validate_numeric_range
+   |
+
+E402 Module level import not at top of file
+  --> examples/research_reproducibility_workflow.py:48:1
+   |
+46 | from rldk.diff import first_divergence
+47 | from rldk.forensics import ComprehensivePPOForensics
+48 | from rldk.tracking import ExperimentTracker, TrackingConfig
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+49 | from rldk.utils import set_global_seed, validate_numeric_range
+   |
+
+E402 Module level import not at top of file
+  --> examples/research_reproducibility_workflow.py:49:1
+   |
+47 | from rldk.forensics import ComprehensivePPOForensics
+48 | from rldk.tracking import ExperimentTracker, TrackingConfig
+49 | from rldk.utils import set_global_seed, validate_numeric_range
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E722 Do not use bare `except`
+  --> examples/rldk_demo.ipynb:cell 31:20:9
+   |
+18 |                 data = json.load(f)
+19 |             print(f"   - Status: {data.get('status', 'Unknown')}")
+20 |         except:
+   |         ^^^^^^
+21 |             print("   - Status: File exists but could not parse JSON")
+22 |     else:
+   |
+
+E402 Module level import not at top of file
+  --> scripts/capture_golden_master.py:46:1
+   |
+44 |   torch.backends.cudnn.benchmark = False
+45 |
+46 | / from rldk import (
+47 | |     EvalResult,
+48 | |     RewardHealthReport,
+49 | |     bisect_commits,
+50 | |     check,
+51 | |     first_divergence,
+52 | |     health,
+53 | |     ingest_runs,
+54 | |     run,
+55 | | )
+   | |_^
+56 |   from rldk.tracking import ExperimentTracker, TrackingConfig
+   |
+
+E402 Module level import not at top of file
+  --> scripts/capture_golden_master.py:56:1
+   |
+54 |     run,
+55 | )
+56 | from rldk.tracking import ExperimentTracker, TrackingConfig
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E402 Module level import not at top of file
+  --> scripts/replay_golden_master.py:43:1
+   |
+41 | torch.backends.cudnn.benchmark = False
+42 |
+43 | from artifact_schemas import get_schema_for_artifact, validate_artifact
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+44 | from capture_golden_master import (
+45 |     CommandResult,
+   |
+
+E402 Module level import not at top of file
+  --> scripts/replay_golden_master.py:44:1
+   |
+43 |   from artifact_schemas import get_schema_for_artifact, validate_artifact
+44 | / from capture_golden_master import (
+45 | |     CommandResult,
+46 | |     calculate_file_checksum,
+47 | |     create_synthetic_data,
+48 | |     run_cli_command,
+49 | |     run_cli_tests,
+50 | |     run_programmatic_tests,
+51 | | )
+   | |_^
+52 |
+53 |   # Add utils to path
+   |
+
+E402 Module level import not at top of file
+  --> scripts/replay_golden_master.py:55:1
+   |
+53 | # Add utils to path
+54 | sys.path.insert(0, str(Path(__file__).parent / "utils"))
+55 | from normalize import get_normalized_checksum, normalize_json, normalize_text
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E721 Use `is` and `is not` for type comparisons, or `isinstance()` for isinstance checks
+  --> scripts/replay_golden_master.py:96:8
+   |
+94 |     differences = []
+95 |
+96 |     if type(current) != type(expected):
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+97 |         differences.append((path, current, expected))
+98 |         return differences
+   |
+
+E402 Module level import not at top of file
+   --> src/rldk/__init__.py:285:1
+    |
+283 | CustomJSONLAdapter = _create_lazy_class('CustomJSONLAdapter', _lazy_import_adapters, 4)
+284 |
+285 | from .config.settings import settings
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+286 |
+287 | RLDKSettings = _create_lazy_class('RLDKSettings', _lazy_import_config, 1)
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/adapters/base.py:105:13
+    |
+103 |                   f.read(1)  # Try to read one character
+104 |           except PermissionError:
+105 | /             raise AdapterError(
+106 | |                 f"Permission denied: {file_path}",
+107 | |                 suggestion="Check file permissions and ensure you have read access",
+108 | |                 error_code="PERMISSION_DENIED"
+109 | |             )
+    | |_____________^
+110 |           except UnicodeDecodeError as e:
+111 |               raise AdapterError(
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/adapters/base.py:111:13
+    |
+109 |               )
+110 |           except UnicodeDecodeError as e:
+111 | /             raise AdapterError(
+112 | |                 f"File encoding error: {file_path}",
+113 | |                 suggestion="Check that the file is in a supported encoding (UTF-8)",
+114 | |                 error_code="ENCODING_ERROR",
+115 | |                 details={"error": str(e)}
+116 | |             )
+    | |_____________^
+117 |           except Exception as e:
+118 |               raise AdapterError(
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+  --> src/rldk/adapters/wandb.py:88:13
+   |
+86 |             if "authentication" in str(e).lower() or "credentials" in str(e).lower():
+87 |                 return self._load_from_local_export()
+88 |             raise ValueError(f"Failed to load wandb run {self.run_id}: {e}")
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+89 |
+90 |     def _load_from_local_export(self) -> pd.DataFrame:
+   |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+  --> src/rldk/bisect/bisect.py:91:9
+   |
+89 |         subprocess.run(["git", "bisect", "good", good_sha], check=True)
+90 |     except subprocess.CalledProcessError as e:
+91 |         raise RuntimeError(f"Failed to start git bisect: {e}")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/bisect/bisect.py:178:9
+    |
+176 |         # Force reset bisect on timeout
+177 |         subprocess.run(["git", "bisect", "reset"], check=True)
+178 |         raise RuntimeError("Git bisect timed out")
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:135:13
+    |
+133 |             typer.echo(f"Error loading Run A - Format/Validation issue: {e}", err=True)
+134 |             typer.echo("Check that data contains required RL fields like 'step', 'reward'")
+135 |             raise typer.Exit(1)
+    |             ^^^^^^^^^^^^^^^^^^^
+136 |         except (FileNotFoundError, PermissionError) as e:
+137 |             typer.echo(f"Error loading Run A - File access issue: {e}", err=True)
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:139:13
+    |
+137 |             typer.echo(f"Error loading Run A - File access issue: {e}", err=True)
+138 |             typer.echo("Ensure the path exists and is accessible")
+139 |             raise typer.Exit(1)
+    |             ^^^^^^^^^^^^^^^^^^^
+140 |         except Exception as e:
+141 |             typer.echo(f"Error loading Run A: {e}", err=True)
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:144:13
+    |
+142 |             typer.echo("Supported formats: JSONL, CSV, JSON, Parquet files or directories")
+143 |             typer.echo("Use --verbose flag for detailed format detection info")
+144 |             raise typer.Exit(1)
+    |             ^^^^^^^^^^^^^^^^^^^
+145 |
+146 |         try:
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:153:13
+    |
+151 |             typer.echo(f"Error loading Run B - Format/Validation issue: {e}", err=True)
+152 |             typer.echo("Check that data contains required RL fields like 'step', 'reward'")
+153 |             raise typer.Exit(1)
+    |             ^^^^^^^^^^^^^^^^^^^
+154 |         except (FileNotFoundError, PermissionError) as e:
+155 |             typer.echo(f"Error loading Run B - File access issue: {e}", err=True)
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:157:13
+    |
+155 |             typer.echo(f"Error loading Run B - File access issue: {e}", err=True)
+156 |             typer.echo("Ensure the path exists and is accessible")
+157 |             raise typer.Exit(1)
+    |             ^^^^^^^^^^^^^^^^^^^
+158 |         except Exception as e:
+159 |             typer.echo(f"Error loading Run B: {e}", err=True)
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:162:13
+    |
+160 |             typer.echo("Supported formats: JSONL, CSV, JSON, Parquet files or directories")
+161 |             typer.echo("Use --verbose flag for detailed format detection info")
+162 |             raise typer.Exit(1)
+    |             ^^^^^^^^^^^^^^^^^^^
+163 |
+164 |         # Create comparison report
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:216:9
+    |
+214 |         typer.echo("- Use --verbose flag for detailed format detection info")
+215 |         typer.echo("- Supported formats: JSONL, CSV, JSON, Parquet")
+216 |         raise typer.Exit(1)
+    |         ^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:290:9
+    |
+288 |     except Exception as e:
+289 |         typer.echo(f"Error: {e}", err=True)
+290 |         raise typer.Exit(1)
+    |         ^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:334:9
+    |
+332 |     except Exception as e:
+333 |         typer.echo(f"Error: {e}", err=True)
+334 |         raise typer.Exit(1)
+    |         ^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:377:9
+    |
+375 |     except Exception as e:
+376 |         typer.echo(f"Error: {e}", err=True)
+377 |         raise typer.Exit(1)
+    |         ^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:428:9
+    |
+426 |     except Exception as e:
+427 |         typer.echo(f"Error: {e}", err=True)
+428 |         raise typer.Exit(1)
+    |         ^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:525:9
+    |
+523 |     except Exception as e:
+524 |         typer.echo(f"Error: {e}", err=True)
+525 |         raise typer.Exit(1)
+    |         ^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:636:13
+    |
+634 |         if gate:
+635 |             typer.echo("GATE: FAIL")
+636 |             raise typer.Exit(2)
+    |             ^^^^^^^^^^^^^^^^^^^
+637 |         else:
+638 |             raise typer.Exit(1)
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:638:13
+    |
+636 |             raise typer.Exit(2)
+637 |         else:
+638 |             raise typer.Exit(1)
+    |             ^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:654:9
+    |
+652 |     except Exception as e:
+653 |         typer.echo(f"Error: {e}", err=True)
+654 |         raise typer.Exit(1)
+    |         ^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:943:9
+    |
+941 |             "Try reducing --min-samples if you have limited data"
+942 |         ])
+943 |         raise typer.Exit(1)
+    |         ^^^^^^^^^^^^^^^^^^^
+944 |     except RLDKTimeoutError as e:
+945 |         typer.echo(format_error_message(e), err=True)
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:951:9
+    |
+949 |             "Check system resources and performance"
+950 |         ])
+951 |         raise typer.Exit(1)
+    |         ^^^^^^^^^^^^^^^^^^^
+952 |     except EvaluationError as e:
+953 |         typer.echo(format_error_message(e), err=True)
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:959:9
+    |
+957 |             "Use --verbose flag to see detailed error information"
+958 |         ])
+959 |         raise typer.Exit(1)
+    |         ^^^^^^^^^^^^^^^^^^^
+960 |     except Exception as e:
+961 |         log_error_with_context(e, "evaluate command")
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/cli.py:963:9
+    |
+961 |         log_error_with_context(e, "evaluate command")
+962 |         typer.echo(format_error_message(e, "Evaluation failed"), err=True)
+963 |         raise typer.Exit(1)
+    |         ^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/rldk/cli.py:1137:21
+     |
+1135 |                       parsed_field_map = json.loads(field_map)
+1136 |                   except json.JSONDecodeError as e:
+1137 | /                     raise ValidationError(
+1138 | |                         f"Invalid JSON in field_map: {e}",
+1139 | |                         suggestion="Use valid JSON format like '{\"step\": \"global_step\"}'",
+1140 | |                         error_code="INVALID_FIELD_MAP_JSON"
+1141 | |                     )
+     | |_____________________^
+1142 |               else:
+1143 |                   import json
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/rldk/cli.py:1163:21
+     |
+1161 |                               parsed_field_map = json.load(f)
+1162 |                   except Exception as e:
+1163 | /                     raise ValidationError(
+1164 | |                         f"Failed to parse field map file: {e}",
+1165 | |                         suggestion="Ensure the file contains valid JSON or YAML",
+1166 | |                         error_code="FIELD_MAP_PARSE_ERROR"
+1167 | |                     )
+     | |_____________________^
+1168 |
+1169 |           parsed_required_fields = None
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/rldk/cli.py:1260:9
+     |
+1258 |             "Try --validation-mode lenient for partial data"
+1259 |         ])
+1260 |         raise typer.Exit(1)
+     |         ^^^^^^^^^^^^^^^^^^^
+1261 |     except AdapterError as e:
+1262 |         typer.echo(format_error_message(e), err=True)
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/rldk/cli.py:1269:9
+     |
+1267 |             "Try --adapter flexible with --field-map for custom field names"
+1268 |         ])
+1269 |         raise typer.Exit(1)
+     |         ^^^^^^^^^^^^^^^^^^^
+1270 |     except Exception as e:
+1271 |         log_error_with_context(e, "ingest command")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/rldk/cli.py:1273:9
+     |
+1271 |         log_error_with_context(e, "ingest command")
+1272 |         typer.echo(format_error_message(e, "Ingestion failed"), err=True)
+1273 |         raise typer.Exit(1)
+     |         ^^^^^^^^^^^^^^^^^^^
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/rldk/cli.py:1375:9
+     |
+1373 |     except Exception as e:
+1374 |         typer.echo(f"Error: {e}", err=True)
+1375 |         raise typer.Exit(1)
+     |         ^^^^^^^^^^^^^^^^^^^
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/rldk/cli.py:1504:13
+     |
+1502 |         if gate:
+1503 |             typer.echo("GATE: FAIL")
+1504 |             raise typer.Exit(2)
+     |             ^^^^^^^^^^^^^^^^^^^
+1505 |         else:
+1506 |             raise typer.Exit(1)
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/rldk/cli.py:1506:13
+     |
+1504 |             raise typer.Exit(2)
+1505 |         else:
+1506 |             raise typer.Exit(1)
+     |             ^^^^^^^^^^^^^^^^^^^
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/rldk/cli.py:1569:9
+     |
+1567 |     except Exception as e:
+1568 |         typer.echo(f"Error: {e}", err=True)
+1569 |         raise typer.Exit(1)
+     |         ^^^^^^^^^^^^^^^^^^^
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/rldk/cli.py:1700:13
+     |
+1698 |         if gate:
+1699 |             typer.echo("GATE: FAIL")
+1700 |             raise typer.Exit(2)
+     |             ^^^^^^^^^^^^^^^^^^^
+1701 |         else:
+1702 |             raise typer.Exit(1)
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/rldk/cli.py:1702:13
+     |
+1700 |             raise typer.Exit(2)
+1701 |         else:
+1702 |             raise typer.Exit(1)
+     |             ^^^^^^^^^^^^^^^^^^^
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/rldk/cli.py:1786:9
+     |
+1784 |     except Exception as e:
+1785 |         typer.echo(f"Error: {e}", err=True)
+1786 |         raise typer.Exit(1)
+     |         ^^^^^^^^^^^^^^^^^^^
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/rldk/cli.py:1849:9
+     |
+1847 |     except Exception as e:
+1848 |         typer.echo(f"Error: {e}", err=True)
+1849 |         raise typer.Exit(1)
+     |         ^^^^^^^^^^^^^^^^^^^
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/rldk/cli.py:1976:9
+     |
+1974 |     except Exception as e:
+1975 |         typer.echo(f"Error: {e}", err=True)
+1976 |         raise typer.Exit(1)
+     |         ^^^^^^^^^^^^^^^^^^^
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/rldk/cli.py:2209:9
+     |
+2207 |     except Exception as e:
+2208 |         typer.echo(f"Error: {e}", err=True)
+2209 |         raise typer.Exit(1)
+     |         ^^^^^^^^^^^^^^^^^^^
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/rldk/cli.py:2298:9
+     |
+2296 |     except Exception as e:
+2297 |         typer.echo(f"Error: {e}", err=True)
+2298 |         raise typer.Exit(1)
+     |         ^^^^^^^^^^^^^^^^^^^
+     |
+
+E721 Use `is` and `is not` for type comparisons, or `isinstance()` for isinstance checks
+   --> src/rldk/config/evaluation_config.py:170:20
+    |
+168 |             field_type = config.__dataclass_fields__[field].type
+169 |             try:
+170 |                 if field_type == float:
+    |                    ^^^^^^^^^^^^^^^^^^^
+171 |                     setattr(config, field, float(value))
+172 |                 elif field_type == int:
+    |
+
+E721 Use `is` and `is not` for type comparisons, or `isinstance()` for isinstance checks
+   --> src/rldk/config/evaluation_config.py:172:22
+    |
+170 |                 if field_type == float:
+171 |                     setattr(config, field, float(value))
+172 |                 elif field_type == int:
+    |                      ^^^^^^^^^^^^^^^^^
+173 |                     setattr(config, field, int(value))
+174 |                 elif field_type == str:
+    |
+
+E721 Use `is` and `is not` for type comparisons, or `isinstance()` for isinstance checks
+   --> src/rldk/config/evaluation_config.py:174:22
+    |
+172 |                 elif field_type == int:
+173 |                     setattr(config, field, int(value))
+174 |                 elif field_type == str:
+    |                      ^^^^^^^^^^^^^^^^^
+175 |                     setattr(config, field, str(value))
+176 |                 elif field_type == bool:
+    |
+
+E721 Use `is` and `is not` for type comparisons, or `isinstance()` for isinstance checks
+   --> src/rldk/config/evaluation_config.py:176:22
+    |
+174 |                 elif field_type == str:
+175 |                     setattr(config, field, str(value))
+176 |                 elif field_type == bool:
+    |                      ^^^^^^^^^^^^^^^^^^
+177 |                     setattr(config, field, value.lower() in ('true', '1', 'yes', 'on'))
+178 |                 elif field_type == List[int]:
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/evals/runner.py:156:9
+    |
+155 |       except ValueError as e:
+156 | /         raise ValidationError(
+157 | |             str(e),
+158 | |             suggestion="Check your data columns and ensure required fields are present",
+159 | |             error_code="SCHEMA_VALIDATION_FAILED"
+160 | |         )
+    | |_________^
+161 |
+162 |       # Set random seed for reproducibility
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+  --> src/rldk/forensics/log_scan.py:72:13
+   |
+70 |             return
+71 |         except (pd.errors.EmptyDataError, pd.errors.ParserError, FileNotFoundError) as e:
+72 |             raise ValueError(f"Failed to parse CSV file {path}: {e}")
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+73 |
+74 |     if path.is_dir():
+   |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/forensics/log_scan.py:103:21
+    |
+101 |                     return
+102 |                 except (pd.errors.EmptyDataError, pd.errors.ParserError) as e:
+103 |                     raise ValueError(f"Failed to parse CSV file {first_file}: {e}")
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+104 |             elif first_file.suffix == ".json":
+105 |                 try:
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/forensics/log_scan.py:114:21
+    |
+112 |                     return
+113 |                 except (json.JSONDecodeError, FileNotFoundError) as e:
+114 |                     raise ValueError(f"Failed to parse JSON file {first_file}: {e}")
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+115 |
+116 |     # Check for log files as final fallback
+    |
+
+F401 `openrlhf` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> src/rldk/integrations/openrlhf/callbacks.py:18:12
+   |
+17 | try:
+18 |     import openrlhf
+   |            ^^^^^^^^
+19 |     from openrlhf.models import ActorCritic, RewardModel
+20 |     from openrlhf.trainer import CPOTrainer, DDPOTrainer, PPOTrainer
+   |
+help: Remove unused import: `openrlhf`
+
+F401 `openrlhf.models.ActorCritic` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> src/rldk/integrations/openrlhf/callbacks.py:19:33
+   |
+17 | try:
+18 |     import openrlhf
+19 |     from openrlhf.models import ActorCritic, RewardModel
+   |                                 ^^^^^^^^^^^
+20 |     from openrlhf.trainer import CPOTrainer, DDPOTrainer, PPOTrainer
+21 |     OPENRLHF_AVAILABLE = True
+   |
+help: Remove unused import
+
+F401 `openrlhf.models.RewardModel` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> src/rldk/integrations/openrlhf/callbacks.py:19:46
+   |
+17 | try:
+18 |     import openrlhf
+19 |     from openrlhf.models import ActorCritic, RewardModel
+   |                                              ^^^^^^^^^^^
+20 |     from openrlhf.trainer import CPOTrainer, DDPOTrainer, PPOTrainer
+21 |     OPENRLHF_AVAILABLE = True
+   |
+help: Remove unused import
+
+E402 Module level import not at top of file
+   --> src/rldk/integrations/openrlhf/distributed.py:575:1
+    |
+574 | # Import the new network monitoring implementation
+575 | from .network_monitor import NetworkMetrics, RealNetworkMonitor
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+F821 Undefined name `pd`
+    --> src/rldk/integrations/openrlhf/network_monitor.py:1263:41
+     |
+1261 |             return summary
+1262 |
+1263 |     def get_metrics_dataframe(self) -> 'pd.DataFrame':
+     |                                         ^^
+1264 |         """Get all metrics as a DataFrame."""
+1265 |         try:
+     |
+
+F401 `plotly.express` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> src/rldk/integrations/trl/dashboard.py:10:30
+   |
+ 9 | try:
+10 |     import plotly.express as px
+   |                              ^^
+11 |     import plotly.graph_objects as go
+12 |     import streamlit as st
+   |
+help: Remove unused import: `plotly.express`
+
+F401 `plotly.graph_objects` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> src/rldk/integrations/trl/dashboard.py:11:36
+   |
+ 9 | try:
+10 |     import plotly.express as px
+11 |     import plotly.graph_objects as go
+   |                                    ^^
+12 |     import streamlit as st
+13 |     from plotly.subplots import make_subplots
+   |
+help: Remove unused import: `plotly.graph_objects`
+
+F401 `streamlit` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> src/rldk/integrations/trl/dashboard.py:12:25
+   |
+10 |     import plotly.express as px
+11 |     import plotly.graph_objects as go
+12 |     import streamlit as st
+   |                         ^^
+13 |     from plotly.subplots import make_subplots
+14 |     STREAMLIT_AVAILABLE = True
+   |
+help: Remove unused import: `streamlit`
+
+F401 `plotly.subplots.make_subplots` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> src/rldk/integrations/trl/dashboard.py:13:33
+   |
+11 |     import plotly.graph_objects as go
+12 |     import streamlit as st
+13 |     from plotly.subplots import make_subplots
+   |                                 ^^^^^^^^^^^^^
+14 |     STREAMLIT_AVAILABLE = True
+15 | except ImportError:
+   |
+help: Remove unused import: `plotly.subplots.make_subplots`
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/io/consolidated_readers.py:102:17
+    |
+100 |                 metrics.append(TrainingMetrics(**data))
+101 |             except (json.JSONDecodeError, Exception) as e:
+102 |                 raise ValueError(f"Error parsing line {line_num}: {e}")
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+103 |
+104 |     schema = MetricsSchema(metrics=metrics)
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/io/consolidated_readers.py:198:9
+    |
+197 |     except Exception as e:
+198 |         raise ValueError(f"Failed to load checkpoint {path}: {e}")
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/io/consolidated_readers.py:264:9
+    |
+263 |     except Exception as e:
+264 |         raise ValueError(f"Failed to load reward model {model_path}: {e}")
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/io/consolidated_readers.py:317:9
+    |
+315 |         return df
+316 |     except Exception as e:
+317 |         raise ValueError(f"Failed to read CSV file {file_path}: {e}")
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/io/consolidated_readers.py:339:9
+    |
+337 |             return json.load(f)
+338 |     except Exception as e:
+339 |         raise ValueError(f"Failed to read JSON file {file_path}: {e}")
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/io/consolidated_readers.py:361:9
+    |
+359 |             return f.read()
+360 |     except Exception as e:
+361 |         raise ValueError(f"Failed to read markdown file {file_path}: {e}")
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/io/consolidated_schemas.py:126:9
+    |
+124 |         jsonschema.validate(instance=obj, schema=schema)
+125 |     except jsonschema.ValidationError as e:
+126 |         raise ValueError(f"Schema validation failed: {e}")
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+F402 Import `field` from line 4 shadowed by loop variable
+   --> src/rldk/io/consolidated_schemas.py:774:9
+    |
+772 |     ]
+773 |
+774 |     for field in metric_fields:
+    |         ^^^^^
+775 |         if field in row and row[field] is not None:
+776 |             metrics[field] = float(row[field])
+    |
+
+F402 Import `field` from line 4 shadowed by loop variable
+   --> src/rldk/io/event_schema.py:98:9
+    |
+ 96 |     ]
+ 97 |
+ 98 |     for field in metric_fields:
+    |         ^^^^^
+ 99 |         if field in row and row[field] is not None:
+100 |             metrics[field] = float(row[field])
+    |
+
+F821 Undefined name `pd`
+   --> src/rldk/io/event_schema.py:150:50
+    |
+150 | def events_to_dataframe(events: List[Event]) -> "pd.DataFrame":
+    |                                                  ^^
+151 |     """
+152 |     Convert a list of events to a pandas DataFrame.
+    |
+
+F821 Undefined name `pd`
+   --> src/rldk/io/event_schema.py:186:10
+    |
+185 | def dataframe_to_events(
+186 |     df: "pd.DataFrame", run_id: str, git_sha: Optional[str] = None
+    |          ^^
+187 | ) -> List[Event]:
+188 |     """
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+  --> src/rldk/io/readers.py:32:17
+   |
+30 |                 metrics.append(TrainingMetrics(**data))
+31 |             except (json.JSONDecodeError, Exception) as e:
+32 |                 raise ValueError(f"Error parsing line {line_num}: {e}")
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+33 |
+34 |     schema = MetricsSchema(metrics=metrics)
+   |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/io/readers.py:132:9
+    |
+131 |     except Exception as e:
+132 |         raise ValueError(f"Failed to load checkpoint {path}: {e}")
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/io/readers.py:180:9
+    |
+179 |     except Exception as e:
+180 |         raise ValueError(f"Failed to load reward model {model_path}: {e}")
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+  --> src/rldk/io/schemas.py:13:9
+   |
+11 |         jsonschema.validate(instance=obj, schema=schema)
+12 |     except jsonschema.ValidationError as e:
+13 |         raise ValueError(f"Schema validation failed: {e}")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/io/unified_writer.py:146:21
+    |
+144 |                     validate_schema(data)
+145 |                 except Exception as e:
+146 |                     raise SchemaValidationError(f"Schema validation failed: {e}")
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+147 |
+148 |             # Prepare file path
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/io/unified_writer.py:193:25
+    |
+191 |                         validate_schema(item)
+192 |                     except Exception as e:
+193 |                         raise SchemaValidationError(f"Schema validation failed for item {i}: {e}")
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+194 |
+195 |             # Prepare file path
+    |
+
+F811 Redefinition of unused `_detect_device` from line 16
+   --> src/rldk/replay/replay.py:517:5
+    |
+517 | def _detect_device() -> str:
+    |     ^^^^^^^^^^^^^^ `_detect_device` redefined here
+518 |     """Auto-detect available device."""
+519 |     try:
+    |
+   ::: src/rldk/replay/replay.py:16:36
+    |
+ 14 | import pandas as pd
+ 15 |
+ 16 | from rldk.determinism.check import _detect_device, _get_deterministic_env
+    |                                    -------------- previous definition of `_detect_device` here
+ 17 | from rldk.ingest import ingest_runs
+    |
+help: Remove definition: `_detect_device`
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+  --> src/rldk/reward/health_config/config.py:33:17
+   |
+31 |                     raise FileNotFoundError
+32 |             except Exception:
+33 |                 raise FileNotFoundError
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+34 |         if Path(config_path).exists():
+35 |             return Path(config_path)
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+   --> src/rldk/tracking/dataset_tracker.py:358:9
+    |
+356 |       async def _compute_large_dataset_checksum_mp(self, dataset, sample_size: int, progress_callback=None) -> str:
+357 |           """Compute checksum for large datasets using multiprocessing with resource management."""
+358 | /         import psutil
+359 | |         import os
+    | |_________________^
+360 |           
+361 |           try:
+    |
+help: Organize imports
+
+F401 [*] `os` imported but unused
+   --> src/rldk/tracking/dataset_tracker.py:359:16
+    |
+357 |         """Compute checksum for large datasets using multiprocessing with resource management."""
+358 |         import psutil
+359 |         import os
+    |                ^^
+360 |         
+361 |         try:
+    |
+help: Remove unused import: `os`
+
+W293 [*] Blank line contains whitespace
+   --> src/rldk/tracking/dataset_tracker.py:360:1
+    |
+358 |         import psutil
+359 |         import os
+360 |         
+    | ^^^^^^^^
+361 |         try:
+362 |             step = max(1, len(dataset) // sample_size)
+    |
+help: Remove whitespace from blank line
+
+W293 [*] Blank line contains whitespace
+   --> src/rldk/tracking/dataset_tracker.py:369:1
+    |
+367 |             max_workers_by_cpu = min(mp.cpu_count(), 4)
+368 |             num_workers = min(max_workers_by_memory, max_workers_by_cpu)
+369 |             
+    | ^^^^^^^^^^^^
+370 |             if available_memory_gb < 1.0:
+371 |                 if progress_callback:
+    |
+help: Remove whitespace from blank line
+
+W293 [*] Blank line contains whitespace
+   --> src/rldk/tracking/dataset_tracker.py:387:1
+    |
+385 |                 executor = ProcessPoolExecutor(max_workers=num_workers)
+386 |                 tasks = []
+387 |                 
+    | ^^^^^^^^^^^^^^^^
+388 |                 for chunk in index_chunks:
+389 |                     chunk_samples = []
+    |
+help: Remove whitespace from blank line
+
+W293 [*] Blank line contains whitespace
+   --> src/rldk/tracking/dataset_tracker.py:411:1
+    |
+410 |                 return final_hash.hexdigest()
+411 |                 
+    | ^^^^^^^^^^^^^^^^
+412 |             finally:
+413 |                 if executor:
+    |
+help: Remove whitespace from blank line
+
+W293 [*] Blank line contains whitespace
+   --> src/rldk/tracking/model_tracker.py:432:1
+    |
+430 |         try:
+431 |             import hashlib
+432 |             
+    | ^^^^^^^^^^^^
+433 |             if hasattr(model, 'parameters'):
+434 |                 param_count = sum(p.numel() for p in model.parameters())
+    |
+help: Remove whitespace from blank line
+
+W291 [*] Trailing whitespace
+   --> src/rldk/tracking/tracker.py:146:22
+    |
+144 |         try:
+145 |             return await asyncio.get_running_loop().run_in_executor(
+146 |                 None, 
+    |                      ^
+147 |                 lambda: self.seed_tracker.capture_seeds(
+148 |                     track_python=self.config.track_python_seed,
+    |
+help: Remove trailing whitespace
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/utils/error_handling.py:108:13
+    |
+106 |               path_obj.relative_to(base_path)
+107 |           except ValueError:
+108 | /             raise ValidationError(
+109 | |                 f"Path outside allowed directory: {path}",
+110 | |                 suggestion=f"Path must be within {base_path}",
+111 | |                 error_code="PATH_OUTSIDE_BASE",
+112 | |                 details={"path": str(path_obj), "base_path": str(base_path)}
+113 | |             )
+    | |_____________^
+114 |
+115 |       return path_obj
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+  --> src/rldk/utils/torch_compat.py:47:9
+   |
+45 |                 pass  # Fall through to original error
+46 |
+47 |         raise ValueError(f"Failed to load checkpoint {f}: {e}")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/utils/validation.py:508:13
+    |
+506 |               value = int(value)
+507 |           except (ValueError, TypeError):
+508 | /             raise ValidationError(
+509 | |                 f"{context} must be a number, got: {type(value).__name__}",
+510 | |                 suggestion="Provide a valid number",
+511 | |                 error_code="INVALID_NUMERIC_TYPE",
+512 | |                 details={"value": value, "actual_type": type(value).__name__}
+513 | |             )
+    | |_____________^
+514 |
+515 |       if not isinstance(value, int):
+    |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   --> src/rldk/utils/validation.py:543:13
+    |
+541 |               value = int(value)
+542 |           except (ValueError, TypeError):
+543 | /             raise ValidationError(
+544 | |                 f"{context} must be a number, got: {type(value).__name__}",
+545 | |                 suggestion="Provide a valid number",
+546 | |                 error_code="INVALID_NUMERIC_TYPE",
+547 | |                 details={"value": value, "actual_type": type(value).__name__}
+548 | |             )
+    | |_____________^
+549 |
+550 |       if not isinstance(value, int):
+    |
+
+E402 Module level import not at top of file
+  --> test_network_thread_safety_minimal.py:21:1
+   |
+20 | # Import only the network monitor module directly
+21 | import importlib.util
+   | ^^^^^^^^^^^^^^^^^^^^^
+22 |
+23 | spec = importlib.util.spec_from_file_location(
+   |
+
+E402 Module level import not at top of file
+  --> tests/integration/test_openrlhf_network_monitoring.py:24:1
+   |
+22 |   sys.modules['openrlhf.models'] = MagicMock()
+23 |
+24 | / from rldk.integrations.openrlhf.callbacks import (
+25 | |     DistributedTrainingMonitor,
+26 | |     OpenRLHFCallback,
+27 | |     OpenRLHFMetrics,
+28 | | )
+   | |_^
+29 |   from rldk.integrations.openrlhf.distributed import (
+30 |       DistributedMetrics,
+   |
+
+E402 Module level import not at top of file
+  --> tests/integration/test_openrlhf_network_monitoring.py:29:1
+   |
+27 |       OpenRLHFMetrics,
+28 |   )
+29 | / from rldk.integrations.openrlhf.distributed import (
+30 | |     DistributedMetrics,
+31 | |     DistributedMetricsCollector,
+32 | |     NetworkMonitor,
+33 | | )
+   | |_^
+34 |   from rldk.integrations.openrlhf.network_monitor import (
+35 |       NetworkMetrics,
+   |
+
+E402 Module level import not at top of file
+  --> tests/integration/test_openrlhf_network_monitoring.py:34:1
+   |
+32 |       NetworkMonitor,
+33 |   )
+34 | / from rldk.integrations.openrlhf.network_monitor import (
+35 | |     NetworkMetrics,
+36 | |     RealNetworkMonitor,
+37 | | )
+   | |_^
+   |
+
+E402 Module level import not at top of file
+   --> tests/integration/test_tracking_basic.py:122:1
+    |
+121 | # Now import our tracking system
+122 | from rldk.tracking import ExperimentTracker, TrackingConfig
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+F821 Undefined name `MockSeries`
+  --> tests/unit/test_deterministic_fixes.py:61:16
+   |
+60 |     def Series(self, data):
+61 |         return MockSeries(data)
+   |                ^^^^^^^^^^
+62 |
+63 | class MockDataFrame:
+   |
+
+F821 Undefined name `MockSeries`
+  --> tests/unit/test_deterministic_fixes.py:70:16
+   |
+69 |     def memory_usage(self, deep=True):
+70 |         return MockSeries([100, 200, 300])
+   |                ^^^^^^^^^^
+71 |
+72 |     def to_string(self):
+   |
+
+E402 Module level import not at top of file
+   --> tests/unit/test_deterministic_fixes.py:178:1
+    |
+177 | # Import our tracking system
+178 | from src.rldk.tracking import DatasetTracker, ModelTracker, SeedTracker
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+B017 Do not assert blind exception: `Exception`
+   --> tests/unit/test_flexible_adapters.py:351:18
+    |
+349 |             adapter = FlexibleDataAdapter(f.name)
+350 |
+351 |             with pytest.raises(Exception):  # Should raise some error
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+352 |                 adapter.load()
+    |
+
+E402 Module level import not at top of file
+  --> tests/unit/test_utils_error_handling.py:23:1
+   |
+22 |   # Import the module under test
+23 | / from rldk.utils.error_handling import (
+24 | |     AdapterError,
+25 | |     EvaluationError,
+26 | |     RLDKError,
+27 | |     RLDKTimeoutError,
+28 | |     ValidationError,
+29 | |     check_dependencies,
+30 | |     format_error_message,
+31 | |     handle_graceful_degradation,
+32 | |     log_error_with_context,
+33 | |     print_troubleshooting_tips,
+34 | |     print_usage_examples,
+35 | |     progress_indicator,
+36 | |     safe_operation,
+37 | |     sanitize_path,
+38 | |     validate_adapter_source,
+39 | |     validate_data_format,
+40 | |     validate_file_path,
+41 | |     validate_required_fields,
+42 | |     with_retry,
+43 | | )
+   | |_^
+44 |   from rldk.utils.runtime import with_timeout
+45 |   from rldk.utils.validation import (
+   |
+
+E402 Module level import not at top of file
+  --> tests/unit/test_utils_error_handling.py:44:1
+   |
+42 |     with_retry,
+43 | )
+44 | from rldk.utils.runtime import with_timeout
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+45 | from rldk.utils.validation import (
+46 |     validate_json_file_streaming,
+   |
+
+E402 Module level import not at top of file
+  --> tests/unit/test_utils_error_handling.py:45:1
+   |
+43 |   )
+44 |   from rldk.utils.runtime import with_timeout
+45 | / from rldk.utils.validation import (
+46 | |     validate_json_file_streaming,
+47 | |     validate_jsonl_file_streaming,
+48 | | )
+   | |_^
+   |
+
+F401 `plotly.graph_objects` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> tools/monitor/app.py:24:36
+   |
+22 |     import pandas as pd
+23 |     import plotly.express as px
+24 |     import plotly.graph_objects as go
+   |                                    ^^
+25 |     import streamlit as st
+26 |     from profiler.report import ProfilerReport
+   |
+help: Remove unused import: `plotly.graph_objects`
+
+F401 `profiler.report.ProfilerReport` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> tools/monitor/app.py:26:33
+   |
+24 |     import plotly.graph_objects as go
+25 |     import streamlit as st
+26 |     from profiler.report import ProfilerReport
+   |                                 ^^^^^^^^^^^^^^
+27 |
+28 | except ImportError as e:
+   |
+help: Remove unused import: `profiler.report.ProfilerReport`
+
+Found 132 errors.
+[*] 8 fixable with the `--fix` option.

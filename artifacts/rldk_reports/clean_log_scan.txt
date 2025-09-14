@@ -1,0 +1,62 @@
+Traceback (most recent call last):
+  File "/workspace/.venv_dev/bin/rldk", line 3, in <module>
+    from rldk.cli import app
+  File "/workspace/src/rldk/cli.py", line 31, in <module>
+    from rldk.forensics.ckpt_diff import diff_checkpoints
+  File "/workspace/src/rldk/forensics/__init__.py", line 15, in <module>
+    from .log_scan import scan_logs
+  File "/workspace/src/rldk/forensics/log_scan.py", line 9, in <module>
+    from rldk.adapters.flexible import FlexibleDataAdapter
+  File "/workspace/src/rldk/adapters/__init__.py", line 9, in <module>
+    from .wandb import WandBAdapter
+  File "/workspace/src/rldk/adapters/wandb.py", line 10, in <module>
+    import wandb
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/wandb/__init__.py", line 22, in <module>
+    from wandb.sdk.lib import wb_logging as _wb_logging
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/wandb/sdk/__init__.py", line 25, in <module>
+    from .artifacts.artifact import Artifact
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/wandb/sdk/artifacts/artifact.py", line 41, in <module>
+    from wandb import data_types, env
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/wandb/data_types.py", line 16, in <module>
+    from .sdk.data_types.audio import Audio
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/wandb/sdk/data_types/audio.py", line 11, in <module>
+    from .base_types.media import BatchableMedia
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/wandb/sdk/data_types/base_types/media.py", line 13, in <module>
+    from .wb_value import WBValue
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/wandb/sdk/data_types/base_types/wb_value.py", line 4, in <module>
+    from wandb.sdk import wandb_setup
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/wandb/sdk/wandb_setup.py", line 39, in <module>
+    from . import wandb_settings
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/wandb/sdk/wandb_settings.py", line 38, in <module>
+    from .lib import apikey, credentials, ipython
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/wandb/sdk/lib/apikey.py", line 21, in <module>
+    from wandb.apis import InternalApi
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/wandb/apis/__init__.py", line 43, in <module>
+    from .internal import Api as InternalApi  # noqa
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/wandb/apis/internal.py", line 3, in <module>
+    from wandb.sdk.internal.internal_api import Api as InternalApi
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/wandb/sdk/internal/internal_api.py", line 47, in <module>
+    from wandb.sdk.artifacts._validators import is_artifact_registry_project
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/wandb/sdk/artifacts/_validators.py", line 19, in <module>
+    from ._generated import ArtifactPortfolioTypeFields, ArtifactSequenceTypeFields
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/wandb/sdk/artifacts/_generated/__init__.py", line 233, in <module>
+    from .project_artifacts import (
+    ...<4 lines>...
+    )
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/wandb/sdk/artifacts/_generated/project_artifacts.py", line 31, in <module>
+    class ProjectArtifactsProjectArtifactTypeArtifactCollection(GQLBase):
+    ...<4 lines>...
+        artifacts: Optional[ArtifactsFragment]
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/pydantic/_internal/_model_construction.py", line 221, in __new__
+    set_model_fields(cls, config_wrapper=config_wrapper, ns_resolver=ns_resolver)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/pydantic/_internal/_model_construction.py", line 544, in set_model_fields
+    fields, class_vars = collect_model_fields(cls, config_wrapper, ns_resolver, typevars_map=typevars_map)
+                         ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/pydantic/_internal/_fields.py", line 168, in collect_model_fields
+    assigned_value = getattr(cls, ann_name, PydanticUndefined)
+  File "/workspace/.venv_dev/lib/python3.13/site-packages/pydantic/_internal/_model_construction.py", line 271, in __getattr__
+    raise AttributeError(item)
+          ~~~~~~~~~~~~~~^^^^^^
+KeyboardInterrupt

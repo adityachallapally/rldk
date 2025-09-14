@@ -1,0 +1,22 @@
+
+==================================== ERRORS ====================================
+______________________ ERROR collecting test_kl_direct.py ______________________
+ImportError while importing test module '/workspace/test_kl_direct.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+test_kl_direct.py:23: in <module>
+    from metrics import calculate_kl_divergence, calculate_kl_divergence_between_runs
+src/rldk/evals/metrics/__init__.py:4: in <module>
+    from .throughput import evaluate_throughput
+src/rldk/evals/metrics/throughput.py:12: in <module>
+    from ...utils.math_utils import safe_divide, safe_rate_calculation
+E   ImportError: attempted relative import beyond top-level package
+=========================== short test summary info ============================
+ERROR test_kl_direct.py
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! KeyboardInterrupt !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+<frozen importlib._bootstrap_external>:1218: KeyboardInterrupt
+(to show a full traceback on KeyboardInterrupt use --full-trace)
+1 error in 3.33s

@@ -1,0 +1,8 @@
+Scanning logs: test_artifacts/logs_clean
+Missing optional fields in flexible mode: reward
+Required field 'reward' not found, filled with None values
+
+Log scan complete. Report saved to rldk_reports/ppo_scan.json
+Rules fired: 0
+No anomalies detected.
+Earliest step with data: 1

@@ -1,0 +1,7 @@
+exclude .venv*
+exclude .venv_dev
+exclude .venv_pkg
+exclude artifacts
+exclude test_artifacts
+exclude rldk_reports
+exclude site

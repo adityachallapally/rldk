@@ -1,8 +1,9 @@
 {
   "version": "1",
   "rules_fired": [],
-  "earliest_step": 0,
+  "earliest_step": 1,
   "stats": {
-    "kl_median": 0.0
+    "kl_median": 0.049488500000000005,
+    "entropy_trend": "stable"
   }
 }
