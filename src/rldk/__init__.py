@@ -1,6 +1,11 @@
 """RL Debug Kit - Library and CLI for debugging reinforcement learning training runs."""
 
+import os
+
 __version__ = "0.1.0"
+
+# Environment variable to disable lazy loading during CI/testing
+DISABLE_LAZY_LOADING = os.getenv('RLDK_DISABLE_LAZY_LOADING', 'false').lower() == 'true'
 
 def _lazy_import_ingest():
     from .ingest import ingest_runs, ingest_runs_to_events
@@ -160,22 +165,37 @@ def read_reward_head(*args, **kwargs):
     return read_reward_head_func(*args, **kwargs)
 
 def set_global_seed(*args, **kwargs):
+    if DISABLE_LAZY_LOADING:
+        from .utils.seed import set_global_seed as set_global_seed_func
+        return set_global_seed_func(*args, **kwargs)
     set_global_seed_func, _, _, _, _ = _lazy_import_seed()
     return set_global_seed_func(*args, **kwargs)
 
 def get_current_seed(*args, **kwargs):
+    if DISABLE_LAZY_LOADING:
+        from .utils.seed import get_current_seed as get_current_seed_func
+        return get_current_seed_func(*args, **kwargs)
     _, get_current_seed_func, _, _, _ = _lazy_import_seed()
     return get_current_seed_func(*args, **kwargs)
 
 def restore_seed_state(*args, **kwargs):
+    if DISABLE_LAZY_LOADING:
+        from .utils.seed import restore_seed_state as restore_seed_state_func
+        return restore_seed_state_func(*args, **kwargs)
     _, _, restore_seed_state_func, _, _ = _lazy_import_seed()
     return restore_seed_state_func(*args, **kwargs)
 
 def set_reproducible_environment(*args, **kwargs):
+    if DISABLE_LAZY_LOADING:
+        from .utils.seed import set_reproducible_environment as set_reproducible_environment_func
+        return set_reproducible_environment_func(*args, **kwargs)
     _, _, _, set_reproducible_environment_func, _ = _lazy_import_seed()
     return set_reproducible_environment_func(*args, **kwargs)
 
 def validate_seed_consistency(*args, **kwargs):
+    if DISABLE_LAZY_LOADING:
+        from .utils.seed import validate_seed_consistency as validate_seed_consistency_func
+        return validate_seed_consistency_func(*args, **kwargs)
     _, _, _, _, validate_seed_consistency_func = _lazy_import_seed()
     return validate_seed_consistency_func(*args, **kwargs)
 
