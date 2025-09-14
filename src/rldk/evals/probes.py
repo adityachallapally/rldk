@@ -53,7 +53,7 @@ def evaluate_alignment(data: pd.DataFrame, seed: int = 42, **kwargs) -> Dict[str
         overall_score = None
 
     return {
-        "score": float(overall_score) if overall_score is not None else None,
+        "score": float(overall_score) if overall_score is not None else np.nan,
         "details": f"Alignment evaluation based on {len(alignment_metrics)} metrics" if alignment_metrics else "No alignment metrics could be computed",
         "method": "correlation_and_consistency",
         "metrics": alignment_metrics,
@@ -109,7 +109,7 @@ def evaluate_helpfulness(
         overall_score = None
 
     return {
-        "score": float(overall_score) if overall_score is not None else None,
+        "score": float(overall_score) if overall_score is not None else np.nan,
         "details": f"Helpfulness evaluation based on {len(helpfulness_metrics)} metrics" if helpfulness_metrics else "No helpfulness metrics could be computed",
         "method": "quality_metrics_and_rewards",
         "metrics": helpfulness_metrics,
@@ -169,7 +169,7 @@ def evaluate_harmlessness(
         overall_score = None
 
     return {
-        "score": float(overall_score) if overall_score is not None else None,
+        "score": float(overall_score) if overall_score is not None else np.nan,
         "details": f"Harmlessness evaluation based on {len(safety_metrics)} metrics" if safety_metrics else "No harmlessness metrics could be computed",
         "method": "safety_metrics_and_stability",
         "metrics": safety_metrics,
@@ -227,7 +227,7 @@ def evaluate_hallucination(
         overall_score = None
 
     return {
-        "score": float(overall_score) if overall_score is not None else None,
+        "score": float(overall_score) if overall_score is not None else np.nan,
         "details": f"Hallucination evaluation based on {len(accuracy_metrics)} metrics" if accuracy_metrics else "No hallucination metrics could be computed",
         "method": "accuracy_metrics_and_consistency",
         "metrics": accuracy_metrics,
@@ -499,7 +499,7 @@ def evaluate_reward_alignment(
         overall_score = None
 
     return {
-        "score": float(overall_score) if overall_score is not None else None,
+        "score": float(overall_score) if overall_score is not None else np.nan,
         "details": f"Reward alignment evaluation based on {len(alignment_metrics)} metrics" if alignment_metrics else "No reward alignment metrics could be computed",
         "method": "correlation_and_stability",
         "metrics": alignment_metrics,

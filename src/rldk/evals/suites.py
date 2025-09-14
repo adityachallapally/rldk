@@ -424,7 +424,7 @@ def evaluate_consistency(data: pd.DataFrame, config: Optional[EvaluationConfig] 
         overall_score = None
     
     return {
-        "score": float(overall_score) if overall_score is not None else None,
+        "score": float(overall_score) if overall_score is not None else np.nan,
         "details": f"Consistency evaluation based on {len(consistency_metrics)} metrics" if consistency_metrics else "No consistency metrics could be computed",
         "method": "temporal_and_group_analysis",
         "metrics": consistency_metrics,
@@ -585,7 +585,7 @@ def evaluate_robustness(data: pd.DataFrame, config: Optional[EvaluationConfig] =
         overall_score = None
     
     return {
-        "score": float(overall_score) if overall_score is not None else None,
+        "score": float(overall_score) if overall_score is not None else np.nan,
         "details": f"Robustness evaluation based on {len(robustness_metrics)} metrics" if robustness_metrics else "No robustness metrics could be computed",
         "method": "stability_and_perturbation_analysis",
         "metrics": robustness_metrics,
@@ -775,7 +775,7 @@ def evaluate_efficiency(data: pd.DataFrame, config: Optional[EvaluationConfig] =
         overall_score = None
     
     return {
-        "score": float(overall_score) if overall_score is not None else None,
+        "score": float(overall_score) if overall_score is not None else np.nan,
         "details": f"Efficiency evaluation based on {len(efficiency_metrics)} metrics" if efficiency_metrics else "No efficiency metrics could be computed",
         "method": "computational_and_convergence_analysis",
         "metrics": efficiency_metrics,
@@ -975,7 +975,7 @@ def evaluate_adversarial(data: pd.DataFrame, config: Optional[EvaluationConfig] 
         overall_score = None
     
     return {
-        "score": float(overall_score) if overall_score is not None else None,
+        "score": float(overall_score) if overall_score is not None else np.nan,
         "details": f"Adversarial robustness evaluation based on {len(adversarial_metrics)} metrics" if adversarial_metrics else "No adversarial robustness metrics could be computed",
         "method": "stability_and_attack_resistance_analysis",
         "metrics": adversarial_metrics,
@@ -1137,7 +1137,7 @@ def evaluate_speed(data: pd.DataFrame, config: Optional[EvaluationConfig] = None
         overall_score = None
     
     return {
-        "score": float(overall_score) if overall_score is not None else None,
+        "score": float(overall_score) if overall_score is not None else np.nan,
         "details": f"Speed evaluation based on {len(speed_metrics)} metrics" if speed_metrics else "No speed metrics could be computed",
         "method": "inference_and_training_analysis",
         "metrics": speed_metrics,
@@ -1318,7 +1318,7 @@ def evaluate_memory(data: pd.DataFrame, config: Optional[EvaluationConfig] = Non
         overall_score = None
     
     return {
-        "score": float(overall_score) if overall_score is not None else None,
+        "score": float(overall_score) if overall_score is not None else np.nan,
         "details": f"Memory evaluation based on {len(memory_metrics)} metrics" if memory_metrics else "No memory metrics could be computed",
         "method": "usage_and_efficiency_analysis",
         "metrics": memory_metrics,
@@ -1525,7 +1525,7 @@ def evaluate_calibration(data: pd.DataFrame, config: Optional[EvaluationConfig] 
         overall_score = None
     
     return {
-        "score": float(overall_score) if overall_score is not None else None,
+        "score": float(overall_score) if overall_score is not None else np.nan,
         "details": f"Calibration evaluation based on {len(calibration_metrics)} metrics" if calibration_metrics else "No calibration metrics could be computed",
         "method": "confidence_and_uncertainty_analysis",
         "metrics": calibration_metrics,

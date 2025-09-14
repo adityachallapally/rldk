@@ -48,8 +48,15 @@ class EvalResult:
         
         valid_scores = []
         for metric, score in self.scores.items():
-            if score is not None and not (isinstance(score, float) and np.isnan(score)):
-                valid_scores.append(float(score))
+            if score is not None:
+                try:
+                    # Convert to float and check for NaN
+                    score_float = float(score)
+                    if not np.isnan(score_float):
+                        valid_scores.append(score_float)
+                except (ValueError, TypeError):
+                    # Skip non-numeric scores
+                    continue
         
         if not valid_scores:
             return None
@@ -71,8 +78,15 @@ class EvalResult:
         valid_metrics = 0
         
         for score in self.scores.values():
-            if score is not None and not (isinstance(score, float) and np.isnan(score)):
-                valid_metrics += 1
+            if score is not None:
+                try:
+                    # Convert to float and check for NaN
+                    score_float = float(score)
+                    if not np.isnan(score_float):
+                        valid_metrics += 1
+                except (ValueError, TypeError):
+                    # Skip non-numeric scores
+                    continue
         
         return valid_metrics / total_metrics if total_metrics > 0 else 0.0
 
