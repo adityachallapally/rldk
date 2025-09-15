@@ -14,8 +14,8 @@ from transformers import (
     TrainingArguments,
 )
 
-# Import RLDK monitor
-from rldk.integrations.trl.monitors import PPOMonitor as Monitor
+# Import RLDK components
+from rldk.integrations.trl import PPOMonitor as Monitor, create_ppo_trainer
 
 try:
     from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer
@@ -160,6 +160,8 @@ def run_real_trl_training():
     print("⚙️  PPO Config: High LR, Low grad norm (intentionally unstable)")
     
     # Create PPO trainer with monitor callback
+    # Note: This example uses custom reward model, so we can't use the factory function
+    # but we still use the new TRL 0.23.0+ API with all required parameters
     trainer = PPOTrainer(
         args=ppo_config,
         model=policy_model,

@@ -13,8 +13,8 @@ from transformers import (
     TrainingArguments,
 )
 
-# Import RLDK monitor
-from rldk.integrations.trl.monitors import PPOMonitor as Monitor
+# Import RLDK components
+from rldk.integrations.trl import PPOMonitor as Monitor, create_ppo_trainer
 
 try:
     from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer
@@ -67,21 +67,10 @@ def run_minimal_trl_loop():
     print(f"📦 Using tiny model: {model_name}")
     
     try:
-        # Load tokenizer
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
-        
-        # Load model with value head
-        model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
-        
-        # Create reference model (same as policy model for simplicity)
-        ref_model = AutoModelForCausalLM.from_pretrained(model_name)
-        
-        print("✅ Models loaded successfully")
+        print("✅ Using unified factory function for model preparation")
         
     except Exception as e:
-        print(f"❌ Model loading failed: {e}")
+        print(f"❌ Model preparation failed: {e}")
         print("⚠️  Falling back to simulation mode")
         return run_simulation_mode()
     
@@ -122,12 +111,10 @@ def run_minimal_trl_loop():
     
     print("⚙️  PPO Config: High LR, Low grad norm (intentionally unstable)")
     
-    # Create PPO trainer with monitor callback
-    trainer = PPOTrainer(
-        args=ppo_config,
-        model=model,
-        ref_model=ref_model,
-        processing_class=tokenizer,
+    # Create PPO trainer with monitor callback using unified factory function
+    trainer = create_ppo_trainer(
+        model_name=model_name,
+        ppo_config=ppo_config,
         train_dataset=dataset,
         callbacks=[monitor],  # Attach RLDK monitor
     )

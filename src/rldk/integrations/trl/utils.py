@@ -1,16 +1,18 @@
 """Utility functions for TRL integration."""
 
-from typing import Optional
+from typing import List, Optional
 
 from packaging import version
 from transformers import AutoTokenizer, GenerationConfig
 
 try:
-    from trl import AutoModelForCausalLMWithValueHead
+    from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer
     TRL_AVAILABLE = True
 except ImportError:
     TRL_AVAILABLE = False
     AutoModelForCausalLMWithValueHead = None
+    PPOConfig = None
+    PPOTrainer = None
 
 
 def fix_generation_config(
@@ -96,7 +98,7 @@ def prepare_models_for_ppo(
     tokenizer: Optional[AutoTokenizer] = None,
     generation_config: Optional[GenerationConfig] = None
 ) -> tuple["AutoModelForCausalLMWithValueHead", "AutoModelForCausalLMWithValueHead",
-           "AutoModelForCausalLMWithValueHead", AutoTokenizer]:
+           "AutoModelForCausalLMWithValueHead", "AutoModelForCausalLMWithValueHead", AutoTokenizer]:
     """Prepare all required models for PPO training with proper generation_config.
 
     This function creates and configures all the models needed for PPO training,
@@ -111,7 +113,7 @@ def prepare_models_for_ppo(
         generation_config: Optional custom generation config
 
     Returns:
-        Tuple of (model, ref_model, reward_model, tokenizer)
+        Tuple of (model, ref_model, reward_model, value_model, tokenizer)
 
     Raises:
         ImportError: If TRL is not available
@@ -129,13 +131,15 @@ def prepare_models_for_ppo(
     model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
     ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
     reward_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    value_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
 
     # Fix generation_config for all models
     model = fix_generation_config(model, tokenizer, generation_config)
     ref_model = fix_generation_config(ref_model, tokenizer, generation_config)
     reward_model = fix_generation_config(reward_model, tokenizer, generation_config)
+    value_model = fix_generation_config(value_model, tokenizer, generation_config)
 
-    return model, ref_model, reward_model, tokenizer
+    return model, ref_model, reward_model, value_model, tokenizer
 
 
 def check_trl_compatibility() -> dict:
@@ -210,6 +214,7 @@ def validate_ppo_setup(
     model: "AutoModelForCausalLMWithValueHead",
     ref_model: "AutoModelForCausalLMWithValueHead",
     reward_model: "AutoModelForCausalLMWithValueHead",
+    value_model: "AutoModelForCausalLMWithValueHead",
     tokenizer: AutoTokenizer
 ) -> dict:
     """Validate PPO setup for common issues.
@@ -218,6 +223,7 @@ def validate_ppo_setup(
         model: Main PPO model (used for both policy and value heads)
         ref_model: Reference model
         reward_model: Reward model
+        value_model: Value model (required for TRL 0.23.0+)
         tokenizer: Tokenizer
 
     Returns:
@@ -228,7 +234,7 @@ def validate_ppo_setup(
 
     # Check generation_config attribute
     for name, model_obj in [("model", model), ("ref_model", ref_model),
-                           ("reward_model", reward_model)]:
+                           ("reward_model", reward_model), ("value_model", value_model)]:
         if not hasattr(model_obj, 'generation_config'):
             issues.append(f"{name} missing generation_config attribute")
         elif model_obj.generation_config is None:
@@ -243,7 +249,7 @@ def validate_ppo_setup(
 
     # Check model types
     for name, model_obj in [("model", model), ("ref_model", ref_model),
-                           ("reward_model", reward_model)]:
+                           ("reward_model", reward_model), ("value_model", value_model)]:
         if not isinstance(model_obj, AutoModelForCausalLMWithValueHead):
             issues.append(f"{name} is not an AutoModelForCausalLMWithValueHead instance")
 
@@ -257,3 +263,105 @@ def validate_ppo_setup(
             "Check tokenizer has required token IDs"
         ] if issues else []
     }
+
+
+def create_ppo_trainer(
+    model_name: str,
+    ppo_config: "PPOConfig",
+    train_dataset: "Dataset",
+    callbacks: Optional[List] = None,
+    **kwargs
+) -> "PPOTrainer":
+    """Create PPOTrainer with automatic parameter handling for different TRL versions.
+    
+    This factory function abstracts away the TRL API differences and automatically
+    handles the required parameters based on the installed TRL version. It ensures
+    all required models (including value_model) are properly configured.
+    
+    Args:
+        model_name: Name or path of the base model
+        ppo_config: PPO configuration object
+        train_dataset: Training dataset
+        callbacks: Optional list of callbacks
+        **kwargs: Additional arguments passed to PPOTrainer
+        
+    Returns:
+        Configured PPOTrainer instance
+        
+    Raises:
+        ImportError: If TRL is not available
+        ValueError: If required parameters are missing
+    """
+    if not TRL_AVAILABLE:
+        raise ImportError("TRL is required for this function. Install with: pip install trl")
+    
+    if PPOConfig is None or PPOTrainer is None:
+        raise ImportError("TRL PPOTrainer components not available. Check TRL installation.")
+    
+    # Validate required parameters
+    if not isinstance(ppo_config, PPOConfig):
+        raise ValueError("ppo_config must be a PPOConfig instance")
+    
+    if train_dataset is None:
+        raise ValueError("train_dataset is required")
+    
+    # Prepare all models using the utility function
+    model, ref_model, reward_model, value_model, tokenizer = prepare_models_for_ppo(model_name)
+    
+    # Validate the complete PPO setup
+    validation_result = validate_ppo_setup(model, ref_model, reward_model, value_model, tokenizer)
+    if not validation_result["valid"]:
+        raise ValueError(f"PPO setup validation failed: {validation_result['issues']}")
+    
+    if validation_result["warnings"]:
+        print(f"⚠️  PPO setup warnings: {validation_result['warnings']}")
+    
+    # Check TRL version to determine required parameters
+    compatibility = check_trl_compatibility()
+    trl_version_str = compatibility.get("version", "0.7.0")
+    
+    try:
+        trl_version = version.parse(trl_version_str)
+    except Exception:
+        # Fallback to assuming newer version if parsing fails
+        trl_version = version.parse("0.23.0")
+    
+    # For TRL 0.23.0+, all parameters are required
+    if trl_version >= version.parse("0.23.0"):
+        return PPOTrainer(
+            args=ppo_config,
+            model=model,
+            ref_model=ref_model,
+            reward_model=reward_model,
+            value_model=value_model,
+            processing_class=tokenizer,
+            train_dataset=train_dataset,
+            callbacks=callbacks or [],
+            **kwargs
+        )
+    else:
+        # For older versions, some parameters might be optional
+        # Try with all parameters first, fall back to minimal set if needed
+        try:
+            return PPOTrainer(
+                args=ppo_config,
+                model=model,
+                ref_model=ref_model,
+                reward_model=reward_model,
+                value_model=value_model,
+                processing_class=tokenizer,
+                train_dataset=train_dataset,
+                callbacks=callbacks or [],
+                **kwargs
+            )
+        except TypeError:
+            # Fall back to older API pattern
+            return PPOTrainer(
+                args=ppo_config,
+                model=model,
+                ref_model=ref_model,
+                processing_class=tokenizer,
+                train_dataset=train_dataset,
+                callbacks=callbacks or [],
+                **kwargs
+            )
