@@ -218,7 +218,15 @@ def normalize_columns(df: pd.DataFrame, column_mapping: Optional[Dict[str, str]]
                 effective_mapping[original_col] = target_col
                 logger.debug(f"User mapping: '{original_col}' -> '{target_col}'")
     
-    # Step 2: Apply synonym normalization (existing logic will be moved here)
+    # Step 2: Apply synonym normalization for remaining columns
+    all_schemas = [STANDARD_EVAL_SCHEMA, RL_METRICS_SCHEMA]
+    
+    for schema in all_schemas:
+        for col_spec in schema.get_all_columns():
+            for synonym in col_spec.synonyms:
+                if synonym in data.columns and col_spec.name not in data.columns:
+                    data = data.rename(columns={synonym: col_spec.name})
+                    logger.debug(f"Synonym mapping: '{synonym}' -> '{col_spec.name}'")
     
     return data, effective_mapping
 

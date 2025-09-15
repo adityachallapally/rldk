@@ -969,7 +969,10 @@ def evaluate(
         typer.echo(f"  Failed: {summary['failed_evaluations']}")
         if summary.get('skipped_evaluations', 0) > 0:
             typer.echo(f"  Skipped: {summary['skipped_evaluations']}")
-        typer.echo(f"  Overall Score: {summary['overall_score']:.3f}")
+        if summary['overall_score'] is not None:
+            typer.echo(f"  Overall Score: {summary['overall_score']:.3f}")
+        else:
+            typer.echo("  Overall Score: N/A")
 
         if summary["errors"]:
             typer.echo("\n⚠️  Failed Evaluations:")

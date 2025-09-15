@@ -140,7 +140,7 @@ def run(
     if eval_suite is None:
         raise ValidationError(
             f"Unknown evaluation suite: {suite}",
-            suggestion=f"Use one of: {', '.join(['quick', 'comprehensive', 'safety'])}",
+            suggestion="Choose from: quick, comprehensive, safety, integrity, performance, trust, training_metrics",
             error_code="UNKNOWN_SUITE"
         )
 
@@ -199,8 +199,10 @@ def run(
         from .suites import EVAL_REQUIREMENTS
         available_columns = set(validated_data.data.columns)
         
-        for eval_name, requirements in EVAL_REQUIREMENTS.items():
-            if eval_name in evaluations_to_run:
+        filtered_evaluations = {}
+        for eval_name, eval_func in evaluations_to_run.items():
+            if eval_name in EVAL_REQUIREMENTS:
+                requirements = EVAL_REQUIREMENTS[eval_name]
                 # Check if required columns are available
                 required_cols = []
                 for req in requirements:
@@ -215,7 +217,13 @@ def run(
                 if required_cols:
                     logger.warning(f"Skipping {eval_name}: missing columns {required_cols}")
                     skipped_evaluations.append(eval_name)
-                    del evaluations_to_run[eval_name]
+                else:
+                    filtered_evaluations[eval_name] = eval_func
+            else:
+                # Include evaluations not in EVAL_REQUIREMENTS
+                filtered_evaluations[eval_name] = eval_func
+        
+        evaluations_to_run = filtered_evaluations
         
         if skipped_evaluations:
             validated_data.warnings.append(f"Skipped evaluations due to missing columns: {', '.join(skipped_evaluations)}")
