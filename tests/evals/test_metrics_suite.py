@@ -31,8 +31,12 @@ def test_normalize_columns_without_mapping():
     
     result_df, effective_mapping = normalize_columns(df, None)
     
-    assert result_df.equals(df)
-    assert effective_mapping == {}
+    expected_df = pd.DataFrame({
+        "step": [1, 2, 3],
+        "reward": [0.1, 0.2, 0.15]
+    })
+    assert result_df.equals(expected_df)
+    assert effective_mapping == {}  # No user mappings applied
 
 
 def test_get_schema_for_training_metrics():

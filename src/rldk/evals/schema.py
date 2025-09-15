@@ -338,25 +338,34 @@ def validate_eval_input(
     )
 
 
-def safe_mean(values: List[float]) -> Optional[float]:
+def safe_mean(values: List[Any]) -> Optional[float]:
     """
-    Calculate mean of values, returning None if empty or all NaN.
-
+    Calculate mean of values, handling NaN and None gracefully.
+    
     Args:
-        values: List of numeric values
-
+        values: List of numeric values that may contain NaN or None
+        
     Returns:
-        Mean value or None if no valid values
+        Mean of valid values, or None if no valid values
     """
     if not values:
         return None
-
-    # Filter out NaN values
-    valid_values = [v for v in values if not (isinstance(v, float) and np.isnan(v))]
-
+    
+    # Filter out None and NaN values
+    valid_values = []
+    for v in values:
+        if v is not None:
+            try:
+                float_val = float(v)
+                if not np.isnan(float_val):
+                    valid_values.append(float_val)
+            except (ValueError, TypeError):
+                # Skip non-numeric values
+                continue
+    
     if not valid_values:
         return None
-
+    
     return float(np.mean(valid_values))
 
 
