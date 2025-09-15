@@ -54,6 +54,7 @@ from .seed import (
     get_seed_state_summary,
     restore_original_state,
     restore_seed_state,
+    seed_context,
     set_global_seed,
     set_reproducible_environment,
     validate_seed_consistency,
@@ -161,4 +162,5 @@ __all__ = [
     "set_reproducible_environment",
     "validate_seed_consistency",
     "create_seed_context",
+    "seed_context",
 ]

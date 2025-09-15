@@ -138,7 +138,7 @@ RL_METRICS_SCHEMA = EvalInputSchema(
         ),
         ColumnSpec(
             name="kl",
-            dtype="numeric", 
+            dtype="numeric",
             required=False,
             description="KL divergence to reference model",
             example=0.12,
@@ -161,7 +161,7 @@ RL_METRICS_SCHEMA = EvalInputSchema(
             synonyms=["input_tokens", "prompt_tokens"]
         ),
         ColumnSpec(
-            name="tokens_out", 
+            name="tokens_out",
             dtype="numeric",
             required=False,
             description="Number of output tokens generated",
@@ -178,7 +178,7 @@ RL_METRICS_SCHEMA = EvalInputSchema(
         ),
         ColumnSpec(
             name="episode_return",
-            dtype="numeric", 
+            dtype="numeric",
             required=False,
             description="Total return for the episode",
             example=15.7,
@@ -187,7 +187,7 @@ RL_METRICS_SCHEMA = EvalInputSchema(
         ColumnSpec(
             name="episode_length",
             dtype="numeric",
-            required=False, 
+            required=False,
             description="Length of the episode in steps",
             example=200,
             synonyms=["ep_length", "episode_steps"]
@@ -199,17 +199,17 @@ RL_METRICS_SCHEMA = EvalInputSchema(
 def normalize_columns(df: pd.DataFrame, column_mapping: Optional[Dict[str, str]] = None) -> Tuple[pd.DataFrame, Dict[str, str]]:
     """
     Apply user column mapping first, then synonym normalization.
-    
+
     Args:
         df: Input DataFrame
         column_mapping: User-provided mapping from original to target column names
-        
+
     Returns:
         Tuple of (normalized_dataframe, effective_column_mapping)
     """
     data = df.copy()
     effective_mapping = {}
-    
+
     # Step 1: Apply user-provided column mapping first
     if column_mapping:
         for original_col, target_col in column_mapping.items():
@@ -217,38 +217,75 @@ def normalize_columns(df: pd.DataFrame, column_mapping: Optional[Dict[str, str]]
                 data = data.rename(columns={original_col: target_col})
                 effective_mapping[original_col] = target_col
                 logger.debug(f"User mapping: '{original_col}' -> '{target_col}'")
-    
+
     # Step 2: Apply synonym normalization for remaining columns
     all_schemas = [STANDARD_EVAL_SCHEMA, RL_METRICS_SCHEMA]
-    
+
     for schema in all_schemas:
         for col_spec in schema.get_all_columns():
             for synonym in col_spec.synonyms:
                 if synonym in data.columns and col_spec.name not in data.columns:
                     data = data.rename(columns={synonym: col_spec.name})
                     logger.debug(f"Synonym mapping: '{synonym}' -> '{col_spec.name}'")
-    
+
     return data, effective_mapping
+
+
+def detect_data_type(df: pd.DataFrame) -> str:
+    """
+    Detect the type of data based on available columns.
+
+    Args:
+        df: Input DataFrame to analyze
+
+    Returns:
+        String indicating data type: 'training', 'evaluation', or 'mixed'
+    """
+    columns = set(df.columns.str.lower())
+
+    # Check for evaluation data indicators (text outputs)
+    eval_indicators = {'output', 'response', 'completion', 'text', 'generation'}
+    has_eval_data = bool(eval_indicators.intersection(columns))
+
+    # Check for training data indicators (RL metrics)
+    training_indicators = {'loss', 'reward_mean', 'kl', 'entropy', 'episode_return', 'episode_length'}
+    has_training_data = bool(training_indicators.intersection(columns))
+
+    if has_eval_data and has_training_data:
+        return 'mixed'
+    elif has_eval_data:
+        return 'evaluation'
+    elif has_training_data:
+        return 'training'
+    else:
+        return 'evaluation'
 
 
 def validate_eval_input(
     df: pd.DataFrame,
-    schema: EvalInputSchema = STANDARD_EVAL_SCHEMA,
+    schema: Optional[EvalInputSchema] = None,
     suite_name: str = "generic"
 ) -> ValidatedFrame:
     """
     Validate and normalize evaluation input DataFrame.
 
+    This function automatically detects the data type (training vs evaluation data)
+    and chooses the appropriate schema if none is provided. It supports:
+
+    - Training data: requires 'step', supports 'loss', 'reward_mean', 'kl', 'entropy'
+    - Evaluation data: requires 'step' and 'output' (or synonyms)
+    - Mixed data: handles both formats gracefully
+
     Args:
         df: Input DataFrame to validate
-        schema: Schema to validate against
+        schema: Schema to validate against. If None, auto-detects based on data
         suite_name: Name of the evaluation suite for context
 
     Returns:
         ValidatedFrame with normalized data, warnings, and errors
 
     Raises:
-        ValueError: If required columns are missing after normalization
+        ValueError: If required columns are missing after normalization and fallback attempts
     """
     warnings = []
     errors = []
@@ -256,6 +293,15 @@ def validate_eval_input(
 
     # Create a copy to avoid modifying the original
     data = df.copy()
+
+    if schema is None:
+        data_type = detect_data_type(data)
+        if data_type == 'training':
+            schema = RL_METRICS_SCHEMA
+            logger.debug("Auto-detected training data, using RL_METRICS_SCHEMA")
+        else:
+            schema = STANDARD_EVAL_SCHEMA
+            logger.debug(f"Auto-detected {data_type} data, using STANDARD_EVAL_SCHEMA")
 
     # Step 1: Column normalization
     for col_spec in schema.get_all_columns():
@@ -276,7 +322,7 @@ def validate_eval_input(
             normalized_columns[found_synonym] = col_spec.name
             logger.debug(f"Normalized column '{found_synonym}' to '{col_spec.name}'")
 
-    # Step 2: Check for missing required columns
+    # Step 2: Check for missing required columns with fallback logic
     missing_required = []
     for col_spec in schema.required_columns:
         if col_spec.name not in data.columns:
@@ -284,13 +330,26 @@ def validate_eval_input(
             synonyms_str = ", ".join(col_spec.synonyms) if col_spec.synonyms else "none"
             missing_required.append(f"{col_spec.name} (synonyms: {synonyms_str})")
 
+    if missing_required and schema == STANDARD_EVAL_SCHEMA:
+        missing_cols = [col_spec.name for col_spec in schema.required_columns if col_spec.name not in data.columns]
+        if "output" in missing_cols and "step" in data.columns:
+            logger.debug("Missing output column, trying RL_METRICS_SCHEMA as fallback")
+            return validate_eval_input(df, RL_METRICS_SCHEMA, suite_name)
+
     if missing_required:
         error_msg = f"Missing required columns: {', '.join(missing_required)}"
         missing_cols = [col_spec.name for col_spec in schema.required_columns if col_spec.name not in data.columns]
+
         if "output" in missing_cols:
-            error_msg += ". Provide one of: output, response, completion, text"
+            error_msg += "\n\nFor evaluation data, provide one of: output, response, completion, text"
+            error_msg += "\nFor training data, only 'step' is required along with metrics like: loss, reward_mean, kl, entropy"
         elif "step" in missing_cols:
-            error_msg += ". Provide one of: step, global_step, iteration, epoch"
+            error_msg += "\n\nProvide one of: step, global_step, iteration, epoch"
+
+        available_cols = list(data.columns)
+        if available_cols:
+            error_msg += f"\n\nAvailable columns: {', '.join(available_cols)}"
+
         raise ValueError(error_msg)
 
     # Step 3: Check for missing optional columns and add warnings
@@ -303,7 +362,15 @@ def validate_eval_input(
         if "events" in missing_optional:
             warnings.append("events column not provided, event-based diagnostics will be skipped")
         else:
-            warnings.append(f"Optional columns not provided: {', '.join(missing_optional)}")
+            relevant_missing = []
+            for col in missing_optional:
+                if col in ['reward', 'kl', 'entropy'] and schema == RL_METRICS_SCHEMA:
+                    relevant_missing.append(col)
+                elif col in ['reward', 'kl_to_ref'] and schema == STANDARD_EVAL_SCHEMA:
+                    relevant_missing.append(col)
+
+            if relevant_missing:
+                warnings.append(f"Optional columns not provided: {', '.join(relevant_missing)}")
 
     # Step 4: Basic dtype validation (where reasonable)
     for col_spec in schema.get_all_columns():
@@ -341,16 +408,16 @@ def validate_eval_input(
 def safe_mean(values: List[Any]) -> Optional[float]:
     """
     Calculate mean of values, handling NaN and None gracefully.
-    
+
     Args:
         values: List of numeric values that may contain NaN or None
-        
+
     Returns:
         Mean of valid values, or None if no valid values
     """
     if not values:
         return None
-    
+
     # Filter out None and NaN values
     valid_values = []
     for v in values:
@@ -362,10 +429,10 @@ def safe_mean(values: List[Any]) -> Optional[float]:
             except (ValueError, TypeError):
                 # Skip non-numeric values
                 continue
-    
+
     if not valid_values:
         return None
-    
+
     return float(np.mean(valid_values))
 
 
