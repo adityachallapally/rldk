@@ -133,18 +133,20 @@ def create_simple_value_model(tokenizer: AutoTokenizer, model_name: str = None) 
                     batch_size = kwargs.get('input_ids', torch.tensor([[1]])).shape[0]
                     seq_len = kwargs.get('input_ids', torch.tensor([[1]])).shape[1]
                     return type('obj', (object,), {
-                        'last_hidden_state': torch.zeros(batch_size, seq_len, hidden_size)
+                        'last_hidden_state': torch.zeros(batch_size, seq_len, self.hidden_size)
                     })()
             
             self.transformer = SimpleTransformer(hidden_size)
 
         def score(self, hidden_states):
             """Score method required by TRL PPOTrainer."""
-            with torch.no_grad():
-                return self.value_head(hidden_states)
+            return self.value_head(hidden_states)
 
         def forward(self, **kwargs):
-            return self.score(kwargs.get('hidden_states'))
+            hidden_states = kwargs.get('hidden_states')
+            if hidden_states is None:
+                raise ValueError("hidden_states is required for SimpleValueModel.forward()")
+            return self.score(hidden_states)
 
     if model_name:
         try:
