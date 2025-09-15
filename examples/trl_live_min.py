@@ -54,10 +54,11 @@ class SimpleRewardModel(torch.nn.Module):
         batch_size, seq_len, hidden_size = hidden_states.shape
         device = hidden_states.device
         
-        # Create dummy rewards (all zeros for now)
+        # Create rewards tensor with same logic as forward method
         rewards = torch.zeros(batch_size, seq_len, dtype=torch.float32, device=device)
         
-        # Set a small positive reward at the end of each sequence
+        # For now, set a small positive reward at the end of each sequence
+        # In a real implementation, this would analyze the hidden states
         rewards[:, -1] = 0.1
         
         # Ensure the tensor has the right shape to avoid squeeze issues
@@ -84,41 +85,6 @@ class DummyTransformer(torch.nn.Module):
                 
         return DummyOutput(hidden_states)
 
-class ValueModelWrapper(torch.nn.Module):
-    """
-    Wrapper that adds a score method to a base model
-    """
-    def __init__(self, base_model):
-        super().__init__()
-        self.base_model = base_model
-        # Copy important attributes
-        self.config = base_model.config
-        self.base_model_prefix = getattr(base_model, 'base_model_prefix', 'transformer')
-        # Copy the transformer attribute
-        if hasattr(base_model, 'transformer'):
-            self.transformer = base_model.transformer
-        
-        # Add value head
-        self.value_head = torch.nn.Linear(base_model.config.hidden_size, 1)
-        
-    def forward(self, *args, **kwargs):
-        return self.base_model(*args, **kwargs)
-        
-    def score(self, hidden_states):
-        """Score method required by PPOTrainer - return rewards for each position"""
-        # hidden_states shape: [batch_size, sequence_length, hidden_size]
-        # We need to return rewards for each position: [batch_size, sequence_length]
-        batch_size, seq_len, hidden_size = hidden_states.shape
-        
-        # Apply value head to each position
-        # Reshape to [batch_size * seq_len, hidden_size] for batch processing
-        hidden_flat = hidden_states.view(-1, hidden_size)
-        rewards_flat = self.value_head(hidden_flat)
-        
-        # Reshape back to [batch_size, seq_len, 1] and squeeze to [batch_size, seq_len]
-        rewards = rewards_flat.view(batch_size, seq_len, -1).squeeze(-1)
-        
-        return rewards
 
 def main():
     model_name = os.environ.get("TRL_MIN_MODEL", "sshleifer/tiny-gpt2")
@@ -130,16 +96,13 @@ def main():
 
     # policy model
     policy = AutoModelForCausalLM.from_pretrained(model_name)
-    # value model - monkey patch the model class itself
+    # value model - use instance-level patching instead of global monkey-patching
     base_model = AutoModelForCausalLM.from_pretrained(model_name)
     
-    # Get the model class
-    model_class = type(base_model)
-    
-    # Add value head to the base model
+    # Add value head to this specific instance only
     base_model.v_head = torch.nn.Linear(base_model.config.hidden_size, 1)
     
-    # Add score method to the model class itself so all instances have it
+    # Add score method to this specific instance only
     def score_method(self, hidden_states):
         # hidden_states shape: [batch_size, sequence_length, hidden_size]
         # We need to return rewards for each position: [batch_size, sequence_length]
@@ -155,9 +118,9 @@ def main():
         
         return rewards
     
-    # Add score method and v_head to the model class
-    model_class.score = score_method
-    model_class.v_head = torch.nn.Linear(base_model.config.hidden_size, 1)
+    # Bind the score method to this specific instance
+    import types
+    base_model.score = types.MethodType(score_method, base_model)
     
     value_model = base_model
     # reference model, let PPOTrainer create a frozen copy when None
