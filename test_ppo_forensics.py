@@ -39,7 +39,10 @@ def test_ppo_forensics():
             # Simulate normal training with some anomalies
             if 200 <= step <= 250:  # KL spike anomaly
                 kl = 0.3 + np.random.normal(0, 0.05)
+                policy_grad_norm = 1.0 + np.random.normal(0, 0.1)
+                value_grad_norm = 0.8 + np.random.normal(0, 0.1)
             elif 300 <= step <= 350:  # Gradient explosion
+                kl = 0.08 + np.random.normal(0, 0.02)
                 policy_grad_norm = 5.0 + np.random.normal(0, 0.5)
                 value_grad_norm = 3.0 + np.random.normal(0, 0.3)
             else:  # Normal training

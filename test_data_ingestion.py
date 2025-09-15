@@ -54,8 +54,8 @@ def test_data_ingestion():
                 
                 # Show some sample data
                 if len(df_trl) > 0:
-                    print(f"  - Sample step: {df_trl.iloc[0].get('step', 'N/A')}")
-                    print(f"  - Sample reward: {df_trl.iloc[0].get('reward_mean', 'N/A')}")
+                    print(f"  - Sample step: {df_trl.iloc[0].get('step', 'N/A') if 'step' in df_trl.columns else 'N/A'}")
+                    print(f"  - Sample reward: {df_trl.iloc[0].get('reward_mean', 'N/A') if 'reward_mean' in df_trl.columns else 'N/A'}")
                 
             except Exception as e:
                 print(f"⚠ TRL adapter failed: {e}")

@@ -143,6 +143,14 @@ def test_performance():
             process = psutil.Process(os.getpid())
             memory_before = process.memory_info().rss / 1024 / 1024  # MB
             
+            # Use a fallback model if the original model failed to load
+            test_model = None
+            if 'model' in locals() and model is not None:
+                test_model = model
+            else:
+                # Load a small model for memory testing
+                test_model = AutoModelForCausalLM.from_pretrained('gpt2')
+            
             # Create many small experiments
             for i in range(10):
                 with tempfile.TemporaryDirectory() as temp_dir:
@@ -155,7 +163,7 @@ def test_performance():
                     
                     tracker = ExperimentTracker(config)
                     tracker.start_experiment()
-                    tracker.track_model(model, f"model_{i}")
+                    tracker.track_model(test_model, f"model_{i}")
                     tracker.finish_experiment()
             
             memory_after = process.memory_info().rss / 1024 / 1024  # MB
