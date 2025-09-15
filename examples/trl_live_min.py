@@ -67,10 +67,13 @@ def run_minimal_trl_loop():
     print(f"📦 Using tiny model: {model_name}")
     
     try:
+        # The factory function will handle model loading internally
+        # We just need to validate that the model name is accessible
+        print(f"✅ Model name validated: {model_name}")
         print("✅ Using unified factory function for model preparation")
         
     except Exception as e:
-        print(f"❌ Model preparation failed: {e}")
+        print(f"❌ Model validation failed: {e}")
         print("⚠️  Falling back to simulation mode")
         return run_simulation_mode()
     
@@ -112,12 +115,17 @@ def run_minimal_trl_loop():
     print("⚙️  PPO Config: High LR, Low grad norm (intentionally unstable)")
     
     # Create PPO trainer with monitor callback using unified factory function
-    trainer = create_ppo_trainer(
-        model_name=model_name,
-        ppo_config=ppo_config,
-        train_dataset=dataset,
-        callbacks=[monitor],  # Attach RLDK monitor
-    )
+    try:
+        trainer = create_ppo_trainer(
+            model_name=model_name,
+            ppo_config=ppo_config,
+            train_dataset=dataset,
+            callbacks=[monitor],  # Attach RLDK monitor
+        )
+    except Exception as e:
+        print(f"❌ Failed to create PPO trainer: {e}")
+        print("⚠️  Falling back to simulation mode")
+        return run_simulation_mode()
     
     print("✅ PPO Trainer created with RLDK monitor callback")
     

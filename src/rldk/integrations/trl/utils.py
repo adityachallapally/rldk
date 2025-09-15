@@ -127,11 +127,20 @@ def prepare_models_for_ppo(
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
 
-    # Create models - use same model for policy and value heads
+    # Create models with memory-efficient sharing
+    # Load base model once and create value head variants
+    base_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    
+    # Create policy model (main model)
     model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    
+    # Create reference model (can be same as base for simplicity)
     ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
-    reward_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
-    value_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    
+    # For reward and value models, we can share the same model instance
+    # This is memory-efficient and commonly used in practice
+    reward_model = model  # Share with policy model
+    value_model = model   # Share with policy model
 
     # Fix generation_config for all models
     model = fix_generation_config(model, tokenizer, generation_config)
@@ -305,40 +314,53 @@ def create_ppo_trainer(
     if train_dataset is None:
         raise ValueError("train_dataset is required")
     
-    # Prepare all models using the utility function
-    model, ref_model, reward_model, value_model, tokenizer = prepare_models_for_ppo(model_name)
+    # Prepare all models using the utility function with error handling
+    try:
+        model, ref_model, reward_model, value_model, tokenizer = prepare_models_for_ppo(model_name)
+    except Exception as e:
+        raise RuntimeError(f"Failed to prepare models for PPO: {e}") from e
     
     # Validate the complete PPO setup
-    validation_result = validate_ppo_setup(model, ref_model, reward_model, value_model, tokenizer)
-    if not validation_result["valid"]:
-        raise ValueError(f"PPO setup validation failed: {validation_result['issues']}")
-    
-    if validation_result["warnings"]:
-        print(f"⚠️  PPO setup warnings: {validation_result['warnings']}")
+    try:
+        validation_result = validate_ppo_setup(model, ref_model, reward_model, value_model, tokenizer)
+        if not validation_result["valid"]:
+            raise ValueError(f"PPO setup validation failed: {validation_result['issues']}")
+        
+        if validation_result["warnings"]:
+            print(f"⚠️  PPO setup warnings: {validation_result['warnings']}")
+    except Exception as e:
+        raise RuntimeError(f"PPO setup validation failed: {e}") from e
     
     # Check TRL version to determine required parameters
-    compatibility = check_trl_compatibility()
-    trl_version_str = compatibility.get("version", "0.7.0")
-    
     try:
-        trl_version = version.parse(trl_version_str)
-    except Exception:
-        # Fallback to assuming newer version if parsing fails
+        compatibility = check_trl_compatibility()
+        trl_version_str = compatibility.get("version", "0.7.0")
+        
+        if not trl_version_str or trl_version_str == "unknown":
+            print("⚠️  Could not determine TRL version, assuming 0.23.0+")
+            trl_version = version.parse("0.23.0")
+        else:
+            trl_version = version.parse(trl_version_str)
+    except Exception as e:
+        print(f"⚠️  Error parsing TRL version: {e}, assuming 0.23.0+")
         trl_version = version.parse("0.23.0")
     
     # For TRL 0.23.0+, all parameters are required
     if trl_version >= version.parse("0.23.0"):
-        return PPOTrainer(
-            args=ppo_config,
-            model=model,
-            ref_model=ref_model,
-            reward_model=reward_model,
-            value_model=value_model,
-            processing_class=tokenizer,
-            train_dataset=train_dataset,
-            callbacks=callbacks or [],
-            **kwargs
-        )
+        try:
+            return PPOTrainer(
+                args=ppo_config,
+                model=model,
+                ref_model=ref_model,
+                reward_model=reward_model,
+                value_model=value_model,
+                processing_class=tokenizer,
+                train_dataset=train_dataset,
+                callbacks=callbacks or [],
+                **kwargs
+            )
+        except Exception as e:
+            raise RuntimeError(f"Failed to create PPOTrainer with TRL 0.23.0+ API: {e}") from e
     else:
         # For older versions, some parameters might be optional
         # Try with all parameters first, fall back to minimal set if needed
@@ -354,14 +376,19 @@ def create_ppo_trainer(
                 callbacks=callbacks or [],
                 **kwargs
             )
-        except TypeError:
+        except TypeError as e:
             # Fall back to older API pattern
-            return PPOTrainer(
-                args=ppo_config,
-                model=model,
-                ref_model=ref_model,
-                processing_class=tokenizer,
-                train_dataset=train_dataset,
-                callbacks=callbacks or [],
-                **kwargs
-            )
+            try:
+                return PPOTrainer(
+                    args=ppo_config,
+                    model=model,
+                    ref_model=ref_model,
+                    processing_class=tokenizer,
+                    train_dataset=train_dataset,
+                    callbacks=callbacks or [],
+                    **kwargs
+                )
+            except Exception as fallback_e:
+                raise RuntimeError(f"Failed to create PPOTrainer with older TRL API: {fallback_e}") from fallback_e
+        except Exception as e:
+            raise RuntimeError(f"Failed to create PPOTrainer: {e}") from e

@@ -128,12 +128,17 @@ def test_basic_ppo_integration():
 
     # Use unified factory function to create PPO trainer with automatic version compatibility
     # This handles all TRL API differences automatically and ensures all required parameters are provided
-    trainer = create_ppo_trainer(
-        model_name=model_name,
-        ppo_config=ppo_config,
-        train_dataset=dataset,
-        callbacks=[rldk_callback, ppo_monitor, checkpoint_monitor],
-    )
+    try:
+        trainer = create_ppo_trainer(
+            model_name=model_name,
+            ppo_config=ppo_config,
+            train_dataset=dataset,
+            callbacks=[rldk_callback, ppo_monitor, checkpoint_monitor],
+        )
+    except Exception as e:
+        print(f"❌ Failed to create PPO trainer: {e}")
+        print("⚠️  This might be due to model loading issues or TRL version incompatibility")
+        return False
 
     print("✅ PPO Trainer created with RLDK callbacks")
     print(f"📊 Monitoring {len(dataset)} samples")
