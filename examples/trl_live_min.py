@@ -27,6 +27,10 @@ class SimpleRewardModel(torch.nn.Module):
     def __init__(self, tokenizer):
         super().__init__()
         self.tokenizer = tokenizer
+        # Add required attributes for PPOTrainer
+        self.base_model_prefix = 'transformer'
+        # Create a dummy transformer that returns dummy hidden states
+        self.transformer = DummyTransformer()
 
     def forward(self, input_ids=None, attention_mask=None, **unused):
         device = input_ids.device
@@ -42,6 +46,43 @@ class SimpleRewardModel(torch.nn.Module):
             rewards[i, -1] = r
             
         return rewards
+    
+    def score(self, hidden_states):
+        """Score method required by PPOTrainer - return rewards for each position"""
+        # hidden_states shape: [batch_size, sequence_length, hidden_size]
+        # We need to return rewards for each position: [batch_size, sequence_length]
+        batch_size, seq_len, hidden_size = hidden_states.shape
+        device = hidden_states.device
+        
+        # Create dummy rewards (all zeros for now)
+        rewards = torch.zeros(batch_size, seq_len, dtype=torch.float32, device=device)
+        
+        # Set a small positive reward at the end of each sequence
+        rewards[:, -1] = 0.1
+        
+        # Ensure the tensor has the right shape to avoid squeeze issues
+        # Add an extra dimension to prevent squeeze from making it scalar
+        rewards = rewards.unsqueeze(-1)  # [batch_size, seq_len, 1]
+        
+        return rewards
+
+class DummyTransformer(torch.nn.Module):
+    """Dummy transformer that returns dummy hidden states for reward model"""
+    def __init__(self):
+        super().__init__()
+        
+    def __call__(self, input_ids=None, attention_mask=None, position_ids=None, return_dict=True, output_hidden_states=True, use_cache=False, **kwargs):
+        # Return dummy hidden states with the right shape
+        batch_size, seq_len = input_ids.shape
+        hidden_size = 768  # Standard hidden size
+        hidden_states = torch.zeros(batch_size, seq_len, hidden_size, device=input_ids.device)
+        
+        # Create a dummy output object
+        class DummyOutput:
+            def __init__(self, hidden_states):
+                self.hidden_states = [hidden_states]  # TRL expects a list
+                
+        return DummyOutput(hidden_states)
 
 class ValueModelWrapper(torch.nn.Module):
     """
@@ -64,8 +105,20 @@ class ValueModelWrapper(torch.nn.Module):
         return self.base_model(*args, **kwargs)
         
     def score(self, hidden_states):
-        """Score method required by PPOTrainer"""
-        return self.value_head(hidden_states.mean(dim=1))
+        """Score method required by PPOTrainer - return rewards for each position"""
+        # hidden_states shape: [batch_size, sequence_length, hidden_size]
+        # We need to return rewards for each position: [batch_size, sequence_length]
+        batch_size, seq_len, hidden_size = hidden_states.shape
+        
+        # Apply value head to each position
+        # Reshape to [batch_size * seq_len, hidden_size] for batch processing
+        hidden_flat = hidden_states.view(-1, hidden_size)
+        rewards_flat = self.value_head(hidden_flat)
+        
+        # Reshape back to [batch_size, seq_len, 1] and squeeze to [batch_size, seq_len]
+        rewards = rewards_flat.view(batch_size, seq_len, -1).squeeze(-1)
+        
+        return rewards
 
 def main():
     model_name = os.environ.get("TRL_MIN_MODEL", "sshleifer/tiny-gpt2")
@@ -77,16 +130,36 @@ def main():
 
     # policy model
     policy = AutoModelForCausalLM.from_pretrained(model_name)
-    # value model - use AutoModelForCausalLMWithValueHead and add required attributes
-    value_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
-    # Add required attributes for PPOTrainer
-    value_model.base_model_prefix = 'transformer'
-    value_model.transformer = value_model.pretrained_model.transformer
+    # value model - monkey patch the model class itself
+    base_model = AutoModelForCausalLM.from_pretrained(model_name)
     
-    # Add score method properly
+    # Get the model class
+    model_class = type(base_model)
+    
+    # Add value head to the base model
+    base_model.v_head = torch.nn.Linear(base_model.config.hidden_size, 1)
+    
+    # Add score method to the model class itself so all instances have it
     def score_method(self, hidden_states):
-        return self.v_head(hidden_states.mean(dim=1))
-    value_model.score = score_method.__get__(value_model, type(value_model))
+        # hidden_states shape: [batch_size, sequence_length, hidden_size]
+        # We need to return rewards for each position: [batch_size, sequence_length]
+        batch_size, seq_len, hidden_size = hidden_states.shape
+        
+        # Apply value head to each position
+        # Reshape to [batch_size * seq_len, hidden_size] for batch processing
+        hidden_flat = hidden_states.view(-1, hidden_size)
+        rewards_flat = self.v_head(hidden_flat)
+        
+        # Reshape back to [batch_size, seq_len, 1] and squeeze to [batch_size, seq_len]
+        rewards = rewards_flat.view(batch_size, seq_len, -1).squeeze(-1)
+        
+        return rewards
+    
+    # Add score method and v_head to the model class
+    model_class.score = score_method
+    model_class.v_head = torch.nn.Linear(base_model.config.hidden_size, 1)
+    
+    value_model = base_model
     # reference model, let PPOTrainer create a frozen copy when None
     ref_model = None
 
@@ -106,11 +179,16 @@ def main():
         logging_steps=1,
         bf16=False,
         fp16=False,
+        # Disable evaluation to avoid eval_dataloader issues
+        eval_strategy="no",
     )
 
     # Use a simple reward model that returns scalar rewards
     reward_model = SimpleRewardModel(tokenizer)
 
+    # Create an empty evaluation dataset to avoid eval_dataloader issues
+    eval_ds = Dataset.from_dict({"input_ids": [], "attention_mask": []})
+    
     trainer = PPOTrainer(
         args=cfg,
         processing_class=tokenizer,
@@ -118,7 +196,8 @@ def main():
         ref_model=ref_model,
         reward_model=reward_model,
         train_dataset=ds,
-        value_model=policy,  # Use policy as value model
+        eval_dataset=eval_ds,
+        value_model=value_model,
     )
 
     # one short train call on CPU
