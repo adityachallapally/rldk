@@ -18,11 +18,11 @@ def fix_generation_config(
     tokenizer: AutoTokenizer,
     generation_config: Optional[GenerationConfig] = None
 ) -> "AutoModelForCausalLMWithValueHead":
-    """Fix missing generation_config attribute on TRL models.
+    """Fix missing generation_config and base_model_prefix attributes on TRL models.
 
     This is a common issue with TRL 0.23.0+ where AutoModelForCausalLMWithValueHead
-    doesn't have a generation_config attribute by default, causing AttributeError
-    when PPOTrainer tries to access it.
+    doesn't have a generation_config or base_model_prefix attribute by default, 
+    causing AttributeError when PPOTrainer tries to access them.
 
     Args:
         model: The TRL model to fix
@@ -30,7 +30,7 @@ def fix_generation_config(
         generation_config: Optional custom generation config. If None, creates a default one.
 
     Returns:
-        The model with generation_config attribute set
+        The model with generation_config and base_model_prefix attributes set
 
     Raises:
         ImportError: If TRL is not available
@@ -57,6 +57,37 @@ def fix_generation_config(
     # Set the generation_config attribute
     model.generation_config = generation_config
 
+    # Fix missing base_model_prefix attribute (required by PPOTrainer)
+    if not hasattr(model, 'base_model_prefix'):
+        # The AutoModelForCausalLMWithValueHead wraps a pretrained_model that has the base_model_prefix
+        if hasattr(model, 'pretrained_model') and hasattr(model.pretrained_model, 'base_model_prefix'):
+            model.base_model_prefix = model.pretrained_model.base_model_prefix
+        else:
+            # Fallback: try to infer from the model name or use a default
+            model_name = getattr(model, 'name_or_path', '').lower()
+            if 'gpt2' in model_name or 'gpt' in model_name:
+                model.base_model_prefix = "transformer"
+            elif 'llama' in model_name:
+                model.base_model_prefix = "model"
+            else:
+                model.base_model_prefix = "transformer"  # Default fallback
+
+    # Fix missing base model attribute (required by PPOTrainer)
+    # The PPOTrainer expects the model to have an attribute with the name of base_model_prefix
+    if hasattr(model, 'base_model_prefix') and hasattr(model, 'pretrained_model'):
+        base_model_prefix = model.base_model_prefix
+        if not hasattr(model, base_model_prefix):
+            # Add the base model attribute by referencing the pretrained_model's attribute
+            if hasattr(model.pretrained_model, base_model_prefix):
+                setattr(model, base_model_prefix, getattr(model.pretrained_model, base_model_prefix))
+
+    # Fix missing gradient checkpointing attribute (required by PPOTrainer)
+    if not hasattr(model, 'is_gradient_checkpointing'):
+        if hasattr(model, 'pretrained_model') and hasattr(model.pretrained_model, 'is_gradient_checkpointing'):
+            model.is_gradient_checkpointing = model.pretrained_model.is_gradient_checkpointing
+        else:
+            model.is_gradient_checkpointing = False  # Default to False
+
     return model
 
 
@@ -65,11 +96,14 @@ def prepare_models_for_ppo(
     tokenizer: Optional[AutoTokenizer] = None,
     generation_config: Optional[GenerationConfig] = None
 ) -> tuple["AutoModelForCausalLMWithValueHead", "AutoModelForCausalLMWithValueHead",
-           "AutoModelForCausalLMWithValueHead", "AutoModelForCausalLMWithValueHead", AutoTokenizer]:
+           "AutoModelForCausalLMWithValueHead", AutoTokenizer]:
     """Prepare all required models for PPO training with proper generation_config.
 
     This function creates and configures all the models needed for PPO training,
     ensuring they have the required generation_config attribute to avoid AttributeError.
+    
+    Note: The same model is used for both policy and value heads (standard approach).
+    This avoids the base_model_prefix AttributeError in TRL 0.23.0+.
 
     Args:
         model_name: Name or path of the base model
@@ -77,7 +111,7 @@ def prepare_models_for_ppo(
         generation_config: Optional custom generation config
 
     Returns:
-        Tuple of (model, ref_model, reward_model, value_model, tokenizer)
+        Tuple of (model, ref_model, reward_model, tokenizer)
 
     Raises:
         ImportError: If TRL is not available
@@ -91,19 +125,17 @@ def prepare_models_for_ppo(
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
 
-    # Create all models
+    # Create models - use same model for policy and value heads
     model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
     ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
     reward_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
-    value_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
 
     # Fix generation_config for all models
     model = fix_generation_config(model, tokenizer, generation_config)
     ref_model = fix_generation_config(ref_model, tokenizer, generation_config)
     reward_model = fix_generation_config(reward_model, tokenizer, generation_config)
-    value_model = fix_generation_config(value_model, tokenizer, generation_config)
 
-    return model, ref_model, reward_model, value_model, tokenizer
+    return model, ref_model, reward_model, tokenizer
 
 
 def check_trl_compatibility() -> dict:
@@ -178,16 +210,14 @@ def validate_ppo_setup(
     model: "AutoModelForCausalLMWithValueHead",
     ref_model: "AutoModelForCausalLMWithValueHead",
     reward_model: "AutoModelForCausalLMWithValueHead",
-    value_model: "AutoModelForCausalLMWithValueHead",
     tokenizer: AutoTokenizer
 ) -> dict:
     """Validate PPO setup for common issues.
 
     Args:
-        model: Main PPO model
+        model: Main PPO model (used for both policy and value heads)
         ref_model: Reference model
         reward_model: Reward model
-        value_model: Value model
         tokenizer: Tokenizer
 
     Returns:
@@ -198,7 +228,7 @@ def validate_ppo_setup(
 
     # Check generation_config attribute
     for name, model_obj in [("model", model), ("ref_model", ref_model),
-                           ("reward_model", reward_model), ("value_model", value_model)]:
+                           ("reward_model", reward_model)]:
         if not hasattr(model_obj, 'generation_config'):
             issues.append(f"{name} missing generation_config attribute")
         elif model_obj.generation_config is None:
@@ -213,7 +243,7 @@ def validate_ppo_setup(
 
     # Check model types
     for name, model_obj in [("model", model), ("ref_model", ref_model),
-                           ("reward_model", reward_model), ("value_model", value_model)]:
+                           ("reward_model", reward_model)]:
         if not isinstance(model_obj, AutoModelForCausalLMWithValueHead):
             issues.append(f"{name} is not an AutoModelForCausalLMWithValueHead instance")
 

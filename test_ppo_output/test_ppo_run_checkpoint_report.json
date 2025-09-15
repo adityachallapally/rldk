@@ -1,0 +1,9 @@
+{
+  "run_id": "test_ppo_run",
+  "total_checkpoints": 3,
+  "average_health_score": 1.0,
+  "min_health_score": 1.0,
+  "max_parameter_drift": 0.0,
+  "average_gradient_norm": 0.0,
+  "model_size_mb": 474.70312881469727
+}

@@ -127,15 +127,17 @@ def test_basic_ppo_integration():
 
     # Use utility function to prepare all models with proper generation_config
     # This fixes the AttributeError: 'AutoModelForCausalLMWithValueHead' object has no attribute 'generation_config'
-    model, ref_model, reward_model, value_model, tokenizer = prepare_models_for_ppo(model_name)
+    # Note: Same model is used for both policy and value heads (standard approach)
+    model, ref_model, reward_model, tokenizer = prepare_models_for_ppo(model_name)
 
     # Create PPO trainer with new API
-    PPOTrainer(
+    # Use the same model for both policy and value heads to avoid base_model_prefix AttributeError in TRL 0.23.0+
+    trainer = PPOTrainer(
         args=ppo_config,
-        model=model,
+        model=model,  # Policy model
         ref_model=ref_model,
         reward_model=reward_model,
-        value_model=value_model,
+        value_model=model,  # Use same model for value head (standard approach)
         processing_class=tokenizer,
         train_dataset=dataset,
         callbacks=[rldk_callback, ppo_monitor, checkpoint_monitor],
