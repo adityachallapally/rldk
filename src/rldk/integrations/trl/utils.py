@@ -145,28 +145,28 @@ def create_simple_value_model(
         
         def forward(self, input_ids, attention_mask=None, **kwargs):
             """Forward pass for value estimation."""
-            with torch.no_grad():
-                # Get hidden states from base model
-                outputs = self.base_model(input_ids=input_ids, attention_mask=attention_mask, **kwargs)
-                
-                # Extract hidden states
-                if hasattr(outputs, 'last_hidden_state'):
-                    hidden_states = outputs.last_hidden_state
-                elif hasattr(outputs, 'hidden_states'):
-                    hidden_states = outputs.hidden_states[-1]
-                else:
-                    # Fallback: assume outputs is a tuple
-                    hidden_states = outputs[0]
-                
-                # Pool hidden states (mean pooling)
-                if attention_mask is not None:
-                    pooled = (hidden_states * attention_mask.unsqueeze(-1)).sum(dim=1) / attention_mask.sum(dim=1, keepdim=True)
-                else:
-                    pooled = hidden_states.mean(dim=1)
-                
-                # Get value estimate
-                values = self.value_head(pooled).squeeze(-1)
-                return values
+            # Get hidden states from base model
+            outputs = self.base_model(input_ids=input_ids, attention_mask=attention_mask, **kwargs)
+            
+            # Extract hidden states
+            if hasattr(outputs, 'last_hidden_state'):
+                hidden_states = outputs.last_hidden_state
+            elif hasattr(outputs, 'hidden_states'):
+                hidden_states = outputs.hidden_states[-1]
+            else:
+                # Fallback: assume outputs is a tuple
+                hidden_states = outputs[0]
+            
+            # Pool hidden states (mean pooling) with safety check for division by zero
+            if attention_mask is not None:
+                mask_sum = attention_mask.sum(dim=1, keepdim=True)
+                pooled = (hidden_states * attention_mask.unsqueeze(-1)).sum(dim=1) / torch.clamp(mask_sum, min=1e-8)
+            else:
+                pooled = hidden_states.mean(dim=1)
+            
+            # Get value estimate
+            values = self.value_head(pooled).squeeze(-1)
+            return values
         
         def score(self, input_ids, attention_mask=None, **kwargs):
             """Score method required by TRL."""
@@ -218,28 +218,28 @@ def create_simple_reward_model(
         
         def forward(self, input_ids, attention_mask=None, **kwargs):
             """Forward pass for reward computation."""
-            with torch.no_grad():
-                # Get hidden states from base model
-                outputs = self.base_model(input_ids=input_ids, attention_mask=attention_mask, **kwargs)
-                
-                # Extract hidden states
-                if hasattr(outputs, 'last_hidden_state'):
-                    hidden_states = outputs.last_hidden_state
-                elif hasattr(outputs, 'hidden_states'):
-                    hidden_states = outputs.hidden_states[-1]
-                else:
-                    # Fallback: assume outputs is a tuple
-                    hidden_states = outputs[0]
-                
-                # Pool hidden states (mean pooling)
-                if attention_mask is not None:
-                    pooled = (hidden_states * attention_mask.unsqueeze(-1)).sum(dim=1) / attention_mask.sum(dim=1, keepdim=True)
-                else:
-                    pooled = hidden_states.mean(dim=1)
-                
-                # Get reward
-                reward = self.reward_head(pooled)
-                return reward
+            # Get hidden states from base model
+            outputs = self.base_model(input_ids=input_ids, attention_mask=attention_mask, **kwargs)
+            
+            # Extract hidden states
+            if hasattr(outputs, 'last_hidden_state'):
+                hidden_states = outputs.last_hidden_state
+            elif hasattr(outputs, 'hidden_states'):
+                hidden_states = outputs.hidden_states[-1]
+            else:
+                # Fallback: assume outputs is a tuple
+                hidden_states = outputs[0]
+            
+            # Pool hidden states (mean pooling) with safety check for division by zero
+            if attention_mask is not None:
+                mask_sum = attention_mask.sum(dim=1, keepdim=True)
+                pooled = (hidden_states * attention_mask.unsqueeze(-1)).sum(dim=1) / torch.clamp(mask_sum, min=1e-8)
+            else:
+                pooled = hidden_states.mean(dim=1)
+            
+            # Get reward
+            reward = self.reward_head(pooled)
+            return reward
         
         def get_reward(self, input_ids, attention_mask=None, **kwargs):
             """Get reward method compatible with TRL's get_reward() function."""
