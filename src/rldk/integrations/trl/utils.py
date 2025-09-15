@@ -6,6 +6,11 @@ from packaging import version
 from transformers import AutoTokenizer, GenerationConfig
 
 try:
+    from datasets import Dataset
+except ImportError:
+    Dataset = None
+
+try:
     from trl import AutoModelForCausalLMWithValueHead
     TRL_AVAILABLE = True
 except ImportError:
@@ -96,7 +101,7 @@ def prepare_models_for_ppo(
     tokenizer: Optional[AutoTokenizer] = None,
     generation_config: Optional[GenerationConfig] = None
 ) -> tuple["AutoModelForCausalLMWithValueHead", "AutoModelForCausalLMWithValueHead",
-           "AutoModelForCausalLMWithValueHead", AutoTokenizer]:
+           "AutoModelForCausalLMWithValueHead", "AutoModelForCausalLMWithValueHead", AutoTokenizer]:
     """Prepare all required models for PPO training with proper generation_config.
 
     This function creates and configures all the models needed for PPO training,
@@ -111,7 +116,7 @@ def prepare_models_for_ppo(
         generation_config: Optional custom generation config
 
     Returns:
-        Tuple of (model, ref_model, reward_model, tokenizer)
+        Tuple of (model, ref_model, reward_model, value_model, tokenizer)
 
     Raises:
         ImportError: If TRL is not available
@@ -129,13 +134,15 @@ def prepare_models_for_ppo(
     model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
     ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
     reward_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    value_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
 
     # Fix generation_config for all models
     model = fix_generation_config(model, tokenizer, generation_config)
     ref_model = fix_generation_config(ref_model, tokenizer, generation_config)
     reward_model = fix_generation_config(reward_model, tokenizer, generation_config)
+    value_model = fix_generation_config(value_model, tokenizer, generation_config)
 
-    return model, ref_model, reward_model, tokenizer
+    return model, ref_model, reward_model, value_model, tokenizer
 
 
 def check_trl_compatibility() -> dict:
@@ -257,3 +264,68 @@ def validate_ppo_setup(
             "Check tokenizer has required token IDs"
         ] if issues else []
     }
+
+
+def create_ppo_trainer(
+    model_name: str,
+    ppo_config,
+    train_dataset,
+    callbacks: Optional[list] = None,
+    **kwargs
+):
+    """Create PPOTrainer with automatic parameter handling for different TRL versions.
+    
+    This function creates a PPOTrainer with all required parameters, automatically
+    handling API differences between TRL versions. For TRL 0.23.0+, all parameters
+    including reward_model, value_model, and train_dataset are required.
+    
+    Args:
+        model_name: Name or path of the base model
+        ppo_config: PPO configuration object
+        train_dataset: Dataset for training
+        callbacks: Optional list of callbacks
+        **kwargs: Additional arguments passed to PPOTrainer
+        
+    Returns:
+        Configured PPOTrainer instance
+        
+    Raises:
+        ImportError: If TRL is not available
+    """
+    if not TRL_AVAILABLE:
+        raise ImportError("TRL is required for this function. Install with: pip install trl")
+    
+    try:
+        from trl import PPOTrainer
+    except ImportError:
+        raise ImportError("PPOTrainer not available. Install with: pip install trl")
+    
+    # Prepare all models
+    model, ref_model, reward_model, value_model, tokenizer = prepare_models_for_ppo(model_name)
+    
+    compatibility = check_trl_compatibility()
+    trl_version_str = compatibility.get("version", "0.7.0")
+    trl_version = version.parse(trl_version_str) if trl_version_str else version.parse("0.7.0")
+    
+    if trl_version >= version.parse("0.23.0"):
+        return PPOTrainer(
+            args=ppo_config,
+            model=model,
+            ref_model=ref_model,
+            reward_model=reward_model,
+            value_model=value_model,
+            processing_class=tokenizer,
+            train_dataset=train_dataset,
+            callbacks=callbacks or [],
+            **kwargs
+        )
+    else:
+        return PPOTrainer(
+            args=ppo_config,
+            model=model,
+            ref_model=ref_model,
+            processing_class=tokenizer,
+            train_dataset=train_dataset,
+            callbacks=callbacks or [],
+            **kwargs
+        )

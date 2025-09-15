@@ -14,7 +14,8 @@ from transformers import (
     TrainingArguments,
 )
 
-# Import RLDK monitor
+# Import RLDK components
+from rldk.integrations.trl import prepare_models_for_ppo
 from rldk.integrations.trl.monitors import PPOMonitor as Monitor
 
 try:
@@ -93,24 +94,12 @@ def run_real_trl_training():
     print(f"📦 Using tiny model: {model_name}")
     
     try:
-        # Load tokenizer
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
+        policy_model, ref_model, _, _, tokenizer = prepare_models_for_ppo(model_name)
         
-        # Load base model
+        # Create custom reward model
         base_model = AutoModelForCausalLM.from_pretrained(model_name)
-        
-        # Create policy model with value head
-        policy_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
-        
-        # Create reference model (same as base model)
-        ref_model = AutoModelForCausalLM.from_pretrained(model_name)
-        
-        # Create reward model
         reward_model = SimpleRewardModel(base_model)
         
-        # Create value model (same as policy model for simplicity)
         value_model = policy_model
         
         print("✅ All models loaded successfully")
@@ -168,7 +157,7 @@ def run_real_trl_training():
         value_model=value_model,
         processing_class=tokenizer,
         train_dataset=dataset,
-        callbacks=[monitor],  # Attach RLDK monitor
+        callbacks=[monitor],
     )
     
     print("✅ PPO Trainer created with RLDK monitor callback")

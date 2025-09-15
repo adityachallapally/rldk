@@ -17,7 +17,7 @@ from rldk.integrations.trl import (
     PPOMonitor,
     RLDKCallback,
     check_trl_compatibility,
-    prepare_models_for_ppo,
+    create_ppo_trainer,
 )
 from rldk.utils.math_utils import safe_divide
 
@@ -125,20 +125,9 @@ def test_basic_ppo_integration():
         fp16=False,  # Disable fp16 for compatibility
     )
 
-    # Use utility function to prepare all models with proper generation_config
-    # This fixes the AttributeError: 'AutoModelForCausalLMWithValueHead' object has no attribute 'generation_config'
-    # Note: Same model is used for both policy and value heads (standard approach)
-    model, ref_model, reward_model, tokenizer = prepare_models_for_ppo(model_name)
-
-    # Create PPO trainer with new API
-    # Use the same model for both policy and value heads to avoid base_model_prefix AttributeError in TRL 0.23.0+
-    trainer = PPOTrainer(
-        args=ppo_config,
-        model=model,  # Policy model
-        ref_model=ref_model,
-        reward_model=reward_model,
-        value_model=model,  # Use same model for value head (standard approach)
-        processing_class=tokenizer,
+    trainer = create_ppo_trainer(
+        model_name=model_name,
+        ppo_config=ppo_config,
         train_dataset=dataset,
         callbacks=[rldk_callback, ppo_monitor, checkpoint_monitor],
     )
@@ -186,8 +175,8 @@ def test_basic_ppo_integration():
             ppo_monitor.on_log(args, state, control, fake_logs)
 
             if step % 2 == 0:  # Simulate checkpoint saves
-                rldk_callback.on_save(args, state, control, model=model)
-                checkpoint_monitor.on_save(args, state, control, model=model)
+                rldk_callback.on_save(args, state, control, model=trainer.model)
+                checkpoint_monitor.on_save(args, state, control, model=trainer.model)
 
             print(f"✅ Step {step} completed")
 
