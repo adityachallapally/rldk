@@ -5,19 +5,15 @@ import os
 import time
 from pathlib import Path
 
-import torch
 from datasets import Dataset
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    TrainingArguments,
-)
+from transformers import TrainingArguments
 
-# Import RLDK monitor
+# Import RLDK utilities
+from rldk.integrations.trl import create_ppo_trainer
 from rldk.integrations.trl.monitors import PPOMonitor as Monitor
 
 try:
-    from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer
+    from trl import PPOConfig
     TRL_AVAILABLE = True
 except ImportError:
     print("TRL not available. Install with: pip install trl")
@@ -65,26 +61,7 @@ def run_minimal_trl_loop():
     model_name = "sshleifer/tiny-gpt2"  # Very small model
     
     print(f"📦 Using tiny model: {model_name}")
-    
-    try:
-        # Load tokenizer
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
-        
-        # Load model with value head
-        model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
-        
-        # Create reference model (same as policy model for simplicity)
-        ref_model = AutoModelForCausalLM.from_pretrained(model_name)
-        
-        print("✅ Models loaded successfully")
-        
-    except Exception as e:
-        print(f"❌ Model loading failed: {e}")
-        print("⚠️  Falling back to simulation mode")
-        return run_simulation_mode()
-    
+
     # Create dataset
     dataset = create_tiny_dataset()
     print(f"📊 Dataset created with {len(dataset)} samples")
@@ -122,18 +99,19 @@ def run_minimal_trl_loop():
     
     print("⚙️  PPO Config: High LR, Low grad norm (intentionally unstable)")
     
-    # Create PPO trainer with monitor callback
-    trainer = PPOTrainer(
-        args=ppo_config,
-        model=model,
-        ref_model=ref_model,
-        processing_class=tokenizer,
-        train_dataset=dataset,
-        callbacks=[monitor],  # Attach RLDK monitor
-    )
-    
-    print("✅ PPO Trainer created with RLDK monitor callback")
-    
+    try:
+        trainer = create_ppo_trainer(
+            model_name=model_name,
+            ppo_config=ppo_config,
+            train_dataset=dataset,
+            callbacks=[monitor],
+        )
+        print("✅ PPO Trainer created with RLDK monitor callback")
+    except Exception as e:
+        print(f"❌ Trainer creation failed: {e}")
+        print("⚠️  Falling back to simulation mode")
+        return run_simulation_mode()
+
     # Start training
     print("🎯 Starting training (CPU only)...")
     start_time = time.time()

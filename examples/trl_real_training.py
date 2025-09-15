@@ -14,11 +14,12 @@ from transformers import (
     TrainingArguments,
 )
 
-# Import RLDK monitor
+# Import RLDK utilities
+from rldk.integrations.trl import create_ppo_trainer
 from rldk.integrations.trl.monitors import PPOMonitor as Monitor
 
 try:
-    from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer
+    from trl import AutoModelForCausalLMWithValueHead, PPOConfig
     TRL_AVAILABLE = True
 except ImportError:
     print("TRL not available. Install with: pip install trl")
@@ -104,17 +105,17 @@ def run_real_trl_training():
         # Create policy model with value head
         policy_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
         
-        # Create reference model (same as base model)
-        ref_model = AutoModelForCausalLM.from_pretrained(model_name)
-        
+        # Create reference model with value head for compatibility
+        ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+
         # Create reward model
         reward_model = SimpleRewardModel(base_model)
-        
+
         # Create value model (same as policy model for simplicity)
         value_model = policy_model
-        
+
         print("✅ All models loaded successfully")
-        
+
     except Exception as e:
         print(f"❌ Model loading failed: {e}")
         return False
@@ -159,19 +160,22 @@ def run_real_trl_training():
     
     print("⚙️  PPO Config: High LR, Low grad norm (intentionally unstable)")
     
-    # Create PPO trainer with monitor callback
-    trainer = PPOTrainer(
-        args=ppo_config,
-        model=policy_model,
-        ref_model=ref_model,
-        reward_model=reward_model,
-        value_model=value_model,
-        processing_class=tokenizer,
-        train_dataset=dataset,
-        callbacks=[monitor],  # Attach RLDK monitor
-    )
-    
-    print("✅ PPO Trainer created with RLDK monitor callback")
+    try:
+        trainer = create_ppo_trainer(
+            model_name=model_name,
+            ppo_config=ppo_config,
+            train_dataset=dataset,
+            callbacks=[monitor],
+            tokenizer=tokenizer,
+            model=policy_model,
+            ref_model=ref_model,
+            reward_model=reward_model,
+            value_model=value_model,
+        )
+        print("✅ PPO Trainer created with RLDK monitor callback")
+    except Exception as e:
+        print(f"❌ Trainer creation failed: {e}")
+        return False
     
     # Start training
     print("🎯 Starting REAL PPO training (CPU only)...")
