@@ -310,9 +310,9 @@ def create_ppo_trainer(
         if trl_version_str and trl_version_str not in ("unknown", "None", "null"):
             trl_version = version.parse(trl_version_str)
         else:
-            trl_version = version.parse("0.7.0")  # Safe fallback
+            trl_version = version.parse("0.23.0")  # Safe fallback to minimum supported version
     except (TypeError, ValueError, Exception):
-        trl_version = version.parse("0.7.0")  # Fallback for any parsing errors
+        trl_version = version.parse("0.23.0")  # Fallback for any parsing errors
     
     if trl_version >= version.parse("0.23.0"):
         return PPOTrainer(
@@ -321,7 +321,7 @@ def create_ppo_trainer(
             ref_model=ref_model,
             reward_model=reward_model,
             value_model=value_model,
-            processing_class=tokenizer,
+            tokenizer=tokenizer,
             train_dataset=train_dataset,
             callbacks=callbacks or [],
             **kwargs
