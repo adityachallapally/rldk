@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from packaging import version
+from packaging.version import InvalidVersion
 from transformers import AutoTokenizer, GenerationConfig
 
 try:
@@ -103,28 +104,19 @@ def prepare_models_for_ppo(
     "AutoModelForCausalLMWithValueHead",
     "AutoModelForCausalLMWithValueHead",
     "AutoModelForCausalLMWithValueHead",
-    "AutoModelForCausalLMWithValueHead",
     AutoTokenizer,
 ]:
-    """Prepare all required models for PPO training with proper generation_config.
+    """Prepare policy, reference, and reward models for PPO training.
 
-    This function creates and configures all the models needed for PPO training,
-    ensuring they have the required generation_config attribute to avoid AttributeError.
-    
-    Note: The same model is used for both policy and value heads (standard approach).
-    This avoids the base_model_prefix AttributeError in TRL 0.23.0+.
-
-    Args:
-        model_name: Name or path of the base model
-        tokenizer: Optional tokenizer. If None, will be loaded from model_name
-        generation_config: Optional custom generation config
+    The models are returned with a consistent generation configuration to avoid
+    TRL AttributeErrors. The value model required by newer TRL releases can be
+    created via :func:`_prepare_value_model` or the :func:`create_ppo_trainer`
+    factory.
 
     Returns:
-        Tuple of (model, ref_model, reward_model, value_model, tokenizer)
-
-    Raises:
-        ImportError: If TRL is not available
+        Tuple of (model, ref_model, reward_model, tokenizer).
     """
+
     if not TRL_AVAILABLE:
         raise ImportError("TRL is required for this function. Install with: pip install trl")
 
@@ -134,19 +126,28 @@ def prepare_models_for_ppo(
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
 
-    # Create models - use same model for policy and value heads
+    # Create models - use same model for policy and reward heads
     model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
     ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
     reward_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
-    value_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
 
     # Fix generation_config for all models
     model = fix_generation_config(model, tokenizer, generation_config)
     ref_model = fix_generation_config(ref_model, tokenizer, generation_config)
     reward_model = fix_generation_config(reward_model, tokenizer, generation_config)
-    value_model = fix_generation_config(value_model, tokenizer, generation_config)
 
-    return model, ref_model, reward_model, value_model, tokenizer
+    return model, ref_model, reward_model, tokenizer
+
+
+def _prepare_value_model(
+    model_name: str,
+    tokenizer: AutoTokenizer,
+    generation_config: Optional[GenerationConfig] = None,
+) -> "AutoModelForCausalLMWithValueHead":
+    """Prepare a value model that matches TRL's value head expectations."""
+
+    value_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    return fix_generation_config(value_model, tokenizer, generation_config)
 
 
 def _ensure_generation_config(
@@ -183,38 +184,7 @@ def create_ppo_trainer(
     validate_setup: bool = True,
     **ppo_kwargs: Any,
 ) -> "PPOTrainer":
-    """Create a :class:`trl.PPOTrainer` with version-aware defaults.
-
-    This factory wraps TRL's ``PPOTrainer`` to ensure all required models are
-    prepared consistently across TRL versions. When models or tokenizer are not
-    provided they are instantiated via :func:`prepare_models_for_ppo`.
-
-    Args:
-        model_name: Base model identifier used for automatic loading.
-        ppo_config: PPO configuration object.
-        train_dataset: Training dataset for PPO.
-        callbacks: Optional list of callbacks passed to the trainer.
-        tokenizer: Optional tokenizer to reuse.
-        generation_config: Optional generation configuration shared across
-            prepared models.
-        model: Optional policy model. When provided its ``generation_config`` is
-            validated/fixed.
-        ref_model: Optional reference model. Same handling as ``model``.
-        reward_model: Optional reward model. When not provided a default value
-            head model is created.
-        value_model: Optional value model. When not provided a default value
-            head model is created.
-        validate_setup: Whether to validate the prepared components before
-            creating the trainer.
-        **ppo_kwargs: Additional keyword arguments forwarded to ``PPOTrainer``.
-
-    Returns:
-        Configured ``PPOTrainer`` instance.
-
-    Raises:
-        ImportError: If TRL is not installed.
-        ValueError: If required components are missing or misconfigured.
-    """
+    """Create a :class:`trl.PPOTrainer` with version-aware defaults."""
 
     if not TRL_AVAILABLE:
         raise ImportError("TRL is required for this function. Install with: pip install trl")
@@ -222,18 +192,30 @@ def create_ppo_trainer(
     # Local import to avoid import errors when TRL is missing at module import time
     from trl import PPOTrainer  # type: ignore
 
+    compatibility = check_trl_compatibility()
+    trl_version: Optional[version.Version]
+    try:
+        trl_version = (
+            version.parse(compatibility["version"]) if compatibility.get("version") else None
+        )
+    except (InvalidVersion, TypeError, ValueError):
+        trl_version = None
+
+    use_new_api = trl_version is None or trl_version >= version.parse("0.23.0")
+
     callbacks_list: List[Any] = list(callbacks) if callbacks else []
 
-    components_missing = any(
-        component is None for component in (model, ref_model, reward_model, value_model)
-    ) or tokenizer is None
+    required_components_missing = (
+        tokenizer is None
+        or any(component is None for component in (model, ref_model, reward_model))
+    )
+    components_missing = required_components_missing or (use_new_api and value_model is None)
 
     if components_missing:
         (
             default_model,
             default_ref_model,
             default_reward_model,
-            default_value_model,
             default_tokenizer,
         ) = prepare_models_for_ppo(
             model_name,
@@ -244,34 +226,48 @@ def create_ppo_trainer(
         model = model or default_model
         ref_model = ref_model or default_ref_model
         reward_model = reward_model or default_reward_model
-        value_model = value_model or default_value_model
         tokenizer = tokenizer or default_tokenizer
+
+        if use_new_api and value_model is None:
+            value_model = _prepare_value_model(
+                model_name,
+                tokenizer,
+                generation_config,
+            )
     else:
         model = _ensure_generation_config(model, tokenizer, generation_config)
         ref_model = _ensure_generation_config(ref_model, tokenizer, generation_config)
         if isinstance(reward_model, AutoModelForCausalLMWithValueHead):
-            reward_model = _ensure_generation_config(reward_model, tokenizer, generation_config)
-        value_model = _ensure_generation_config(value_model, tokenizer, generation_config)
+            reward_model = _ensure_generation_config(
+                reward_model,
+                tokenizer,
+                generation_config,
+            )
+        if value_model is not None:
+            value_model = _ensure_generation_config(value_model, tokenizer, generation_config)
 
     if tokenizer is None:
         raise ValueError("Tokenizer could not be prepared for PPO training")
 
+    if use_new_api and value_model is None:
+        value_model = _prepare_value_model(
+            model_name,
+            tokenizer,
+            generation_config,
+        )
+
     if validate_setup:
-        validation = validate_ppo_setup(model, ref_model, reward_model, value_model, tokenizer)
+        validation = validate_ppo_setup(
+            model,
+            ref_model,
+            reward_model,
+            value_model,
+            tokenizer,
+            require_value_model=use_new_api,
+        )
         if not validation["valid"]:
             issues = "; ".join(validation["issues"])
             raise ValueError(f"Invalid PPO setup detected: {issues}")
-
-    compatibility = check_trl_compatibility()
-    trl_version: Optional[version.Version]
-    try:
-        trl_version = (
-            version.parse(compatibility["version"]) if compatibility.get("version") else None
-        )
-    except Exception:
-        trl_version = None
-
-    use_new_api = trl_version is None or trl_version >= version.parse("0.23.0")
 
     trainer_kwargs: Dict[str, Any] = {
         "args": ppo_config,
@@ -312,7 +308,7 @@ def check_trl_compatibility() -> dict:
             "trl_available": False,
             "version": None,
             "warnings": ["TRL is not installed. Install with: pip install trl"],
-            "recommendations": ["Install TRL: pip install trl>=0.23.0"],
+            "recommendations": ["Install TRL: pip install trl"],
         }
 
     try:
@@ -374,27 +370,23 @@ def validate_ppo_setup(
     ref_model: Optional["AutoModelForCausalLMWithValueHead"],
     reward_model: Optional[Any],
     value_model: Optional["AutoModelForCausalLMWithValueHead"],
-    tokenizer: Optional[AutoTokenizer]
+    tokenizer: Optional[AutoTokenizer],
+    *,
+    require_value_model: bool = True,
 ) -> Dict[str, Any]:
-    """Validate PPO setup for common issues.
+    """Validate PPO setup for common issues."""
 
-    Args:
-        model: Main PPO model (policy model)
-        ref_model: Reference model
-        reward_model: Reward model
-        value_model: Value function model
-        tokenizer: Tokenizer used for the models
-
-    Returns:
-        Dictionary with validation results
-    """
     issues: List[str] = []
     warnings: List[str] = []
 
     # Helper to validate TRL value-head models
-    def _check_value_head(name: str, model_obj: Optional[Any]) -> None:
+    def _check_value_head(name: str, model_obj: Optional[Any], required: bool = True) -> None:
         if model_obj is None:
-            issues.append(f"{name} is missing")
+            message = f"{name} is missing"
+            if required:
+                issues.append(message)
+            else:
+                warnings.append(f"{message} (not required for this TRL version)")
             return
 
         if not isinstance(model_obj, AutoModelForCausalLMWithValueHead):
@@ -408,7 +400,7 @@ def validate_ppo_setup(
 
     _check_value_head("model", model)
     _check_value_head("ref_model", ref_model)
-    _check_value_head("value_model", value_model)
+    _check_value_head("value_model", value_model, required=require_value_model)
 
     if reward_model is None:
         issues.append("reward_model is missing")
