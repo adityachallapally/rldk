@@ -10,6 +10,8 @@ Thank you for your interest in contributing to RLDK! This document provides guid
 - [Linting and Code Quality](#linting-and-code-quality)
 - [Pull Request Process](#pull-request-process)
 - [PR Checklist](#pr-checklist)
+- [Release Process](#release-process)
+- [Getting Help](#getting-help)
 
 ## Local Setup
 
@@ -48,6 +50,12 @@ Thank you for your interest in contributing to RLDK! This document provides guid
    pip install -e ".[dev]"
    ```
 
+5. **Install pre-commit hooks (optional but recommended):**
+   ```bash
+   pip install pre-commit
+   pre-commit install
+   ```
+
 ## Development Environment
 
 ### Project Structure
@@ -75,6 +83,9 @@ pytest
 # Run with coverage
 pytest --cov=src/rldk
 
+# Run with coverage and HTML report
+pytest --cov=src/rldk --cov-report=html
+
 # Run specific test file
 pytest tests/test_specific_module.py
 
@@ -95,6 +106,15 @@ pytest -m "not slow"
 ```
 
 ## Linting and Code Quality
+
+### Code Style
+
+We use several tools to maintain code quality:
+
+- **Black** for code formatting
+- **isort** for import sorting
+- **Ruff** for linting
+- **MyPy** for type checking
 
 ### Code Formatting
 
@@ -217,6 +237,65 @@ Before submitting your pull request, please ensure:
 - [ ] CI/CD pipeline passes
 - [ ] No merge conflicts
 - [ ] Ready for review
+
+## Release Process
+
+### Prerequisites
+
+Before creating a release, ensure you have:
+
+1. **PyPI Account**: Access to the PyPI project for RLDK
+2. **Trusted Publishing Setup**: The repository must be configured in PyPI with OIDC settings for trusted publishing
+3. **GitHub Pages**: Ensure GitHub Pages is enabled for the repository
+
+### Release Steps
+
+1. **Update Version**: Update the version in `pyproject.toml`:
+   ```toml
+   [project]
+   version = "0.1.1"  # Update to new version
+   ```
+
+2. **Update Changelog**: Add release notes to `CHANGELOG.md` (if it exists) or update the release description
+
+3. **Commit Changes**:
+   ```bash
+   git add pyproject.toml CHANGELOG.md
+   git commit -m "Bump version to 0.1.1"
+   ```
+
+4. **Create and Push Tag**:
+   ```bash
+   git tag -a v0.1.1 -m "Release version 0.1.1"
+   git push origin v0.1.1
+   ```
+
+5. **Create GitHub Release**:
+   - Go to the GitHub repository
+   - Click "Releases" → "Create a new release"
+   - Choose the tag you just created (e.g., `v0.1.1`)
+   - Add a release title and description
+   - Click "Publish release"
+
+### Automated Processes
+
+Once you create a GitHub release, the following processes will happen automatically:
+
+1. **PyPI Publishing**: The `publish_pypi.yml` workflow will:
+   - Build the package (sdist and wheel)
+   - Publish to PyPI using trusted publishing (no API tokens needed)
+   - Only triggers on published releases
+
+2. **Documentation Deployment**: The `deploy_docs.yml` workflow will:
+   - Build the MkDocs documentation
+   - Deploy to GitHub Pages
+   - Triggers on pushes to `main` branch and on tags
+
+### Troubleshooting
+
+- **PyPI Publishing Fails**: Ensure the repository is properly configured in PyPI with OIDC settings
+- **Documentation Not Updating**: Check that GitHub Pages is enabled and the workflow has the correct permissions
+- **Version Conflicts**: Ensure the version in `pyproject.toml` matches the git tag
 
 ## Getting Help
 
