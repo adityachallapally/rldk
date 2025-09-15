@@ -1,9 +1,11 @@
 """Utility functions for TRL integration."""
 
-from typing import Optional
+from typing import Optional, Union
+import torch
+import torch.nn as nn
 
 from packaging import version
-from transformers import AutoTokenizer, GenerationConfig
+from transformers import AutoTokenizer, GenerationConfig, AutoModelForCausalLM
 
 try:
     from trl import AutoModelForCausalLMWithValueHead
@@ -91,27 +93,183 @@ def fix_generation_config(
     return model
 
 
+def create_simple_value_model(
+    base_model: Union[AutoModelForCausalLM, "AutoModelForCausalLMWithValueHead"],
+    hidden_size: Optional[int] = None
+) -> nn.Module:
+    """Create a simple value model compatible with TRL's PPOTrainer.
+    
+    This function creates a value model that has all the required attributes
+    (base_model_prefix, transformer, score method) for TRL compatibility.
+    
+    Args:
+        base_model: The base model to create a value head for
+        hidden_size: Optional hidden size. If None, inferred from base_model.config
+        
+    Returns:
+        A value model with proper TRL-compatible interface
+        
+    Raises:
+        ImportError: If TRL is not available
+        AttributeError: If base_model doesn't have required attributes
+    """
+    if not TRL_AVAILABLE:
+        raise ImportError("TRL is required for this function. Install with: pip install trl")
+    
+    if not hasattr(base_model, 'config'):
+        raise AttributeError("base_model must have a config attribute")
+    
+    # Get hidden size
+    if hidden_size is None:
+        hidden_size = getattr(base_model.config, 'hidden_size', 768)
+    
+    class ValueModel(nn.Module):
+        """Simple value model for PPO training."""
+        
+        def __init__(self, base_model, hidden_size):
+            super().__init__()
+            self.base_model = base_model
+            self.value_head = nn.Linear(hidden_size, 1)
+            
+            # Required attributes for TRL compatibility
+            self.base_model_prefix = getattr(base_model, 'base_model_prefix', 'transformer')
+            
+            # Set transformer attribute if it exists
+            if hasattr(base_model, 'transformer'):
+                self.transformer = base_model.transformer
+            elif hasattr(base_model, 'model'):
+                self.transformer = base_model.model
+            else:
+                # Fallback: use the base model itself
+                self.transformer = base_model
+        
+        def forward(self, input_ids, attention_mask=None, **kwargs):
+            """Forward pass for value estimation."""
+            with torch.no_grad():
+                # Get hidden states from base model
+                outputs = self.base_model(input_ids=input_ids, attention_mask=attention_mask, **kwargs)
+                
+                # Extract hidden states
+                if hasattr(outputs, 'last_hidden_state'):
+                    hidden_states = outputs.last_hidden_state
+                elif hasattr(outputs, 'hidden_states'):
+                    hidden_states = outputs.hidden_states[-1]
+                else:
+                    # Fallback: assume outputs is a tuple
+                    hidden_states = outputs[0]
+                
+                # Pool hidden states (mean pooling)
+                if attention_mask is not None:
+                    pooled = (hidden_states * attention_mask.unsqueeze(-1)).sum(dim=1) / attention_mask.sum(dim=1, keepdim=True)
+                else:
+                    pooled = hidden_states.mean(dim=1)
+                
+                # Get value estimate
+                values = self.value_head(pooled).squeeze(-1)
+                return values
+        
+        def score(self, input_ids, attention_mask=None, **kwargs):
+            """Score method required by TRL."""
+            return self.forward(input_ids, attention_mask, **kwargs)
+    
+    return ValueModel(base_model, hidden_size)
+
+
+def create_simple_reward_model(
+    base_model: Union[AutoModelForCausalLM, "AutoModelForCausalLMWithValueHead"],
+    hidden_size: Optional[int] = None
+) -> nn.Module:
+    """Create a simple reward model compatible with TRL's get_reward() function.
+    
+    This function creates a reward model that works with TRL's reward computation
+    and has proper tensor shapes and interfaces.
+    
+    Args:
+        base_model: The base model to create a reward head for
+        hidden_size: Optional hidden size. If None, inferred from base_model.config
+        
+    Returns:
+        A reward model with proper TRL-compatible interface
+        
+    Raises:
+        ImportError: If TRL is not available
+        AttributeError: If base_model doesn't have required attributes
+    """
+    if not TRL_AVAILABLE:
+        raise ImportError("TRL is required for this function. Install with: pip install trl")
+    
+    if not hasattr(base_model, 'config'):
+        raise AttributeError("base_model must have a config attribute")
+    
+    # Get hidden size
+    if hidden_size is None:
+        hidden_size = getattr(base_model.config, 'hidden_size', 768)
+    
+    class RewardModel(nn.Module):
+        """Simple reward model for PPO training."""
+        
+        def __init__(self, base_model, hidden_size):
+            super().__init__()
+            self.base_model = base_model
+            self.reward_head = nn.Linear(hidden_size, 1)
+            
+            # Required attributes for TRL compatibility
+            self.base_model_prefix = getattr(base_model, 'base_model_prefix', 'transformer')
+        
+        def forward(self, input_ids, attention_mask=None, **kwargs):
+            """Forward pass for reward computation."""
+            with torch.no_grad():
+                # Get hidden states from base model
+                outputs = self.base_model(input_ids=input_ids, attention_mask=attention_mask, **kwargs)
+                
+                # Extract hidden states
+                if hasattr(outputs, 'last_hidden_state'):
+                    hidden_states = outputs.last_hidden_state
+                elif hasattr(outputs, 'hidden_states'):
+                    hidden_states = outputs.hidden_states[-1]
+                else:
+                    # Fallback: assume outputs is a tuple
+                    hidden_states = outputs[0]
+                
+                # Pool hidden states (mean pooling)
+                if attention_mask is not None:
+                    pooled = (hidden_states * attention_mask.unsqueeze(-1)).sum(dim=1) / attention_mask.sum(dim=1, keepdim=True)
+                else:
+                    pooled = hidden_states.mean(dim=1)
+                
+                # Get reward
+                reward = self.reward_head(pooled)
+                return reward
+        
+        def get_reward(self, input_ids, attention_mask=None, **kwargs):
+            """Get reward method compatible with TRL's get_reward() function."""
+            return self.forward(input_ids, attention_mask, **kwargs)
+    
+    return RewardModel(base_model, hidden_size)
+
+
 def prepare_models_for_ppo(
     model_name: str,
     tokenizer: Optional[AutoTokenizer] = None,
-    generation_config: Optional[GenerationConfig] = None
-) -> tuple["AutoModelForCausalLMWithValueHead", "AutoModelForCausalLMWithValueHead",
-           "AutoModelForCausalLMWithValueHead", AutoTokenizer]:
+    generation_config: Optional[GenerationConfig] = None,
+    use_separate_value_model: bool = True
+) -> tuple["AutoModelForCausalLMWithValueHead", AutoModelForCausalLM, nn.Module, nn.Module, AutoTokenizer]:
     """Prepare all required models for PPO training with proper generation_config.
 
     This function creates and configures all the models needed for PPO training,
     ensuring they have the required generation_config attribute to avoid AttributeError.
     
-    Note: The same model is used for both policy and value heads (standard approach).
-    This avoids the base_model_prefix AttributeError in TRL 0.23.0+.
+    The function now returns models compatible with current TRL API (0.23.0+) that requires
+    separate reward_model and value_model parameters.
 
     Args:
         model_name: Name or path of the base model
         tokenizer: Optional tokenizer. If None, will be loaded from model_name
         generation_config: Optional custom generation config
+        use_separate_value_model: If True, creates separate value model. If False, uses policy model as value model.
 
     Returns:
-        Tuple of (model, ref_model, reward_model, tokenizer)
+        Tuple of (policy_model, ref_model, value_model, reward_model, tokenizer)
 
     Raises:
         ImportError: If TRL is not available
@@ -125,17 +283,29 @@ def prepare_models_for_ppo(
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
 
-    # Create models - use same model for policy and value heads
-    model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
-    ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
-    reward_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    # Create policy model with value head
+    policy_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    
+    # Create reference model (frozen base model)
+    ref_model = AutoModelForCausalLM.from_pretrained(model_name)
+    
+    # Create base model for reward and value models
+    base_model = AutoModelForCausalLM.from_pretrained(model_name)
+    
+    # Create reward model
+    reward_model = create_simple_reward_model(base_model)
+    
+    # Create value model
+    if use_separate_value_model:
+        value_model = create_simple_value_model(base_model)
+    else:
+        # Use policy model as value model (standard approach in some cases)
+        value_model = policy_model
 
-    # Fix generation_config for all models
-    model = fix_generation_config(model, tokenizer, generation_config)
-    ref_model = fix_generation_config(ref_model, tokenizer, generation_config)
-    reward_model = fix_generation_config(reward_model, tokenizer, generation_config)
+    # Fix generation_config for policy model
+    policy_model = fix_generation_config(policy_model, tokenizer, generation_config)
 
-    return model, ref_model, reward_model, tokenizer
+    return policy_model, ref_model, value_model, reward_model, tokenizer
 
 
 def check_trl_compatibility() -> dict:
@@ -207,16 +377,18 @@ def check_trl_compatibility() -> dict:
 
 
 def validate_ppo_setup(
-    model: "AutoModelForCausalLMWithValueHead",
-    ref_model: "AutoModelForCausalLMWithValueHead",
-    reward_model: "AutoModelForCausalLMWithValueHead",
+    policy_model: "AutoModelForCausalLMWithValueHead",
+    ref_model: AutoModelForCausalLM,
+    value_model: nn.Module,
+    reward_model: nn.Module,
     tokenizer: AutoTokenizer
 ) -> dict:
     """Validate PPO setup for common issues.
 
     Args:
-        model: Main PPO model (used for both policy and value heads)
+        policy_model: Main PPO policy model
         ref_model: Reference model
+        value_model: Value model
         reward_model: Reward model
         tokenizer: Tokenizer
 
@@ -226,13 +398,11 @@ def validate_ppo_setup(
     issues = []
     warnings = []
 
-    # Check generation_config attribute
-    for name, model_obj in [("model", model), ("ref_model", ref_model),
-                           ("reward_model", reward_model)]:
-        if not hasattr(model_obj, 'generation_config'):
-            issues.append(f"{name} missing generation_config attribute")
-        elif model_obj.generation_config is None:
-            warnings.append(f"{name} has None generation_config")
+    # Check generation_config attribute for policy model
+    if not hasattr(policy_model, 'generation_config'):
+        issues.append("policy_model missing generation_config attribute")
+    elif policy_model.generation_config is None:
+        warnings.append("policy_model has None generation_config")
 
     # Check tokenizer compatibility
     if not hasattr(tokenizer, 'eos_token_id') or tokenizer.eos_token_id is None:
@@ -242,10 +412,25 @@ def validate_ppo_setup(
         warnings.append("Tokenizer missing pad_token_id")
 
     # Check model types
-    for name, model_obj in [("model", model), ("ref_model", ref_model),
-                           ("reward_model", reward_model)]:
-        if not isinstance(model_obj, AutoModelForCausalLMWithValueHead):
-            issues.append(f"{name} is not an AutoModelForCausalLMWithValueHead instance")
+    if not isinstance(policy_model, AutoModelForCausalLMWithValueHead):
+        issues.append("policy_model is not an AutoModelForCausalLMWithValueHead instance")
+    
+    if not isinstance(ref_model, AutoModelForCausalLM):
+        issues.append("ref_model is not an AutoModelForCausalLM instance")
+    
+    # Check value model has required methods
+    if not hasattr(value_model, 'score'):
+        issues.append("value_model missing score method")
+    
+    if not hasattr(value_model, 'forward'):
+        issues.append("value_model missing forward method")
+    
+    # Check reward model has required methods
+    if not hasattr(reward_model, 'get_reward'):
+        warnings.append("reward_model missing get_reward method (will use forward)")
+    
+    if not hasattr(reward_model, 'forward'):
+        issues.append("reward_model missing forward method")
 
     return {
         "valid": len(issues) == 0,
@@ -253,7 +438,10 @@ def validate_ppo_setup(
         "warnings": warnings,
         "recommendations": [
             "Use fix_generation_config() to fix generation_config issues",
-            "Ensure all models are AutoModelForCausalLMWithValueHead instances",
+            "Ensure policy_model is AutoModelForCausalLMWithValueHead instance",
+            "Ensure ref_model is AutoModelForCausalLM instance",
+            "Check value_model has score and forward methods",
+            "Check reward_model has forward method",
             "Check tokenizer has required token IDs"
         ] if issues else []
     }
