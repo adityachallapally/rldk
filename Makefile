@@ -26,6 +26,7 @@ help:
 	@echo "  test-trl-unit          - Run TRL unit tests only"
 	@echo "  test-trl-integration   - Run TRL integration tests (without model downloads)"
 	@echo "  test-trl-slow          - Run TRL tests with real model downloads (slow)"
+	@echo "  run-trl-min            - Run minimal TRL example with new PPOTrainer API"
 	@echo "  clean                  - Clean generated files"
 	@echo ""
 	@echo "Examples:"
@@ -275,3 +276,8 @@ test-trl-slow:
 	@echo "⚠️  This will download models and may take several minutes"
 	python3 -m pytest test_trl_integration_optional.py -m integration -v --tb=short
 	@echo "✅ TRL slow tests completed!"
+
+run-trl-min:
+	@echo "Running minimal TRL example..."
+	python3 examples/trl_live_min.py
+	@echo "✅ TRL minimal example completed!"
