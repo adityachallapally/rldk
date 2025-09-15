@@ -77,8 +77,16 @@ def main():
 
     # policy model
     policy = AutoModelForCausalLM.from_pretrained(model_name)
-    # value model - use base model directly
-    value_model = AutoModelForCausalLM.from_pretrained(model_name)
+    # value model - use AutoModelForCausalLMWithValueHead and add required attributes
+    value_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    # Add required attributes for PPOTrainer
+    value_model.base_model_prefix = 'transformer'
+    value_model.transformer = value_model.pretrained_model.transformer
+    
+    # Add score method properly
+    def score_method(self, hidden_states):
+        return self.v_head(hidden_states.mean(dim=1))
+    value_model.score = score_method.__get__(value_model, type(value_model))
     # reference model, let PPOTrainer create a frozen copy when None
     ref_model = None
 
