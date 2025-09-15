@@ -61,11 +61,13 @@ from rldk.utils.error_handling import (
     RLDKTimeoutError,
     ValidationError,
     format_error_message,
+    format_structured_error_message,
     log_error_with_context,
     print_troubleshooting_tips,
     print_usage_examples,
     validate_adapter_source,
     validate_file_path,
+    validate_training_run_directory,
 )
 from rldk.utils.progress import print_operation_status, timed_operation_context
 from rldk.utils.runtime import with_timeout
@@ -124,41 +126,83 @@ def forensics_compare_runs(
         if verbose:
             typer.echo("\nDetecting formats...")
 
+        # Validate input paths
+        try:
+            validated_run_a = validate_training_run_directory(run_a)
+            validated_run_b = validate_training_run_directory(run_b)
+        except ValidationError as e:
+            typer.echo(format_error_message(e), err=True)
+            raise typer.Exit(1)
+        except Exception as e:
+            typer.echo(
+                format_structured_error_message(
+                    "Path validation failed",
+                    f"{run_a}, {run_b}",
+                    "Valid training run directories or files",
+                    f"Error accessing paths: {e}",
+                    "Check that both paths exist and you have read permissions"
+                ),
+                err=True
+            )
+            raise typer.Exit(1)
+
         # Scan both runs with enhanced error handling
         try:
-            scan_a = scan_logs(run_a)
+            scan_a = scan_logs(validated_run_a)
             if verbose:
                 typer.echo(f"  Run A: Successfully loaded {len(scan_a.get('rules_fired', []))} anomaly rules")
         except (ValidationError, AdapterError) as e:
-            typer.echo(f"Error loading Run A - Format/Validation issue: {e}", err=True)
-            typer.echo("Check that data contains required RL fields like 'step', 'reward'")
-            raise typer.Exit(1)
-        except (FileNotFoundError, PermissionError) as e:
-            typer.echo(f"Error loading Run A - File access issue: {e}", err=True)
-            typer.echo("Ensure the path exists and is accessible")
+            typer.echo(
+                format_structured_error_message(
+                    "Run A loading failed",
+                    str(validated_run_a),
+                    "Training logs with RL fields (step, reward, etc.)",
+                    f"Format/validation issue: {e}",
+                    "Check that Run A contains valid RL training data"
+                ),
+                err=True
+            )
             raise typer.Exit(1)
         except Exception as e:
-            typer.echo(f"Error loading Run A: {e}", err=True)
-            typer.echo("Supported formats: JSONL, CSV, JSON, Parquet files or directories")
-            typer.echo("Use --verbose flag for detailed format detection info")
+            typer.echo(
+                format_structured_error_message(
+                    "Unexpected error loading Run A",
+                    str(validated_run_a),
+                    "Successful log loading",
+                    f"Error: {e}",
+                    "Check log file format and try again, or use --verbose for more details"
+                ),
+                err=True
+            )
             raise typer.Exit(1)
 
         try:
-            scan_b = scan_logs(run_b)
+            scan_b = scan_logs(validated_run_b)
             if verbose:
                 typer.echo(f"  Run B: Successfully loaded {len(scan_b.get('rules_fired', []))} anomaly rules")
         except (ValidationError, AdapterError) as e:
-            typer.echo(f"Error loading Run B - Format/Validation issue: {e}", err=True)
-            typer.echo("Check that data contains required RL fields like 'step', 'reward'")
-            raise typer.Exit(1)
-        except (FileNotFoundError, PermissionError) as e:
-            typer.echo(f"Error loading Run B - File access issue: {e}", err=True)
-            typer.echo("Ensure the path exists and is accessible")
+            typer.echo(
+                format_structured_error_message(
+                    "Run B loading failed",
+                    str(validated_run_b),
+                    "Training logs with RL fields (step, reward, etc.)",
+                    f"Format/validation issue: {e}",
+                    "Check that Run B contains valid RL training data"
+                ),
+                err=True
+            )
             raise typer.Exit(1)
         except Exception as e:
-            typer.echo(f"Error loading Run B: {e}", err=True)
-            typer.echo("Supported formats: JSONL, CSV, JSON, Parquet files or directories")
-            typer.echo("Use --verbose flag for detailed format detection info")
+            typer.echo(
+                format_structured_error_message(
+                    "Unexpected error loading Run B",
+                    str(validated_run_b),
+                    "Successful log loading",
+                    f"Error: {e}",
+                    "Check log file format and try again, or use --verbose for more details"
+                ),
+                err=True
+            )
             raise typer.Exit(1)
 
         # Create comparison report
@@ -206,13 +250,19 @@ def forensics_compare_runs(
                     for key, value in stats.items():
                         typer.echo(f"    {key}: {value}")
 
+    except typer.Exit:
+        raise
     except Exception as e:
-        typer.echo(f"Error: {e}", err=True)
-        typer.echo("\nTroubleshooting:")
-        typer.echo("- Ensure paths exist and are accessible")
-        typer.echo("- Check that data contains RL training metrics")
-        typer.echo("- Use --verbose flag for detailed format detection info")
-        typer.echo("- Supported formats: JSONL, CSV, JSON, Parquet")
+        typer.echo(
+            format_structured_error_message(
+                "Unexpected error",
+                f"{run_a}, {run_b}",
+                "Successful run comparison",
+                f"Unexpected error: {e}",
+                "Please report this issue with the full error message"
+            ),
+            err=True
+        )
         raise typer.Exit(1)
 
 
@@ -226,9 +276,50 @@ def forensics_diff_ckpt(
         typer.echo("Comparing checkpoints:")
         typer.echo(f"  Checkpoint A: {ckpt_a}")
         typer.echo(f"  Checkpoint B: {ckpt_b}")
+        
+        # Validate checkpoint files
+        try:
+            ckpt_a_path = validate_file_path(ckpt_a, must_exist=True)
+            ckpt_b_path = validate_file_path(ckpt_b, must_exist=True)
+            
+            # Check if files are likely checkpoint files
+            checkpoint_extensions = ['.pt', '.pth', '.bin', '.safetensors', '.ckpt']
+            if ckpt_a_path.suffix not in checkpoint_extensions:
+                typer.echo(f"Warning: {ckpt_a} may not be a checkpoint file (extension: {ckpt_a_path.suffix})")
+            if ckpt_b_path.suffix not in checkpoint_extensions:
+                typer.echo(f"Warning: {ckpt_b} may not be a checkpoint file (extension: {ckpt_b_path.suffix})")
+                
+        except ValidationError as e:
+            typer.echo(format_error_message(e), err=True)
+            raise typer.Exit(1)
+        except Exception as e:
+            typer.echo(
+                format_structured_error_message(
+                    "Checkpoint validation failed",
+                    f"{ckpt_a}, {ckpt_b}",
+                    "Valid checkpoint files (.pt, .pth, .bin, .safetensors, .ckpt)",
+                    f"Error accessing files: {e}",
+                    "Check that both checkpoint files exist and you have read permissions"
+                ),
+                err=True
+            )
+            raise typer.Exit(1)
 
         # Diff checkpoints
-        report = diff_checkpoints(ckpt_a, ckpt_b)
+        try:
+            report = diff_checkpoints(ckpt_a_path, ckpt_b_path)
+        except Exception as e:
+            typer.echo(
+                format_structured_error_message(
+                    "Checkpoint comparison failed",
+                    f"{ckpt_a_path}, {ckpt_b_path}",
+                    "Successful checkpoint comparison",
+                    f"Error during comparison: {e}",
+                    "Ensure both files are valid PyTorch checkpoint files"
+                ),
+                err=True
+            )
+            raise typer.Exit(1)
 
         # Validate report
         validate(CkptDiffReportV1, report)
@@ -297,9 +388,52 @@ def forensics_env_audit(
     """Audit environment for determinism and reproducibility."""
     try:
         typer.echo(f"Auditing environment for: {repo_or_run}")
+        
+        # Validate input path
+        try:
+            validated_path = validate_file_path(repo_or_run, must_exist=True)
+            if not validated_path.is_dir():
+                raise ValidationError(
+                    format_structured_error_message(
+                        "Invalid input type",
+                        str(validated_path),
+                        "Directory (repository or run directory)",
+                        "File",
+                        "Provide a directory path for environment audit"
+                    ),
+                    error_code="EXPECTED_DIRECTORY"
+                )
+        except ValidationError as e:
+            typer.echo(format_error_message(e), err=True)
+            raise typer.Exit(1)
+        except Exception as e:
+            typer.echo(
+                format_structured_error_message(
+                    "Path validation failed",
+                    repo_or_run,
+                    "Valid directory path",
+                    f"Error accessing path: {e}",
+                    "Check that the path exists and you have read permissions"
+                ),
+                err=True
+            )
+            raise typer.Exit(1)
 
         # Run audit
-        determinism_card, lock_content = audit_environment(repo_or_run)
+        try:
+            determinism_card, lock_content = audit_environment(validated_path)
+        except Exception as e:
+            typer.echo(
+                format_structured_error_message(
+                    "Environment audit failed",
+                    str(validated_path),
+                    "Successful environment analysis",
+                    f"Error during audit: {e}",
+                    "Ensure the directory is accessible and contains valid project files"
+                ),
+                err=True
+            )
+            raise typer.Exit(1)
 
         # Validate determinism card
         validate(DeterminismCardV1, determinism_card)
@@ -329,8 +463,19 @@ def forensics_env_audit(
             for hint in determinism_card["nondeterminism_hints"][:3]:
                 typer.echo(f"    - {hint}")
 
+    except typer.Exit:
+        raise
     except Exception as e:
-        typer.echo(f"Error: {e}", err=True)
+        typer.echo(
+            format_structured_error_message(
+                "Unexpected error",
+                repo_or_run,
+                "Successful environment audit",
+                f"Unexpected error: {e}",
+                "Please report this issue with the full error message"
+            ),
+            err=True
+        )
         raise typer.Exit(1)
 
 
@@ -341,9 +486,53 @@ def forensics_log_scan(
     """Scan training logs for PPO anomalies and issues."""
     try:
         typer.echo(f"Scanning logs: {run_or_export}")
+        
+        # Validate input path and directory contents
+        try:
+            validated_path = validate_training_run_directory(run_or_export)
+        except ValidationError as e:
+            typer.echo(format_error_message(e), err=True)
+            raise typer.Exit(1)
+        except Exception as e:
+            typer.echo(
+                format_structured_error_message(
+                    "Path validation failed",
+                    run_or_export,
+                    "Valid training run directory or file",
+                    f"Error accessing path: {e}",
+                    "Check that the path exists and you have read permissions"
+                ),
+                err=True
+            )
+            raise typer.Exit(1)
 
         # Scan logs
-        report = scan_logs(run_or_export)
+        try:
+            report = scan_logs(validated_path)
+        except (ValidationError, AdapterError) as e:
+            typer.echo(
+                format_structured_error_message(
+                    "Log scanning failed",
+                    str(validated_path),
+                    "Training logs with standard RL fields (step, reward, etc.)",
+                    f"Data format issue: {e}",
+                    "Ensure logs contain RL training metrics or use 'rldk validate-format' to check data"
+                ),
+                err=True
+            )
+            raise typer.Exit(1)
+        except Exception as e:
+            typer.echo(
+                format_structured_error_message(
+                    "Unexpected error during log scanning",
+                    str(validated_path),
+                    "Successful log analysis",
+                    f"Error: {e}",
+                    "Check log file format and try again, or contact support if issue persists"
+                ),
+                err=True
+            )
+            raise typer.Exit(1)
 
         # Validate report
         validate(PPOScanReportV1, report)
@@ -372,8 +561,19 @@ def forensics_log_scan(
         if report.get("earliest_step"):
             typer.echo(f"Earliest step with data: {report['earliest_step']}")
 
+    except typer.Exit:
+        raise
     except Exception as e:
-        typer.echo(f"Error: {e}", err=True)
+        typer.echo(
+            format_structured_error_message(
+                "Unexpected error",
+                run_or_export,
+                "Successful log scan operation",
+                f"Unexpected error: {e}",
+                "Please report this issue with the full error message"
+            ),
+            err=True
+        )
         raise typer.Exit(1)
 
 
@@ -384,14 +584,70 @@ def forensics_doctor(
     """Run comprehensive diagnostics on a training run or repository."""
     try:
         typer.echo(f"Running diagnostics on: {run_or_repo}")
+        
+        # Validate input path
+        try:
+            validated_path = validate_file_path(run_or_repo, must_exist=True)
+            if not validated_path.is_dir():
+                raise ValidationError(
+                    format_structured_error_message(
+                        "Invalid input type",
+                        str(validated_path),
+                        "Directory (repository or training run)",
+                        "File",
+                        "Provide a directory path for comprehensive diagnostics"
+                    ),
+                    error_code="EXPECTED_DIRECTORY"
+                )
+        except ValidationError as e:
+            typer.echo(format_error_message(e), err=True)
+            raise typer.Exit(1)
+        except Exception as e:
+            typer.echo(
+                format_structured_error_message(
+                    "Path validation failed",
+                    run_or_repo,
+                    "Valid directory path",
+                    f"Error accessing path: {e}",
+                    "Check that the path exists and you have read permissions"
+                ),
+                err=True
+            )
+            raise typer.Exit(1)
 
         # Run env audit
         typer.echo("\n1. Environment audit...")
-        determinism_card, lock_content = audit_environment(run_or_repo)
+        try:
+            determinism_card, lock_content = audit_environment(validated_path)
+        except Exception as e:
+            typer.echo(
+                format_structured_error_message(
+                    "Environment audit failed",
+                    str(validated_path),
+                    "Successful environment analysis",
+                    f"Error during audit: {e}",
+                    "Ensure the directory is accessible and contains valid project files"
+                ),
+                err=True
+            )
+            raise typer.Exit(1)
 
         # Run log scan
         typer.echo("2. Log scan...")
-        scan_report = scan_logs(run_or_repo)
+        try:
+            scan_report = scan_logs(validated_path)
+        except (ValidationError, AdapterError) as e:
+            typer.echo(
+                format_structured_error_message(
+                    "Log scan failed",
+                    str(validated_path),
+                    "Directory with training logs",
+                    f"No valid training logs found: {e}",
+                    "Ensure directory contains training log files (.jsonl, .log, .csv) or skip log analysis"
+                ),
+                err=True
+            )
+            scan_report = {"rules_fired": [], "note": "Log scan skipped due to missing training files"}
 
         # Write outputs
         mkdir_reports()
@@ -423,8 +679,19 @@ def forensics_doctor(
                     f"  - Training logs show {len(scan_report.get('rules_fired', []))} anomalies"
                 )
 
+    except typer.Exit:
+        raise
     except Exception as e:
-        typer.echo(f"Error: {e}", err=True)
+        typer.echo(
+            format_structured_error_message(
+                "Unexpected error",
+                run_or_repo,
+                "Successful diagnostic operation",
+                f"Unexpected error: {e}",
+                "Please report this issue with the full error message"
+            ),
+            err=True
+        )
         raise typer.Exit(1)
 
 
