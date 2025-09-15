@@ -12,6 +12,7 @@ from .error_handling import (
     ValidationError,
     check_dependencies,
     format_error_message,
+    format_structured_error_message,
     handle_graceful_degradation,
     log_error_with_context,
     print_troubleshooting_tips,
@@ -23,6 +24,7 @@ from .error_handling import (
     validate_data_format,
     validate_file_path,
     validate_required_fields,
+    validate_training_run_directory,
     with_retry,
 )
 from .progress import (
@@ -115,8 +117,10 @@ __all__ = [
     "EvaluationError",
     "RLDKTimeoutError",
     "format_error_message",
+    "format_structured_error_message",
     "log_error_with_context",
     "validate_file_path",
+    "validate_training_run_directory",
     "sanitize_path",
     "validate_data_format",
     "validate_required_fields",

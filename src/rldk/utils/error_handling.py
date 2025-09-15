@@ -381,3 +381,81 @@ def safe_ratio(numerator: float, denominator: float, fallback: float = 0.0) -> f
         The ratio or fallback value
     """
     return safe_divide(numerator, denominator, fallback)
+
+
+def format_structured_error_message(
+    error_type: str,
+    path: str,
+    expected: str,
+    found: str,
+    suggestion: str,
+    error_code: Optional[str] = None
+) -> str:
+    """Format error message in the structured format requested by user."""
+    message = f"Error: {error_type}: {path}\n"
+    message += f"Expected: {expected}\n"
+    message += f"Found: {found}\n"
+    message += f"Suggestion: {suggestion}"
+    if error_code:
+        message += f"\nError Code: {error_code}"
+    return message
+
+
+def validate_training_run_directory(path: Union[str, Path]) -> Path:
+    """Validate that directory contains training run files."""
+    path_obj = validate_file_path(path, must_exist=True)
+    
+    if path_obj.is_file():
+        # Single file - validate it's a supported format
+        supported_extensions = ['.jsonl', '.log', '.csv', '.json', '.parquet']
+        if path_obj.suffix not in supported_extensions:
+            raise ValidationError(
+                format_structured_error_message(
+                    "Unsupported file format",
+                    str(path_obj),
+                    f"Training log file with extension: {', '.join(supported_extensions)}",
+                    f"File with extension: {path_obj.suffix}",
+                    f"Use a file with one of these extensions: {', '.join(supported_extensions)}"
+                ),
+                error_code="UNSUPPORTED_FILE_FORMAT"
+            )
+        return path_obj
+    
+    if path_obj.is_dir():
+        training_files = (
+            list(path_obj.glob("*.jsonl")) +
+            list(path_obj.glob("*.log")) +
+            list(path_obj.glob("*.csv")) +
+            list(path_obj.glob("*.json")) +
+            list(path_obj.glob("*.parquet"))
+        )
+        
+        if not training_files:
+            all_files = list(path_obj.glob("*"))
+            found_description = f"Directory with {len(all_files)} files" if all_files else "Empty directory"
+            if all_files:
+                found_description += f" (extensions: {', '.join(set(f.suffix for f in all_files if f.suffix))})"
+            
+            raise ValidationError(
+                format_structured_error_message(
+                    "No training files found",
+                    str(path_obj),
+                    "Directory containing training log files (.jsonl, .log, .csv, .json, .parquet)",
+                    found_description,
+                    "Ensure the directory contains training log files or use 'rldk ingest' to convert your data"
+                ),
+                error_code="NO_TRAINING_FILES_FOUND"
+            )
+        
+        return path_obj
+    
+    raise ValidationError(
+        format_structured_error_message(
+            "Invalid path type",
+            str(path_obj),
+            "File or directory",
+            "Neither file nor directory",
+            "Provide a valid file or directory path"
+        ),
+        error_code="INVALID_PATH_TYPE"
+    )
