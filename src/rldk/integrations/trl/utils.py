@@ -16,10 +16,10 @@ except ImportError:
 
 
 def fix_generation_config(
-    model: "AutoModelForCausalLMWithValueHead",
+    model: "AutoModelForCausalLM",
     tokenizer: AutoTokenizer,
     generation_config: Optional[GenerationConfig] = None
-) -> "AutoModelForCausalLMWithValueHead":
+) -> "AutoModelForCausalLM":
     """Fix missing generation_config and base_model_prefix attributes on TRL models.
 
     This is a common issue with TRL 0.23.0+ where AutoModelForCausalLMWithValueHead
@@ -41,8 +41,9 @@ def fix_generation_config(
     if not TRL_AVAILABLE:
         raise ImportError("TRL is required for this function. Install with: pip install trl")
 
-    if not isinstance(model, AutoModelForCausalLMWithValueHead):
-        raise AttributeError("Model must be an AutoModelForCausalLMWithValueHead instance")
+    from transformers import PreTrainedModel
+    if not isinstance(model, PreTrainedModel):
+        raise AttributeError("Model must be a PreTrainedModel instance")
 
     # Create generation config if not provided
     if generation_config is None:
@@ -97,8 +98,8 @@ def prepare_models_for_ppo(
     model_name: str,
     tokenizer: Optional[AutoTokenizer] = None,
     generation_config: Optional[GenerationConfig] = None
-) -> tuple["AutoModelForCausalLMWithValueHead", "AutoModelForCausalLMWithValueHead",
-           "AutoModelForCausalLMWithValueHead", "AutoModelForCausalLMWithValueHead", AutoTokenizer]:
+) -> tuple["AutoModelForCausalLM", "AutoModelForCausalLM",
+           "AutoModelForCausalLM", "AutoModelForCausalLM", AutoTokenizer]:
     """Prepare all required models for PPO training with proper generation_config.
 
     This function creates and configures all the models needed for PPO training,
@@ -128,14 +129,14 @@ def prepare_models_for_ppo(
             tokenizer.pad_token = tokenizer.eos_token
 
     # Create models with memory-efficient sharing
-    # Load base model once and create value head variants
-    base_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    # Use regular AutoModelForCausalLM for compatibility with TRL PPOTrainer
+    from transformers import AutoModelForCausalLM
     
     # Create policy model (main model)
-    model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name)
     
     # Create reference model (can be same as base for simplicity)
-    ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    ref_model = AutoModelForCausalLM.from_pretrained(model_name)
     
     # For reward and value models, we can share the same model instance
     # This is memory-efficient and commonly used in practice
@@ -220,10 +221,10 @@ def check_trl_compatibility() -> dict:
 
 
 def validate_ppo_setup(
-    model: "AutoModelForCausalLMWithValueHead",
-    ref_model: "AutoModelForCausalLMWithValueHead",
-    reward_model: "AutoModelForCausalLMWithValueHead",
-    value_model: "AutoModelForCausalLMWithValueHead",
+    model: "AutoModelForCausalLM",
+    ref_model: "AutoModelForCausalLM",
+    reward_model: "AutoModelForCausalLM",
+    value_model: "AutoModelForCausalLM",
     tokenizer: AutoTokenizer
 ) -> dict:
     """Validate PPO setup for common issues.
@@ -257,10 +258,11 @@ def validate_ppo_setup(
         warnings.append("Tokenizer missing pad_token_id")
 
     # Check model types
+    from transformers import PreTrainedModel
     for name, model_obj in [("model", model), ("ref_model", ref_model),
                            ("reward_model", reward_model), ("value_model", value_model)]:
-        if not isinstance(model_obj, AutoModelForCausalLMWithValueHead):
-            issues.append(f"{name} is not an AutoModelForCausalLMWithValueHead instance")
+        if not isinstance(model_obj, PreTrainedModel):
+            issues.append(f"{name} is not a PreTrainedModel instance")
 
     return {
         "valid": len(issues) == 0,
