@@ -121,6 +121,22 @@ def create_simple_value_model(tokenizer: AutoTokenizer, model_name: str = None) 
             self.base_model_prefix = "transformer"  # Required by TRL
             self.hidden_size = hidden_size
             self.value_head = nn.Linear(hidden_size, 1)
+            
+            # This is a minimal implementation that satisfies TRL's requirements
+            class SimpleTransformer(nn.Module):
+                def __init__(self, hidden_size):
+                    super().__init__()
+                    self.hidden_size = hidden_size
+                    
+                def forward(self, **kwargs):
+                    # Return dummy hidden states for compatibility
+                    batch_size = kwargs.get('input_ids', torch.tensor([[1]])).shape[0]
+                    seq_len = kwargs.get('input_ids', torch.tensor([[1]])).shape[1]
+                    return type('obj', (object,), {
+                        'last_hidden_state': torch.zeros(batch_size, seq_len, hidden_size)
+                    })()
+            
+            self.transformer = SimpleTransformer(hidden_size)
 
         def score(self, hidden_states):
             """Score method required by TRL PPOTrainer."""
