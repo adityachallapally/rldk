@@ -407,7 +407,7 @@ def validate_training_run_directory(path: Union[str, Path]) -> Path:
     
     if path_obj.is_file():
         # Single file - validate it's a supported format
-        supported_extensions = ['.jsonl', '.log', '.csv', '.json', '.parquet']
+        supported_extensions = ['.jsonl', '.log', '.csv', '.json', '.parquet', '.txt']
         if path_obj.suffix not in supported_extensions:
             raise ValidationError(
                 format_structured_error_message(
@@ -427,7 +427,8 @@ def validate_training_run_directory(path: Union[str, Path]) -> Path:
             list(path_obj.glob("*.log")) +
             list(path_obj.glob("*.csv")) +
             list(path_obj.glob("*.json")) +
-            list(path_obj.glob("*.parquet"))
+            list(path_obj.glob("*.parquet")) +
+            list(path_obj.glob("*.txt"))
         )
         
         if not training_files:
@@ -440,7 +441,7 @@ def validate_training_run_directory(path: Union[str, Path]) -> Path:
                 format_structured_error_message(
                     "No training files found",
                     str(path_obj),
-                    "Directory containing training log files (.jsonl, .log, .csv, .json, .parquet)",
+                    "Directory containing training log files (.jsonl, .log, .csv, .json, .parquet, .txt)",
                     found_description,
                     "Ensure the directory contains training log files or use 'rldk ingest' to convert your data"
                 ),
