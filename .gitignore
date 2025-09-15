@@ -1,10 +1,22 @@
 # Training artifacts and checkpoints
 trainer_output/
 checkpoint-*/
+rldk_monitoring_output/
+rldk_ppo_logs/
+rldk_checkpoint_logs/
+rldk_comprehensive_ppo_logs/
 *.safetensors
 *.pt
 *.bin
 *.pth
+*.ckpt
+*.pkl
+*.pickle
+
+# Model files
+models/
+*.model
+*.weights
 
 # Python cache
 __pycache__/
@@ -13,26 +25,61 @@ __pycache__/
 *.pyd
 .Python
 *.so
+*.egg-info/
+dist/
+build/
 
 # Virtual environments
 venv/
 env/
 ENV/
+.venv/
+.env/
 
 # IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-*
 
 # OS files
 .DS_Store
 Thumbs.db
-
-# Logs
-*.log
-logs/
-
-# Temporary files
 *.tmp
 *.temp
+
+# Logs and monitoring
+*.log
+logs/
+monitoring_output/
+wandb/
+tensorboard_logs/
+
+# Data files
+data/
+datasets/
+*.csv
+*.json
+*.jsonl
+*.parquet
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Package files
+*.tar.gz
+*.zip
+*.rar
