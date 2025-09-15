@@ -193,6 +193,38 @@ def _get_trust_suite() -> Dict[str, Any]:
 TRUST_SUITE = _get_trust_suite()
 
 
+def _get_training_metrics_suite() -> Dict[str, Any]:
+    """Get training metrics evaluation suite configuration."""
+    suite_config = get_suite_config()
+    runtime_min, runtime_max = suite_config.get_suite_runtime_range("quick")  # Use quick timing
+    
+    return {
+        "name": "training_metrics",
+        "description": "Metrics-only evaluation suite for numeric RL training logs",
+        "default_sample_size": suite_config.get_suite_sample_size("quick"),
+        "estimated_runtime": f"{runtime_min}-{runtime_max} minutes",
+        "evaluations": {
+            "kl_divergence": evaluate_kl_divergence,
+            "reward_alignment": evaluate_reward_alignment,
+            "throughput": evaluate_throughput,
+            "consistency": lambda data, **kwargs: evaluate_consistency(data, **kwargs),
+            "efficiency": lambda data, **kwargs: evaluate_efficiency(data, **kwargs),
+        },
+        "baseline_scores": suite_config.get_suite_baseline_scores("quick"),
+        "generates_plots": suite_config.GENERATES_PLOTS,
+    }
+
+TRAINING_METRICS_SUITE = _get_training_metrics_suite()
+
+EVAL_REQUIREMENTS = {
+    "kl_divergence": ["step", "kl|kl_mean|kl_to_ref"],
+    "reward_alignment": ["step", "reward|reward_mean|score"], 
+    "throughput": ["step", "tokens_in|tokens_out"],
+    "consistency": ["step", "reward|reward_mean|score"],
+    "efficiency": ["step", "reward|reward_mean|score"],
+}
+
+
 def get_eval_suite(suite_name: str) -> Optional[Dict[str, Any]]:
     """
     Get evaluation suite configuration by name.
@@ -211,6 +243,7 @@ def get_eval_suite(suite_name: str) -> Optional[Dict[str, Any]]:
         "integrity": INTEGRITY_SUITE,
         "performance": PERFORMANCE_SUITE,
         "trust": TRUST_SUITE,
+        "training_metrics": TRAINING_METRICS_SUITE,
     }
 
     return suites.get(suite_name)
@@ -231,6 +264,7 @@ def list_available_suites() -> Dict[str, Dict[str, Any]]:
         "integrity": INTEGRITY_SUITE,
         "performance": PERFORMANCE_SUITE,
         "trust": TRUST_SUITE,
+        "training_metrics": TRAINING_METRICS_SUITE,
     }
 
 

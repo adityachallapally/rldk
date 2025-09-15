@@ -143,7 +143,7 @@ class TestValidateEvalInput:
         with pytest.raises(ValueError) as exc_info:
             validate_eval_input(data, STANDARD_EVAL_SCHEMA, "test")
 
-        assert "Missing required column: output" in str(exc_info.value)
+        assert "Missing required columns: output" in str(exc_info.value)
         assert "Provide one of: output, response, completion, text" in str(exc_info.value)
 
     def test_missing_step_column(self):
@@ -156,7 +156,7 @@ class TestValidateEvalInput:
         with pytest.raises(ValueError) as exc_info:
             validate_eval_input(data, STANDARD_EVAL_SCHEMA, "test")
 
-        assert "Missing required column: step" in str(exc_info.value)
+        assert "Missing required columns: step" in str(exc_info.value)
         assert "Provide one of: step, global_step, iteration, epoch" in str(exc_info.value)
 
     def test_missing_optional_columns(self):

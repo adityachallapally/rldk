@@ -4,7 +4,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -696,6 +696,8 @@ def run_evaluation_suite(
     suite_name: str,
     output_column: str = "output",
     events_column: str = "events",
+    min_samples: int = 10,
+    column_mapping: Optional[Dict[str, str]] = None,
     **kwargs
 ) -> dict:
     """
@@ -706,110 +708,109 @@ def run_evaluation_suite(
         suite_name: Name of evaluation suite
         output_column: Column containing model outputs
         events_column: Column containing event logs
+        min_samples: Minimum samples required for evaluation
+        column_mapping: Optional mapping from user column names to RLDK standard names
         **kwargs: Additional evaluation parameters
 
     Returns:
         Dictionary with evaluation results
     """
-    if suite_name == "quick":
-        suite = QUICK_SUITE
-    elif suite_name == "comprehensive":
-        suite = COMPREHENSIVE_SUITE
-    elif suite_name == "safety":
-        suite = SAFETY_SUITE
-    else:
-        raise ValueError(f"Unknown suite: {suite_name}")
-
-    results = {
-        "suite_name": suite_name,
-        "suite_description": suite["description"],
-        "evaluations": {},
-        "summary": {
-            "total_evaluations": 0,
-            "successful_evaluations": 0,
-            "failed_evaluations": 0,
-            "errors": []
+    from .evals.runner import run
+    
+    try:
+        result = run(
+            data,
+            suite=suite_name,
+            seed=42,
+            sample_size=min_samples if min_samples > 0 else None,
+            column_mapping=column_mapping
+        )
+        
+        serializable_scores = {}
+        for key, value in result.scores.items():
+            if pd.isna(value):
+                serializable_scores[key] = None
+            elif callable(value):
+                serializable_scores[key] = str(value)
+            else:
+                serializable_scores[key] = float(value) if isinstance(value, (int, float)) else value
+        
+        serializable_metadata = {}
+        for key, value in result.metadata.items():
+            if callable(value):
+                serializable_metadata[key] = str(value)
+            elif isinstance(value, dict):
+                serializable_metadata[key] = {k: (str(v) if callable(v) else v) for k, v in value.items()}
+            else:
+                serializable_metadata[key] = value
+        
+        skipped_evaluations = 0
+        failed_evaluations = 0
+        
+        if suite_name == "training_metrics":
+            # Check if evaluations were skipped due to missing columns
+            skipped_warning = any("Skipped evaluations due to missing columns" in str(w) for w in result.warnings)
+            if skipped_warning:
+                skipped_evaluations = len([s for s in result.scores.values() if pd.isna(s)])
+                failed_evaluations = 0
+            else:
+                failed_evaluations = len([s for s in result.scores.values() if pd.isna(s)])
+        else:
+            failed_evaluations = len([s for s in result.scores.values() if pd.isna(s)])
+        
+        return {
+            "suite_name": suite_name,
+            "suite_description": f"Evaluation suite: {suite_name}",
+            "evaluations": serializable_scores,
+            "summary": {
+                "total_evaluations": len(result.scores),
+                "successful_evaluations": len([s for s in result.scores.values() if not pd.isna(s)]),
+                "failed_evaluations": failed_evaluations,
+                "skipped_evaluations": skipped_evaluations,
+                "overall_score": float(result.overall_score) if not pd.isna(result.overall_score) else None,
+                "errors": []
+            },
+            "metadata": serializable_metadata,
+            "warnings": list(result.warnings)
         }
-    }
-
-    # Add output column to data if not present
-    if output_column not in data.columns:
-        data[output_column] = "No output data available"
-
-    # Add events column to data if not present
-    if events_column not in data.columns:
-        data[events_column] = "[]"
-
-    for eval_name, eval_func in suite["evaluations"].items():
-        try:
-            logging.info(f"Running evaluation: {eval_name}")
-
-            # Handle different evaluation types
-            if eval_name == "throughput":
-                result = evaluate_throughput(data, log_column=events_column, **kwargs)
-            elif eval_name == "toxicity":
-                result = evaluate_toxicity(data, output_column=output_column, **kwargs)
-            elif eval_name == "bias":
-                result = evaluate_bias(data, output_column=output_column, **kwargs)
-            else:
-                # For other evaluations, try with default parameters
-                result = eval_func(data, **kwargs)
-
-            results["evaluations"][eval_name] = result
-
-            # Check if the evaluation actually succeeded (no error in result)
-            if "error" in result and result["error"]:
-                logging.warning(f"Evaluation {eval_name} completed but with errors: {result['error']}")
-                results["summary"]["failed_evaluations"] += 1
-            else:
-                results["summary"]["successful_evaluations"] += 1
-
-        except Exception as e:
-            logging.error(f"Evaluation {eval_name} failed: {e}")
-            results["evaluations"][eval_name] = {
-                "score": 0.0,
-                "details": f"Evaluation failed: {str(e)}",
-                "error": str(e)
-            }
-            results["summary"]["errors"].append({
-                "evaluation": eval_name,
-                "error": str(e)
-            })
-            results["summary"]["failed_evaluations"] += 1
-
-        results["summary"]["total_evaluations"] += 1
-
-    # Calculate overall score
-    successful_scores = [
-        eval_result["score"]
-        for eval_result in results["evaluations"].values()
-        if "score" in eval_result and "error" not in eval_result
-    ]
-
-    if successful_scores:
-        results["summary"]["overall_score"] = sum(successful_scores) / len(successful_scores)
-    else:
-        results["summary"]["overall_score"] = 0.0
-
-    return results
+        
+    except Exception as e:
+        logging.error(f"Evaluation suite {suite_name} failed: {e}")
+        return {
+            "suite_name": suite_name,
+            "suite_description": f"Evaluation suite: {suite_name}",
+            "evaluations": {},
+            "summary": {
+                "total_evaluations": 0,
+                "successful_evaluations": 0,
+                "failed_evaluations": 1,
+                "overall_score": 0.0,
+                "errors": [{"evaluation": "suite_execution", "error": str(e)}]
+            },
+            "metadata": {},
+            "warnings": [f"Suite execution failed: {str(e)}"]
+        }
 
 
 @evals_app.command()
 def evaluate(
     input_file: Path = typer.Argument(..., help="Path to JSONL input file"),
-    suite: str = typer.Option("quick", "--suite", "-s", help="Evaluation suite to run (quick/comprehensive/safety)"),
+    suite: str = typer.Option("quick", "--suite", "-s", help="Evaluation suite to run (quick/comprehensive/safety/training_metrics)"),
     output_file: Optional[Path] = typer.Option(None, "--output", "-o", help="Path to output JSON file"),
     output_column: str = typer.Option("output", "--output-column", help="Column name containing model outputs"),
     events_column: str = typer.Option("events", "--events-column", help="Column name containing event logs"),
     min_samples: int = typer.Option(10, "--min-samples", help="Minimum samples required for evaluation"),
     timeout: int = typer.Option(300, "--timeout", help="Timeout in seconds for evaluation"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging")
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),
+    column_mapping: Optional[str] = typer.Option(None, "--column-mapping", help="Column mapping as JSON or key=value pairs (e.g., 'global_step=step,kl=kl_mean' or '{\"global_step\":\"step\"}')")
 ):
     """
     Run evaluation suite on JSONL data.
 
     Examples:
+        rldk evals evaluate data.jsonl --suite training_metrics --column-mapping global_step=step,kl=kl_mean
         rldk evals evaluate data.jsonl --suite comprehensive --output results.json
+        rldk evals evaluate data.jsonl --suite training_metrics --column-mapping '{"global_step":"step","reward":"reward_mean"}'
         rldk evals evaluate data.jsonl --suite quick --min-samples 50 --verbose
         rldk evals evaluate data.jsonl --suite safety --timeout 600
     """
@@ -825,7 +826,7 @@ def evaluate(
         validate_file_path(input_file, must_exist=True, file_extensions=[".jsonl"])
 
         # Validate suite
-        valid_suites = ["quick", "comprehensive", "safety"]
+        valid_suites = ["quick", "comprehensive", "safety", "training_metrics"]
         if suite not in valid_suites:
             raise ValidationError(
                 f"Invalid evaluation suite: {suite}",
@@ -842,6 +843,29 @@ def evaluate(
             )
 
         print_operation_status("Input validation", "success")
+
+        # Parse column mapping
+        parsed_column_mapping = None
+        if column_mapping:
+            try:
+                if column_mapping.startswith('{'):
+                    parsed_column_mapping = json.loads(column_mapping)
+                else:
+                    parsed_column_mapping = {}
+                    for pair in column_mapping.split(','):
+                        if '=' in pair:
+                            key, value = pair.split('=', 1)
+                            parsed_column_mapping[key.strip()] = value.strip()
+                        else:
+                            raise ValueError(f"Invalid mapping format: {pair}")
+                
+                logging.info(f"Parsed column mapping: {parsed_column_mapping}")
+            except (json.JSONDecodeError, ValueError) as e:
+                raise ValidationError(
+                    f"Invalid column mapping format: {e}",
+                    suggestion="Use JSON format like '{\"old\":\"new\"}' or key=value pairs like 'old=new,old2=new2'",
+                    error_code="INVALID_COLUMN_MAPPING"
+                )
 
         # Load data with progress indication
         with timed_operation_context("Data loading"):
@@ -882,7 +906,8 @@ def evaluate(
                 suite_name=suite,
                 output_column=output_column,
                 events_column=events_column,
-                min_samples=min_samples
+                min_samples=min_samples,
+                column_mapping=parsed_column_mapping
             )
 
         with timed_operation_context(f"{suite} evaluation suite"):
@@ -893,8 +918,21 @@ def evaluate(
         if output_file:
             print_operation_status("Saving results", "start")
             try:
+                def make_serializable(obj):
+                    if isinstance(obj, dict):
+                        return {k: make_serializable(v) for k, v in obj.items()}
+                    elif isinstance(obj, list):
+                        return [make_serializable(item) for item in obj]
+                    elif callable(obj):
+                        return str(obj)
+                    elif hasattr(obj, '__dict__'):
+                        return str(obj)
+                    else:
+                        return obj
+                
+                serializable_results = make_serializable(results)
                 with open(output_file, 'w') as f:
-                    json.dump(results, f, indent=2)
+                    json.dump(serializable_results, f, indent=2)
                 print_operation_status("Saving results", "success", f"Saved to {output_file}")
             except Exception as e:
                 raise ValidationError(
@@ -904,7 +942,20 @@ def evaluate(
                 ) from e
         else:
             # Print to stdout
-            print(json.dumps(results, indent=2))
+            def make_serializable(obj):
+                if isinstance(obj, dict):
+                    return {k: make_serializable(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [make_serializable(item) for item in obj]
+                elif callable(obj):
+                    return str(obj)
+                elif hasattr(obj, '__dict__'):
+                    return str(obj)
+                else:
+                    return obj
+            
+            serializable_results = make_serializable(results)
+            print(json.dumps(serializable_results, indent=2))
 
         # Print summary
         summary = results["summary"]
@@ -916,6 +967,8 @@ def evaluate(
         typer.echo(f"  Samples: {len(data)}")
         typer.echo(f"  Successful: {summary['successful_evaluations']}")
         typer.echo(f"  Failed: {summary['failed_evaluations']}")
+        if summary.get('skipped_evaluations', 0) > 0:
+            typer.echo(f"  Skipped: {summary['skipped_evaluations']}")
         typer.echo(f"  Overall Score: {summary['overall_score']:.3f}")
 
         if summary["errors"]:
@@ -923,7 +976,7 @@ def evaluate(
             for error in summary["errors"]:
                 typer.echo(f"  - {error['evaluation']}: {error['error']}")
 
-        # Exit with error code if any evaluations failed
+        # Exit with error code if any evaluations failed (but not if they were just skipped)
         if summary["failed_evaluations"] > 0:
             raise typer.Exit(1)
 

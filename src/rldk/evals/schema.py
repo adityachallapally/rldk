@@ -2,7 +2,7 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -113,6 +113,114 @@ STANDARD_EVAL_SCHEMA = EvalInputSchema(
         )
     ]
 )
+
+
+# Define the RL metrics-only evaluation input schema
+RL_METRICS_SCHEMA = EvalInputSchema(
+    required_columns=[
+        ColumnSpec(
+            name="step",
+            dtype="numeric",
+            required=True,
+            description="Training step or global step number for temporal analysis",
+            example=1000,
+            synonyms=["global_step", "iteration", "epoch"]
+        )
+    ],
+    optional_columns=[
+        ColumnSpec(
+            name="reward",
+            dtype="numeric",
+            required=False,
+            description="Reward signal for the output",
+            example=0.85,
+            synonyms=["reward_mean", "score"]
+        ),
+        ColumnSpec(
+            name="kl",
+            dtype="numeric", 
+            required=False,
+            description="KL divergence to reference model",
+            example=0.12,
+            synonyms=["kl_mean", "kl_to_ref"]
+        ),
+        ColumnSpec(
+            name="entropy",
+            dtype="numeric",
+            required=False,
+            description="Entropy of the model outputs",
+            example=5.2,
+            synonyms=["entropy_mean"]
+        ),
+        ColumnSpec(
+            name="tokens_in",
+            dtype="numeric",
+            required=False,
+            description="Number of input tokens processed",
+            example=512,
+            synonyms=["input_tokens", "prompt_tokens"]
+        ),
+        ColumnSpec(
+            name="tokens_out", 
+            dtype="numeric",
+            required=False,
+            description="Number of output tokens generated",
+            example=128,
+            synonyms=["output_tokens", "generated_tokens"]
+        ),
+        ColumnSpec(
+            name="episode_id",
+            dtype="numeric",
+            required=False,
+            description="Episode identifier for RL training",
+            example=42,
+            synonyms=["ep_id", "episode"]
+        ),
+        ColumnSpec(
+            name="episode_return",
+            dtype="numeric", 
+            required=False,
+            description="Total return for the episode",
+            example=15.7,
+            synonyms=["ep_return", "total_return"]
+        ),
+        ColumnSpec(
+            name="episode_length",
+            dtype="numeric",
+            required=False, 
+            description="Length of the episode in steps",
+            example=200,
+            synonyms=["ep_length", "episode_steps"]
+        )
+    ]
+)
+
+
+def normalize_columns(df: pd.DataFrame, column_mapping: Optional[Dict[str, str]] = None) -> Tuple[pd.DataFrame, Dict[str, str]]:
+    """
+    Apply user column mapping first, then synonym normalization.
+    
+    Args:
+        df: Input DataFrame
+        column_mapping: User-provided mapping from original to target column names
+        
+    Returns:
+        Tuple of (normalized_dataframe, effective_column_mapping)
+    """
+    data = df.copy()
+    effective_mapping = {}
+    
+    # Step 1: Apply user-provided column mapping first
+    if column_mapping:
+        for original_col, target_col in column_mapping.items():
+            if original_col in data.columns:
+                data = data.rename(columns={original_col: target_col})
+                effective_mapping[original_col] = target_col
+                logger.debug(f"User mapping: '{original_col}' -> '{target_col}'")
+    
+    # Step 2: Apply synonym normalization (existing logic will be moved here)
+    
+    return data, effective_mapping
 
 
 def validate_eval_input(
@@ -254,6 +362,8 @@ def get_schema_for_suite(suite_name: str) -> EvalInputSchema:
     Returns:
         EvalInputSchema for the suite
     """
-    # For now, all suites use the standard schema
-    # In the future, we could customize schemas per suite
-    return STANDARD_EVAL_SCHEMA
+    if suite_name == "training_metrics":
+        return RL_METRICS_SCHEMA
+    else:
+        # For all other suites, use the standard schema
+        return STANDARD_EVAL_SCHEMA
