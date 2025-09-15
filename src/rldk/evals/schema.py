@@ -403,10 +403,12 @@ def _create_enhanced_validation_error(
     available_columns = df.columns.tolist()
     field_resolver = FieldResolver()
 
-    # Find missing required columns
+    # Find missing required columns (check both raw and after any existing mapping)
     missing_required = []
     for col_spec in schema.required_columns:
-        if col_spec.name not in available_columns:
+        column_exists = (col_spec.name in available_columns or
+                        col_spec.name in column_mapping.values())
+        if not column_exists:
             missing_required.append(col_spec.name)
 
     suggestions = []
@@ -416,7 +418,7 @@ def _create_enhanced_validation_error(
         field_suggestions = field_resolver.get_suggestions(missing_field, available_columns)
         if field_suggestions:
             suggestions.append(f"  {missing_field}: try {', '.join(field_suggestions)}")
-            field_map_suggestion[missing_field] = field_suggestions[0]
+            field_map_suggestion[field_suggestions[0]] = missing_field
 
     # Create detailed error message
     error_msg = f"Missing required columns for {suite_name} evaluation: {', '.join(missing_required)}"

@@ -161,7 +161,7 @@ def run(
             if col_spec.name not in run_data.columns:
                 resolved = field_resolver.resolve_field(col_spec.name, run_data.columns.tolist())
                 if resolved:
-                    auto_mapping[col_spec.name] = resolved
+                    auto_mapping[resolved] = col_spec.name
 
         if auto_mapping:
             from .schema import normalize_columns
