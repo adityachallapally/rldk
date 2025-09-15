@@ -59,6 +59,12 @@ class ExperimentTracker:
             progress_callback("Starting experiment initialization...")
 
         print(f"Starting experiment: {self.experiment_name} (ID: {self.experiment_id})")
+        
+        # Print logging status message
+        if self.config.save_to_wandb:
+            print("📊 Logging to Weights & Biases enabled")
+        else:
+            print("📁 Logging to local files only (W&B disabled)")
 
         # Initialize components concurrently with individual error handling
         tasks = []
@@ -167,6 +173,12 @@ class ExperimentTracker:
                 return asyncio.run(self.start_experiment_async())
         else:
             print(f"Starting experiment: {self.experiment_name} (ID: {self.experiment_id})")
+            
+            # Print logging status message
+            if self.config.save_to_wandb:
+                print("📊 Logging to Weights & Biases enabled")
+            else:
+                print("📁 Logging to local files only (W&B disabled)")
 
             # Capture environment state
             if self.environment_tracker:

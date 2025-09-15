@@ -4,8 +4,15 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import os
 from pydantic import ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings
+
+
+def _get_wandb_enabled_default() -> bool:
+    """Get default value for wandb_enabled, respecting WANDB_DISABLED environment variable."""
+    wandb_disabled = os.getenv("WANDB_DISABLED", "").lower()
+    return wandb_disabled not in ("true", "1", "yes", "on")
 
 
 class RLDKSettings(BaseSettings):
@@ -35,7 +42,7 @@ class RLDKSettings(BaseSettings):
 
     # W&B settings
     wandb_project: str = Field(default="rldk-experiments", description="Default W&B project")
-    wandb_enabled: bool = Field(default=True, description="Enable W&B by default")
+    wandb_enabled: bool = Field(default_factory=lambda: _get_wandb_enabled_default(), description="Enable W&B by default")
     wandb_entity: Optional[str] = Field(default=None, description="W&B entity")
     wandb_tags: List[str] = Field(default_factory=list, description="Default W&B tags")
 
