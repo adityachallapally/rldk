@@ -5,8 +5,11 @@ from .dashboard import RLDKDashboard
 from .monitors import CheckpointMetrics, CheckpointMonitor, PPOMetrics, PPOMonitor
 from .utils import (
     check_trl_compatibility,
+    create_simple_reward_model,
+    create_simple_value_model,
     fix_generation_config,
     prepare_models_for_ppo,
+    prepare_models_for_ppo_legacy,
     validate_ppo_setup,
 )
 
@@ -19,8 +22,11 @@ __all__ = [
     "CheckpointMonitor",
     "CheckpointMetrics",
     "RLDKDashboard",
+    "create_simple_reward_model",
+    "create_simple_value_model",
     "fix_generation_config",
     "prepare_models_for_ppo",
+    "prepare_models_for_ppo_legacy",
     "check_trl_compatibility",
     "validate_ppo_setup",
 ]
