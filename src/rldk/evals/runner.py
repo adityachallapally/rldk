@@ -98,6 +98,7 @@ def run(
     seed: int = 42,
     sample_size: Optional[int] = None,
     output_dir: Optional[Union[str, Path]] = None,
+    column_mapping: Optional[Dict[str, str]] = None,
 ) -> EvalResult:
     """
     Run evaluation suite on training run data.
@@ -108,6 +109,7 @@ def run(
         seed: Random seed for reproducibility
         sample_size: Number of samples to evaluate (None for suite default)
         output_dir: Directory to save results (optional)
+        column_mapping: Optional mapping from user column names to RLDK standard names
 
     Returns:
         EvalResult with comprehensive evaluation metrics
@@ -138,12 +140,20 @@ def run(
     if eval_suite is None:
         raise ValidationError(
             f"Unknown evaluation suite: {suite}",
-            suggestion=f"Use one of: {', '.join(['quick', 'comprehensive', 'safety'])}",
+            suggestion="Choose from: quick, comprehensive, safety, integrity, performance, trust, training_metrics",
             error_code="UNKNOWN_SUITE"
         )
 
     # Validate and normalize input data using schema
     schema = get_schema_for_suite(suite)
+    
+    if column_mapping:
+        from .schema import normalize_columns
+        run_data, effective_mapping = normalize_columns(run_data, column_mapping)
+        logger.info(f"Applied column mapping: {effective_mapping}")
+    else:
+        effective_mapping = {}
+    
     try:
         validated_data = validate_eval_input(run_data, schema, suite)
         logger.info(f"Data validation completed with {len(validated_data.warnings)} warnings")
@@ -182,6 +192,42 @@ def run(
     else:
         sampled_data = validated_data.data.copy()
 
+    evaluations_to_run = eval_suite["evaluations"].copy()
+    skipped_evaluations = []
+    
+    if suite == "training_metrics":
+        from .suites import EVAL_REQUIREMENTS
+        available_columns = set(validated_data.data.columns)
+        
+        filtered_evaluations = {}
+        for eval_name, eval_func in evaluations_to_run.items():
+            if eval_name in EVAL_REQUIREMENTS:
+                requirements = EVAL_REQUIREMENTS[eval_name]
+                # Check if required columns are available
+                required_cols = []
+                for req in requirements:
+                    if "|" in req:
+                        alternatives = req.split("|")
+                        if not any(alt in available_columns for alt in alternatives):
+                            required_cols.append(req)
+                    else:
+                        if req not in available_columns:
+                            required_cols.append(req)
+                
+                if required_cols:
+                    logger.warning(f"Skipping {eval_name}: missing columns {required_cols}")
+                    skipped_evaluations.append(eval_name)
+                else:
+                    filtered_evaluations[eval_name] = eval_func
+            else:
+                # Include evaluations not in EVAL_REQUIREMENTS
+                filtered_evaluations[eval_name] = eval_func
+        
+        evaluations_to_run = filtered_evaluations
+        
+        if skipped_evaluations:
+            validated_data.warnings.append(f"Skipped evaluations due to missing columns: {', '.join(skipped_evaluations)}")
+
     # Run evaluations with progress indication
     raw_results = []
     scores = {}
@@ -190,7 +236,7 @@ def run(
     # If no data, return empty results
     if sample_size == 0:
         logger.warning("No data available for evaluation")
-        for eval_name in eval_suite["evaluations"].keys():
+        for eval_name in evaluations_to_run.keys():
             raw_results.append(
                 {
                     "evaluation": eval_name,
@@ -204,7 +250,7 @@ def run(
             scores[eval_name] = np.nan
     else:
         # Run evaluations with progress tracking
-        evaluations = list(eval_suite["evaluations"].items())
+        evaluations = list(evaluations_to_run.items())
 
         with progress_bar(len(evaluations), f"Running {suite} evaluations") as bar:
             for eval_name, eval_func in evaluations:
@@ -293,6 +339,8 @@ def run(
             "evaluation_count": len(eval_suite["evaluations"]),
             "failed_evaluations": failed_evaluations,
             "normalized_columns": validated_data.normalized_columns,
+            "effective_column_mapping": effective_mapping,
+            "skipped_evaluations": skipped_evaluations if suite == "training_metrics" else [],
         },
         raw_results=raw_results,
         warnings=all_warnings,

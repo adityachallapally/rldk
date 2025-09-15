@@ -40,7 +40,7 @@ class TestEvalResultOverallScore:
             raw_results=[]
         )
 
-        assert result.overall_score == 0.85  # (0.8 + 0.9) / 2
+        assert abs(result.overall_score - 0.85) < 1e-10  # (0.8 + 0.9) / 2, with floating point tolerance
         assert result.available_fraction == 2/3  # 2 out of 3 metrics available
 
     def test_overall_score_with_all_nan_metrics(self):
