@@ -289,15 +289,17 @@ def prepare_models_for_ppo(
     # Create reference model (frozen base model)
     ref_model = AutoModelForCausalLM.from_pretrained(model_name)
     
-    # Create base model for reward and value models
-    base_model = AutoModelForCausalLM.from_pretrained(model_name)
+    # Create separate base models for reward and value models to avoid parameter sharing
+    reward_base_model = AutoModelForCausalLM.from_pretrained(model_name)
+    value_base_model = AutoModelForCausalLM.from_pretrained(model_name)
     
-    # Create reward model
-    reward_model = create_simple_reward_model(base_model)
+    # Create reward model with its own base model
+    reward_model = create_simple_reward_model(reward_base_model)
     
     # Create value model
     if use_separate_value_model:
-        value_model = create_simple_value_model(base_model)
+        # Create value model with its own base model
+        value_model = create_simple_value_model(value_base_model)
     else:
         # Use policy model as value model (standard approach in some cases)
         value_model = policy_model
@@ -306,6 +308,54 @@ def prepare_models_for_ppo(
     policy_model = fix_generation_config(policy_model, tokenizer, generation_config)
 
     return policy_model, ref_model, value_model, reward_model, tokenizer
+
+
+def prepare_models_for_ppo_legacy(
+    model_name: str,
+    tokenizer: Optional[AutoTokenizer] = None,
+    generation_config: Optional[GenerationConfig] = None
+) -> tuple["AutoModelForCausalLMWithValueHead", "AutoModelForCausalLMWithValueHead",
+           "AutoModelForCausalLMWithValueHead", AutoTokenizer]:
+    """Legacy version of prepare_models_for_ppo for backward compatibility.
+
+    This function maintains the old 4-tuple return signature for existing code.
+    It creates and configures all the models needed for PPO training,
+    ensuring they have the required generation_config attribute to avoid AttributeError.
+    
+    Note: The same model is used for both policy and value heads (standard approach).
+    This avoids the base_model_prefix AttributeError in TRL 0.23.0+.
+
+    Args:
+        model_name: Name or path of the base model
+        tokenizer: Optional tokenizer. If None, will be loaded from model_name
+        generation_config: Optional custom generation config
+
+    Returns:
+        Tuple of (model, ref_model, reward_model, tokenizer)
+
+    Raises:
+        ImportError: If TRL is not available
+    """
+    if not TRL_AVAILABLE:
+        raise ImportError("TRL is required for this function. Install with: pip install trl")
+
+    # Load tokenizer if not provided
+    if tokenizer is None:
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+
+    # Create models - use same model for policy and value heads
+    model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    reward_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+
+    # Fix generation_config for all models
+    model = fix_generation_config(model, tokenizer, generation_config)
+    ref_model = fix_generation_config(ref_model, tokenizer, generation_config)
+    reward_model = fix_generation_config(reward_model, tokenizer, generation_config)
+
+    return model, ref_model, reward_model, tokenizer
 
 
 def check_trl_compatibility() -> dict:

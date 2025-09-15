@@ -9,6 +9,7 @@ from .utils import (
     create_simple_value_model,
     fix_generation_config,
     prepare_models_for_ppo,
+    prepare_models_for_ppo_legacy,
     validate_ppo_setup,
 )
 
@@ -25,6 +26,7 @@ __all__ = [
     "create_simple_value_model",
     "fix_generation_config",
     "prepare_models_for_ppo",
+    "prepare_models_for_ppo_legacy",
     "check_trl_compatibility",
     "validate_ppo_setup",
 ]
