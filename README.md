@@ -313,18 +313,49 @@ pip install rldk[openrlhf]  # For OpenRLHF integration
 
 ## 🚀 **Quick Start**
 
+### **CPU Quickstart - 2 Minute Success Path**
+
+Get started with RLDK in under 2 minutes using our CPU-friendly quickstart example:
+
+```bash
+# Run the CPU quickstart example (W&B disabled by default)
+python examples/quickstart_cpu.py
+```
+
+This example will:
+- ✅ Run a simple PPO training on CartPole (CPU-only)
+- ✅ Track the experiment with RLDK
+- ✅ Generate `training_results.json` and `training_plot.png`
+- ✅ Complete in under 2 minutes
+- ✅ Respect `WANDB_DISABLED` environment variable
+
+### **Enable Logging (Optional)**
+
+RLDK logs to local files by default. To enable Weights & Biases logging:
+
+```bash
+# Option 1: Set environment variable (recommended)
+export WANDB_DISABLED=false
+python examples/quickstart_cpu.py
+
+# Option 2: Use CLI flag
+rldk track "my_experiment" --no-wandb  # Disable W&B
+rldk track "my_experiment"             # Enable W&B (default)
+```
+
 ### **1. Track Your Experiment**
 ```python
 from rldk.tracking import ExperimentTracker, TrackingConfig
 
-# Configure tracking
+# Configure tracking (W&B disabled by default)
 config = TrackingConfig(
     experiment_name="ppo_training",
     enable_dataset_tracking=True,
     enable_model_tracking=True,
     enable_environment_tracking=True,
     enable_seed_tracking=True,
-    enable_git_tracking=True
+    enable_git_tracking=True,
+    save_to_wandb=False  # W&B disabled by default
 )
 tracker = ExperimentTracker(config)
 
@@ -388,6 +419,7 @@ rldk bisect --good abc123 --bad def456 --cmd "python train.py"
 RLDK includes comprehensive examples and tutorials to get you started:
 
 ### **CPU-Friendly Examples**
+- **`quickstart_cpu.py`** - ⚡ **2-minute CPU quickstart** - Perfect for first-time users
 - **`basic_ppo_cartpole.py`** - Basic PPO implementation with RLDK integration
 - **`custom_environment_tutorial.py`** - How to create custom environments with RLDK tracking
 - **`distributed_training_guide.py`** - Multi-GPU and federated learning with RLDK
@@ -399,6 +431,9 @@ RLDK includes comprehensive examples and tutorials to get you started:
 
 ### **Getting Started with Examples**
 ```bash
+# ⚡ Start here - 2-minute CPU quickstart (W&B disabled by default)
+python examples/quickstart_cpu.py
+
 # Run a basic PPO example
 python examples/basic_ppo_cartpole.py
 
