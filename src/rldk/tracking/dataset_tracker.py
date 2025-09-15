@@ -13,9 +13,22 @@ from typing import Any, Dict, Optional, Union
 
 import numpy as np
 import pandas as pd
-import torch
-from datasets import Dataset, DatasetDict
-from torch.utils.data import Dataset as TorchDataset
+from ..utils.optional_imports import import_datasets, import_torch
+
+try:
+    from datasets import Dataset, DatasetDict
+except ImportError:
+    # This will be handled by the lazy import system
+    Dataset = None
+    DatasetDict = None
+
+try:
+    import torch
+    from torch.utils.data import Dataset as TorchDataset
+except ImportError:
+    # This will be handled by the lazy import system
+    torch = None
+    TorchDataset = None
 
 from .cache import TrackingCache, run_with_timeout_and_progress
 

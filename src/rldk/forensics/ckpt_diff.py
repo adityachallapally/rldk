@@ -5,7 +5,13 @@ from pathlib import Path
 from typing import Any, Dict
 
 import numpy as np
-import torch
+from ..utils.optional_imports import import_torch
+
+try:
+    import torch
+except ImportError:
+    # This will be handled by the lazy import system
+    torch = None
 
 from rldk.io.readers import read_checkpoint
 

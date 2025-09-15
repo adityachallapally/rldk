@@ -6,7 +6,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
 
-import matplotlib.pyplot as plt
+from ..utils.optional_imports import import_matplotlib
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    # This will be handled by the lazy import system
+    plt = None
 import numpy as np
 import pandas as pd
 
@@ -275,7 +281,7 @@ class UnifiedWriter:
 
     def write_png(
         self,
-        fig: plt.Figure,
+        fig: "plt.Figure",
         filename: str,
         dpi: int = 150,
         bbox_inches: str = "tight"
@@ -367,7 +373,7 @@ def write_json(data: Dict[str, Any], path: Union[str, Path]) -> None:
     writer.write_json(data, path.name)
 
 
-def write_png(fig: plt.Figure, path: Union[str, Path]) -> None:
+def write_png(fig: "plt.Figure", path: Union[str, Path]) -> None:
     """Write PNG figure to file (backward compatibility)."""
     path = Path(path)
     writer = UnifiedWriter(path.parent)

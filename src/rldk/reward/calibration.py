@@ -4,8 +4,18 @@ from typing import Any, Dict, Tuple
 
 import numpy as np
 import pandas as pd
-from sklearn.calibration import calibration_curve
-from sklearn.metrics import brier_score_loss
+from ..utils.optional_imports import import_sklearn
+
+try:
+    from sklearn.calibration import calibration_curve
+except ImportError:
+    # This will be handled by the lazy import system
+    calibration_curve = None
+try:
+    from sklearn.metrics import brier_score_loss
+except ImportError:
+    # This will be handled by the lazy import system
+    brier_score_loss = None
 
 
 def analyze_calibration(

@@ -5,8 +5,18 @@ from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from ..utils.optional_imports import import_sklearn
+
+try:
+    from sklearn.feature_extraction.text import TfidfVectorizer
+except ImportError:
+    # This will be handled by the lazy import system
+    TfidfVectorizer = None
+try:
+    from sklearn.metrics.pairwise import cosine_similarity
+except ImportError:
+    # This will be handled by the lazy import system
+    cosine_similarity = None
 
 
 def evaluate_prompt_contamination(

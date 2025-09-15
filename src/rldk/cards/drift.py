@@ -5,7 +5,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import matplotlib.pyplot as plt
+from ..utils.optional_imports import import_matplotlib
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    # This will be handled by the lazy import system
+    plt = None
 import numpy as np
 import pandas as pd
 

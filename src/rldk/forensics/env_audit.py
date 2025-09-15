@@ -6,7 +6,13 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-import torch
+from ..utils.optional_imports import import_torch
+
+try:
+    import torch
+except ImportError:
+    # This will be handled by the lazy import system
+    torch = None
 
 
 def audit_environment(repo_or_run: str) -> Tuple[Dict[str, Any], str]:
