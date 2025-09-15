@@ -187,8 +187,8 @@ def test_basic_ppo_integration():
             ppo_monitor.on_log(args, state, control, fake_logs)
 
             if step % 2 == 0:  # Simulate checkpoint saves
-                rldk_callback.on_save(args, state, control, model=model)
-                checkpoint_monitor.on_save(args, state, control, model=model)
+                rldk_callback.on_save(args, state, control, model=policy_model)
+                checkpoint_monitor.on_save(args, state, control, model=policy_model)
 
             print(f"✅ Step {step} completed")
 
