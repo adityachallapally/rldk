@@ -251,19 +251,21 @@ def prepare_models_for_ppo(
     # Create reward model
     if create_separate_reward_model:
         reward_model = create_simple_reward_model(tokenizer, model_name)
+        if generation_config is not None:
+            reward_model = fix_generation_config(reward_model, tokenizer, generation_config)
     else:
         reward_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
         reward_model = fix_generation_config(reward_model, tokenizer, generation_config)
 
     if create_separate_value_model:
         value_model = create_simple_value_model(tokenizer, model_name)
+        policy_model = fix_generation_config(policy_model, tokenizer, generation_config)
     else:
-        # Use policy model for backward compatibility, but add value model interface
+        # Use policy model for backward compatibility, add value model interface
         value_model = policy_model
-        value_model = fix_generation_config(value_model, tokenizer, generation_config, add_value_model_interface=True)
+        policy_model = fix_generation_config(policy_model, tokenizer, generation_config, add_value_model_interface=True)
 
-    # Fix generation_config for policy and reference models
-    policy_model = fix_generation_config(policy_model, tokenizer, generation_config)
+    # Fix reference model
     ref_model = fix_generation_config(ref_model, tokenizer, generation_config)
 
     return policy_model, ref_model, reward_model, value_model, tokenizer
