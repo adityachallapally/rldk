@@ -17,7 +17,8 @@ except ImportError:
 def fix_generation_config(
     model: "AutoModelForCausalLMWithValueHead",
     tokenizer: AutoTokenizer,
-    generation_config: Optional[GenerationConfig] = None
+    generation_config: Optional[GenerationConfig] = None,
+    add_value_model_interface: bool = False
 ) -> "AutoModelForCausalLMWithValueHead":
     """Fix missing generation_config and base_model_prefix attributes on TRL models.
 
@@ -29,6 +30,7 @@ def fix_generation_config(
         model: The TRL model to fix
         tokenizer: The tokenizer used with the model
         generation_config: Optional custom generation config. If None, creates a default one.
+        add_value_model_interface: If True, adds score() method for value model compatibility
 
     Returns:
         The model with generation_config and base_model_prefix attributes set
@@ -88,6 +90,26 @@ def fix_generation_config(
             model.is_gradient_checkpointing = model.pretrained_model.is_gradient_checkpointing
         else:
             model.is_gradient_checkpointing = False  # Default to False
+
+    if add_value_model_interface and not hasattr(model, 'score'):
+        import torch
+        
+        def score_method(hidden_states):
+            """Score method for value model compatibility with TRL 0.23+."""
+            # Use the value head from the model if available
+            if hasattr(model, 'v_head') and model.v_head is not None:
+                return model.v_head(hidden_states)
+            else:
+                # Fallback: create a simple linear layer for scoring
+                if not hasattr(model, '_rldk_value_head'):
+                    hidden_size = getattr(model.config, 'hidden_size', 768)
+                    model._rldk_value_head = torch.nn.Linear(hidden_size, 1)
+                    if hasattr(model, 'device'):
+                        model._rldk_value_head = model._rldk_value_head.to(model.device)
+                return model._rldk_value_head(hidden_states)
+        
+        # Bind the score method to the model
+        model.score = score_method
 
     return model
 
@@ -236,8 +258,9 @@ def prepare_models_for_ppo(
     if create_separate_value_model:
         value_model = create_simple_value_model(tokenizer, model_name)
     else:
-        # Use policy model for backward compatibility
+        # Use policy model for backward compatibility, but add value model interface
         value_model = policy_model
+        value_model = fix_generation_config(value_model, tokenizer, generation_config, add_value_model_interface=True)
 
     # Fix generation_config for policy and reference models
     policy_model = fix_generation_config(policy_model, tokenizer, generation_config)
