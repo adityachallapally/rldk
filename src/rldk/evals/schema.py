@@ -2,7 +2,10 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+
+if TYPE_CHECKING:
+    from ..utils.error_handling import ValidationError
 
 import numpy as np
 import pandas as pd
@@ -138,7 +141,7 @@ RL_METRICS_SCHEMA = EvalInputSchema(
         ),
         ColumnSpec(
             name="kl",
-            dtype="numeric", 
+            dtype="numeric",
             required=False,
             description="KL divergence to reference model",
             example=0.12,
@@ -161,7 +164,7 @@ RL_METRICS_SCHEMA = EvalInputSchema(
             synonyms=["input_tokens", "prompt_tokens"]
         ),
         ColumnSpec(
-            name="tokens_out", 
+            name="tokens_out",
             dtype="numeric",
             required=False,
             description="Number of output tokens generated",
@@ -178,7 +181,7 @@ RL_METRICS_SCHEMA = EvalInputSchema(
         ),
         ColumnSpec(
             name="episode_return",
-            dtype="numeric", 
+            dtype="numeric",
             required=False,
             description="Total return for the episode",
             example=15.7,
@@ -187,7 +190,7 @@ RL_METRICS_SCHEMA = EvalInputSchema(
         ColumnSpec(
             name="episode_length",
             dtype="numeric",
-            required=False, 
+            required=False,
             description="Length of the episode in steps",
             example=200,
             synonyms=["ep_length", "episode_steps"]
@@ -199,17 +202,17 @@ RL_METRICS_SCHEMA = EvalInputSchema(
 def normalize_columns(df: pd.DataFrame, column_mapping: Optional[Dict[str, str]] = None) -> Tuple[pd.DataFrame, Dict[str, str]]:
     """
     Apply user column mapping first, then synonym normalization.
-    
+
     Args:
         df: Input DataFrame
         column_mapping: User-provided mapping from original to target column names
-        
+
     Returns:
         Tuple of (normalized_dataframe, effective_column_mapping)
     """
     data = df.copy()
     effective_mapping = {}
-    
+
     # Step 1: Apply user-provided column mapping first
     if column_mapping:
         for original_col, target_col in column_mapping.items():
@@ -217,17 +220,17 @@ def normalize_columns(df: pd.DataFrame, column_mapping: Optional[Dict[str, str]]
                 data = data.rename(columns={original_col: target_col})
                 effective_mapping[original_col] = target_col
                 logger.debug(f"User mapping: '{original_col}' -> '{target_col}'")
-    
+
     # Step 2: Apply synonym normalization for remaining columns
     all_schemas = [STANDARD_EVAL_SCHEMA, RL_METRICS_SCHEMA]
-    
+
     for schema in all_schemas:
         for col_spec in schema.get_all_columns():
             for synonym in col_spec.synonyms:
                 if synonym in data.columns and col_spec.name not in data.columns:
                     data = data.rename(columns={synonym: col_spec.name})
                     logger.debug(f"Synonym mapping: '{synonym}' -> '{col_spec.name}'")
-    
+
     return data, effective_mapping
 
 
@@ -341,16 +344,16 @@ def validate_eval_input(
 def safe_mean(values: List[Any]) -> Optional[float]:
     """
     Calculate mean of values, handling NaN and None gracefully.
-    
+
     Args:
         values: List of numeric values that may contain NaN or None
-        
+
     Returns:
         Mean of valid values, or None if no valid values
     """
     if not values:
         return None
-    
+
     # Filter out None and NaN values
     valid_values = []
     for v in values:
@@ -362,10 +365,10 @@ def safe_mean(values: List[Any]) -> Optional[float]:
             except (ValueError, TypeError):
                 # Skip non-numeric values
                 continue
-    
+
     if not valid_values:
         return None
-    
+
     return float(np.mean(valid_values))
 
 
@@ -384,3 +387,71 @@ def get_schema_for_suite(suite_name: str) -> EvalInputSchema:
     else:
         # For all other suites, use the standard schema
         return STANDARD_EVAL_SCHEMA
+
+
+def _create_enhanced_validation_error(
+    original_error: str,
+    df: pd.DataFrame,
+    schema: EvalInputSchema,
+    suite_name: str,
+    column_mapping: Dict[str, str]
+) -> 'ValidationError':
+    """Create enhanced validation error with column mapping suggestions and format examples."""
+    from ..adapters.field_resolver import FieldResolver
+    from ..utils.error_handling import ValidationError
+
+    available_columns = df.columns.tolist()
+    field_resolver = FieldResolver()
+
+    # Find missing required columns (check both raw and after any existing mapping)
+    missing_required = []
+    for col_spec in schema.required_columns:
+        column_exists = (col_spec.name in available_columns or
+                        col_spec.name in column_mapping.values())
+        if not column_exists:
+            missing_required.append(col_spec.name)
+
+    suggestions = []
+    field_map_suggestion = {}
+
+    for missing_field in missing_required:
+        field_suggestions = field_resolver.get_suggestions(missing_field, available_columns)
+        if field_suggestions:
+            suggestions.append(f"  {missing_field}: try {', '.join(field_suggestions)}")
+            field_map_suggestion[field_suggestions[0]] = missing_field
+
+    # Create detailed error message
+    error_msg = f"Missing required columns for {suite_name} evaluation: {', '.join(missing_required)}"
+
+    if suggestions:
+        error_msg += "\n\nColumn mapping suggestions:\n" + "\n".join(suggestions)
+
+    if field_map_suggestion:
+        field_map_str = ", ".join([f'"{k}": "{v}"' for k, v in field_map_suggestion.items()])
+        error_msg += f"\n\nTry this column_mapping: {{{field_map_str}}}"
+
+    error_msg += f"\n\nSupported data formats for {suite_name}:"
+    if suite_name == "training_metrics":
+        error_msg += "\n- RL metrics format: step, reward, kl, entropy, loss"
+        error_msg += "\n- Example: {'step': 100, 'reward': 0.5, 'kl': 0.1}"
+    else:
+        error_msg += "\n- Standard format: step, output (required)"
+        error_msg += "\n- Example: {'step': 100, 'output': 'model response text'}"
+
+    error_msg += f"\n\nAvailable columns in your data: {', '.join(available_columns)}"
+
+    suggestion = "Check column names and provide column_mapping parameter if needed"
+    if field_map_suggestion:
+        suggestion = f"Use column_mapping parameter: {field_map_suggestion}"
+
+    return ValidationError(
+        error_msg,
+        suggestion=suggestion,
+        error_code="MISSING_REQUIRED_COLUMNS",
+        details={
+            "missing_columns": missing_required,
+            "available_columns": available_columns,
+            "suggested_mapping": field_map_suggestion,
+            "suite_name": suite_name
+        }
+    )

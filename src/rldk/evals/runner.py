@@ -9,13 +9,14 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 
-from ..utils.error_handling import (
-    EvaluationError,
-    ValidationError,
-)
+from ..utils.error_handling import EvaluationError, ValidationError
 from ..utils.progress import progress_bar
 from .metrics import calculate_confidence_intervals, calculate_effect_sizes
-from .schema import get_schema_for_suite, validate_eval_input
+from .schema import (
+    _create_enhanced_validation_error,
+    get_schema_for_suite,
+    validate_eval_input,
+)
 from .suites import get_eval_suite
 
 
@@ -146,14 +147,29 @@ def run(
 
     # Validate and normalize input data using schema
     schema = get_schema_for_suite(suite)
-    
+
     if column_mapping:
         from .schema import normalize_columns
         run_data, effective_mapping = normalize_columns(run_data, column_mapping)
         logger.info(f"Applied column mapping: {effective_mapping}")
     else:
-        effective_mapping = {}
-    
+        from ..adapters.field_resolver import FieldResolver
+        field_resolver = FieldResolver()
+        auto_mapping = {}
+
+        for col_spec in schema.required_columns:
+            if col_spec.name not in run_data.columns:
+                resolved = field_resolver.resolve_field(col_spec.name, run_data.columns.tolist())
+                if resolved:
+                    auto_mapping[resolved] = col_spec.name
+
+        if auto_mapping:
+            from .schema import normalize_columns
+            run_data, effective_mapping = normalize_columns(run_data, auto_mapping)
+            logger.info(f"Applied automatic column mapping: {effective_mapping}")
+        else:
+            effective_mapping = {}
+
     try:
         validated_data = validate_eval_input(run_data, schema, suite)
         logger.info(f"Data validation completed with {len(validated_data.warnings)} warnings")
@@ -163,11 +179,10 @@ def run(
             logger.warning(f"Data validation warning: {warning}")
 
     except ValueError as e:
-        raise ValidationError(
-            str(e),
-            suggestion="Check your data columns and ensure required fields are present",
-            error_code="SCHEMA_VALIDATION_FAILED"
+        enhanced_error = _create_enhanced_validation_error(
+            str(e), run_data, schema, suite, effective_mapping
         )
+        raise enhanced_error from e
 
     # Set random seed for reproducibility
     np.random.seed(seed)
@@ -194,11 +209,11 @@ def run(
 
     evaluations_to_run = eval_suite["evaluations"].copy()
     skipped_evaluations = []
-    
+
     if suite == "training_metrics":
         from .suites import EVAL_REQUIREMENTS
         available_columns = set(validated_data.data.columns)
-        
+
         filtered_evaluations = {}
         for eval_name, eval_func in evaluations_to_run.items():
             if eval_name in EVAL_REQUIREMENTS:
@@ -213,7 +228,7 @@ def run(
                     else:
                         if req not in available_columns:
                             required_cols.append(req)
-                
+
                 if required_cols:
                     logger.warning(f"Skipping {eval_name}: missing columns {required_cols}")
                     skipped_evaluations.append(eval_name)
@@ -222,9 +237,9 @@ def run(
             else:
                 # Include evaluations not in EVAL_REQUIREMENTS
                 filtered_evaluations[eval_name] = eval_func
-        
+
         evaluations_to_run = filtered_evaluations
-        
+
         if skipped_evaluations:
             validated_data.warnings.append(f"Skipped evaluations due to missing columns: {', '.join(skipped_evaluations)}")
 
