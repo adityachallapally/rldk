@@ -503,3 +503,50 @@ def create_seed_context(seed: int, deterministic: bool = True):
                 _global_seed_manager.seed = self.original_seed
 
     return SeedContext(seed, deterministic)
+
+
+def seed_context(seed: int, deterministic: bool = True):
+    """Context manager that temporarily changes the global seed and restores it when exiting.
+
+    This function creates a context manager that saves the current seed state using
+    get_current_seed(), sets a new seed when entering the context using set_global_seed(),
+    and restores the original seed when exiting the context. It handles exceptions properly
+    to ensure seed restoration always happens.
+
+    Args:
+        seed: Seed value to use temporarily. Must be a non-negative integer.
+        deterministic: Whether to enable deterministic behavior for PyTorch
+
+    Returns:
+        Context manager for temporary seed management
+
+    Raises:
+        RLDKError: If seed validation fails (invalid seed value)
+
+    Example:
+        >>> from rldk.utils.seed import seed_context
+        >>>
+        >>> # Current seed is 42
+        >>> with seed_context(123):
+        ...     # Seed is now 123
+        ...     pass
+        >>> # Seed is restored to 42
+
+        >>> # Works with exception handling
+        >>> try:
+        ...     with seed_context(456):
+        ...         raise ValueError("Something went wrong")
+        ... except ValueError:
+        ...     pass
+        >>> # Seed is still properly restored
+    """
+    # Validate seed before creating context
+    if not isinstance(seed, int) or seed < 0:
+        raise RLDKError(
+            f"Seed must be a non-negative integer, got: {seed}",
+            suggestion="Use a non-negative integer seed value",
+            error_code="INVALID_SEED",
+            details={"provided_seed": seed, "type": type(seed).__name__}
+        )
+
+    return create_seed_context(seed, deterministic)
