@@ -3,7 +3,13 @@
 from pathlib import Path
 from typing import Any, Dict, List, Union
 
-import matplotlib.pyplot as plt
+from ..utils.optional_imports import import_matplotlib
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    # This will be handled by the lazy import system
+    plt = None
 import numpy as np
 import pandas as pd
 
@@ -516,7 +522,7 @@ def write_json(report: Dict[str, Any], path: Union[str, Path]) -> None:
     writer.write_json(report, path.name)
 
 
-def write_png(fig: plt.Figure, path: Union[str, Path]) -> None:
+def write_png(fig: "plt.Figure", path: Union[str, Path]) -> None:
     """Save matplotlib figure as PNG (backward compatibility)."""
     path = Path(path)
     writer = UnifiedWriter(path.parent)

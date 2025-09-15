@@ -6,7 +6,13 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional, Union
 
 import pandas as pd
-import torch
+from ..utils.optional_imports import import_torch
+
+try:
+    import torch
+except ImportError:
+    # This will be handled by the lazy import system
+    torch = None
 
 from ..utils.torch_compat import safe_torch_load
 from .consolidated_schemas import (
@@ -172,7 +178,7 @@ def read_wandb_export(dir_path: Union[str, Path]) -> Iterator[Dict[str, Any]]:
         yield from read_jsonl(jsonl_file)
 
 
-def read_checkpoint(path: Union[str, Path]) -> Dict[str, torch.Tensor]:
+def read_checkpoint(path: Union[str, Path]) -> Dict[str, "torch.Tensor"]:
     """Read PyTorch checkpoint and return state dict on CPU."""
     path = Path(path)
 

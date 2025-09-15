@@ -12,11 +12,14 @@ from .cache import TrackingCache, run_with_timeout_and_progress
 
 
 def _import_torch():
-    import torch
+    from ..utils.optional_imports import import_torch
+    torch = import_torch()
     import torch.nn as nn
     return torch, nn
 
 def _import_transformers():
+    from ..utils.optional_imports import import_transformers
+    transformers = import_transformers()
     from transformers import PreTrainedModel, PreTrainedTokenizer
     return PreTrainedModel, PreTrainedTokenizer
 

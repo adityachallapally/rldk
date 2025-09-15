@@ -3,7 +3,13 @@
 from pathlib import Path
 from typing import Any, Dict, Union
 
-import matplotlib.pyplot as plt
+from ..utils.optional_imports import import_matplotlib
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    # This will be handled by the lazy import system
+    plt = None
 
 
 def mkdir_reports() -> Path:

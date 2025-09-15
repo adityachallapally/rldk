@@ -3,9 +3,13 @@
 from typing import Optional
 
 from packaging import version
+from ...utils.optional_imports import import_transformers
+transformers = import_transformers()
 from transformers import AutoTokenizer, GenerationConfig
 
 try:
+    from ...utils.optional_imports import import_trl
+    trl = import_trl()
     from trl import AutoModelForCausalLMWithValueHead
     TRL_AVAILABLE = True
 except ImportError:

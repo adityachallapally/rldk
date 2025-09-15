@@ -7,6 +7,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 try:
+    from ...utils.optional_imports import import_plotly, import_streamlit
+    plotly = import_plotly()
+    streamlit = import_streamlit()
     import plotly.express as px
     import plotly.graph_objects as go
     import streamlit as st

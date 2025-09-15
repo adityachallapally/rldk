@@ -295,20 +295,83 @@ rldk card reward run_a
 
 ## 📦 **Installation**
 
-### **Core Package (Recommended)**
+### **Core Package (Lightweight)**
 ```bash
 pip install rldk
 ```
+The core package includes essential functionality with minimal dependencies for fast installation.
 
-### **Development Package**
+### **Optional Extras**
+Install additional functionality as needed:
+
 ```bash
-pip install rldk[dev]  # Includes testing and development tools
+# Visualization and plotting
+pip install rldk[viz]
+
+# RLHF and machine learning capabilities  
+pip install rldk[rlhf]
+
+# I/O and data processing
+pip install rldk[io]
+
+# Experiment tracking and cloud integration
+pip install rldk[tracking]
+
+# OpenRLHF integration
+pip install rldk[openrlhf]
+
+# All optional dependencies
+pip install rldk[all]
+
+# Development tools
+pip install rldk[dev]
 ```
 
-### **Optional Dependencies**
+### **Quick Start for Different Use Cases**
+
+**Basic Analysis (Core only):**
 ```bash
-pip install rldk[parquet]  # For Parquet file support
-pip install rldk[openrlhf]  # For OpenRLHF integration
+pip install rldk
+rldk forensics log-scan ./my_training_run
+rldk check-determinism --cmd "python train.py"
+```
+
+**Full RLHF Workflow:**
+```bash
+pip install rldk[rlhf,viz,tracking]
+rldk track "my_experiment" --interactive
+rldk forensics diff-ckpt model_a.pt model_b.pt
+rldk reward reward-drift model_a model_b --prompts prompts.jsonl
+```
+
+**Data Processing and Visualization:**
+```bash
+pip install rldk[io,viz]
+rldk ingest ./logs --adapter trl --output metrics.jsonl
+rldk evals evaluate data.jsonl --suite comprehensive
+```
+
+### **Optional Dependencies Reference**
+
+| Extra | Purpose | Key Dependencies |
+|-------|---------|------------------|
+| `viz` | Plotting and visualization | matplotlib, seaborn, plotly |
+| `rlhf` | RLHF and ML capabilities | torch, transformers, datasets, trl, accelerate |
+| `io` | I/O and data processing | pyarrow, streamlit |
+| `tracking` | Experiment tracking | wandb, flask |
+| `openrlhf` | OpenRLHF integration | openrlhf |
+| `dev` | Development tools | pytest, black, mypy, ruff |
+
+### **Lazy Loading and Error Messages**
+
+RLDK uses lazy loading for optional dependencies. If you try to use a feature that requires an optional dependency, you'll get a helpful error message:
+
+```bash
+$ rldk forensics diff-ckpt model_a.pt model_b.pt
+⚠️  Command 'forensics diff-ckpt' requires optional dependencies that are not installed.
+Missing extras:
+  - viz: Plotting and visualization
+    Install with: pip install rldk[viz]
 ```
 
 ## 🚀 **Quick Start**

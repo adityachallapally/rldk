@@ -15,7 +15,13 @@ try:
 except ImportError:
     metadata = None
 import numpy as np
-import torch
+from ..utils.optional_imports import import_torch
+
+try:
+    import torch
+except ImportError:
+    # This will be handled by the lazy import system
+    torch = None
 
 from .cache import TrackingCache
 
@@ -257,7 +263,8 @@ class EnvironmentTracker:
 
         # Transformers
         try:
-            import transformers
+            from ..utils.optional_imports import import_transformers
+            transformers = import_transformers()
             frameworks["transformers"] = {
                 "version": transformers.__version__
             }
@@ -268,7 +275,8 @@ class EnvironmentTracker:
 
         # Datasets
         try:
-            import datasets
+            from ..utils.optional_imports import import_datasets
+            datasets = import_datasets()
             frameworks["datasets"] = {
                 "version": datasets.__version__
             }

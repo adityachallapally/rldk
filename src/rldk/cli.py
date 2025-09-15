@@ -67,6 +67,12 @@ from rldk.utils.error_handling import (
     validate_adapter_source,
     validate_file_path,
 )
+from rldk.utils.optional_imports import (
+    OptionalImportError,
+    check_optional_dependency,
+    get_optional_dependencies_info,
+    suggest_install_command,
+)
 from rldk.utils.progress import print_operation_status, timed_operation_context
 from rldk.utils.runtime import with_timeout
 
@@ -82,6 +88,41 @@ def ensure_config_initialized():
     except Exception as e:
         # For other errors, log but don't fail
         logging.warning(f"Configuration initialization warning: {e}")
+
+
+def check_optional_dependencies_for_command(command_name: str, required_extras: List[str] = None):
+    """
+    Check if optional dependencies are available for a specific command.
+    
+    Args:
+        command_name: Name of the command being run
+        required_extras: List of required extras for this command
+    """
+    if not required_extras:
+        return
+    
+    missing_extras = []
+    for extra in required_extras:
+        if extra == "viz" and not check_optional_dependency("matplotlib", "viz", "plotting"):
+            missing_extras.append(extra)
+        elif extra == "rlhf" and not check_optional_dependency("torch", "rlhf", "machine learning"):
+            missing_extras.append(extra)
+        elif extra == "io" and not check_optional_dependency("pyarrow", "io", "data processing"):
+            missing_extras.append(extra)
+        elif extra == "tracking" and not check_optional_dependency("wandb", "tracking", "experiment tracking"):
+            missing_extras.append(extra)
+        elif extra == "openrlhf" and not check_optional_dependency("openrlhf", "openrlhf", "OpenRLHF integration"):
+            missing_extras.append(extra)
+    
+    if missing_extras:
+        typer.echo(f"⚠️  Command '{command_name}' requires optional dependencies that are not installed.", err=True)
+        typer.echo("Missing extras:", err=True)
+        for extra in missing_extras:
+            info = get_optional_dependencies_info().get(extra, {})
+            typer.echo(f"  - {extra}: {info.get('description', '')}", err=True)
+            typer.echo(f"    Install with: {info.get('install', f'pip install rldk[{extra}]')}", err=True)
+        typer.echo("\nOr install all optional dependencies with: pip install rldk[all]", err=True)
+        raise typer.Exit(1)
 
 app = typer.Typer(
     name="rldk",
@@ -223,6 +264,8 @@ def forensics_diff_ckpt(
 ):
     """Compare two model checkpoints and identify parameter differences."""
     try:
+        # Check for required optional dependencies
+        check_optional_dependencies_for_command("forensics diff-ckpt", ["viz"])
         typer.echo("Comparing checkpoints:")
         typer.echo(f"  Checkpoint A: {ckpt_a}")
         typer.echo(f"  Checkpoint B: {ckpt_b}")
@@ -442,6 +485,8 @@ def reward_drift(
 ):
     """Compare two reward models and detect drift."""
     try:
+        # Check for required optional dependencies
+        check_optional_dependencies_for_command("reward reward-drift", ["viz", "rlhf"])
         typer.echo("Comparing reward models:")
         typer.echo(f"  Model A: {model_a}")
         typer.echo(f"  Model B: {model_b}")
