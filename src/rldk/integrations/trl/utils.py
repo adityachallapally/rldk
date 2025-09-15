@@ -305,7 +305,14 @@ def create_ppo_trainer(
     
     compatibility = check_trl_compatibility()
     trl_version_str = compatibility.get("version", "0.7.0")
-    trl_version = version.parse(trl_version_str) if trl_version_str else version.parse("0.7.0")
+    
+    try:
+        if trl_version_str and trl_version_str not in ("unknown", "None", "null"):
+            trl_version = version.parse(trl_version_str)
+        else:
+            trl_version = version.parse("0.7.0")  # Safe fallback
+    except (TypeError, ValueError, Exception):
+        trl_version = version.parse("0.7.0")  # Fallback for any parsing errors
     
     if trl_version >= version.parse("0.23.0"):
         return PPOTrainer(

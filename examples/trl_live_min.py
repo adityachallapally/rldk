@@ -70,57 +70,58 @@ def run_minimal_trl_loop():
     try:
         print("✅ Using unified factory function for model preparation")
         
+        # Create dataset
+        dataset = create_tiny_dataset()
+        print(f"📊 Dataset created with {len(dataset)} samples")
+        
+        # Initialize RLDK monitor with low thresholds to trigger alerts
+        monitor = Monitor(
+            output_dir=output_dir,
+            kl_threshold=0.05,  # Very low threshold to trigger alerts
+            reward_threshold=0.01,
+            gradient_threshold=0.5,
+            clip_frac_threshold=0.1,
+            run_id="trl_live_min"
+        )
+        
+        print("✅ RLDK Monitor initialized")
+        
+        # PPO configuration - intentionally misconfigured to provoke instability
+        ppo_config = PPOConfig(
+            learning_rate=1e-3,  # High learning rate to cause instability
+            per_device_train_batch_size=2,
+            mini_batch_size=1,
+            num_ppo_epochs=1,
+            max_grad_norm=0.1,  # Low max grad norm to cause clipping
+            logging_dir=output_dir,
+            save_steps=1000,  # Don't save during short run
+            eval_steps=1000,
+            num_train_epochs=1,
+            output_dir=output_dir,
+            remove_unused_columns=False,
+            bf16=False,
+            fp16=False,
+            max_steps=200,  # Limit to 200 steps
+            logging_steps=5,  # Log every 5 steps
+        )
+        
+        print("⚙️  PPO Config: High LR, Low grad norm (intentionally unstable)")
+        
+        # Create PPO trainer with monitor callback using unified factory
+        trainer = create_ppo_trainer(
+            model_name=model_name,
+            ppo_config=ppo_config,
+            train_dataset=dataset,
+            callbacks=[monitor],
+        )
+        
+        print("✅ PPO Trainer created with RLDK monitor callback")
+        
     except Exception as e:
         print(f"❌ Model loading failed: {e}")
         print("⚠️  Falling back to simulation mode")
         return run_simulation_mode()
     
-    # Create dataset
-    dataset = create_tiny_dataset()
-    print(f"📊 Dataset created with {len(dataset)} samples")
-    
-    # Initialize RLDK monitor with low thresholds to trigger alerts
-    monitor = Monitor(
-        output_dir=output_dir,
-        kl_threshold=0.05,  # Very low threshold to trigger alerts
-        reward_threshold=0.01,
-        gradient_threshold=0.5,
-        clip_frac_threshold=0.1,
-        run_id="trl_live_min"
-    )
-    
-    print("✅ RLDK Monitor initialized")
-    
-    # PPO configuration - intentionally misconfigured to provoke instability
-    ppo_config = PPOConfig(
-        learning_rate=1e-3,  # High learning rate to cause instability
-        per_device_train_batch_size=2,
-        mini_batch_size=1,
-        num_ppo_epochs=1,
-        max_grad_norm=0.1,  # Low max grad norm to cause clipping
-        logging_dir=output_dir,
-        save_steps=1000,  # Don't save during short run
-        eval_steps=1000,
-        num_train_epochs=1,
-        output_dir=output_dir,
-        remove_unused_columns=False,
-        bf16=False,
-        fp16=False,
-        max_steps=200,  # Limit to 200 steps
-        logging_steps=5,  # Log every 5 steps
-    )
-    
-    print("⚙️  PPO Config: High LR, Low grad norm (intentionally unstable)")
-    
-    # Create PPO trainer with monitor callback using unified factory
-    trainer = create_ppo_trainer(
-        model_name=model_name,
-        ppo_config=ppo_config,
-        train_dataset=dataset,
-        callbacks=[monitor],
-    )
-    
-    print("✅ PPO Trainer created with RLDK monitor callback")
     
     # Start training
     print("🎯 Starting training (CPU only)...")
