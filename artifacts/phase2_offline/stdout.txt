@@ -1,0 +1,34 @@
+🚀 Starting offline PPO simulation with RLDK monitoring
+✅ Dataset created: 70 samples
+🔍 Setting up RLDK monitoring...
+🎯 KL Schedule Tracker initialized - Target: 0.1±0.05
+📊 Enhanced Gradient Norms Analyzer initialized - Exploding: 10.0, Vanishing: 0.001, Imbalance: 0.1, Z-score: 2.5, Advanced: True
+📈 Advantage Statistics Tracker initialized - Bias threshold: 0.1, Scale threshold: 2.0
+🔍 Comprehensive PPO Forensics initialized
+   KL Schedule Tracking: True
+   Gradient Norms Analysis: True
+   Advantage Statistics: True
+✅ RLDK monitoring initialized
+🎯 Starting training simulation...
+Step 0: KL=0.0932, Reward=0.3226, Advantage=0.0567, GradNorm=0.5000
+Step 10: KL=0.1026, Reward=0.3692, Advantage=0.0091, GradNorm=0.5841
+Step 20: KL=0.1141, Reward=0.2429, Advantage=-0.0546, GradNorm=0.5909
+Step 30: KL=0.1034, Reward=0.2723, Advantage=-0.0247, GradNorm=0.5141
+Step 40: KL=0.1011, Reward=0.3329, Advantage=0.0304, GradNorm=0.4243
+Step 50: KL=0.0777, Reward=0.3374, Advantage=0.0031, GradNorm=0.4041
+Step 60: KL=0.0811, Reward=0.4463, Advantage=-0.0342, GradNorm=0.4721
+Step 70: KL=0.1000, Reward=0.3919, Advantage=-0.0238, GradNorm=0.5657
+Step 80: KL=0.1161, Reward=0.3968, Advantage=0.0081, GradNorm=0.5989
+Step 90: KL=0.1110, Reward=0.3709, Advantage=0.0311, GradNorm=0.5412
+
+🎉 Training simulation completed!
+📊 Total time: 0.10s
+📊 Steps per second: 1008.22
+📊 Final KL: 0.0812
+📊 Final Reward: 0.4963
+📊 Overall Health Score: 0.686
+🚨 Detected 5 anomalies:
+   - gradient_balance_anomaly: Poor gradient balance: 0.062
+   - change_point_anomaly: Sudden change in gradient pattern detected
+   - advantage_scale_anomaly: High advantage scale risk: 0.517
+💾 All outputs saved to: artifacts/phase2_offline
