@@ -5,7 +5,11 @@ import ast
 import json
 import logging
 import os
+import signal
+import subprocess
 import time
+import urllib.error
+import urllib.request
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -19,6 +23,18 @@ logger = logging.getLogger(__name__)
 CANONICAL_FIELDS = {"time", "step", "name", "value", "run_id", "tags", "meta"}
 DEFAULT_WINDOW_KIND = "consecutive"
 AGGREGATOR_FUNCTIONS = {"mean", "max", "min", "any", "all", "sum", "count"}
+
+DEFAULT_ACTION_MESSAGES: Dict[str, str] = {
+    "warn": "{name} {value:.4f} at step {step} (rule {rule_id})",
+    "stop": "Sent stop signal to PID {pid} for {name} at step {step}",
+    "sentinel": "Wrote sentinel file at {path}",
+    "shell": "Executed shell command '{cmd}' (exit={returncode})",
+    "http": "HTTP {method} {url} -> {status_code}",
+}
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 class SafeExpression:
@@ -251,13 +267,6 @@ class WindowComparison(WindowExpression):
 
 
 @dataclass
-class WarnAction:
-    """Warn action definition."""
-
-    message_template: Optional[str] = None
-
-
-@dataclass
 class RuleDefinition:
     """Rule configuration for monitoring."""
 
@@ -268,7 +277,16 @@ class RuleDefinition:
     where: Optional[SafeExpression] = None
     grace_steps: int = 0
     cooldown_steps: int = 0
-    warn_actions: List[WarnAction] = field(default_factory=list)
+    actions: List["ActionConfig"] = field(default_factory=list)
+
+
+@dataclass
+class ActionConfig:
+    """Runtime configuration for an action."""
+
+    kind: str
+    message_template: Optional[str] = None
+    options: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -280,20 +298,28 @@ class Alert:
     event: Event
     window_size: int
     window_kind: str
-    message: str
+    message: Optional[str] = None
+    status: str = "success"
+    details: Dict[str, Any] = field(default_factory=dict)
+    timestamp: str = field(default_factory=_now_iso)
 
     def to_dict(self) -> Dict[str, Any]:
         payload = {
+            "ts": self.timestamp,
             "rule_id": self.rule_id,
             "action": self.action,
             "step": self.event.step,
             "time": self.event.time,
             "name": self.event.name,
             "value": self.event.value,
+            "metric": self.event.name,
             "window": {"size": self.window_size, "kind": self.window_kind},
+            "status": self.status,
         }
         if self.message:
             payload["message"] = self.message
+        if self.details:
+            payload["details"] = self.details
         if self.event.run_id is not None:
             payload["run_id"] = self.event.run_id
         if self.event.tags:
@@ -301,6 +327,19 @@ class Alert:
         if self.event.meta:
             payload["meta"] = self.event.meta
         return payload
+
+    def summary(self) -> str:
+        base = self.message
+        if not base:
+            base = (
+                f"[{self.rule_id}] {self.event.name} {self.event.value:.4f} "
+                f"at step {self.event.step} ({self.action})"
+            )
+        if self.status == "error":
+            return f"ERROR: {base}"
+        if self.status not in {"success", "ok"}:
+            return f"{self.status.upper()}: {base}"
+        return base
 
 
 @dataclass
@@ -323,10 +362,6 @@ class MonitorReport:
         ordered_rules = dict(sorted(self.rules.items(), key=lambda item: item[0]))
         ordered_alerts = sorted(self.alerts, key=lambda item: (item.get("step", 0), item.get("rule_id", "")))
         return {"rules": ordered_rules, "alerts": ordered_alerts}
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _ensure_dict(value: Any, field: str) -> Dict[str, Any]:
@@ -552,7 +587,11 @@ def _metric_key(event: Event) -> MetricKey:
 class MonitorEngine:
     """Evaluate rules against incoming events."""
 
-    def __init__(self, rules: Sequence[RuleDefinition]):
+    def __init__(
+        self,
+        rules: Sequence[RuleDefinition],
+        action_executor: Optional["ActionExecutor"] = None,
+    ):
         if not rules:
             raise ValueError("MonitorEngine requires at least one rule")
         self._rules = list(rules)
@@ -561,20 +600,31 @@ class MonitorEngine:
         self._cooldowns: Dict[str, Dict[MetricKey, int]] = defaultdict(dict)
         self._stats: Dict[str, RuleStats] = defaultdict(RuleStats)
         self._alerts: List[Alert] = []
+        self._executor: ActionExecutor = action_executor or SimpleActionExecutor()
 
-    def process_event(self, event: Event) -> List[Alert]:
+    def process_event(
+        self, event: Event, *, executor: Optional["ActionExecutor"] = None
+    ) -> List[Alert]:
         fired_alerts: List[Alert] = []
+        action_executor = executor or self._executor
         for rule in self._rules:
             if rule.where:
                 context = _event_context(event)
                 if not bool(rule.where.evaluate(context, {})):
                     continue
             key = _metric_key(event)
-            buffer = self._buffers[rule.id].get(key)
+            buffer_map = self._buffers[rule.id]
+            buffer = buffer_map.get(key)
             if buffer is None:
-                buffer = deque(maxlen=rule.window_size)
-                self._buffers[rule.id][key] = buffer
+                buffer = deque()
+                buffer_map[key] = buffer
             buffer.append(event)
+            if rule.window_kind == "rolling":
+                while len(buffer) > rule.window_size:
+                    buffer.popleft()
+            else:
+                while len(buffer) > rule.window_size:
+                    buffer.popleft()
             self._counts[rule.id][key] += 1
             if len(buffer) < rule.window_size:
                 continue
@@ -583,10 +633,13 @@ class MonitorEngine:
             last_step = self._cooldowns[rule.id].get(key)
             if last_step is not None and event.step <= last_step + max(rule.cooldown_steps, 0):
                 continue
-            window_context = _window_context(buffer)
+            window_snapshot = tuple(buffer)
             try:
                 condition_met = bool(
-                    rule.condition.evaluate(window_context, _aggregator_functions(buffer))
+                    rule.condition.evaluate(
+                        _window_context(window_snapshot),
+                        _aggregator_functions(window_snapshot),
+                    )
                 )
             except ValueError as exc:
                 logger.warning("Rule '%s' evaluation failed: %s", rule.id, exc)
@@ -594,24 +647,33 @@ class MonitorEngine:
             if not condition_met:
                 continue
             self._cooldowns[rule.id][key] = event.step
-            actions = rule.warn_actions or [WarnAction()]
-            for action in actions:
-                message = _render_warn_message(action, rule, event)
-                alert = Alert(
-                    rule_id=rule.id,
-                    action="warn",
-                    event=event,
-                    window_size=rule.window_size,
-                    window_kind=rule.window_kind,
-                    message=message,
-                )
-                fired_alerts.append(alert)
-                self._alerts.append(alert)
-                _log_warn(alert)
-                self._record_stats(rule.id, event, alert)
+            action_configs = rule.actions or [ActionConfig(kind="warn")]
+            alerts_for_rule: List[Alert] = []
+            for action in action_configs:
+                try:
+                    alert = action_executor.execute(action, rule, event, window_snapshot)
+                except Exception as exc:  # pragma: no cover - defensive guard
+                    logger.exception(
+                        "Action '%s' for rule '%s' failed", action.kind, rule.id
+                    )
+                    alert = _create_alert(
+                        rule,
+                        event,
+                        action.kind,
+                        message=f"Action {action.kind} failed: {exc}",
+                        status="error",
+                        details={"error": str(exc)},
+                    )
+                alerts_for_rule.append(alert)
+                _log_alert(alert)
+            if alerts_for_rule:
+                self._record_stats(rule.id, event, alerts_for_rule[0])
+                for alert in alerts_for_rule:
+                    fired_alerts.append(alert)
+                    self._alerts.append(alert)
         return fired_alerts
 
-    def _record_stats(self, rule_id: str, event: Event, alert: Alert) -> None:
+    def _record_stats(self, rule_id: str, event: Event, alert: Optional[Alert]) -> None:
         stats = self._stats[rule_id]
         stats.activations += 1
         activation_info = {
@@ -620,8 +682,10 @@ class MonitorEngine:
             "value": event.value,
             "name": event.name,
         }
-        if alert.message:
+        if alert and alert.message:
             activation_info["message"] = alert.message
+        if alert and alert.status:
+            activation_info["status"] = alert.status
         if event.run_id is not None:
             activation_info["run_id"] = event.run_id
         if stats.first_activation is None:
@@ -648,6 +712,30 @@ class MonitorEngine:
             rules_summary[rule.id] = summary
         alert_payloads = [alert.to_dict() for alert in self._alerts]
         return MonitorReport(rules=rules_summary, alerts=alert_payloads)
+
+
+class AlertWriter:
+    """Append alerts to JSONL and text summaries."""
+
+    def __init__(
+        self,
+        jsonl_path: Optional[Path] = None,
+        text_path: Optional[Path] = None,
+    ) -> None:
+        self._jsonl_path = Path(jsonl_path) if jsonl_path else None
+        self._text_path = Path(text_path) if text_path else None
+        for path in (self._jsonl_path, self._text_path):
+            if path and path.parent and not path.parent.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+
+    def write(self, alert: Alert) -> None:
+        if self._jsonl_path is not None:
+            with self._jsonl_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(alert.to_dict(), sort_keys=True) + "\n")
+        if self._text_path is not None:
+            line = f"{alert.timestamp} {alert.summary()}"
+            with self._text_path.open("a", encoding="utf-8") as handle:
+                handle.write(line + "\n")
 
 
 class _AttrDict(dict):
@@ -750,9 +838,10 @@ def _aggregator_functions(window: Sequence[Event]) -> Dict[str, Callable[..., An
     }
 
 
-def _render_warn_message(action: WarnAction, rule: RuleDefinition, event: Event) -> str:
-    template = action.message_template or "{name} {value:.4f} at step {step} (rule {rule_id})"
-    context = {
+def _template_context(
+    rule: RuleDefinition, event: Event, extra: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    context: Dict[str, Any] = {
         "name": event.name,
         "value": event.value,
         "step": event.step,
@@ -761,25 +850,482 @@ def _render_warn_message(action: WarnAction, rule: RuleDefinition, event: Event)
         "run_id": event.run_id,
         "tags": event.tags,
         "meta": event.meta,
+        "window_size": rule.window_size,
+        "window_kind": rule.window_kind,
+        "action": extra.get("action") if extra else None,
     }
+    if extra:
+        for key, value in extra.items():
+            context[key] = value
+    return context
+
+
+def _format_action_value(value: Any, context: Dict[str, Any]) -> Any:
+    if isinstance(value, str):
+        try:
+            return value.format(**context)
+        except Exception as exc:  # pragma: no cover - formatting guard
+            logger.warning("Failed to format template '%s': %s", value, exc)
+            return value
+    if isinstance(value, dict):
+        return {key: _format_action_value(val, context) for key, val in value.items()}
+    if isinstance(value, list):
+        return [_format_action_value(item, context) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_format_action_value(item, context) for item in value)
+    return value
+
+
+def _render_action_message(
+    action: ActionConfig,
+    rule: RuleDefinition,
+    event: Event,
+    extra_context: Optional[Dict[str, Any]] = None,
+) -> str:
+    default_template = DEFAULT_ACTION_MESSAGES.get(action.kind, DEFAULT_ACTION_MESSAGES["warn"])
+    template = action.message_template or default_template
+    merged_context = dict(extra_context or {})
+    merged_context.setdefault("action", action.kind)
+    context = _template_context(rule, event, merged_context)
     try:
         return template.format(**context)
     except Exception as exc:  # pragma: no cover - formatting guard
-        logger.warning("Failed to format warn message for rule '%s': %s", rule.id, exc)
+        logger.warning("Failed to format message for rule '%s': %s", rule.id, exc)
         return template
 
 
-def _log_warn(alert: Alert) -> None:
-    if alert.message:
-        logger.warning("[%s] %s", alert.rule_id, alert.message)
+def _create_alert(
+    rule: RuleDefinition,
+    event: Event,
+    action_kind: str,
+    message: Optional[str],
+    status: str,
+    details: Optional[Dict[str, Any]] = None,
+) -> Alert:
+    return Alert(
+        rule_id=rule.id,
+        action=action_kind,
+        event=event,
+        window_size=rule.window_size,
+        window_kind=rule.window_kind,
+        message=message,
+        status=status,
+        details=dict(details or {}),
+    )
+
+
+def _log_alert(alert: Alert) -> None:
+    message = alert.message or (
+        f"{alert.event.name} {alert.event.value:.4f} at step {alert.event.step}"
+    )
+    if alert.status == "error":
+        logger.error("[%s] %s", alert.rule_id, message)
+    elif alert.action == "warn":
+        logger.warning("[%s] %s", alert.rule_id, message)
     else:
-        logger.warning(
-            "[%s] %s %.4f at step %s",
-            alert.rule_id,
-            alert.event.name,
-            alert.event.value,
-            alert.event.step,
+        logger.info("[%s] %s", alert.rule_id, message)
+
+
+def _tail(text: Any, limit: int = 4096) -> str:
+    value = "" if text is None else str(text)
+    if len(value) <= limit:
+        return value
+    return value[-limit:]
+
+
+class ActionExecutor:
+    """Execute an action defined in a rule."""
+
+    def execute(
+        self,
+        action: ActionConfig,
+        rule: RuleDefinition,
+        event: Event,
+        window: Sequence[Event],
+    ) -> Alert:
+        raise NotImplementedError
+
+
+class SimpleActionExecutor(ActionExecutor):
+    """Executor that only supports warn actions."""
+
+    def execute(
+        self,
+        action: ActionConfig,
+        rule: RuleDefinition,
+        event: Event,
+        window: Sequence[Event],
+    ) -> Alert:
+        if action.kind != "warn":
+            raise ValueError(f"Unsupported action '{action.kind}' for simple executor")
+        message = _render_action_message(action, rule, event, {})
+        return _create_alert(rule, event, "warn", message=message, status="success", details={})
+
+
+class ActionDispatcher(ActionExecutor):
+    """Dispatch actions with side effects such as stopping processes or HTTP calls."""
+
+    def __init__(
+        self,
+        *,
+        pid: Optional[int] = None,
+        kill_timeout_sec: float = 5.0,
+        http_timeout_sec: float = 5.0,
+        retries: int = 0,
+    ) -> None:
+        self._pid = pid
+        self._kill_timeout_sec = max(float(kill_timeout_sec), 0.0)
+        self._http_timeout_sec = max(float(http_timeout_sec), 0.0)
+        self._retries = max(int(retries), 0)
+        self._warn_executor = SimpleActionExecutor()
+
+    def execute(
+        self,
+        action: ActionConfig,
+        rule: RuleDefinition,
+        event: Event,
+        window: Sequence[Event],
+    ) -> Alert:
+        handler = getattr(self, f"_handle_{action.kind}", None)
+        if handler is not None:
+            return handler(action, rule, event, window)
+        if action.kind == "warn":
+            return self._warn_executor.execute(action, rule, event, window)
+        raise ValueError(f"Unsupported action '{action.kind}'")
+
+    # ------------------------------------------------------------------
+    # Action handlers
+    # ------------------------------------------------------------------
+
+    def _handle_warn(
+        self,
+        action: ActionConfig,
+        rule: RuleDefinition,
+        event: Event,
+        window: Sequence[Event],
+    ) -> Alert:
+        return self._warn_executor.execute(action, rule, event, window)
+
+    def _handle_stop(
+        self,
+        action: ActionConfig,
+        rule: RuleDefinition,
+        event: Event,
+        window: Sequence[Event],
+    ) -> Alert:
+        pid_value = action.options.get("pid", self._pid)
+        details: Dict[str, Any] = {}
+        if pid_value is None:
+            message = _render_action_message(action, rule, event, {"pid": None})
+            details["error"] = "pid not provided"
+            return _create_alert(rule, event, "stop", message, "error", details)
+        try:
+            pid = int(pid_value)
+        except (TypeError, ValueError):
+            message = _render_action_message(action, rule, event, {"pid": pid_value})
+            details["error"] = "invalid pid"
+            return _create_alert(rule, event, "stop", message, "error", details)
+        timeout_option = action.options.get("timeout") or action.options.get("kill_timeout_sec")
+        try:
+            kill_timeout = (
+                float(timeout_option)
+                if timeout_option is not None
+                else self._kill_timeout_sec
+            )
+        except (TypeError, ValueError):
+            kill_timeout = self._kill_timeout_sec
+        details["pid"] = pid
+        details["timeout"] = kill_timeout
+        signals: List[str] = []
+        terminated = False
+        try:
+            os.kill(pid, signal.SIGTERM)
+            signals.append("SIGTERM")
+        except ProcessLookupError:
+            terminated = True
+            signals.append("SIGTERM")
+        except PermissionError as exc:
+            details["error"] = str(exc)
+            message = _render_action_message(
+                action, rule, event, {"pid": pid, "error": str(exc)}
+            )
+            return _create_alert(rule, event, "stop", message, "error", details)
+        if not terminated:
+            terminated = self._wait_for_exit(pid, kill_timeout)
+        if not terminated:
+            try:
+                os.kill(pid, signal.SIGKILL)
+                signals.append("SIGKILL")
+            except ProcessLookupError:
+                terminated = True
+            except PermissionError as exc:
+                details["error"] = str(exc)
+                message = _render_action_message(
+                    action, rule, event, {"pid": pid, "error": str(exc)}
+                )
+                return _create_alert(rule, event, "stop", message, "error", details)
+            else:
+                terminated = self._wait_for_exit(pid, max(kill_timeout * 0.2, 0.5))
+        if not terminated:
+            terminated = self._wait_for_exit(pid, 0.5)
+        if not terminated and self._is_zombie(pid):
+            terminated = True
+            details["zombie"] = True
+        terminated = terminated or (not self._pid_exists(pid))
+        details["signals"] = signals
+        details["terminated"] = terminated
+        status = "success" if terminated else "error"
+        if not terminated:
+            details.setdefault("error", "process did not terminate")
+        message = _render_action_message(
+            action, rule, event, {"pid": pid, "terminated": terminated}
         )
+        return _create_alert(rule, event, "stop", message, status, details)
+
+    def _wait_for_exit(self, pid: int, timeout: float) -> bool:
+        if timeout <= 0:
+            return not self._pid_exists(pid)
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if not self._pid_exists(pid):
+                return True
+            time.sleep(min(0.2, max(timeout / 10.0, 0.05)))
+        return not self._pid_exists(pid)
+
+    @staticmethod
+    def _pid_exists(pid: int) -> bool:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        return True
+
+    @staticmethod
+    def _is_zombie(pid: int) -> bool:
+        status_path = Path("/proc") / str(pid) / "status"
+        try:
+            with status_path.open("r", encoding="utf-8") as handle:
+                for line in handle:
+                    if line.startswith("State:"):
+                        return "Z" in line
+        except FileNotFoundError:
+            return False
+        except OSError:  # pragma: no cover - defensive
+            return False
+        return False
+
+    def _handle_sentinel(
+        self,
+        action: ActionConfig,
+        rule: RuleDefinition,
+        event: Event,
+        window: Sequence[Event],
+    ) -> Alert:
+        context = _template_context(rule, event, {"action": action.kind})
+        raw_path = action.options.get("path")
+        path_value = _format_action_value(raw_path, context)
+        path = Path(str(path_value))
+        if path.parent and not path.parent.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+        contents = action.options.get("contents")
+        if contents is not None:
+            rendered_contents = _format_action_value(contents, context)
+            payload = _tail(rendered_contents, limit=8192)
+        else:
+            payload = _render_action_message(action, rule, event, {"path": str(path)})
+        append = bool(action.options.get("append", False))
+        try:
+            if append:
+                with path.open("a", encoding="utf-8") as handle:
+                    handle.write(str(payload) + "\n")
+            else:
+                path.write_text(str(payload), encoding="utf-8")
+        except OSError as exc:
+            details = {"path": str(path), "error": str(exc)}
+            message = _render_action_message(
+                action, rule, event, {"path": str(path), "error": str(exc)}
+            )
+            return _create_alert(rule, event, "sentinel", message, "error", details)
+        details = {"path": str(path), "append": append}
+        message = _render_action_message(action, rule, event, {"path": str(path)})
+        return _create_alert(rule, event, "sentinel", message, "success", details)
+
+    def _handle_shell(
+        self,
+        action: ActionConfig,
+        rule: RuleDefinition,
+        event: Event,
+        window: Sequence[Event],
+    ) -> Alert:
+        context = _template_context(rule, event, {"action": action.kind})
+        raw_cmd = action.options.get("cmd")
+        formatted_cmd = _format_action_value(raw_cmd, context)
+        if isinstance(formatted_cmd, str):
+            command = formatted_cmd
+            display_cmd = formatted_cmd
+            shell_flag = True
+        elif isinstance(formatted_cmd, (list, tuple)):
+            command = [str(item) for item in formatted_cmd]
+            display_cmd = " ".join(command)
+            shell_flag = False
+        else:
+            message = _render_action_message(action, rule, event, {"cmd": str(formatted_cmd)})
+            details = {"cmd": str(formatted_cmd), "error": "invalid command"}
+            return _create_alert(rule, event, "shell", message, "error", details)
+        timeout_option = (
+            action.options.get("timeout")
+            or action.options.get("timeout_sec")
+            or self._http_timeout_sec
+        )
+        try:
+            timeout = float(timeout_option) if timeout_option is not None else None
+        except (TypeError, ValueError):
+            timeout = self._http_timeout_sec
+        retries = int(action.options.get("retries", self._retries))
+        attempt = 0
+        details: Dict[str, Any] = {
+            "cmd": display_cmd,
+            "shell": shell_flag,
+            "timeout": timeout,
+        }
+        while attempt <= retries:
+            details.pop("error", None)
+            try:
+                completed = subprocess.run(
+                    command,
+                    shell=shell_flag,
+                    timeout=timeout if timeout and timeout > 0 else None,
+                    capture_output=True,
+                    text=True,
+                )
+                details.update(
+                    returncode=completed.returncode,
+                    stdout=_tail(completed.stdout),
+                    stderr=_tail(completed.stderr),
+                )
+                status = "success" if completed.returncode == 0 else "error"
+                message = _render_action_message(
+                    action,
+                    rule,
+                    event,
+                    {"cmd": display_cmd, "returncode": completed.returncode},
+                )
+                if status == "success" or attempt == retries:
+                    return _create_alert(rule, event, "shell", message, status, details)
+            except Exception as exc:
+                details["error"] = str(exc)
+                if attempt == retries:
+                    message = _render_action_message(
+                        action,
+                        rule,
+                        event,
+                        {"cmd": display_cmd, "error": str(exc)},
+                    )
+                    return _create_alert(rule, event, "shell", message, "error", details)
+            attempt += 1
+            time.sleep(min(0.5 * (2 ** attempt), 2.0))
+        message = _render_action_message(
+            action, rule, event, {"cmd": display_cmd, "returncode": details.get("returncode")}
+        )
+        return _create_alert(rule, event, "shell", message, "error", details)
+
+    def _handle_http(
+        self,
+        action: ActionConfig,
+        rule: RuleDefinition,
+        event: Event,
+        window: Sequence[Event],
+    ) -> Alert:
+        base_context = _template_context(rule, event, {"action": action.kind})
+        raw_url = action.options.get("url")
+        url_value = str(_format_action_value(raw_url, base_context))
+        method = str(action.options.get("method", "POST"))
+        method_upper = method.upper()
+        payload = action.options.get("payload")
+        formatted_payload = (
+            _format_action_value(payload, base_context) if payload is not None else None
+        )
+        headers = action.options.get("headers") or {}
+        formatted_headers = _format_action_value(headers, base_context)
+        if not isinstance(formatted_headers, dict):
+            raise ValueError("HTTP action headers must be a mapping")
+        timeout_option = (
+            action.options.get("timeout")
+            or action.options.get("timeout_sec")
+            or self._http_timeout_sec
+        )
+        try:
+            timeout = float(timeout_option) if timeout_option is not None else None
+        except (TypeError, ValueError):
+            timeout = self._http_timeout_sec
+        retries = int(action.options.get("retries", self._retries))
+        attempt = 0
+        details: Dict[str, Any] = {"url": url_value, "method": method_upper}
+        while attempt <= retries:
+            details.pop("error", None)
+            data_bytes: Optional[bytes] = None
+            headers_copy = {str(k): str(v) for k, v in formatted_headers.items()}
+            if formatted_payload is not None:
+                if isinstance(formatted_payload, (bytes, bytearray)):
+                    data_bytes = bytes(formatted_payload)
+                elif isinstance(formatted_payload, str):
+                    data_bytes = formatted_payload.encode("utf-8")
+                else:
+                    data_bytes = json.dumps(formatted_payload).encode("utf-8")
+                    headers_copy.setdefault("Content-Type", "application/json")
+            request = urllib.request.Request(url_value, data=data_bytes, method=method_upper)
+            for key, value in headers_copy.items():
+                request.add_header(key, value)
+            try:
+                with urllib.request.urlopen(
+                    request, timeout=timeout if timeout and timeout > 0 else None
+                ) as response:
+                    status_code = getattr(response, "status", response.getcode())
+                    body = response.read()
+                body_text = _tail(body.decode("utf-8", errors="replace"))
+                details.update(status_code=status_code, response=body_text)
+                status = "success" if 200 <= status_code < 400 else "error"
+                message = _render_action_message(
+                    action,
+                    rule,
+                    event,
+                    {"url": url_value, "method": method_upper, "status_code": status_code},
+                )
+                if status == "success" or attempt == retries:
+                    return _create_alert(rule, event, "http", message, status, details)
+            except Exception as exc:
+                details["error"] = str(exc)
+                status_code = getattr(exc, "code", None)
+                if status_code is not None:
+                    details["status_code"] = status_code
+                if attempt == retries:
+                    message = _render_action_message(
+                        action,
+                        rule,
+                        event,
+                        {
+                            "url": url_value,
+                            "method": method_upper,
+                            "status_code": details.get("status_code", "error"),
+                            "error": str(exc),
+                        },
+                    )
+                    return _create_alert(rule, event, "http", message, "error", details)
+            attempt += 1
+            time.sleep(min(0.5 * (2 ** attempt), 2.0))
+        message = _render_action_message(
+            action,
+            rule,
+            event,
+            {
+                "url": url_value,
+                "method": method_upper,
+                "status_code": details.get("status_code", "error"),
+            },
+        )
+        return _create_alert(rule, event, "http", message, "error", details)
 
 
 def load_rules(path: str | os.PathLike[str]) -> List[RuleDefinition]:
@@ -805,9 +1351,10 @@ def load_rules(path: str | os.PathLike[str]) -> List[RuleDefinition]:
         window_size = int(window_cfg.get("size", 1))
         if window_size <= 0:
             raise ValueError(f"Rule '{rule_id}' window size must be positive")
-        window_kind = window_cfg.get("kind", DEFAULT_WINDOW_KIND) or DEFAULT_WINDOW_KIND
-        if window_kind != DEFAULT_WINDOW_KIND:
-            raise ValueError(f"Rule '{rule_id}' uses unsupported window kind '{window_kind}'")
+        window_kind_raw = window_cfg.get("kind", DEFAULT_WINDOW_KIND) or DEFAULT_WINDOW_KIND
+        window_kind = str(window_kind_raw).lower()
+        if window_kind not in {DEFAULT_WINDOW_KIND, "rolling"}:
+            raise ValueError(f"Rule '{rule_id}' uses unsupported window kind '{window_kind_raw}'")
         grace_steps = int(rule_data.get("grace_steps", 0))
         if grace_steps < 0:
             raise ValueError(f"Rule '{rule_id}' grace_steps must be non-negative")
@@ -818,7 +1365,7 @@ def load_rules(path: str | os.PathLike[str]) -> List[RuleDefinition]:
         where = SafeExpression(where_expr, []) if where_expr else None
         condition = SafeExpression(condition_expr, AGGREGATOR_FUNCTIONS)
         actions_data = rule_data.get("actions", []) or []
-        warn_actions: List[WarnAction] = []
+        actions: List[ActionConfig] = []
         for action_entry in actions_data:
             if isinstance(action_entry, str):
                 action_name = action_entry
@@ -828,10 +1375,40 @@ def load_rules(path: str | os.PathLike[str]) -> List[RuleDefinition]:
                 params = params or {}
             else:
                 raise ValueError(f"Rule '{rule_id}' has invalid action definition: {action_entry}")
-            if action_name != "warn":
+            if not isinstance(params, dict):
+                raise ValueError(
+                    f"Rule '{rule_id}' action '{action_name}' must use a mapping for configuration"
+                )
+            action_kind = str(action_name).lower()
+            options = dict(params)
+            message_template = options.pop("msg", None) or options.pop("message", None)
+            if message_template is not None and not isinstance(message_template, str):
+                raise ValueError(
+                    f"Rule '{rule_id}' action '{action_name}' message template must be a string"
+                )
+            if action_kind == "warn":
+                actions.append(ActionConfig(kind=action_kind, message_template=message_template, options=options))
+            elif action_kind == "stop":
+                actions.append(ActionConfig(kind=action_kind, message_template=message_template, options=options))
+            elif action_kind == "sentinel":
+                if "path" not in options:
+                    raise ValueError(f"Rule '{rule_id}' sentinel action requires a 'path'")
+                if not isinstance(options["path"], str):
+                    raise ValueError(f"Rule '{rule_id}' sentinel path must be a string")
+                actions.append(ActionConfig(kind=action_kind, message_template=message_template, options=options))
+            elif action_kind == "shell":
+                if "cmd" not in options:
+                    raise ValueError(f"Rule '{rule_id}' shell action requires a 'cmd'")
+                actions.append(ActionConfig(kind=action_kind, message_template=message_template, options=options))
+            elif action_kind == "http":
+                if "url" not in options:
+                    raise ValueError(f"Rule '{rule_id}' http action requires a 'url'")
+                headers = options.get("headers")
+                if headers is not None and not isinstance(headers, dict):
+                    raise ValueError(f"Rule '{rule_id}' http action headers must be a mapping")
+                actions.append(ActionConfig(kind=action_kind, message_template=message_template, options=options))
+            else:
                 raise ValueError(f"Rule '{rule_id}' references unsupported action '{action_name}'")
-            message_template = params.get("msg") if isinstance(params, dict) else None
-            warn_actions.append(WarnAction(message_template=message_template))
         rules.append(
             RuleDefinition(
                 id=rule_id,
@@ -841,19 +1418,22 @@ def load_rules(path: str | os.PathLike[str]) -> List[RuleDefinition]:
                 where=where,
                 grace_steps=grace_steps,
                 cooldown_steps=cooldown_steps,
-                warn_actions=warn_actions,
+                actions=actions,
             )
         )
     return rules
 
 
 __all__ = [
+    "ActionConfig",
+    "ActionDispatcher",
+    "ActionExecutor",
     "Alert",
+    "AlertWriter",
     "Event",
     "MonitorEngine",
     "MonitorReport",
     "RuleDefinition",
-    "WarnAction",
     "canonicalize_event",
     "load_rules",
     "read_events_once",

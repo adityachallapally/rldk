@@ -46,7 +46,14 @@ from rldk.io import (
     write_png,
 )
 from rldk.io import write_json as write_json_report
-from rldk.monitor import MonitorEngine, load_rules, read_events_once, read_stream
+from rldk.monitor import (
+    ActionDispatcher,
+    AlertWriter,
+    MonitorEngine,
+    load_rules,
+    read_events_once,
+    read_stream,
+)
 from rldk.emit import EventWriter
 from rldk.replay import replay
 from rldk.reward import health
@@ -110,6 +117,16 @@ def _parse_json_mapping(raw: Optional[str], field: str) -> Optional[Dict[str, An
         raise ValueError(f"{field} must be a JSON object")
     return data
 
+
+def _derive_alert_text_path(alerts_path: Optional[Path], override: Optional[Path]) -> Optional[Path]:
+    if override is not None:
+        return override
+    if alerts_path is None:
+        return None
+    if alerts_path.suffix:
+        return alerts_path.with_suffix(".txt")
+    return Path(f"{alerts_path}.txt")
+
 app = typer.Typer(
     name="rldk",
     help="RL Debug Kit - Library and CLI for debugging reinforcement learning training runs",
@@ -161,6 +178,38 @@ def monitor(
         "--field-map",
         help="JSON object mapping input keys to canonical event fields.",
     ),
+    pid: Optional[int] = typer.Option(
+        None,
+        "--pid",
+        help="PID of the training process to terminate when stop actions fire.",
+    ),
+    alerts: Path = typer.Option(
+        Path("artifacts/alerts.jsonl"),
+        "--alerts",
+        help="Path to write alert activations as JSONL.",
+        dir_okay=False,
+    ),
+    alerts_txt: Optional[Path] = typer.Option(
+        None,
+        "--alerts-txt",
+        help="Optional path for human-readable alert summaries.",
+        dir_okay=False,
+    ),
+    kill_timeout_sec: float = typer.Option(
+        5.0,
+        "--kill-timeout-sec",
+        help="Seconds to wait between SIGTERM and SIGKILL for stop actions.",
+    ),
+    http_timeout_sec: float = typer.Option(
+        5.0,
+        "--http-timeout-sec",
+        help="Timeout in seconds for shell and HTTP actions.",
+    ),
+    retries: int = typer.Option(
+        0,
+        "--retries",
+        help="Number of retries for shell and HTTP actions.",
+    ),
 ) -> None:
     """Monitor JSONL metrics with streaming or batch analysis."""
     ensure_config_initialized()
@@ -177,16 +226,24 @@ def monitor(
     except Exception as exc:
         typer.echo(f"Failed to load rules: {exc}", err=True)
         raise typer.Exit(1)
-    engine = MonitorEngine(rule_defs)
+    dispatcher = ActionDispatcher(
+        pid=pid,
+        kill_timeout_sec=kill_timeout_sec,
+        http_timeout_sec=http_timeout_sec,
+        retries=retries,
+    )
+    engine = MonitorEngine(rule_defs, action_executor=dispatcher)
+    alerts_text_path = _derive_alert_text_path(alerts, alerts_txt)
+    alert_writer = AlertWriter(alerts, alerts_text_path)
 
     def emit_alerts(alerts):
         for alert in alerts:
-            if getattr(alert, "message", None):
-                typer.echo(alert.message)
+            alert_writer.write(alert)
+            message = alert.summary()
+            if alert.status == "error":
+                typer.echo(message, err=True)
             else:
-                typer.echo(
-                    f"[{alert.rule_id}] {alert.event.name} {alert.event.value:.4f} at step {alert.event.step}"
-                )
+                typer.echo(message)
 
     try:
         if stream is not None:
