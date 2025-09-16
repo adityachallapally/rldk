@@ -365,6 +365,11 @@ def create_dpo_trainer(
     if missing_columns:
         raise ValueError(f"Dataset missing required columns: {missing_columns}")
     
+    # Check for empty strings that could cause tensor issues
+    for col in required_columns:
+        if any(isinstance(val, str) and val.strip() == "" for val in train_dataset[col]):
+            print(f"⚠️  Warning: Dataset contains empty strings in '{col}' column. This may cause training issues.")
+    
     # Prepare models using simplified architecture
     try:
         from transformers import AutoModelForCausalLM, AutoTokenizer
