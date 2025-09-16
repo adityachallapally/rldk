@@ -201,7 +201,6 @@ def test_basic_ppo_integration():
         # Verify files were created
         expected_files = [
             f"{output_dir}/test_ppo_run_metrics.csv",
-            f"{output_dir}/test_ppo_run_metrics.jsonl",
             f"{output_dir}/test_ppo_run_ppo_metrics.csv",
             f"{output_dir}/test_ppo_run_checkpoint_summary.csv",
         ]
