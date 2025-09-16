@@ -1,10 +1,12 @@
 """Specialized monitors for TRL training components."""
 
+from __future__ import annotations
+
 import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Mapping, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -14,6 +16,15 @@ from transformers import (
     TrainerState,
     TrainingArguments,
 )
+
+try:  # pragma: no cover - optional dependency for typing compatibility
+    import torch
+except ImportError:  # pragma: no cover - optional dependency for typing compatibility
+    class _TorchStub:
+        class nn:
+            Module = object
+
+    torch = _TorchStub()  # type: ignore
 
 try:
     from trl import PPOTrainer
@@ -85,6 +96,38 @@ class PPOMetrics:
 class PPOMonitor(TrainerCallback):
     """Specialized monitor for PPO training with advanced analytics."""
 
+    _LOG_KEY_MAPPING = {
+        "ppo/rewards/mean": "rollout_reward_mean",
+        "ppo/rewards/std": "rollout_reward_std",
+        "ppo/rewards/min": "rollout_reward_min",
+        "ppo/rewards/max": "rollout_reward_max",
+        "ppo/rollout/length_mean": "rollout_length_mean",
+        "ppo/rollout/length_std": "rollout_length_std",
+        "ppo/policy/kl_mean": "policy_kl_mean",
+        "ppo/policy/kl_std": "policy_kl_std",
+        "ppo/policy/entropy": "policy_entropy_mean",
+        "ppo/policy/entropy_std": "policy_entropy_std",
+        "ppo/policy/clipfrac": "policy_clip_frac",
+        "ppo/policy/policy_loss": "policy_loss",
+        "ppo/val/policy_loss": "policy_loss",
+        "ppo/val/value_loss": "value_loss",
+        "ppo/val/value_mean": "value_mean",
+        "ppo/val/value_std": "value_std",
+        "ppo/val/mean": "value_mean",
+        "ppo/val/std": "value_std",
+        "ppo/advantages/mean": "advantage_mean",
+        "ppo/advantages/std": "advantage_std",
+        "ppo/efficiency/tokens_per_second": "tokens_per_second",
+        "ppo/efficiency/samples_per_second": "samples_per_second",
+        "ppo/resources/gpu_utilization": "gpu_utilization",
+        "ppo/health/policy_collapse_risk": "policy_collapse_risk",
+        "ppo/health/reward_hacking_risk": "reward_hacking_risk",
+        "ppo/health/training_stability": "training_stability",
+        "ppo/training/clip_ratio": "clip_ratio",
+        "learning_rate": "learning_rate",
+        "grad_norm": "gradient_norm",
+    }
+
     def __init__(
         self,
         output_dir: Optional[Union[str, Path]] = None,
@@ -126,6 +169,7 @@ class PPOMonitor(TrainerCallback):
         # Metrics storage
         self.ppo_metrics_history: List[PPOMetrics] = []
         self.current_ppo_metrics = PPOMetrics()
+        self._last_logged_step: int = 0
 
         # Advanced analytics
         self.reward_distribution_history: List[List[float]] = []
@@ -153,58 +197,83 @@ class PPOMonitor(TrainerCallback):
 
     def on_log(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, logs: Dict[str, float], **kwargs):
         """Extract PPO metrics from training logs."""
-        # PPO rollout metrics
-        if 'ppo/rewards/mean' in logs:
-            self.current_ppo_metrics.rollout_reward_mean = logs['ppo/rewards/mean']
-        if 'ppo/rewards/std' in logs:
-            self.current_ppo_metrics.rollout_reward_std = logs['ppo/rewards/std']
-        if 'ppo/rewards/min' in logs:
-            self.current_ppo_metrics.rollout_reward_min = logs['ppo/rewards/min']
-        if 'ppo/rewards/max' in logs:
-            self.current_ppo_metrics.rollout_reward_max = logs['ppo/rewards/max']
+        step = getattr(state, "global_step", len(self.ppo_metrics_history))
+        self.log_metrics(step=step, metrics=logs)
 
-        # PPO policy metrics
-        if 'ppo/policy/kl_mean' in logs:
-            self.current_ppo_metrics.policy_kl_mean = logs['ppo/policy/kl_mean']
-            self.kl_divergence_history.append(logs['ppo/policy/kl_mean'])
-        if 'ppo/policy/kl_std' in logs:
-            self.current_ppo_metrics.policy_kl_std = logs['ppo/policy/kl_std']
-        if 'ppo/policy/entropy' in logs:
-            self.current_ppo_metrics.policy_entropy_mean = logs['ppo/policy/entropy']
-            self.policy_entropy_history.append(logs['ppo/policy/entropy'])
-        if 'ppo/policy/clipfrac' in logs:
-            self.current_ppo_metrics.policy_clip_frac = logs['ppo/policy/clipfrac']
-        # Check both policy loss key variants for backward compatibility
-        if 'ppo/policy/policy_loss' in logs:
-            self.current_ppo_metrics.policy_loss = logs['ppo/policy/policy_loss']
-        elif 'ppo/val/policy_loss' in logs:
-            self.current_ppo_metrics.policy_loss = logs['ppo/val/policy_loss']
+    def log_metrics(self, step: int | None, metrics: Mapping[str, Any]) -> PPOMetrics:
+        """Record PPO metrics outside of the Hugging Face Trainer callbacks.
 
-        # PPO value function metrics
-        if 'ppo/val/value_loss' in logs:
-            self.current_ppo_metrics.value_loss = logs['ppo/val/value_loss']
-        if 'ppo/val/mean' in logs:
-            self.current_ppo_metrics.value_mean = logs['ppo/val/mean']
-        if 'ppo/val/std' in logs:
-            self.current_ppo_metrics.value_std = logs['ppo/val/std']
+        This helper allows simulations, tests, and custom training loops to
+        feed PPO metrics directly into the monitor while still benefiting from
+        alerting and advanced analytics.
 
-        # Learning metrics
-        if 'learning_rate' in logs:
-            self.current_ppo_metrics.learning_rate = logs['learning_rate']
-        if 'grad_norm' in logs:
-            self.current_ppo_metrics.gradient_norm = logs['grad_norm']
+        Args:
+            step: The global training step associated with the metrics.
+            metrics: Mapping of metric values. Keys can either use the
+                ``PPOMetrics`` field names or the TRL logging keys
+                (e.g. ``"ppo/rewards/mean"``).
+        Returns:
+            The :class:`PPOMetrics` instance that was stored for ``step``.
+        """
 
-        # Advanced analytics
+        if step is None:
+            step = len(self.ppo_metrics_history)
+
+        try:
+            step = int(step)
+        except (TypeError, ValueError) as exc:  # pragma: no cover - defensive programming
+            raise TypeError("step must be an integer value") from exc
+
+        if not isinstance(metrics, Mapping):
+            raise TypeError("metrics must be provided as a mapping")
+
+        normalized_metrics = self._normalize_metrics_dict(metrics)
+        if not normalized_metrics:
+            # Nothing to record; keep current metrics unchanged
+            return PPOMetrics(**self.current_ppo_metrics.to_dict())
+
+        self._last_logged_step = step
+
+        current_data = self.current_ppo_metrics.to_dict()
+        current_data.update(normalized_metrics)
+        self.current_ppo_metrics = PPOMetrics(**current_data)
+
+        if "policy_kl_mean" in normalized_metrics:
+            self.kl_divergence_history.append(normalized_metrics["policy_kl_mean"])
+        if "policy_entropy_mean" in normalized_metrics:
+            self.policy_entropy_history.append(normalized_metrics["policy_entropy_mean"])
+
         if self.enable_advanced_analytics:
             self._analyze_policy_health()
             self._detect_reward_hacking()
             self._monitor_convergence()
 
-        # Store metrics AFTER log values are applied
-        self.ppo_metrics_history.append(PPOMetrics(**self.current_ppo_metrics.to_dict()))
-
-        # Check for PPO-specific alerts AFTER metrics are stored
+        logged_metrics = PPOMetrics(**self.current_ppo_metrics.to_dict())
+        self.ppo_metrics_history.append(logged_metrics)
         self._check_ppo_alerts()
+
+        return logged_metrics
+
+    def _normalize_metrics_dict(self, metrics: Mapping[str, Any]) -> Dict[str, float]:
+        """Normalize raw metric keys to ``PPOMetrics`` field names."""
+
+        normalized: Dict[str, float] = {}
+        valid_fields = self.current_ppo_metrics.__dataclass_fields__.keys()
+
+        for key, value in metrics.items():
+            if value is None:
+                continue
+
+            normalized_key = self._LOG_KEY_MAPPING.get(key, key)
+            if normalized_key not in valid_fields:
+                continue
+
+            try:
+                normalized[normalized_key] = float(value)
+            except (TypeError, ValueError):
+                continue
+
+        return normalized
 
     def _extract_ppo_metrics_from_logs(self, state: TrainerState):
         """Extract PPO metrics from trainer state."""
@@ -318,10 +387,11 @@ class PPOMonitor(TrainerCallback):
 
     def _add_ppo_alert(self, alert_type: str, message: str):
         """Add a PPO-specific alert."""
+        alert_step = getattr(self, "_last_logged_step", len(self.ppo_metrics_history))
         alert = {
             "type": alert_type,
             "message": message,
-            "step": len(self.ppo_metrics_history),
+            "step": alert_step,
             "timestamp": time.time(),
             "severity": "warning",
             "ppo_metrics": self.current_ppo_metrics.to_dict()
@@ -447,6 +517,83 @@ class CheckpointMonitor(TrainerCallback):
 
         print(f"💾 Checkpoint Monitor initialized - Run ID: {self.run_id}")
 
+    def log_checkpoint(
+        self,
+        step: int | None,
+        checkpoint_data: Mapping[str, Any],
+        model: torch.nn.Module | None = None,
+    ) -> CheckpointMetrics:
+        """Record checkpoint metrics from external integrations.
+
+        Args:
+            step: Global training step when the checkpoint was produced.
+            checkpoint_data: Mapping containing checkpoint statistics.
+                Keys should match :class:`CheckpointMetrics` fields when
+                available.
+            model: Optional model instance whose parameters and gradients
+                should be analyzed for additional insights.
+        Returns:
+            The :class:`CheckpointMetrics` instance that was recorded.
+        """
+
+        if step is None:
+            step = len(self.checkpoint_metrics_history)
+
+        if not isinstance(checkpoint_data, Mapping):
+            raise TypeError("checkpoint_data must be provided as a mapping")
+
+        checkpoint_dict = dict(checkpoint_data)
+
+        try:
+            step = int(step)
+        except (TypeError, ValueError) as exc:  # pragma: no cover - defensive programming
+            raise TypeError("step must be an integer value") from exc
+
+        epoch_value = checkpoint_dict.get("epoch", 0.0)
+        timestamp_value = checkpoint_dict.get("timestamp", time.time())
+
+        try:
+            epoch_float = float(epoch_value)
+        except (TypeError, ValueError):  # pragma: no cover - fallback when casting fails
+            epoch_float = 0.0
+
+        try:
+            timestamp_float = float(timestamp_value)
+        except (TypeError, ValueError):  # pragma: no cover - fallback when casting fails
+            timestamp_float = float(time.time())
+
+        metrics = CheckpointMetrics(
+            step=step,
+            epoch=epoch_float,
+            timestamp=timestamp_float,
+        )
+
+        for field_name in metrics.__dataclass_fields__:
+            if field_name in {"step", "epoch", "timestamp"}:
+                continue
+            if field_name in checkpoint_dict and checkpoint_dict[field_name] is not None:
+                setattr(metrics, field_name, checkpoint_dict[field_name])
+
+        if model is not None:
+            if self.enable_parameter_analysis:
+                self._analyze_parameters(model, metrics)
+            if self.enable_gradient_analysis:
+                self._analyze_gradients(model, metrics)
+
+        self._calculate_health_indicators(metrics)
+        self.checkpoint_metrics_history.append(metrics)
+
+        self._save_checkpoint_analysis(
+            metrics,
+            model,
+            step=metrics.step,
+            epoch=metrics.epoch,
+        )
+
+        print(f"💾 Checkpoint {step} logged - Health Score: {metrics.model_health_score:.3f}")
+
+        return metrics
+
     def on_save(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
         """Analyze checkpoint when saved."""
         model = kwargs.get('model')
@@ -475,7 +622,12 @@ class CheckpointMonitor(TrainerCallback):
         self.checkpoint_metrics_history.append(checkpoint_metrics)
 
         # Save checkpoint analysis
-        self._save_checkpoint_analysis(checkpoint_metrics, model, state)
+        self._save_checkpoint_analysis(
+            checkpoint_metrics,
+            model,
+            step=state.global_step,
+            epoch=state.epoch,
+        )
 
         print(f"💾 Checkpoint {state.global_step} analyzed - "
               f"Health Score: {checkpoint_metrics.model_health_score:.3f}")
@@ -545,8 +697,19 @@ class CheckpointMonitor(TrainerCallback):
             (1 - min(1, metrics.parameter_drift)) * 0.4
         )
 
-    def _save_checkpoint_analysis(self, metrics: CheckpointMetrics, model, state: TrainerState):
+    def _save_checkpoint_analysis(
+        self,
+        metrics: CheckpointMetrics,
+        model: torch.nn.Module | None,
+        *,
+        step: int | None = None,
+        epoch: float | None = None,
+    ):
         """Save detailed checkpoint analysis."""
+
+        checkpoint_step = metrics.step if step is None else int(step)
+        checkpoint_epoch = metrics.epoch if epoch is None else float(epoch)
+
         analysis = {
             "checkpoint_info": metrics.to_dict(),
             "model_info": {
@@ -555,11 +718,11 @@ class CheckpointMonitor(TrainerCallback):
                 "model_size_mb": metrics.model_size_mb,
             },
             "timestamp": time.time(),
-            "step": state.global_step,
-            "epoch": state.epoch
+            "step": checkpoint_step,
+            "epoch": checkpoint_epoch
         }
 
-        analysis_path = self.output_dir / f"{self.run_id}_checkpoint_{state.global_step}.json"
+        analysis_path = self.output_dir / f"{self.run_id}_checkpoint_{checkpoint_step}.json"
         with open(analysis_path, "w") as f:
             json.dump(analysis, f, indent=2)
 
