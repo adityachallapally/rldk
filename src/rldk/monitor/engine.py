@@ -734,9 +734,10 @@ def _aggregator_functions(window: Sequence[Event]) -> Dict[str, Callable[..., An
         return all(bool(item) for item in data)
 
     def count_fn(arg: Any = None) -> int:
-        if isinstance(arg, WindowExpression):
-            return len(arg)
-        return len(window)
+        if arg is None:
+            return len(window)
+        data = _extract_series(arg, window)
+        return sum(1 for item in data if bool(item))
 
     return {
         "mean": mean_fn,

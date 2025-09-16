@@ -3,13 +3,14 @@ import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import List
 
 import pytest
 from typer.testing import CliRunner
 
 from rldk.cli import app
 from rldk.emit import EventWriter
-from rldk.monitor import Event, MonitorEngine, load_rules, read_stream
+from rldk.monitor import Alert, Event, MonitorEngine, load_rules, read_stream
 
 
 @pytest.fixture
@@ -135,6 +136,32 @@ rules:
     assert rule_summary["activations"] == 2
     assert rule_summary["first_activation"]["step"] == 2
     assert rule_summary["last_activation"]["step"] == 6
+
+
+def test_count_aggregator_respects_predicate(tmp_path: Path) -> None:
+    rules_path = tmp_path / "rules.yaml"
+    rules_path.write_text(
+        """
+rules:
+  - id: count_high_kl
+    where: name == "kl"
+    condition: count(value > 0.5) >= 3
+    window:
+      size: 4
+    actions:
+      - warn: {}
+"""
+    )
+    rules = load_rules(rules_path)
+    engine = MonitorEngine(rules)
+
+    values = [0.6, 0.1, 0.2, 0.3, 0.7, 0.8, 0.9]
+    alerts: List[Alert] = []
+    for idx, val in enumerate(values, start=1):
+        event = Event(time=_now_iso(), step=idx, name="kl", value=val)
+        alerts.extend(engine.process_event(event))
+
+    assert [alert.event.step for alert in alerts] == [7]
 
 
 def test_monitor_cli_once_writes_report(tmp_path: Path, runner: CliRunner) -> None:
