@@ -1,0 +1,37 @@
+# Example rules for monitoring training metrics
+rules:
+  - id: stop_on_high_kl
+    where: name == "kl"
+    condition: value > 0.35
+    window:
+      size: 5
+      kind: consecutive
+    cooldown_steps: 5
+    grace_steps: 0
+    actions:
+      - warn:
+          msg: "KL {value:.3f} exceeded threshold at step {step}"
+  
+  - id: low_reward_alert
+    where: name == "reward"
+    condition: value < -0.5
+    window:
+      size: 3
+      kind: consecutive
+    cooldown_steps: 10
+    grace_steps: 5
+    actions:
+      - warn:
+          msg: "Low reward {value:.3f} detected at step {step}"
+  
+  - id: gradient_explosion
+    where: name == "grad_norm"
+    condition: value > 1.8
+    window:
+      size: 2
+      kind: consecutive
+    cooldown_steps: 0
+    grace_steps: 0
+    actions:
+      - warn:
+          msg: "Gradient explosion detected: {value:.3f} at step {step}"

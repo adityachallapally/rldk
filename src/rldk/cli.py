@@ -2621,5 +2621,121 @@ def card(
         raise typer.Exit(1)
 
 
+# Import monitor and emit modules
+from rldk.monitor import stream_monitor, batch_monitor
+from rldk.emit import EventWriter
+
+
+@app.command(name="monitor")
+def monitor_command(
+    stream: Optional[str] = typer.Option(None, "--stream", help="Stream path or '-' for stdin"),
+    once: Optional[str] = typer.Option(None, "--once", help="Batch mode: process file once"),
+    rules: str = typer.Option(..., "--rules", help="Rules YAML file"),
+    pid: Optional[int] = typer.Option(None, "--pid", help="Process ID to monitor (not implemented yet)"),
+    field_map: Optional[str] = typer.Option(None, "--field-map", help="JSON field mapping"),
+    alerts: Optional[str] = typer.Option(None, "--alerts", help="Alerts output file"),
+    report: Optional[str] = typer.Option(None, "--report", help="Report output file"),
+    cooldown_steps: int = typer.Option(0, "--cooldown-steps", help="Default cooldown steps"),
+    grace_steps: int = typer.Option(0, "--grace-steps", help="Default grace steps"),
+    kill_timeout_sec: int = typer.Option(5, "--kill-timeout-sec", help="Kill timeout (not implemented yet)"),
+    http_timeout_sec: int = typer.Option(30, "--http-timeout-sec", help="HTTP timeout (not implemented yet)"),
+    retries: int = typer.Option(3, "--retries", help="Retry count (not implemented yet)"),
+):
+    """Monitor JSONL events with live streaming or batch analysis."""
+    import json
+    
+    # Parse field mapping
+    field_mapping = None
+    if field_map:
+        try:
+            field_mapping = json.loads(field_map)
+        except json.JSONDecodeError as e:
+            typer.echo(f"Error parsing field-map JSON: {e}", err=True)
+            raise typer.Exit(1)
+    
+    # Validate input
+    if not stream and not once:
+        typer.echo("Error: Must specify either --stream or --once", err=True)
+        raise typer.Exit(1)
+    
+    if stream and once:
+        typer.echo("Error: Cannot specify both --stream and --once", err=True)
+        raise typer.Exit(1)
+    
+    try:
+        if stream:
+            # Streaming mode
+            stream_monitor(
+                path_or_stdin=stream,
+                rules_file=rules,
+                alerts_file=alerts,
+                field_map=field_mapping
+            )
+        else:
+            # Batch mode
+            report_data = batch_monitor(
+                path=once,
+                rules_file=rules,
+                report_file=report,
+                field_map=field_mapping
+            )
+            
+            # Print summary
+            typer.echo(f"Processed {len(report_data.get('last_seen_metrics', {}))} metrics")
+            typer.echo(f"Total alerts: {report_data.get('total_alerts', 0)}")
+            
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+@app.command(name="emit")
+def emit_command(
+    to: str = typer.Option(..., "--to", help="Output JSONL file path"),
+    name: str = typer.Option(..., "--name", help="Metric name"),
+    value: float = typer.Option(..., "--value", help="Metric value"),
+    step: int = typer.Option(..., "--step", help="Step number"),
+    time: Optional[str] = typer.Option(None, "--time", help="ISO8601 timestamp"),
+    run_id: Optional[str] = typer.Option(None, "--run-id", help="Run ID"),
+    tags: Optional[str] = typer.Option(None, "--tags", help="JSON tags object"),
+    meta: Optional[str] = typer.Option(None, "--meta", help="JSON meta object"),
+):
+    """Emit a single event to JSONL file."""
+    import json
+    
+    # Parse optional JSON fields
+    tags_dict = None
+    if tags:
+        try:
+            tags_dict = json.loads(tags)
+        except json.JSONDecodeError as e:
+            typer.echo(f"Error parsing tags JSON: {e}", err=True)
+            raise typer.Exit(1)
+    
+    meta_dict = None
+    if meta:
+        try:
+            meta_dict = json.loads(meta)
+        except json.JSONDecodeError as e:
+            typer.echo(f"Error parsing meta JSON: {e}", err=True)
+            raise typer.Exit(1)
+    
+    try:
+        with EventWriter(to, run_id) as writer:
+            writer.log(
+                step=step,
+                name=name,
+                value=value,
+                tags=tags_dict,
+                meta=meta_dict
+            )
+        
+        typer.echo(f"Emitted event: {name}={value} at step {step}")
+        
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
 if __name__ == "__main__":
     app()
