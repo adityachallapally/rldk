@@ -4,7 +4,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -46,6 +46,8 @@ from rldk.io import (
     write_png,
 )
 from rldk.io import write_json as write_json_report
+from rldk.monitor import MonitorEngine, load_rules, read_events_once, read_stream
+from rldk.emit import EventWriter
 from rldk.replay import replay
 from rldk.reward import health
 
@@ -85,6 +87,29 @@ def ensure_config_initialized():
         # For other errors, log but don't fail
         logging.warning(f"Configuration initialization warning: {e}")
 
+
+def _parse_field_map_option(field_map: Optional[str]) -> Optional[Dict[str, str]]:
+    if not field_map:
+        return None
+    try:
+        data = json.loads(field_map)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid JSON for field map: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ValueError("field map must be a JSON object mapping source keys to canonical keys")
+    return {str(key): str(value) for key, value in data.items()}
+
+def _parse_json_mapping(raw: Optional[str], field: str) -> Optional[Dict[str, Any]]:
+    if raw is None:
+        return None
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{field} must be valid JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ValueError(f"{field} must be a JSON object")
+    return data
+
 app = typer.Typer(
     name="rldk",
     help="RL Debug Kit - Library and CLI for debugging reinforcement learning training runs",
@@ -100,6 +125,137 @@ evals_app = typer.Typer(name="evals", help="Evaluation suite commands")
 app.add_typer(forensics_app, name="forensics")
 app.add_typer(reward_app, name="reward")
 app.add_typer(evals_app, name="evals")
+
+@app.command(name="monitor")
+def monitor(
+    stream: Optional[str] = typer.Option(
+        None,
+        "--stream",
+        help="Path to a JSONL metrics file or '-' to read from stdin.",
+    ),
+    once: Optional[Path] = typer.Option(
+        None,
+        "--once",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        help="Analyze an existing JSONL metrics file once and exit.",
+    ),
+    rules: Path = typer.Option(
+        ...,
+        "--rules",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        help="Path to a YAML rules file.",
+    ),
+    report: Optional[Path] = typer.Option(
+        None,
+        "--report",
+        help="Optional path to write the monitoring summary report as JSON.",
+    ),
+    field_map: Optional[str] = typer.Option(
+        None,
+        "--field-map",
+        help="JSON object mapping input keys to canonical event fields.",
+    ),
+) -> None:
+    """Monitor JSONL metrics with streaming or batch analysis."""
+    ensure_config_initialized()
+    if (stream is None) == (once is None):
+        typer.echo("Provide exactly one of --stream or --once.", err=True)
+        raise typer.Exit(1)
+    try:
+        mapping = _parse_field_map_option(field_map)
+    except ValueError as exc:
+        typer.echo(f"Invalid field map: {exc}", err=True)
+        raise typer.Exit(1)
+    try:
+        rule_defs = load_rules(rules)
+    except Exception as exc:
+        typer.echo(f"Failed to load rules: {exc}", err=True)
+        raise typer.Exit(1)
+    engine = MonitorEngine(rule_defs)
+
+    def emit_alerts(alerts):
+        for alert in alerts:
+            if getattr(alert, "message", None):
+                typer.echo(alert.message)
+            else:
+                typer.echo(
+                    f"[{alert.rule_id}] {alert.event.name} {alert.event.value:.4f} at step {alert.event.step}"
+                )
+
+    try:
+        if stream is not None:
+            for event in read_stream(stream, field_map=mapping):
+                emit_alerts(engine.process_event(event))
+        else:
+            events = read_events_once(once, field_map=mapping)
+            for event in events:
+                emit_alerts(engine.process_event(event))
+    except KeyboardInterrupt:
+        typer.echo("Monitoring interrupted by user", err=True)
+    except Exception as exc:
+        typer.echo(f"Monitoring failed: {exc}", err=True)
+        raise typer.Exit(1)
+
+    report_payload = engine.generate_report().to_dict()
+    if report is not None:
+        try:
+            if report.parent and not report.parent.exists():
+                report.parent.mkdir(parents=True, exist_ok=True)
+            report.write_text(json.dumps(report_payload, indent=2, sort_keys=True))
+        except Exception as exc:
+            typer.echo(f"Failed to write report: {exc}", err=True)
+            raise typer.Exit(1)
+    elif once is not None:
+        typer.echo(json.dumps(report_payload, indent=2, sort_keys=True))
+
+
+@app.command(name="emit")
+def emit_event(
+    to: Path = typer.Option(
+        ...,
+        "--to",
+        help="Path to the JSONL file that should receive the event.",
+    ),
+    name: str = typer.Option(..., "--name", help="Metric name."),
+    value: float = typer.Option(..., "--value", help="Metric value."),
+    step: int = typer.Option(..., "--step", help="Training step associated with the metric."),
+    time: Optional[str] = typer.Option(None, "--time", help="ISO8601 timestamp for the event."),
+    run_id: Optional[str] = typer.Option(None, "--run-id", help="Optional identifier for the training run."),
+    tags: Optional[str] = typer.Option(None, "--tags", help="JSON object of tag key/value pairs."),
+    meta: Optional[str] = typer.Option(None, "--meta", help="JSON object of metadata values."),
+) -> None:
+    """Append a canonical monitoring event to a JSONL file."""
+    ensure_config_initialized()
+    try:
+        tags_payload = _parse_json_mapping(tags, "tags")
+        meta_payload = _parse_json_mapping(meta, "meta")
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1)
+    writer = EventWriter(to)
+    try:
+        event = writer.log(
+            step=step,
+            name=name,
+            value=value,
+            time=time,
+            run_id=run_id,
+            tags=tags_payload,
+            meta=meta_payload,
+        )
+    except ValueError as exc:
+        typer.echo(f"Failed to emit event: {exc}", err=True)
+        raise typer.Exit(1)
+    finally:
+        writer.close()
+    typer.echo(json.dumps(event, indent=2, sort_keys=True))
+
 
 
 # ============================================================================
