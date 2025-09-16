@@ -591,7 +591,7 @@ def _metric_key(event: Event) -> MetricKey:
 class MonitorEngine:
     """Evaluate rules against incoming events."""
 
-    def __init__(self, rules: Sequence[RuleDefinition], pid: Optional[int] = None):
+    def __init__(self, rules: Sequence[RuleDefinition], pid: Optional[int] = None, kill_timeout_sec: int = 5, http_timeout_sec: int = 10, retries: int = 0):
         if not rules:
             raise ValueError("MonitorEngine requires at least one rule")
         self._rules = list(rules)
@@ -601,6 +601,9 @@ class MonitorEngine:
         self._stats: Dict[str, RuleStats] = defaultdict(RuleStats)
         self._alerts: List[Alert] = []
         self._pid = pid
+        self._kill_timeout_sec = kill_timeout_sec
+        self._http_timeout_sec = http_timeout_sec
+        self._retries = retries
 
     def process_event(self, event: Event) -> List[Alert]:
         fired_alerts: List[Alert] = []
@@ -935,6 +938,20 @@ def _execute_shell_action(action: ShellAction, rule: RuleDefinition, event: Even
     return {"success": False, "error": "All retries failed"}
 
 
+def _template_dict_values(obj: Any, context: Dict[str, Any]) -> Any:
+    """Safely template dictionary values recursively, preserving JSON structure."""
+    if isinstance(obj, dict):
+        return {k: _template_dict_values(v, context) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_template_dict_values(item, context) for item in obj]
+    elif isinstance(obj, str):
+        try:
+            return obj.format(**context)
+        except (KeyError, ValueError):
+            return obj  # Return original if templating fails
+    else:
+        return obj
+
 def _execute_http_action(action: HttpAction, rule: RuleDefinition, event: Event) -> Dict[str, Any]:
     """Execute HTTP request action with templating."""
     try:
@@ -950,7 +967,7 @@ def _execute_http_action(action: HttpAction, rule: RuleDefinition, event: Event)
     
     try:
         if action.payload:
-            payload = json.loads(json.dumps(action.payload).format(**template_context))
+            payload = _template_dict_values(action.payload, template_context)
         else:
             payload = template_context
     except Exception as e:

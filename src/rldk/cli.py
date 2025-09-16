@@ -200,7 +200,7 @@ def monitor(
         from rldk.monitor.writers import AlertWriter
         alert_writer = AlertWriter(str(alerts_path), str(alerts_txt_path))
     
-    engine = MonitorEngine(rule_defs, pid=pid)
+    engine = MonitorEngine(rule_defs, pid=pid, kill_timeout_sec=kill_timeout_sec, http_timeout_sec=http_timeout_sec, retries=retries)
 
     def emit_alerts(alerts):
         for alert in alerts:
