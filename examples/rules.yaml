@@ -1,0 +1,51 @@
+# Example monitoring rules demonstrating gating actions
+rules:
+  - id: stop_on_high_kl
+    where: name == "kl"
+    condition: value > 0.35
+    window:
+      size: 5
+      kind: consecutive
+    cooldown_steps: 5
+    actions:
+      - warn:
+          msg: "KL {value:.3f} exceeded threshold at step {step}"
+      - stop: {}
+
+  - id: sentinel_on_low_reward
+    where: name == "reward"
+    condition: value < -0.5
+    window:
+      size: 3
+      kind: rolling
+    actions:
+      - sentinel:
+          path: "artifacts/low_reward_alert.txt"
+
+  - id: shell_on_high_grad_norm
+    where: name == "grad_norm"
+    condition: value > 3.0
+    window:
+      size: 2
+      kind: consecutive
+    actions:
+      - shell:
+          command: "echo 'High gradient norm detected: {value:.3f} at step {step}' >> artifacts/grad_norm_alerts.log"
+
+  - id: http_on_extreme_values
+    where: name == "kl" or name == "reward"
+    condition: value > 0.8 or value < -0.8
+    window:
+      size: 1
+      kind: consecutive
+    actions:
+      - http:
+          url: "http://httpbin.org/post"
+          method: "POST"
+          payload:
+            alert: "Extreme {name} value detected"
+            value: "{value:.3f}"
+            step: "{step}"
+            timestamp: "{time}"
+          timeout_sec: 10
+          retries: 2
