@@ -793,9 +793,17 @@ def main():
     # 9. Save Detailed Results
     print("\n9. Saving detailed results...")
 
-    detailed_results = {
-        "grid_search_results": grid_results,
-        "random_search_results": random_results,
+    results_path = Path("./hyperparameter_tuning_results.jsonl")
+    records: List[Dict[str, Any]] = []
+
+    for result in grid_results:
+        records.append({"record_type": "grid_search_result", **result})
+
+    for result in random_results:
+        records.append({"record_type": "random_search_result", **result})
+
+    summary_record = {
+        "record_type": "summary",
         "best_grid_result": best_grid_result,
         "best_random_result": best_random_result,
         "best_overall_result": best_overall,
@@ -803,14 +811,17 @@ def main():
             "grid_search_time": grid_time,
             "random_search_time": random_time,
             "total_experiments": len(grid_results) + len(random_results),
-            "best_overall_reward": best_overall['avg_reward']
-        }
+            "best_overall_reward": best_overall['avg_reward'],
+        },
     }
 
-    with open("./hyperparameter_tuning_results.json", "w") as f:
-        json.dump(detailed_results, f, indent=2, default=str)
+    records.append(summary_record)
 
-    print("💾 Detailed results saved to ./hyperparameter_tuning_results.json")
+    with results_path.open("w") as f:
+        for record in records:
+            f.write(json.dumps(record, default=str) + "\n")
+
+    print(f"💾 Detailed results saved to {results_path}")
 
     # 10. Finish Experiment
     print("\n10. Finishing experiment...")
@@ -826,7 +837,7 @@ def main():
 
     print("\n📁 Files created:")
     print(f"   - {config.output_dir}/{summary['experiment_id']}/ - Experiment data")
-    print("   - ./hyperparameter_tuning_results.json - Detailed results")
+    print("   - ./hyperparameter_tuning_results.jsonl - Detailed results (JSONL)")
     print("   - ./hyperparameter_tuning_plots.png - Analysis plots")
 
     # 11. Summary

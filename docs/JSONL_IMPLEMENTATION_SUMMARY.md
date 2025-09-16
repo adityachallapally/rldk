@@ -137,7 +137,7 @@ Each JSONL line contains a complete Event object with the following structure:
 ```
 {run_id}_events.jsonl          # Per-step training events (JSONL format)
 {run_id}_metrics.csv           # Aggregated metrics (CSV format)
-{run_id}_metrics.json          # Aggregated metrics (JSON format)
+{run_id}_metrics.jsonl         # Per-step metrics (JSONL format)
 {run_id}_alerts.json           # Training alerts and warnings
 {run_id}_final_report.json     # Final training summary
 ```
