@@ -124,6 +124,30 @@ with seed_context(123):
 # rldk seed --env --validate
 ```
 
+### **Live JSONL Monitoring (Framework-Agnostic)**
+Observe any trainer in real time by streaming JSONL metrics into the `rldk monitor` CLI. Built-in rule presets and field-map presets
+make it a zero-code add-on for PPO, TRL, Accelerate, and OpenRLHF workflows.
+
+```bash
+# Stream the demo loop directly into the monitor (no files required)
+python examples/minimal_streaming_loop.py \
+  | rldk monitor --rules ppo_safe --preset trl --alerts artifacts/alerts.jsonl
+
+# Or point the monitor at a directory of JSONL files (tails the newest)
+rldk monitor --stream artifacts --rules ppo_strict --preset accelerate --pid <trainer_pid>
+
+# Batch analysis of a finished run with a custom rules file
+rldk monitor --once artifacts/run.jsonl --rules my_rules.yaml --report artifacts/report.json
+```
+
+Key conveniences:
+
+- **Rule presets** – `ppo_safe`, `ppo_strict`, and `dpo_basic` cover common KL, reward, and gradient gates so you can start without writing YAML.
+- **Field-map presets** – `--preset trl|accelerate|openrlhf` normalizes popular logging key conventions; combine with `--field-map` for custom tweaks.
+- **Directory tailing** – Passing a directory to `--stream` automatically follows the newest `*.jsonl` file and handles rotation.
+- **Environment hook** – Set `RLDK_METRICS_PATH` to auto-tail a metrics file without specifying `--stream`; piping JSONL to stdin also just works.
+- **Ready-made emitter** – `examples/minimal_streaming_loop.py` shows how to emit canonical events and responds to monitor stop actions out of the box.
+
 ### **Reward Model Health Analysis**
 Comprehensive reward model analysis and drift detection:
 

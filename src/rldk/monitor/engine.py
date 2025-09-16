@@ -14,9 +14,23 @@ from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Deque, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
+from typing import (
+    Any,
+    Callable,
+    Deque,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+)
 
 import yaml
+
+from .presets import RULE_PRESETS, get_rule_preset
 
 logger = logging.getLogger(__name__)
 
@@ -494,24 +508,76 @@ def read_stream(
                 logger.warning("Skipping invalid stdin event: %s", exc)
         return
 
-    path = Path(path_or_stdin)
+    raw_target = str(path_or_stdin)
+    base_path = Path(raw_target)
     buffer = ""
     handle = None
     current_inode: Optional[int] = None
+    treat_as_directory = base_path.is_dir() or raw_target.endswith(os.sep)
+    watch_directory: Optional[Path] = base_path if treat_as_directory else None
+    active_path: Optional[Path] = None if treat_as_directory else base_path
 
-    def _open_file() -> Optional[Any]:
+    def _open_file(target: Path) -> Optional[Any]:
         nonlocal handle, current_inode
         try:
-            handle = path.open("r", encoding="utf-8", errors="replace")
+            handle = target.open("r", encoding="utf-8", errors="replace")
             current_inode = os.fstat(handle.fileno()).st_ino
             return handle
         except FileNotFoundError:
             return None
 
+    def _select_latest_jsonl(directory: Path) -> Optional[Path]:
+        try:
+            if not directory.exists():
+                return None
+        except OSError:
+            return None
+        newest: Optional[Path] = None
+        newest_mtime = -1.0
+        for candidate in directory.glob("*.jsonl"):
+            try:
+                stat_result = candidate.stat()
+            except FileNotFoundError:
+                continue
+            mtime = stat_result.st_mtime
+            if (
+                newest is None
+                or mtime > newest_mtime
+                or (mtime == newest_mtime and candidate.name > newest.name)
+            ):
+                newest = candidate
+                newest_mtime = mtime
+        return newest
+
     try:
         while True:
+            if not treat_as_directory and base_path.is_dir():
+                treat_as_directory = True
+                watch_directory = base_path
+                active_path = None
+            if treat_as_directory:
+                directory = watch_directory or base_path
+                latest_file = _select_latest_jsonl(directory)
+                if latest_file is None:
+                    if handle is not None:
+                        handle.close()
+                        handle = None
+                    buffer = ""
+                    current_inode = None
+                    time.sleep(poll_interval)
+                    continue
+                if active_path is None or latest_file != active_path:
+                    if handle is not None:
+                        handle.close()
+                        handle = None
+                    buffer = ""
+                    current_inode = None
+                    active_path = latest_file
+            if active_path is None:
+                time.sleep(poll_interval)
+                continue
             if handle is None:
-                handle = _open_file()
+                handle = _open_file(active_path)
                 if handle is None:
                     time.sleep(poll_interval)
                     continue
@@ -535,14 +601,17 @@ def read_stream(
                     except ValueError as exc:
                         logger.warning("Skipping invalid event: %s", exc)
             else:
+                if active_path is None:
+                    time.sleep(poll_interval)
+                    continue
                 try:
-                    stat = path.stat()
+                    stat = active_path.stat()
                 except FileNotFoundError:
                     if handle is not None:
                         handle.close()
                         handle = None
-                        buffer = ""
-                        current_inode = None
+                    buffer = ""
+                    current_inode = None
                     time.sleep(poll_interval)
                     continue
                 if current_inode is not None and stat.st_ino != current_inode:
@@ -1328,11 +1397,23 @@ class ActionDispatcher(ActionExecutor):
         return _create_alert(rule, event, "http", message, "error", details)
 
 
-def load_rules(path: str | os.PathLike[str]) -> List[RuleDefinition]:
-    path_obj = Path(path)
-    if not path_obj.exists():
-        raise FileNotFoundError(f"Rules file '{path}' does not exist")
-    data = yaml.safe_load(path_obj.read_text())
+def load_rules(source: str | os.PathLike[str] | Mapping[str, Any]) -> List[RuleDefinition]:
+    if isinstance(source, Mapping):
+        data = source
+    else:
+        source_str = str(source)
+        preset = get_rule_preset(source_str)
+        if preset is not None:
+            data = preset
+        else:
+            path_obj = Path(source_str)
+            if not path_obj.exists():
+                available = ", ".join(sorted(RULE_PRESETS))
+                raise FileNotFoundError(
+                    f"Rules source '{source_str}' does not exist. "
+                    f"Available presets: {available}"
+                )
+            data = yaml.safe_load(path_obj.read_text())
     if not data or "rules" not in data:
         raise ValueError("Rules file must contain a 'rules' list")
     rules: List[RuleDefinition] = []
