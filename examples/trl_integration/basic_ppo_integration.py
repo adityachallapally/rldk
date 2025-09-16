@@ -17,6 +17,7 @@ from rldk.integrations.trl import (
     PPOMonitor,
     RLDKCallback,
     check_trl_compatibility,
+    create_simple_reward_model,
     prepare_models_for_ppo,
 )
 from rldk.utils.math_utils import safe_divide
@@ -126,18 +127,18 @@ def test_basic_ppo_integration():
     )
 
     # Use utility function to prepare all models with proper generation_config
-    # This fixes the AttributeError: 'AutoModelForCausalLMWithValueHead' object has no attribute 'generation_config'
-    # Note: Same model is used for both policy and value heads (standard approach)
-    model, ref_model, reward_model, tokenizer = prepare_models_for_ppo(model_name)
+    policy_model, ref_model, value_model, tokenizer = prepare_models_for_ppo(model_name)
+
+    # Create a simple reward model compatible with TRL's get_reward helper
+    reward_model = create_simple_reward_model(tokenizer, base_model=policy_model)
 
     # Create PPO trainer with new API
-    # Use the same model for both policy and value heads to avoid base_model_prefix AttributeError in TRL 0.23.0+
     trainer = PPOTrainer(
         args=ppo_config,
-        model=model,  # Policy model
+        model=policy_model,  # Policy model
         ref_model=ref_model,
         reward_model=reward_model,
-        value_model=model,  # Use same model for value head (standard approach)
+        value_model=value_model,
         processing_class=tokenizer,
         train_dataset=dataset,
         callbacks=[rldk_callback, ppo_monitor, checkpoint_monitor],
@@ -186,8 +187,8 @@ def test_basic_ppo_integration():
             ppo_monitor.on_log(args, state, control, fake_logs)
 
             if step % 2 == 0:  # Simulate checkpoint saves
-                rldk_callback.on_save(args, state, control, model=model)
-                checkpoint_monitor.on_save(args, state, control, model=model)
+                rldk_callback.on_save(args, state, control, model=policy_model)
+                checkpoint_monitor.on_save(args, state, control, model=policy_model)
 
             print(f"✅ Step {step} completed")
 
