@@ -105,23 +105,19 @@ class RuleEngine:
         return alerts
 
     def _matches_where_clause(self, event: Dict[str, Any], where_clause: str) -> bool:
-        """Check if event matches the where clause."""
+        """Check if event matches the where clause using safe evaluation."""
         try:
-            expr = where_clause
+            safe_globals = {"__builtins__": {}}
+            safe_locals = {
+                "name": event.get("name", ""),
+                "step": event.get("step", 0),
+                "value": event.get("value", 0),
+                "tags": event.get("tags", {}),
+                "meta": event.get("meta", {}),
+                "run_id": event.get("run_id", ""),
+            }
 
-            expr = expr.replace('name', f'"{event.get("name", "")}"')
-            expr = expr.replace('step', str(event.get("step", 0)))
-            expr = expr.replace('value', str(event.get("value", 0)))
-
-            if "tags." in expr and event.get("tags"):
-                for key, value in event["tags"].items():
-                    tag_ref = f"tags.{key}"
-                    if isinstance(value, str):
-                        expr = expr.replace(tag_ref, f'"{value}"')
-                    else:
-                        expr = expr.replace(tag_ref, str(value))
-
-            return eval(expr)
+            return bool(eval(where_clause, safe_globals, safe_locals))
         except Exception:
             return False
 
@@ -142,21 +138,19 @@ class RuleEngine:
         window_data.append(event)
 
         if len(window_data) > window.size:
-            if window.kind == WindowKind.CONSECUTIVE:
-                self._metric_windows[metric_key] = window_data[-window.size:]
-            elif window.kind == WindowKind.ROLLING:
-                pass
+            self._metric_windows[metric_key] = window_data[-window.size:]
 
     def _check_grace_period(self, rule: Rule, metric_key: str) -> bool:
         """Check if grace period has been satisfied."""
         if rule.grace_steps == 0:
             return True
 
-        if metric_key not in self._rule_grace_counters:
-            self._rule_grace_counters[metric_key] = 0
+        grace_key = f"{rule.id}:{metric_key}"
+        if grace_key not in self._rule_grace_counters:
+            self._rule_grace_counters[grace_key] = 0
 
-        self._rule_grace_counters[metric_key] += 1
-        return self._rule_grace_counters[metric_key] >= rule.grace_steps
+        self._rule_grace_counters[grace_key] += 1
+        return self._rule_grace_counters[grace_key] >= rule.grace_steps
 
     def _is_in_cooldown(self, rule: Rule, current_step: int) -> bool:
         """Check if rule is in cooldown period."""
@@ -165,7 +159,7 @@ class RuleEngine:
         return current_step <= self._rule_cooldowns[rule.id]
 
     def _evaluate_condition(self, metric_key: str, rule: Rule) -> bool:
-        """Evaluate the condition on the current window."""
+        """Evaluate the condition on the current window using safe evaluation."""
         if metric_key not in self._metric_windows:
             return False
 
@@ -183,38 +177,43 @@ class RuleEngine:
 
         try:
             values = [event["value"] for event in eval_window]
+            current_event = eval_window[-1]
+
+            def mean_func(vals):
+                return sum(vals) / len(vals) if vals else 0
+
+            def any_greater(vals, threshold):
+                return any(v > threshold for v in vals)
+
+            safe_globals = {
+                "__builtins__": {},
+                "mean": mean_func,
+                "max": max,
+                "min": min,
+                "any": any,
+                "sum": sum,
+                "len": len,
+            }
+
+            safe_locals = {
+                "value": current_event["value"],
+                "step": current_event["step"],
+                "values": values,  # For aggregate operations
+            }
 
             condition = rule.condition
+            condition = condition.replace("mean(value)", "mean(values)")
+            condition = condition.replace("max(value)", "max(values)")
+            condition = condition.replace("min(value)", "min(values)")
 
-            if eval_window:
-                condition = condition.replace("value", str(eval_window[-1]["value"]))
+            condition = re.sub(r'any\(value\s*>\s*([\d.]+)\)', r'any(v > \1 for v in values)', condition)
+            condition = re.sub(r'any\(value\s*>=\s*([\d.]+)\)', r'any(v >= \1 for v in values)', condition)
+            condition = re.sub(r'any\(value\s*<\s*([\d.]+)\)', r'any(v < \1 for v in values)', condition)
+            condition = re.sub(r'any\(value\s*<=\s*([\d.]+)\)', r'any(v <= \1 for v in values)', condition)
+            condition = re.sub(r'any\(value\s*==\s*([\d.]+)\)', r'any(v == \1 for v in values)', condition)
+            condition = re.sub(r'any\(value\s*!=\s*([\d.]+)\)', r'any(v != \1 for v in values)', condition)
 
-            condition = condition.replace("mean(value)", str(sum(values) / len(values)))
-            condition = condition.replace("max(value)", str(max(values)))
-            condition = condition.replace("min(value)", str(min(values)))
-
-            any_pattern = r"any\(value\s*([><=!]+)\s*([\d.]+)\)"
-            match = re.search(any_pattern, condition)
-            if match:
-                op, threshold = match.groups()
-                threshold = float(threshold)
-                if op == ">":
-                    result = any(v > threshold for v in values)
-                elif op == ">=":
-                    result = any(v >= threshold for v in values)
-                elif op == "<":
-                    result = any(v < threshold for v in values)
-                elif op == "<=":
-                    result = any(v <= threshold for v in values)
-                elif op == "==":
-                    result = any(v == threshold for v in values)
-                elif op == "!=":
-                    result = any(v != threshold for v in values)
-                else:
-                    result = False
-                condition = condition.replace(match.group(0), str(result))
-
-            return eval(condition)
+            return bool(eval(condition, safe_globals, safe_locals))
         except Exception:
             return False
 

@@ -84,10 +84,6 @@ def _follow_file(
 
     while True:
         try:
-            if not path.exists():
-                time.sleep(0.1)
-                continue
-
             stat = path.stat()
             current_inode = stat.st_ino
             current_size = stat.st_size
@@ -107,7 +103,7 @@ def _follow_file(
             last_inode = current_inode
             time.sleep(0.1)
 
-        except OSError:
+        except (OSError, FileNotFoundError):
             time.sleep(0.1)
             continue
 
