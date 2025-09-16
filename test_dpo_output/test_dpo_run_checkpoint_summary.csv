@@ -1,4 +1,0 @@
-step,epoch,timestamp,total_parameters,trainable_parameters,model_size_mb,weight_mean,weight_std,weight_min,weight_max,gradient_mean,gradient_std,gradient_norm,parameter_drift,gradient_flow_health,model_health_score
-0,0.0,1757982653.1372807,0,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0
-2,0.2,1757982653.1426525,0,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0
-4,0.4,1757982653.146157,0,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0
