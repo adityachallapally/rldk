@@ -6,20 +6,22 @@ from packaging import version
 from transformers import AutoTokenizer, GenerationConfig
 
 try:
-    from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer
+    from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer, DPOConfig, DPOTrainer
     TRL_AVAILABLE = True
 except ImportError:
     TRL_AVAILABLE = False
     AutoModelForCausalLMWithValueHead = None
     PPOConfig = None
     PPOTrainer = None
+    DPOConfig = None
+    DPOTrainer = None
 
 
 def fix_generation_config(
-    model: "AutoModelForCausalLMWithValueHead",
+    model: "AutoModelForCausalLM",
     tokenizer: AutoTokenizer,
     generation_config: Optional[GenerationConfig] = None
-) -> "AutoModelForCausalLMWithValueHead":
+) -> "AutoModelForCausalLM":
     """Fix missing generation_config and base_model_prefix attributes on TRL models.
 
     This is a common issue with TRL 0.23.0+ where AutoModelForCausalLMWithValueHead
@@ -41,8 +43,9 @@ def fix_generation_config(
     if not TRL_AVAILABLE:
         raise ImportError("TRL is required for this function. Install with: pip install trl")
 
-    if not isinstance(model, AutoModelForCausalLMWithValueHead):
-        raise AttributeError("Model must be an AutoModelForCausalLMWithValueHead instance")
+    from transformers import PreTrainedModel
+    if not isinstance(model, PreTrainedModel):
+        raise AttributeError("Model must be a PreTrainedModel instance")
 
     # Create generation config if not provided
     if generation_config is None:
@@ -93,75 +96,49 @@ def fix_generation_config(
     return model
 
 
-class RewardModelWrapper:
-    """Wrapper to create a proper reward model compatible with TRL PPOTrainer."""
+# Simple reward function for basic RL training
+def simple_reward_function(text: str) -> float:
+    """Simple reward function for demonstration purposes.
     
-    def __init__(self, base_model):
-        self.base_model = base_model
-        # Copy all attributes from the original model
-        for attr_name in dir(base_model):
-            if not attr_name.startswith('_') and not callable(getattr(base_model, attr_name)):
-                setattr(self, attr_name, getattr(base_model, attr_name))
+    In a real implementation, this would be replaced with a proper reward model
+    or human feedback system.
     
-    def __call__(self, *args, **kwargs):
-        """Forward call that returns an object with .logits instead of tuple."""
-        # Force return_dict=True to get proper ModelOutput
-        kwargs['return_dict'] = True
-        output = self.base_model(*args, **kwargs)
+    Args:
+        text: Generated text to evaluate
         
-        # If output is a tuple, convert to object with .logits
-        if isinstance(output, tuple) and len(output) >= 1:
-            class OutputWrapper:
-                def __init__(self, logits, hidden_states=None, past_key_values=None):
-                    self.logits = logits
-                    self.hidden_states = hidden_states
-                    self.past_key_values = past_key_values
-                    # Add other common attributes that ModelOutput might have
-                    self.last_hidden_state = hidden_states[-1] if hidden_states is not None else None
-            
-            # Extract hidden states from the tuple if available
-            hidden_states = None
-            past_key_values = None
-            
-            # The tuple structure from AutoModelForCausalLMWithValueHead is:
-            # (logits, hidden_states, past_key_values)
-            if len(output) > 1 and output[1] is not None:
-                hidden_states = output[1]
-            if len(output) > 2 and output[2] is not None:
-                past_key_values = output[2]
-            
-            return OutputWrapper(output[0], hidden_states, past_key_values)
-        
-        return output
+    Returns:
+        Reward score (higher is better)
+    """
+    # Simple heuristics for demonstration
+    reward = 0.0
     
-    def forward(self, *args, **kwargs):
-        """Forward method that returns an object with .logits instead of tuple."""
-        return self.__call__(*args, **kwargs)
+    # Reward for length (not too short, not too long)
+    length = len(text.split())
+    if 5 <= length <= 50:
+        reward += 0.1
     
-    def score(self, hidden_states):
-        """Implement score method that TRL PPOTrainer expects."""
-        # This is a simplified reward model that just returns the mean of hidden states
-        # In a real implementation, you'd want a proper reward head
-        import torch
-        if hidden_states is not None:
-            # Simple reward: mean of last hidden state
-            reward = torch.mean(hidden_states, dim=-1)
-            return reward
-        else:
-            # Fallback: return zeros
-            return torch.zeros(hidden_states.size(0), 1, device=hidden_states.device)
+    # Reward for common positive words
+    positive_words = ['good', 'great', 'excellent', 'amazing', 'wonderful', 'fantastic']
+    for word in positive_words:
+        if word in text.lower():
+            reward += 0.2
     
-    def __getattr__(self, name):
-        """Delegate any other attribute access to the wrapped model."""
-        return getattr(self.base_model, name)
+    # Penalty for repetition
+    words = text.lower().split()
+    if len(words) > 1:
+        unique_words = len(set(words))
+        repetition_ratio = unique_words / len(words)
+        reward += repetition_ratio * 0.1
+    
+    return min(reward, 1.0)  # Cap at 1.0
 
 
 def prepare_models_for_ppo(
     model_name: str,
     tokenizer: Optional[AutoTokenizer] = None,
     generation_config: Optional[GenerationConfig] = None
-) -> tuple["AutoModelForCausalLMWithValueHead", "AutoModelForCausalLMWithValueHead",
-           "AutoModelForCausalLMWithValueHead", "AutoModelForCausalLMWithValueHead", AutoTokenizer]:
+) -> tuple["AutoModelForCausalLM", "AutoModelForCausalLM",
+           "AutoModelForCausalLM", "AutoModelForCausalLM", AutoTokenizer]:
     """Prepare all required models for PPO training with proper generation_config.
 
     This function creates and configures all the models needed for PPO training,
@@ -190,15 +167,17 @@ def prepare_models_for_ppo(
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
 
-    # Create models with memory-efficient sharing
-    # Use AutoModelForCausalLMWithValueHead for TRL PPOTrainer compatibility
-    # This provides the required .score() method for reward computation
+    # Create models with simplified architecture for TRL compatibility
+    # Use regular AutoModelForCausalLM instead of AutoModelForCausalLMWithValueHead
+    # This avoids the tuple output and missing .score() method issues
+    
+    from transformers import AutoModelForCausalLM
     
     # Create policy model (main model)
-    model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name)
     
     # Create reference model (can be same as base for simplicity)
-    ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    ref_model = AutoModelForCausalLM.from_pretrained(model_name)
     
     # For reward and value models, we can share the same model instance
     # This is memory-efficient and commonly used in practice
@@ -211,12 +190,8 @@ def prepare_models_for_ppo(
     reward_model = fix_generation_config(reward_model, tokenizer, generation_config)
     value_model = fix_generation_config(value_model, tokenizer, generation_config)
 
-    # Wrap models to fix tuple output issue and add proper score method
-    model = RewardModelWrapper(model)
-    ref_model = RewardModelWrapper(ref_model)
-    reward_model = RewardModelWrapper(reward_model)
-    value_model = RewardModelWrapper(value_model)
-
+    # No need for complex wrappers with simplified architecture
+    # Regular AutoModelForCausalLM returns proper ModelOutput objects with .logits
     return model, ref_model, reward_model, value_model, tokenizer
 
 
@@ -289,10 +264,10 @@ def check_trl_compatibility() -> dict:
 
 
 def validate_ppo_setup(
-    model: "AutoModelForCausalLMWithValueHead",
-    ref_model: "AutoModelForCausalLMWithValueHead",
-    reward_model: "AutoModelForCausalLMWithValueHead",
-    value_model: "AutoModelForCausalLMWithValueHead",
+    model: "AutoModelForCausalLM",
+    ref_model: "AutoModelForCausalLM",
+    reward_model: "AutoModelForCausalLM",
+    value_model: "AutoModelForCausalLM",
     tokenizer: AutoTokenizer
 ) -> dict:
     """Validate PPO setup for common issues.
@@ -325,12 +300,12 @@ def validate_ppo_setup(
     if not hasattr(tokenizer, 'pad_token_id') or tokenizer.pad_token_id is None:
         warnings.append("Tokenizer missing pad_token_id")
 
-    # Check model types (accept both original and wrapped models)
+    # Check model types (accept any PreTrainedModel)
+    from transformers import PreTrainedModel
     for name, model_obj in [("model", model), ("ref_model", ref_model),
                            ("reward_model", reward_model), ("value_model", value_model)]:
-        if not (isinstance(model_obj, AutoModelForCausalLMWithValueHead) or 
-                isinstance(model_obj, RewardModelWrapper)):
-            issues.append(f"{name} is not an AutoModelForCausalLMWithValueHead instance or wrapper")
+        if not isinstance(model_obj, PreTrainedModel):
+            issues.append(f"{name} is not a PreTrainedModel instance")
 
     return {
         "valid": len(issues) == 0,
@@ -344,28 +319,28 @@ def validate_ppo_setup(
     }
 
 
-def create_ppo_trainer(
+def create_dpo_trainer(
     model_name: str,
-    ppo_config: "PPOConfig",
+    dpo_config: "DPOConfig",
     train_dataset: "Dataset",
     callbacks: Optional[List] = None,
     **kwargs
-) -> "PPOTrainer":
-    """Create PPOTrainer with automatic parameter handling for different TRL versions.
+) -> "DPOTrainer":
+    """Create DPOTrainer with simplified model architecture for better compatibility.
     
-    This factory function abstracts away the TRL API differences and automatically
-    handles the required parameters based on the installed TRL version. It ensures
-    all required models (including value_model) are properly configured.
+    This factory function creates a DPOTrainer using regular AutoModelForCausalLM models,
+    which are much more compatible than the complex AutoModelForCausalLMWithValueHead
+    required by PPOTrainer.
     
     Args:
         model_name: Name or path of the base model
-        ppo_config: PPO configuration object
-        train_dataset: Training dataset
+        dpo_config: DPO configuration object
+        train_dataset: Training dataset (should have 'prompt', 'chosen', 'rejected' columns)
         callbacks: Optional list of callbacks
-        **kwargs: Additional arguments passed to PPOTrainer
+        **kwargs: Additional arguments passed to DPOTrainer
         
     Returns:
-        Configured PPOTrainer instance
+        Configured DPOTrainer instance
         
     Raises:
         ImportError: If TRL is not available
@@ -374,91 +349,52 @@ def create_ppo_trainer(
     if not TRL_AVAILABLE:
         raise ImportError("TRL is required for this function. Install with: pip install trl")
     
-    if PPOConfig is None or PPOTrainer is None:
-        raise ImportError("TRL PPOTrainer components not available. Check TRL installation.")
+    if DPOConfig is None or DPOTrainer is None:
+        raise ImportError("TRL DPOTrainer components not available. Check TRL installation.")
     
     # Validate required parameters
-    if not isinstance(ppo_config, PPOConfig):
-        raise ValueError("ppo_config must be a PPOConfig instance")
+    if not isinstance(dpo_config, DPOConfig):
+        raise ValueError("dpo_config must be a DPOConfig instance")
     
     if train_dataset is None:
         raise ValueError("train_dataset is required")
     
-    # Prepare all models using the utility function with error handling
-    try:
-        model, ref_model, reward_model, value_model, tokenizer = prepare_models_for_ppo(model_name)
-    except Exception as e:
-        raise RuntimeError(f"Failed to prepare models for PPO: {e}") from e
+    # Check dataset format
+    required_columns = ['prompt', 'chosen', 'rejected']
+    missing_columns = [col for col in required_columns if col not in train_dataset.column_names]
+    if missing_columns:
+        raise ValueError(f"Dataset missing required columns: {missing_columns}")
     
-    # Validate the complete PPO setup
+    # Prepare models using simplified architecture
     try:
-        validation_result = validate_ppo_setup(model, ref_model, reward_model, value_model, tokenizer)
-        if not validation_result["valid"]:
-            raise ValueError(f"PPO setup validation failed: {validation_result['issues']}")
+        from transformers import AutoModelForCausalLM, AutoTokenizer
         
-        if validation_result["warnings"]:
-            print(f"⚠️  PPO setup warnings: {validation_result['warnings']}")
-    except Exception as e:
-        raise RuntimeError(f"PPO setup validation failed: {e}") from e
-    
-    # Check TRL version to determine required parameters
-    try:
-        compatibility = check_trl_compatibility()
-        trl_version_str = compatibility.get("version", "0.7.0")
+        # Load tokenizer
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
         
-        if not trl_version_str or trl_version_str == "unknown":
-            print("⚠️  Could not determine TRL version, assuming 0.23.0+")
-            trl_version = version.parse("0.23.0")
-        else:
-            trl_version = version.parse(trl_version_str)
+        # Create models (much simpler than PPO)
+        model = AutoModelForCausalLM.from_pretrained(model_name)
+        ref_model = AutoModelForCausalLM.from_pretrained(model_name)
+        
+        # Fix generation config
+        model = fix_generation_config(model, tokenizer)
+        ref_model = fix_generation_config(ref_model, tokenizer)
+        
     except Exception as e:
-        print(f"⚠️  Error parsing TRL version: {e}, assuming 0.23.0+")
-        trl_version = version.parse("0.23.0")
+        raise RuntimeError(f"Failed to prepare models for DPO: {e}") from e
     
-    # For TRL 0.23.0+, all parameters are required
-    if trl_version >= version.parse("0.23.0"):
-        try:
-            return PPOTrainer(
-                args=ppo_config,
-                model=model,
-                ref_model=ref_model,
-                reward_model=reward_model,
-                value_model=value_model,
-                processing_class=tokenizer,
-                train_dataset=train_dataset,
-                callbacks=callbacks or [],
-                **kwargs
-            )
-        except Exception as e:
-            raise RuntimeError(f"Failed to create PPOTrainer with TRL 0.23.0+ API: {e}") from e
-    else:
-        # For older versions, some parameters might be optional
-        # Try with all parameters first, fall back to minimal set if needed
-        try:
-            return PPOTrainer(
-                args=ppo_config,
-                model=model,
-                ref_model=ref_model,
-                reward_model=reward_model,
-                value_model=value_model,
-                processing_class=tokenizer,
-                train_dataset=train_dataset,
-                callbacks=callbacks or [],
-                **kwargs
-            )
-        except TypeError as e:
-            # Fall back to older API pattern
-            try:
-                return PPOTrainer(
-                    args=ppo_config,
-                    model=model,
-                    ref_model=ref_model,
-                    processing_class=tokenizer,
-                    train_dataset=train_dataset,
-                    callbacks=callbacks or [],
-                    **kwargs
-                )
-            except Exception as fallback_e:
-                raise RuntimeError(f"Failed to create PPOTrainer with older TRL API: {fallback_e}") from fallback_e
-        except Exception as e:
-            raise RuntimeError(f"Failed to create PPOTrainer: {e}") from e
+    # Create DPOTrainer (much simpler than PPOTrainer)
+    try:
+        return DPOTrainer(
+            model=model,
+            ref_model=ref_model,
+            args=dpo_config,
+            train_dataset=train_dataset,
+            processing_class=tokenizer,
+            callbacks=callbacks or [],
+            **kwargs
+        )
+    except Exception as e:
+        raise RuntimeError(f"Failed to create DPOTrainer: {e}") from e
