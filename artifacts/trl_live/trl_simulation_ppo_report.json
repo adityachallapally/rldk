@@ -1,0 +1,18 @@
+{
+  "run_id": "trl_simulation",
+  "total_steps": 200,
+  "final_reward_mean": 2.49,
+  "final_reward_std": 1.095,
+  "final_kl_mean": 0.219,
+  "final_entropy": 0.010000000000000009,
+  "max_policy_collapse_risk": 0.0,
+  "max_reward_hacking_risk": 0.0,
+  "average_training_stability": 0.9304506857457917,
+  "total_alerts": 697,
+  "alert_types": [
+    "high_kl_divergence",
+    "high_clip_fraction",
+    "high_reward_variance",
+    "high_gradient_norm"
+  ]
+}
