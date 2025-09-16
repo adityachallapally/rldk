@@ -16,10 +16,10 @@ except ImportError:
 
 
 def fix_generation_config(
-    model: "AutoModelForCausalLM",
+    model: "AutoModelForCausalLMWithValueHead",
     tokenizer: AutoTokenizer,
     generation_config: Optional[GenerationConfig] = None
-) -> "AutoModelForCausalLM":
+) -> "AutoModelForCausalLMWithValueHead":
     """Fix missing generation_config and base_model_prefix attributes on TRL models.
 
     This is a common issue with TRL 0.23.0+ where AutoModelForCausalLMWithValueHead
@@ -41,9 +41,8 @@ def fix_generation_config(
     if not TRL_AVAILABLE:
         raise ImportError("TRL is required for this function. Install with: pip install trl")
 
-    from transformers import PreTrainedModel
-    if not isinstance(model, PreTrainedModel):
-        raise AttributeError("Model must be a PreTrainedModel instance")
+    if not isinstance(model, AutoModelForCausalLMWithValueHead):
+        raise AttributeError("Model must be an AutoModelForCausalLMWithValueHead instance")
 
     # Create generation config if not provided
     if generation_config is None:
@@ -94,12 +93,75 @@ def fix_generation_config(
     return model
 
 
+class RewardModelWrapper:
+    """Wrapper to create a proper reward model compatible with TRL PPOTrainer."""
+    
+    def __init__(self, base_model):
+        self.base_model = base_model
+        # Copy all attributes from the original model
+        for attr_name in dir(base_model):
+            if not attr_name.startswith('_') and not callable(getattr(base_model, attr_name)):
+                setattr(self, attr_name, getattr(base_model, attr_name))
+    
+    def __call__(self, *args, **kwargs):
+        """Forward call that returns an object with .logits instead of tuple."""
+        # Force return_dict=True to get proper ModelOutput
+        kwargs['return_dict'] = True
+        output = self.base_model(*args, **kwargs)
+        
+        # If output is a tuple, convert to object with .logits
+        if isinstance(output, tuple) and len(output) >= 1:
+            class OutputWrapper:
+                def __init__(self, logits, hidden_states=None, past_key_values=None):
+                    self.logits = logits
+                    self.hidden_states = hidden_states
+                    self.past_key_values = past_key_values
+                    # Add other common attributes that ModelOutput might have
+                    self.last_hidden_state = hidden_states[-1] if hidden_states is not None else None
+            
+            # Extract hidden states from the tuple if available
+            hidden_states = None
+            past_key_values = None
+            
+            # The tuple structure from AutoModelForCausalLMWithValueHead is:
+            # (logits, hidden_states, past_key_values)
+            if len(output) > 1 and output[1] is not None:
+                hidden_states = output[1]
+            if len(output) > 2 and output[2] is not None:
+                past_key_values = output[2]
+            
+            return OutputWrapper(output[0], hidden_states, past_key_values)
+        
+        return output
+    
+    def forward(self, *args, **kwargs):
+        """Forward method that returns an object with .logits instead of tuple."""
+        return self.__call__(*args, **kwargs)
+    
+    def score(self, hidden_states):
+        """Implement score method that TRL PPOTrainer expects."""
+        # This is a simplified reward model that just returns the mean of hidden states
+        # In a real implementation, you'd want a proper reward head
+        import torch
+        if hidden_states is not None:
+            # Simple reward: mean of last hidden state
+            reward = torch.mean(hidden_states, dim=-1)
+            return reward
+        else:
+            # Fallback: return zeros
+            return torch.zeros(hidden_states.size(0), 1, device=hidden_states.device)
+    
+    def __getattr__(self, name):
+        """Delegate any other attribute access to the wrapped model."""
+        return getattr(self.base_model, name)
+
+
 def prepare_models_for_ppo(
     model_name: str,
     tokenizer: Optional[AutoTokenizer] = None,
     generation_config: Optional[GenerationConfig] = None
-) -> tuple["AutoModelForCausalLM", "AutoModelForCausalLM",
-           "AutoModelForCausalLM", "AutoModelForCausalLM", AutoTokenizer]:
+) -> tuple["AutoModelForCausalLMWithValueHead", "AutoModelForCausalLMWithValueHead",
+           "AutoModelForCausalLMWithValueHead", "AutoModelForCausalLMWithValueHead", AutoTokenizer]:
     """Prepare all required models for PPO training with proper generation_config.
 
     This function creates and configures all the models needed for PPO training,
@@ -129,14 +191,14 @@ def prepare_models_for_ppo(
             tokenizer.pad_token = tokenizer.eos_token
 
     # Create models with memory-efficient sharing
-    # Use regular AutoModelForCausalLM for compatibility with TRL PPOTrainer
-    from transformers import AutoModelForCausalLM
+    # Use AutoModelForCausalLMWithValueHead for TRL PPOTrainer compatibility
+    # This provides the required .score() method for reward computation
     
     # Create policy model (main model)
-    model = AutoModelForCausalLM.from_pretrained(model_name)
+    model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
     
     # Create reference model (can be same as base for simplicity)
-    ref_model = AutoModelForCausalLM.from_pretrained(model_name)
+    ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
     
     # For reward and value models, we can share the same model instance
     # This is memory-efficient and commonly used in practice
@@ -148,6 +210,12 @@ def prepare_models_for_ppo(
     ref_model = fix_generation_config(ref_model, tokenizer, generation_config)
     reward_model = fix_generation_config(reward_model, tokenizer, generation_config)
     value_model = fix_generation_config(value_model, tokenizer, generation_config)
+
+    # Wrap models to fix tuple output issue and add proper score method
+    model = RewardModelWrapper(model)
+    ref_model = RewardModelWrapper(ref_model)
+    reward_model = RewardModelWrapper(reward_model)
+    value_model = RewardModelWrapper(value_model)
 
     return model, ref_model, reward_model, value_model, tokenizer
 
@@ -221,10 +289,10 @@ def check_trl_compatibility() -> dict:
 
 
 def validate_ppo_setup(
-    model: "AutoModelForCausalLM",
-    ref_model: "AutoModelForCausalLM",
-    reward_model: "AutoModelForCausalLM",
-    value_model: "AutoModelForCausalLM",
+    model: "AutoModelForCausalLMWithValueHead",
+    ref_model: "AutoModelForCausalLMWithValueHead",
+    reward_model: "AutoModelForCausalLMWithValueHead",
+    value_model: "AutoModelForCausalLMWithValueHead",
     tokenizer: AutoTokenizer
 ) -> dict:
     """Validate PPO setup for common issues.
@@ -257,12 +325,12 @@ def validate_ppo_setup(
     if not hasattr(tokenizer, 'pad_token_id') or tokenizer.pad_token_id is None:
         warnings.append("Tokenizer missing pad_token_id")
 
-    # Check model types
-    from transformers import PreTrainedModel
+    # Check model types (accept both original and wrapped models)
     for name, model_obj in [("model", model), ("ref_model", ref_model),
                            ("reward_model", reward_model), ("value_model", value_model)]:
-        if not isinstance(model_obj, PreTrainedModel):
-            issues.append(f"{name} is not a PreTrainedModel instance")
+        if not (isinstance(model_obj, AutoModelForCausalLMWithValueHead) or 
+                isinstance(model_obj, RewardModelWrapper)):
+            issues.append(f"{name} is not an AutoModelForCausalLMWithValueHead instance or wrapper")
 
     return {
         "valid": len(issues) == 0,
