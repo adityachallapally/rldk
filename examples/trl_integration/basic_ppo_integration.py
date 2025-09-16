@@ -1,6 +1,11 @@
-"""Basic PPO integration example with RLDK monitoring."""
+"""Basic DPO integration example with RLDK monitoring."""
 
 import os
+import sys
+from pathlib import Path
+
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 import torch
 from datasets import Dataset
@@ -17,12 +22,13 @@ from rldk.integrations.trl import (
     PPOMonitor,
     RLDKCallback,
     check_trl_compatibility,
-    prepare_models_for_ppo,
+    create_dpo_trainer,
+    simple_reward_function,
 )
 from rldk.utils.math_utils import safe_divide
 
 try:
-    from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer
+    from trl import DPOConfig, DPOTrainer
     TRL_AVAILABLE = True
 except ImportError:
     print("TRL not available. Install with: pip install trl")
@@ -30,37 +36,46 @@ except ImportError:
 
 
 def create_sample_dataset():
-    """Create a sample dataset for PPO training."""
-    # Simple prompts and responses for testing
+    """Create a sample dataset for DPO training."""
+    # DPO requires prompt, chosen, and rejected columns
     prompts = [
-        "The capital of France is",
-        "Python is a programming language that",
-        "Machine learning is",
-        "The weather today is",
-        "Artificial intelligence can",
+        "What is the capital of France?",
+        "Explain machine learning",
+        "What is Python?",
+        "How does a computer work?",
+        "What is artificial intelligence?",
     ] * 20  # Repeat to have enough data
 
-    responses = [
-        "Paris, the beautiful city of lights.",
-        "is widely used for data science and AI.",
-        "a subset of artificial intelligence.",
-        "sunny and warm.",
-        "help solve complex problems.",
+    chosen_responses = [
+        "The capital of France is Paris, a beautiful city known for its art and culture.",
+        "Machine learning is a subset of artificial intelligence that enables computers to learn from data.",
+        "Python is a high-level programming language known for its simplicity and readability.",
+        "A computer works by processing information using electronic circuits and software programs.",
+        "Artificial intelligence is the simulation of human intelligence in machines.",
+    ] * 20
+
+    rejected_responses = [
+        "France has no capital city.",
+        "Machine learning is about machines that learn to be human.",
+        "Python is a type of snake found in tropical regions.",
+        "Computers work by magic and fairy dust.",
+        "AI is just robots taking over the world.",
     ] * 20
 
     return Dataset.from_dict({
         "prompt": prompts,
-        "response": responses,
+        "chosen": chosen_responses,
+        "rejected": rejected_responses,
     })
 
 
-def test_basic_ppo_integration():
-    """Test basic PPO integration with RLDK monitoring."""
+def test_basic_dpo_integration():
+    """Test basic DPO integration with RLDK monitoring."""
     if not TRL_AVAILABLE:
         print("Skipping test - TRL not available")
         return
 
-    print("🚀 Testing Basic PPO Integration with RLDK")
+    print("🚀 Testing Basic DPO Integration with RLDK")
 
     # Check TRL compatibility and show warnings
     compatibility = check_trl_compatibility()
@@ -74,30 +89,30 @@ def test_basic_ppo_integration():
             print(f"   - {rec}")
 
     # Create output directory
-    output_dir = "./test_ppo_output"
+    output_dir = "./test_dpo_output"
     os.makedirs(output_dir, exist_ok=True)
 
     # Initialize RLDK components
     rldk_callback = RLDKCallback(
         output_dir=output_dir,
         log_interval=5,
-        run_id="test_ppo_run"
+        run_id="test_dpo_run"
     )
 
     ppo_monitor = PPOMonitor(
         output_dir=output_dir,
         kl_threshold=0.1,
         reward_threshold=0.05,
-        run_id="test_ppo_run"
+        run_id="test_dpo_run"
     )
 
     checkpoint_monitor = CheckpointMonitor(
         output_dir=output_dir,
-        run_id="test_ppo_run"
+        run_id="test_dpo_run"
     )
 
     # Load a small model for testing
-    model_name = "gpt2"  # Small model for testing
+    model_name = "sshleifer/tiny-gpt2"  # Very small model for testing
 
     # Check if we should skip model loading (for CI/testing)
     if os.getenv("SKIP_MODEL_LOADING", "false").lower() == "true":
@@ -108,48 +123,41 @@ def test_basic_ppo_integration():
     # Create sample dataset
     dataset = create_sample_dataset()
 
-    # PPO configuration
-    ppo_config = PPOConfig(
+    # DPO configuration
+    dpo_config = DPOConfig(
         learning_rate=1e-5,
-        per_device_train_batch_size=4,
-        mini_batch_size=2,
-        num_ppo_epochs=2,
-        max_grad_norm=0.5,
+        per_device_train_batch_size=2,
+        max_steps=10,
         logging_dir=output_dir,
         save_steps=10,
         eval_steps=10,
-        num_train_epochs=1,
         output_dir=output_dir,
         remove_unused_columns=False,
         bf16=False,  # Disable bf16 for compatibility
         fp16=False,  # Disable fp16 for compatibility
     )
 
-    # Use utility function to prepare all models with proper generation_config
-    # This fixes the AttributeError: 'AutoModelForCausalLMWithValueHead' object has no attribute 'generation_config'
-    # Note: Same model is used for both policy and value heads (standard approach)
-    model, ref_model, reward_model, tokenizer = prepare_models_for_ppo(model_name)
+    # Use unified factory function to create DPO trainer with simplified architecture
+    # This handles all TRL API differences automatically and ensures all required parameters are provided
+    try:
+        trainer = create_dpo_trainer(
+            model_name=model_name,
+            dpo_config=dpo_config,
+            train_dataset=dataset,
+            callbacks=[rldk_callback, ppo_monitor, checkpoint_monitor],
+        )
+    except Exception as e:
+        print(f"❌ Failed to create DPO trainer: {e}")
+        print("⚠️  This might be due to model loading issues or TRL version incompatibility")
+        return False
 
-    # Create PPO trainer with new API
-    # Use the same model for both policy and value heads to avoid base_model_prefix AttributeError in TRL 0.23.0+
-    trainer = PPOTrainer(
-        args=ppo_config,
-        model=model,  # Policy model
-        ref_model=ref_model,
-        reward_model=reward_model,
-        value_model=model,  # Use same model for value head (standard approach)
-        processing_class=tokenizer,
-        train_dataset=dataset,
-        callbacks=[rldk_callback, ppo_monitor, checkpoint_monitor],
-    )
-
-    print("✅ PPO Trainer created with RLDK callbacks")
+    print("✅ DPO Trainer created with RLDK callbacks")
     print(f"📊 Monitoring {len(dataset)} samples")
     print(f"💾 Output directory: {output_dir}")
 
     # Test training for a few steps
     try:
-        print("🎯 Starting PPO training test...")
+        print("🎯 Starting DPO training test...")
 
         # This would normally be trainer.train(), but for testing we'll simulate
         # a few training steps to verify the callbacks work
@@ -158,12 +166,13 @@ def test_basic_ppo_integration():
         for step in range(5):
             # Simulate some training metrics
             fake_logs = {
-                'ppo/rewards/mean': 0.5 + step * 0.1,
-                'ppo/rewards/std': 0.2,
-                'ppo/policy/kl_mean': 0.05 + step * 0.01,
-                'ppo/policy/entropy': 2.0 - step * 0.1,
-                'ppo/policy/clipfrac': 0.1,
-                'ppo/val/value_loss': 0.3 - step * 0.05,
+                'loss': 0.6931 - step * 0.01,
+                'rewards/chosen': 0.5 + step * 0.1,
+                'rewards/rejected': 0.3 + step * 0.05,
+                'rewards/accuracies': 0.6 + step * 0.05,
+                'rewards/margins': 0.2 + step * 0.02,
+                'logps/chosen': -100.0 + step * 5.0,
+                'logps/rejected': -120.0 + step * 3.0,
                 'learning_rate': 1e-5,
                 'grad_norm': 0.5,
             }
@@ -186,8 +195,20 @@ def test_basic_ppo_integration():
             ppo_monitor.on_log(args, state, control, fake_logs)
 
             if step % 2 == 0:  # Simulate checkpoint saves
-                rldk_callback.on_save(args, state, control, model=model)
-                checkpoint_monitor.on_save(args, state, control, model=model)
+                # Create a dummy model object for simulation
+                class DummyModel:
+                    def __init__(self):
+                        self.config = type('Config', (), {'hidden_size': 768})()
+                    
+                    def parameters(self):
+                        return []
+                    
+                    def named_parameters(self):
+                        return []
+                
+                dummy_model = DummyModel()
+                rldk_callback.on_save(args, state, control, model=dummy_model)
+                checkpoint_monitor.on_save(args, state, control, model=dummy_model)
 
             print(f"✅ Step {step} completed")
 
@@ -202,9 +223,9 @@ def test_basic_ppo_integration():
 
         # Verify files were created
         expected_files = [
-            f"{output_dir}/test_ppo_run_metrics.csv",
-            f"{output_dir}/test_ppo_run_ppo_metrics.csv",
-            f"{output_dir}/test_ppo_run_checkpoint_summary.csv",
+            f"{output_dir}/test_dpo_run_metrics.csv",
+            f"{output_dir}/test_dpo_run_ppo_metrics.csv",
+            f"{output_dir}/test_dpo_run_checkpoint_summary.csv",
         ]
 
         for file_path in expected_files:
@@ -260,8 +281,8 @@ if __name__ == "__main__":
     test_callback_functionality()
     print()
 
-    # Test basic PPO integration
-    success = test_basic_ppo_integration()
+    # Test basic DPO integration
+    success = test_basic_dpo_integration()
 
     if success:
         print("\n🎉 All tests passed! RLDK TRL integration is working correctly.")

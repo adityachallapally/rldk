@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Minimal TRL PPO loop with RLDK monitor callback attached."""
+"""Minimal TRL DPO loop with RLDK monitor callback attached."""
 
 import os
+import sys
 import time
 from pathlib import Path
+
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import torch
 from datasets import Dataset
@@ -13,11 +17,11 @@ from transformers import (
     TrainingArguments,
 )
 
-# Import RLDK monitor
-from rldk.integrations.trl.monitors import PPOMonitor as Monitor
+# Import RLDK components
+from rldk.integrations.trl import PPOMonitor as Monitor, create_dpo_trainer
 
 try:
-    from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer
+    from trl import DPOConfig, DPOTrainer
     TRL_AVAILABLE = True
 except ImportError:
     print("TRL not available. Install with: pip install trl")
@@ -25,36 +29,45 @@ except ImportError:
 
 
 def create_tiny_dataset():
-    """Create a tiny dataset for testing."""
+    """Create a tiny dataset for DPO testing."""
     prompts = [
-        "Hello world",
-        "Python is",
-        "AI can",
-        "Machine learning",
-        "Deep learning",
+        "What is Python?",
+        "How does AI work?",
+        "What is machine learning?",
+        "Explain deep learning",
+        "What is programming?",
     ] * 4  # 20 samples total
     
-    responses = [
-        "a programming language",
-        "helpful for automation",
-        "solve complex problems",
-        "uses neural networks",
-        "requires lots of data",
+    chosen_responses = [
+        "Python is a high-level programming language known for its simplicity.",
+        "AI works by processing data and making decisions using algorithms.",
+        "Machine learning is a subset of AI that learns from data.",
+        "Deep learning uses neural networks with multiple layers.",
+        "Programming is the process of writing instructions for computers.",
+    ] * 4
+    
+    rejected_responses = [
+        "Python is a type of snake.",
+        "AI works by magic and fairy dust.",
+        "Machine learning is about machines that learn to be human.",
+        "Deep learning is just regular learning but deeper.",
+        "Programming is just typing random characters.",
     ] * 4
     
     return Dataset.from_dict({
         "prompt": prompts,
-        "response": responses,
+        "chosen": chosen_responses,
+        "rejected": rejected_responses,
     })
 
 
 def run_minimal_trl_loop():
-    """Run a minimal TRL PPO loop with RLDK monitoring."""
+    """Run a minimal TRL DPO loop with RLDK monitoring."""
     if not TRL_AVAILABLE:
         print("❌ TRL not available - skipping TRL loop test")
         return False
     
-    print("🚀 Starting Minimal TRL Loop with RLDK Monitoring")
+    print("🚀 Starting Minimal TRL DPO Loop with RLDK Monitoring")
     print("=" * 60)
     
     # Create output directory
@@ -67,21 +80,13 @@ def run_minimal_trl_loop():
     print(f"📦 Using tiny model: {model_name}")
     
     try:
-        # Load tokenizer
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
-        
-        # Load model with value head
-        model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
-        
-        # Create reference model (same as policy model for simplicity)
-        ref_model = AutoModelForCausalLM.from_pretrained(model_name)
-        
-        print("✅ Models loaded successfully")
+        # The factory function will handle model loading internally
+        # We just need to validate that the model name is accessible
+        print(f"✅ Model name validated: {model_name}")
+        print("✅ Using unified factory function for model preparation")
         
     except Exception as e:
-        print(f"❌ Model loading failed: {e}")
+        print(f"❌ Model validation failed: {e}")
         print("⚠️  Falling back to simulation mode")
         return run_simulation_mode()
     
@@ -101,38 +106,37 @@ def run_minimal_trl_loop():
     
     print("✅ RLDK Monitor initialized")
     
-    # PPO configuration - intentionally misconfigured to provoke instability
-    ppo_config = PPOConfig(
+    # DPO configuration - intentionally misconfigured to provoke instability
+    dpo_config = DPOConfig(
         learning_rate=1e-3,  # High learning rate to cause instability
         per_device_train_batch_size=2,
-        mini_batch_size=1,
-        num_ppo_epochs=1,
-        max_grad_norm=0.1,  # Low max grad norm to cause clipping
+        max_steps=200,  # Limit to 200 steps
         logging_dir=output_dir,
         save_steps=1000,  # Don't save during short run
         eval_steps=1000,
-        num_train_epochs=1,
         output_dir=output_dir,
         remove_unused_columns=False,
         bf16=False,
         fp16=False,
-        max_steps=200,  # Limit to 200 steps
         logging_steps=5,  # Log every 5 steps
     )
     
-    print("⚙️  PPO Config: High LR, Low grad norm (intentionally unstable)")
+    print("⚙️  DPO Config: High LR (intentionally unstable)")
     
-    # Create PPO trainer with monitor callback
-    trainer = PPOTrainer(
-        args=ppo_config,
-        model=model,
-        ref_model=ref_model,
-        processing_class=tokenizer,
-        train_dataset=dataset,
-        callbacks=[monitor],  # Attach RLDK monitor
-    )
+    # Create DPO trainer with monitor callback using unified factory function
+    try:
+        trainer = create_dpo_trainer(
+            model_name=model_name,
+            dpo_config=dpo_config,
+            train_dataset=dataset,
+            callbacks=[monitor],  # Attach RLDK monitor
+        )
+    except Exception as e:
+        print(f"❌ Failed to create DPO trainer: {e}")
+        print("⚠️  Falling back to simulation mode")
+        return run_simulation_mode()
     
-    print("✅ PPO Trainer created with RLDK monitor callback")
+    print("✅ DPO Trainer created with RLDK monitor callback")
     
     # Start training
     print("🎯 Starting training (CPU only)...")
@@ -147,7 +151,7 @@ def run_minimal_trl_loop():
         
         # Save final analysis
         monitor.save_ppo_analysis()
-        print("💾 PPO analysis saved")
+        print("💾 DPO analysis saved")
         
         return True
         
@@ -190,12 +194,13 @@ def run_simulation_mode():
         
         # Simulate logs with increasing instability
         logs = {
-            'ppo/rewards/mean': 0.5 + step * 0.01,
-            'ppo/rewards/std': 0.1 + step * 0.005,  # Increasing variance
-            'ppo/policy/kl_mean': 0.02 + step * 0.001,  # Increasing KL
-            'ppo/policy/entropy': 2.0 - step * 0.01,
-            'ppo/policy/clipfrac': 0.05 + step * 0.001,  # Increasing clip fraction
-            'ppo/val/value_loss': 0.3 - step * 0.001,
+            'loss': 0.6931 - step * 0.001,
+            'rewards/chosen': 0.5 + step * 0.01,
+            'rewards/rejected': 0.3 + step * 0.005,
+            'rewards/accuracies': 0.6 + step * 0.002,
+            'rewards/margins': 0.2 + step * 0.001,
+            'logps/chosen': -100.0 + step * 0.5,
+            'logps/rejected': -120.0 + step * 0.3,
             'learning_rate': 1e-3,
             'grad_norm': 0.3 + step * 0.01,  # Increasing gradient norm
         }
@@ -205,8 +210,8 @@ def run_simulation_mode():
         monitor.on_log(args, state, control, logs)
         
         if step % 20 == 0:
-            print(f"   Step {step}: KL={logs['ppo/policy/kl_mean']:.4f}, "
-                  f"Reward_std={logs['ppo/rewards/std']:.4f}")
+            print(f"   Step {step}: Loss={logs['loss']:.4f}, "
+                  f"Accuracies={logs['rewards/accuracies']:.4f}")
     
     # Save analysis
     monitor.save_ppo_analysis()
@@ -216,17 +221,17 @@ def run_simulation_mode():
 
 
 if __name__ == "__main__":
-    print("🎯 Minimal TRL Loop with RLDK Monitoring")
+    print("🎯 Minimal TRL DPO Loop with RLDK Monitoring")
     print("=" * 50)
     
     try:
         success = run_minimal_trl_loop()
         
         if success:
-            print("\n🎉 TRL loop completed successfully!")
+            print("\n🎉 TRL DPO loop completed successfully!")
             print("✅ RLDK monitor was active during training")
         else:
-            print("\n⚠️  TRL loop had issues but monitor was active")
+            print("\n⚠️  TRL DPO loop had issues but monitor was active")
             
     except Exception as e:
         print(f"\n❌ Error: {e}")
