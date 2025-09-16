@@ -1,0 +1,1277 @@
+RLDK Monitoring Alerts Summary
+========================================
+
+Rule: http_webhook
+Action: warn
+Step: 11
+Time: 2025-09-16T21:54:34.495484Z
+Metric: loss = 2.1000
+Message: loss 2.1000 at step 11 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 11
+Time: 2025-09-16T21:54:34.495484Z
+Metric: loss = 2.1000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 12
+Time: 2025-09-16T21:54:34.495508Z
+Metric: loss = 2.2000
+Message: loss 2.2000 at step 12 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 12
+Time: 2025-09-16T21:54:34.495508Z
+Metric: loss = 2.2000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 13
+Time: 2025-09-16T21:54:34.495533Z
+Metric: loss = 2.3000
+Message: loss 2.3000 at step 13 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 13
+Time: 2025-09-16T21:54:34.495533Z
+Metric: loss = 2.3000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 14
+Time: 2025-09-16T21:54:34.495556Z
+Metric: loss = 2.4000
+Message: loss 2.4000 at step 14 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 14
+Time: 2025-09-16T21:54:34.495556Z
+Metric: loss = 2.4000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: shell_notification
+Action: warn
+Step: 15
+Time: 2025-09-16T21:54:34.495584Z
+Metric: grad_norm = 16.5000
+Message: grad_norm 16.5000 at step 15 (rule shell_notification)
+----------------------------------------
+Rule: shell_notification
+Action: shell
+Step: 15
+Time: 2025-09-16T21:54:34.495584Z
+Metric: grad_norm = 16.5000
+Message: Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 15' | tee -a artifacts/grad_norm_alerts.log
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 15
+Time: 2025-09-16T21:54:34.495592Z
+Metric: loss = 2.5000
+Message: loss 2.5000 at step 15 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 15
+Time: 2025-09-16T21:54:34.495592Z
+Metric: loss = 2.5000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 16
+Time: 2025-09-16T21:54:34.495617Z
+Metric: loss = 2.6000
+Message: loss 2.6000 at step 16 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 16
+Time: 2025-09-16T21:54:34.495617Z
+Metric: loss = 2.6000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 17
+Time: 2025-09-16T21:54:34.495642Z
+Metric: loss = 2.7000
+Message: loss 2.7000 at step 17 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 17
+Time: 2025-09-16T21:54:34.495642Z
+Metric: loss = 2.7000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 18
+Time: 2025-09-16T21:54:34.495666Z
+Metric: loss = 2.8000
+Message: loss 2.8000 at step 18 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 18
+Time: 2025-09-16T21:54:34.495666Z
+Metric: loss = 2.8000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: shell_notification
+Action: warn
+Step: 19
+Time: 2025-09-16T21:54:34.495687Z
+Metric: grad_norm = 10.5000
+Message: grad_norm 10.5000 at step 19 (rule shell_notification)
+----------------------------------------
+Rule: shell_notification
+Action: shell
+Step: 19
+Time: 2025-09-16T21:54:34.495687Z
+Metric: grad_norm = 10.5000
+Message: Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 19' | tee -a artifacts/grad_norm_alerts.log
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 19
+Time: 2025-09-16T21:54:34.495693Z
+Metric: loss = 2.9000
+Message: loss 2.9000 at step 19 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 19
+Time: 2025-09-16T21:54:34.495693Z
+Metric: loss = 2.9000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 20
+Time: 2025-09-16T21:54:34.495718Z
+Metric: loss = 4.5000
+Message: loss 4.5000 at step 20 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 20
+Time: 2025-09-16T21:54:34.495718Z
+Metric: loss = 4.5000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 21
+Time: 2025-09-16T21:54:34.495751Z
+Metric: loss = 3.1000
+Message: loss 3.1000 at step 21 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 21
+Time: 2025-09-16T21:54:34.495751Z
+Metric: loss = 3.1000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 22
+Time: 2025-09-16T21:54:34.495775Z
+Metric: loss = 3.2000
+Message: loss 3.2000 at step 22 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 22
+Time: 2025-09-16T21:54:34.495775Z
+Metric: loss = 3.2000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 23
+Time: 2025-09-16T21:54:34.495798Z
+Metric: loss = 3.3000
+Message: loss 3.3000 at step 23 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 23
+Time: 2025-09-16T21:54:34.495798Z
+Metric: loss = 3.3000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 24
+Time: 2025-09-16T21:54:34.495822Z
+Metric: loss = 3.4000
+Message: loss 3.4000 at step 24 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 24
+Time: 2025-09-16T21:54:34.495822Z
+Metric: loss = 3.4000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: shell_notification
+Action: warn
+Step: 30
+Time: 2025-09-16T21:54:34.495957Z
+Metric: grad_norm = 14.0000
+Message: grad_norm 14.0000 at step 30 (rule shell_notification)
+----------------------------------------
+Rule: shell_notification
+Action: shell
+Step: 30
+Time: 2025-09-16T21:54:34.495957Z
+Metric: grad_norm = 14.0000
+Message: Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 30' | tee -a artifacts/grad_norm_alerts.log
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 36
+Time: 2025-09-16T21:54:34.496112Z
+Metric: loss = 2.1000
+Message: loss 2.1000 at step 36 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 36
+Time: 2025-09-16T21:54:34.496112Z
+Metric: loss = 2.1000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 37
+Time: 2025-09-16T21:54:34.496136Z
+Metric: loss = 2.2000
+Message: loss 2.2000 at step 37 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 37
+Time: 2025-09-16T21:54:34.496136Z
+Metric: loss = 2.2000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 38
+Time: 2025-09-16T21:54:34.496160Z
+Metric: loss = 2.3000
+Message: loss 2.3000 at step 38 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 38
+Time: 2025-09-16T21:54:34.496160Z
+Metric: loss = 2.3000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: shell_notification
+Action: warn
+Step: 39
+Time: 2025-09-16T21:54:34.496177Z
+Metric: grad_norm = 10.5000
+Message: grad_norm 10.5000 at step 39 (rule shell_notification)
+----------------------------------------
+Rule: shell_notification
+Action: shell
+Step: 39
+Time: 2025-09-16T21:54:34.496177Z
+Metric: grad_norm = 10.5000
+Message: Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 39' | tee -a artifacts/grad_norm_alerts.log
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 39
+Time: 2025-09-16T21:54:34.496182Z
+Metric: loss = 2.4000
+Message: loss 2.4000 at step 39 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 39
+Time: 2025-09-16T21:54:34.496182Z
+Metric: loss = 2.4000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 40
+Time: 2025-09-16T21:54:34.496206Z
+Metric: loss = 4.0000
+Message: loss 4.0000 at step 40 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 40
+Time: 2025-09-16T21:54:34.496206Z
+Metric: loss = 4.0000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 41
+Time: 2025-09-16T21:54:34.496238Z
+Metric: loss = 2.6000
+Message: loss 2.6000 at step 41 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 41
+Time: 2025-09-16T21:54:34.496238Z
+Metric: loss = 2.6000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 42
+Time: 2025-09-16T21:54:34.496263Z
+Metric: loss = 2.7000
+Message: loss 2.7000 at step 42 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 42
+Time: 2025-09-16T21:54:34.496263Z
+Metric: loss = 2.7000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 43
+Time: 2025-09-16T21:54:34.496285Z
+Metric: loss = 2.8000
+Message: loss 2.8000 at step 43 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 43
+Time: 2025-09-16T21:54:34.496285Z
+Metric: loss = 2.8000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 44
+Time: 2025-09-16T21:54:34.496309Z
+Metric: loss = 2.9000
+Message: loss 2.9000 at step 44 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 44
+Time: 2025-09-16T21:54:34.496309Z
+Metric: loss = 2.9000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: shell_notification
+Action: warn
+Step: 45
+Time: 2025-09-16T21:54:34.496327Z
+Metric: grad_norm = 11.5000
+Message: grad_norm 11.5000 at step 45 (rule shell_notification)
+----------------------------------------
+Rule: shell_notification
+Action: shell
+Step: 45
+Time: 2025-09-16T21:54:34.496327Z
+Metric: grad_norm = 11.5000
+Message: Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 45' | tee -a artifacts/grad_norm_alerts.log
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 45
+Time: 2025-09-16T21:54:34.496335Z
+Metric: loss = 3.0000
+Message: loss 3.0000 at step 45 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 45
+Time: 2025-09-16T21:54:34.496335Z
+Metric: loss = 3.0000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 46
+Time: 2025-09-16T21:54:34.496357Z
+Metric: loss = 3.1000
+Message: loss 3.1000 at step 46 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 46
+Time: 2025-09-16T21:54:34.496357Z
+Metric: loss = 3.1000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 47
+Time: 2025-09-16T21:54:34.496379Z
+Metric: loss = 3.2000
+Message: loss 3.2000 at step 47 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 47
+Time: 2025-09-16T21:54:34.496379Z
+Metric: loss = 3.2000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 48
+Time: 2025-09-16T21:54:34.496403Z
+Metric: loss = 3.3000
+Message: loss 3.3000 at step 48 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 48
+Time: 2025-09-16T21:54:34.496403Z
+Metric: loss = 3.3000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 49
+Time: 2025-09-16T21:54:34.496427Z
+Metric: loss = 3.4000
+Message: loss 3.4000 at step 49 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 49
+Time: 2025-09-16T21:54:34.496427Z
+Metric: loss = 3.4000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: shell_notification
+Action: warn
+Step: 59
+Time: 2025-09-16T21:54:34.496675Z
+Metric: grad_norm = 10.5000
+Message: grad_norm 10.5000 at step 59 (rule shell_notification)
+----------------------------------------
+Rule: shell_notification
+Action: shell
+Step: 59
+Time: 2025-09-16T21:54:34.496675Z
+Metric: grad_norm = 10.5000
+Message: Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 59' | tee -a artifacts/grad_norm_alerts.log
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 60
+Time: 2025-09-16T21:54:34.496703Z
+Metric: loss = 3.5000
+Message: loss 3.5000 at step 60 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 60
+Time: 2025-09-16T21:54:34.496703Z
+Metric: loss = 3.5000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 61
+Time: 2025-09-16T21:54:34.496736Z
+Metric: loss = 2.1000
+Message: loss 2.1000 at step 61 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 61
+Time: 2025-09-16T21:54:34.496736Z
+Metric: loss = 2.1000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 62
+Time: 2025-09-16T21:54:34.496762Z
+Metric: loss = 2.2000
+Message: loss 2.2000 at step 62 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 62
+Time: 2025-09-16T21:54:34.496762Z
+Metric: loss = 2.2000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 63
+Time: 2025-09-16T21:54:34.496786Z
+Metric: loss = 2.3000
+Message: loss 2.3000 at step 63 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 63
+Time: 2025-09-16T21:54:34.496786Z
+Metric: loss = 2.3000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 64
+Time: 2025-09-16T21:54:34.496808Z
+Metric: loss = 2.4000
+Message: loss 2.4000 at step 64 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 64
+Time: 2025-09-16T21:54:34.496808Z
+Metric: loss = 2.4000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 65
+Time: 2025-09-16T21:54:34.496832Z
+Metric: loss = 2.5000
+Message: loss 2.5000 at step 65 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 65
+Time: 2025-09-16T21:54:34.496832Z
+Metric: loss = 2.5000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: stop_on_high_kl
+Action: warn
+Step: 66
+Time: 2025-09-16T21:54:34.496837Z
+Metric: kl = 0.3600
+Message: KL 0.360 exceeded at step 66 - stopping training
+----------------------------------------
+Rule: stop_on_high_kl
+Action: stop
+Step: 66
+Time: 2025-09-16T21:54:34.496837Z
+Metric: kl = 0.3600
+Message: Stop action executed: {'action': 'stop', 'success': False, 'error': 'No PID specified for stop action'}
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 66
+Time: 2025-09-16T21:54:34.496855Z
+Metric: loss = 2.6000
+Message: loss 2.6000 at step 66 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 66
+Time: 2025-09-16T21:54:34.496855Z
+Metric: loss = 2.6000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 67
+Time: 2025-09-16T21:54:34.496878Z
+Metric: loss = 2.7000
+Message: loss 2.7000 at step 67 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 67
+Time: 2025-09-16T21:54:34.496878Z
+Metric: loss = 2.7000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 68
+Time: 2025-09-16T21:54:34.496902Z
+Metric: loss = 2.8000
+Message: loss 2.8000 at step 68 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 68
+Time: 2025-09-16T21:54:34.496902Z
+Metric: loss = 2.8000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 69
+Time: 2025-09-16T21:54:34.496925Z
+Metric: loss = 2.9000
+Message: loss 2.9000 at step 69 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 69
+Time: 2025-09-16T21:54:34.496925Z
+Metric: loss = 2.9000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 70
+Time: 2025-09-16T21:54:34.496949Z
+Metric: loss = 3.0000
+Message: loss 3.0000 at step 70 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 70
+Time: 2025-09-16T21:54:34.496949Z
+Metric: loss = 3.0000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 71
+Time: 2025-09-16T21:54:34.496983Z
+Metric: loss = 3.1000
+Message: loss 3.1000 at step 71 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 71
+Time: 2025-09-16T21:54:34.496983Z
+Metric: loss = 3.1000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: stop_on_high_kl
+Action: warn
+Step: 72
+Time: 2025-09-16T21:54:34.496989Z
+Metric: kl = 0.4200
+Message: KL 0.420 exceeded at step 72 - stopping training
+----------------------------------------
+Rule: stop_on_high_kl
+Action: stop
+Step: 72
+Time: 2025-09-16T21:54:34.496989Z
+Metric: kl = 0.4200
+Message: Stop action executed: {'action': 'stop', 'success': False, 'error': 'No PID specified for stop action'}
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 72
+Time: 2025-09-16T21:54:34.497007Z
+Metric: loss = 3.2000
+Message: loss 3.2000 at step 72 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 72
+Time: 2025-09-16T21:54:34.497007Z
+Metric: loss = 3.2000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 73
+Time: 2025-09-16T21:54:34.497029Z
+Metric: loss = 3.3000
+Message: loss 3.3000 at step 73 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 73
+Time: 2025-09-16T21:54:34.497029Z
+Metric: loss = 3.3000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 74
+Time: 2025-09-16T21:54:34.497053Z
+Metric: loss = 3.4000
+Message: loss 3.4000 at step 74 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 74
+Time: 2025-09-16T21:54:34.497053Z
+Metric: loss = 3.4000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: shell_notification
+Action: warn
+Step: 75
+Time: 2025-09-16T21:54:34.497071Z
+Metric: grad_norm = 16.5000
+Message: grad_norm 16.5000 at step 75 (rule shell_notification)
+----------------------------------------
+Rule: shell_notification
+Action: shell
+Step: 75
+Time: 2025-09-16T21:54:34.497071Z
+Metric: grad_norm = 16.5000
+Message: Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 75' | tee -a artifacts/grad_norm_alerts.log
+----------------------------------------
+Rule: stop_on_high_kl
+Action: warn
+Step: 78
+Time: 2025-09-16T21:54:34.497129Z
+Metric: kl = 0.4800
+Message: KL 0.480 exceeded at step 78 - stopping training
+----------------------------------------
+Rule: stop_on_high_kl
+Action: stop
+Step: 78
+Time: 2025-09-16T21:54:34.497129Z
+Metric: kl = 0.4800
+Message: Stop action executed: {'action': 'stop', 'success': False, 'error': 'No PID specified for stop action'}
+----------------------------------------
+Rule: shell_notification
+Action: warn
+Step: 79
+Time: 2025-09-16T21:54:34.497164Z
+Metric: grad_norm = 10.5000
+Message: grad_norm 10.5000 at step 79 (rule shell_notification)
+----------------------------------------
+Rule: shell_notification
+Action: shell
+Step: 79
+Time: 2025-09-16T21:54:34.497164Z
+Metric: grad_norm = 10.5000
+Message: Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 79' | tee -a artifacts/grad_norm_alerts.log
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 80
+Time: 2025-09-16T21:54:34.497195Z
+Metric: loss = 3.0000
+Message: loss 3.0000 at step 80 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 80
+Time: 2025-09-16T21:54:34.497195Z
+Metric: loss = 3.0000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: stop_on_high_kl
+Action: warn
+Step: 84
+Time: 2025-09-16T21:54:34.497277Z
+Metric: kl = 0.5400
+Message: KL 0.540 exceeded at step 84 - stopping training
+----------------------------------------
+Rule: stop_on_high_kl
+Action: stop
+Step: 84
+Time: 2025-09-16T21:54:34.497277Z
+Metric: kl = 0.5400
+Message: Stop action executed: {'action': 'stop', 'success': False, 'error': 'No PID specified for stop action'}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: warn
+Step: 85
+Time: 2025-09-16T21:54:34.497306Z
+Metric: reward = -0.6000
+Message: Rolling average reward {mean(value):.3f} below threshold at step {step}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: sentinel
+Step: 85
+Time: 2025-09-16T21:54:34.497306Z
+Metric: reward = -0.6000
+Message: Created sentinel file: artifacts/reward_drop_sentinel.json
+----------------------------------------
+Rule: rolling_reward_drop
+Action: warn
+Step: 86
+Time: 2025-09-16T21:54:34.497330Z
+Metric: reward = -0.6200
+Message: Rolling average reward {mean(value):.3f} below threshold at step {step}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: sentinel
+Step: 86
+Time: 2025-09-16T21:54:34.497330Z
+Metric: reward = -0.6200
+Message: Created sentinel file: artifacts/reward_drop_sentinel.json
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 86
+Time: 2025-09-16T21:54:34.497342Z
+Metric: loss = 2.1000
+Message: loss 2.1000 at step 86 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 86
+Time: 2025-09-16T21:54:34.497342Z
+Metric: loss = 2.1000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: rolling_reward_drop
+Action: warn
+Step: 87
+Time: 2025-09-16T21:54:34.497354Z
+Metric: reward = -0.6400
+Message: Rolling average reward {mean(value):.3f} below threshold at step {step}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: sentinel
+Step: 87
+Time: 2025-09-16T21:54:34.497354Z
+Metric: reward = -0.6400
+Message: Created sentinel file: artifacts/reward_drop_sentinel.json
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 87
+Time: 2025-09-16T21:54:34.497365Z
+Metric: loss = 2.2000
+Message: loss 2.2000 at step 87 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 87
+Time: 2025-09-16T21:54:34.497365Z
+Metric: loss = 2.2000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: rolling_reward_drop
+Action: warn
+Step: 88
+Time: 2025-09-16T21:54:34.497377Z
+Metric: reward = -0.6600
+Message: Rolling average reward {mean(value):.3f} below threshold at step {step}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: sentinel
+Step: 88
+Time: 2025-09-16T21:54:34.497377Z
+Metric: reward = -0.6600
+Message: Created sentinel file: artifacts/reward_drop_sentinel.json
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 88
+Time: 2025-09-16T21:54:34.497389Z
+Metric: loss = 2.3000
+Message: loss 2.3000 at step 88 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 88
+Time: 2025-09-16T21:54:34.497389Z
+Metric: loss = 2.3000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: rolling_reward_drop
+Action: warn
+Step: 89
+Time: 2025-09-16T21:54:34.497403Z
+Metric: reward = -0.6800
+Message: Rolling average reward {mean(value):.3f} below threshold at step {step}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: sentinel
+Step: 89
+Time: 2025-09-16T21:54:34.497403Z
+Metric: reward = -0.6800
+Message: Created sentinel file: artifacts/reward_drop_sentinel.json
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 89
+Time: 2025-09-16T21:54:34.497415Z
+Metric: loss = 2.4000
+Message: loss 2.4000 at step 89 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 89
+Time: 2025-09-16T21:54:34.497415Z
+Metric: loss = 2.4000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: stop_on_high_kl
+Action: warn
+Step: 90
+Time: 2025-09-16T21:54:34.497422Z
+Metric: kl = 0.6000
+Message: KL 0.600 exceeded at step 90 - stopping training
+----------------------------------------
+Rule: stop_on_high_kl
+Action: stop
+Step: 90
+Time: 2025-09-16T21:54:34.497422Z
+Metric: kl = 0.6000
+Message: Stop action executed: {'action': 'stop', 'success': False, 'error': 'No PID specified for stop action'}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: warn
+Step: 90
+Time: 2025-09-16T21:54:34.497428Z
+Metric: reward = -0.7000
+Message: Rolling average reward {mean(value):.3f} below threshold at step {step}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: sentinel
+Step: 90
+Time: 2025-09-16T21:54:34.497428Z
+Metric: reward = -0.7000
+Message: Created sentinel file: artifacts/reward_drop_sentinel.json
+----------------------------------------
+Rule: shell_notification
+Action: warn
+Step: 90
+Time: 2025-09-16T21:54:34.497433Z
+Metric: grad_norm = 14.0000
+Message: grad_norm 14.0000 at step 90 (rule shell_notification)
+----------------------------------------
+Rule: shell_notification
+Action: shell
+Step: 90
+Time: 2025-09-16T21:54:34.497433Z
+Metric: grad_norm = 14.0000
+Message: Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 90' | tee -a artifacts/grad_norm_alerts.log
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 90
+Time: 2025-09-16T21:54:34.497439Z
+Metric: loss = 2.5000
+Message: loss 2.5000 at step 90 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 90
+Time: 2025-09-16T21:54:34.497439Z
+Metric: loss = 2.5000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: rolling_reward_drop
+Action: warn
+Step: 91
+Time: 2025-09-16T21:54:34.497459Z
+Metric: reward = -0.7200
+Message: Rolling average reward {mean(value):.3f} below threshold at step {step}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: sentinel
+Step: 91
+Time: 2025-09-16T21:54:34.497459Z
+Metric: reward = -0.7200
+Message: Created sentinel file: artifacts/reward_drop_sentinel.json
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 91
+Time: 2025-09-16T21:54:34.497470Z
+Metric: loss = 2.6000
+Message: loss 2.6000 at step 91 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 91
+Time: 2025-09-16T21:54:34.497470Z
+Metric: loss = 2.6000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: rolling_reward_drop
+Action: warn
+Step: 92
+Time: 2025-09-16T21:54:34.497481Z
+Metric: reward = -0.7400
+Message: Rolling average reward {mean(value):.3f} below threshold at step {step}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: sentinel
+Step: 92
+Time: 2025-09-16T21:54:34.497481Z
+Metric: reward = -0.7400
+Message: Created sentinel file: artifacts/reward_drop_sentinel.json
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 92
+Time: 2025-09-16T21:54:34.497492Z
+Metric: loss = 2.7000
+Message: loss 2.7000 at step 92 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 92
+Time: 2025-09-16T21:54:34.497492Z
+Metric: loss = 2.7000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: rolling_reward_drop
+Action: warn
+Step: 93
+Time: 2025-09-16T21:54:34.497503Z
+Metric: reward = -0.7600
+Message: Rolling average reward {mean(value):.3f} below threshold at step {step}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: sentinel
+Step: 93
+Time: 2025-09-16T21:54:34.497503Z
+Metric: reward = -0.7600
+Message: Created sentinel file: artifacts/reward_drop_sentinel.json
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 93
+Time: 2025-09-16T21:54:34.497515Z
+Metric: loss = 2.8000
+Message: loss 2.8000 at step 93 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 93
+Time: 2025-09-16T21:54:34.497515Z
+Metric: loss = 2.8000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: rolling_reward_drop
+Action: warn
+Step: 94
+Time: 2025-09-16T21:54:34.497526Z
+Metric: reward = -0.7800
+Message: Rolling average reward {mean(value):.3f} below threshold at step {step}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: sentinel
+Step: 94
+Time: 2025-09-16T21:54:34.497526Z
+Metric: reward = -0.7800
+Message: Created sentinel file: artifacts/reward_drop_sentinel.json
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 94
+Time: 2025-09-16T21:54:34.497538Z
+Metric: loss = 2.9000
+Message: loss 2.9000 at step 94 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 94
+Time: 2025-09-16T21:54:34.497538Z
+Metric: loss = 2.9000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: rolling_reward_drop
+Action: warn
+Step: 95
+Time: 2025-09-16T21:54:34.497550Z
+Metric: reward = -0.8000
+Message: Rolling average reward {mean(value):.3f} below threshold at step {step}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: sentinel
+Step: 95
+Time: 2025-09-16T21:54:34.497550Z
+Metric: reward = -0.8000
+Message: Created sentinel file: artifacts/reward_drop_sentinel.json
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 95
+Time: 2025-09-16T21:54:34.497561Z
+Metric: loss = 3.0000
+Message: loss 3.0000 at step 95 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 95
+Time: 2025-09-16T21:54:34.497561Z
+Metric: loss = 3.0000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: stop_on_high_kl
+Action: warn
+Step: 96
+Time: 2025-09-16T21:54:34.497567Z
+Metric: kl = 0.6600
+Message: KL 0.660 exceeded at step 96 - stopping training
+----------------------------------------
+Rule: stop_on_high_kl
+Action: stop
+Step: 96
+Time: 2025-09-16T21:54:34.497567Z
+Metric: kl = 0.6600
+Message: Stop action executed: {'action': 'stop', 'success': False, 'error': 'No PID specified for stop action'}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: warn
+Step: 96
+Time: 2025-09-16T21:54:34.497573Z
+Metric: reward = -0.8200
+Message: Rolling average reward {mean(value):.3f} below threshold at step {step}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: sentinel
+Step: 96
+Time: 2025-09-16T21:54:34.497573Z
+Metric: reward = -0.8200
+Message: Created sentinel file: artifacts/reward_drop_sentinel.json
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 96
+Time: 2025-09-16T21:54:34.497613Z
+Metric: loss = 3.1000
+Message: loss 3.1000 at step 96 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 96
+Time: 2025-09-16T21:54:34.497613Z
+Metric: loss = 3.1000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: rolling_reward_drop
+Action: warn
+Step: 97
+Time: 2025-09-16T21:54:34.497625Z
+Metric: reward = -0.8400
+Message: Rolling average reward {mean(value):.3f} below threshold at step {step}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: sentinel
+Step: 97
+Time: 2025-09-16T21:54:34.497625Z
+Metric: reward = -0.8400
+Message: Created sentinel file: artifacts/reward_drop_sentinel.json
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 97
+Time: 2025-09-16T21:54:34.497640Z
+Metric: loss = 3.2000
+Message: loss 3.2000 at step 97 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 97
+Time: 2025-09-16T21:54:34.497640Z
+Metric: loss = 3.2000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: rolling_reward_drop
+Action: warn
+Step: 98
+Time: 2025-09-16T21:54:34.497653Z
+Metric: reward = -0.8600
+Message: Rolling average reward {mean(value):.3f} below threshold at step {step}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: sentinel
+Step: 98
+Time: 2025-09-16T21:54:34.497653Z
+Metric: reward = -0.8600
+Message: Created sentinel file: artifacts/reward_drop_sentinel.json
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 98
+Time: 2025-09-16T21:54:34.497665Z
+Metric: loss = 3.3000
+Message: loss 3.3000 at step 98 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 98
+Time: 2025-09-16T21:54:34.497665Z
+Metric: loss = 3.3000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: rolling_reward_drop
+Action: warn
+Step: 99
+Time: 2025-09-16T21:54:34.497677Z
+Metric: reward = -0.8800
+Message: Rolling average reward {mean(value):.3f} below threshold at step {step}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: sentinel
+Step: 99
+Time: 2025-09-16T21:54:34.497677Z
+Metric: reward = -0.8800
+Message: Created sentinel file: artifacts/reward_drop_sentinel.json
+----------------------------------------
+Rule: shell_notification
+Action: warn
+Step: 99
+Time: 2025-09-16T21:54:34.497683Z
+Metric: grad_norm = 10.5000
+Message: grad_norm 10.5000 at step 99 (rule shell_notification)
+----------------------------------------
+Rule: shell_notification
+Action: shell
+Step: 99
+Time: 2025-09-16T21:54:34.497683Z
+Metric: grad_norm = 10.5000
+Message: Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 99' | tee -a artifacts/grad_norm_alerts.log
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 99
+Time: 2025-09-16T21:54:34.497689Z
+Metric: loss = 3.4000
+Message: loss 3.4000 at step 99 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 99
+Time: 2025-09-16T21:54:34.497689Z
+Metric: loss = 3.4000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------
+Rule: rolling_reward_drop
+Action: warn
+Step: 100
+Time: 2025-09-16T21:54:34.497701Z
+Metric: reward = -0.9000
+Message: Rolling average reward {mean(value):.3f} below threshold at step {step}
+----------------------------------------
+Rule: rolling_reward_drop
+Action: sentinel
+Step: 100
+Time: 2025-09-16T21:54:34.497701Z
+Metric: reward = -0.9000
+Message: Created sentinel file: artifacts/reward_drop_sentinel.json
+----------------------------------------
+Rule: http_webhook
+Action: warn
+Step: 100
+Time: 2025-09-16T21:54:34.497712Z
+Metric: loss = 2.5000
+Message: loss 2.5000 at step 100 (rule http_webhook)
+----------------------------------------
+Rule: http_webhook
+Action: http
+Step: 100
+Time: 2025-09-16T21:54:34.497712Z
+Metric: loss = 2.5000
+Message: HTTP POST to https://httpbin.org/post succeeded
+----------------------------------------

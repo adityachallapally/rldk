@@ -1,0 +1,10 @@
+{
+  "rule_id": "rolling_reward_drop",
+  "step": 100,
+  "time": "2025-09-16T21:54:34.497701Z",
+  "name": "reward",
+  "value": -0.9000000000000001,
+  "run_id": "demo-run-123",
+  "tags": {},
+  "meta": {}
+}
