@@ -1,0 +1,54 @@
+
+rules:
+  - id: stop_on_high_kl
+    where: name == "kl"
+    condition: value > 0.35
+    window:
+      size: 5
+      kind: consecutive
+    cooldown_steps: 5
+    actions:
+      - warn:
+          msg: "KL {value:.3f} exceeded at step {step} - stopping training"
+      - stop:
+          kill_timeout_sec: 3
+
+  - id: rolling_reward_drop
+    where: name == "reward"
+    condition: mean(value) < -0.5
+    window:
+      size: 10
+      kind: rolling
+    grace_steps: 20
+    actions:
+      - warn:
+          msg: "Rolling average reward {mean(value):.3f} below threshold at step {step}"
+      - sentinel:
+          path: "artifacts/reward_drop_sentinel.json"
+
+  - id: shell_notification
+    where: name == "grad_norm"
+    condition: value > 10.0
+    window:
+      size: 3
+      kind: consecutive
+    actions:
+      - shell:
+          command: "echo 'High gradient norm detected: {value:.2f} at step {step}' | tee -a artifacts/grad_norm_alerts.log"
+          timeout_sec: 10
+
+  - id: http_webhook
+    where: name == "loss"
+    condition: value > 2.0
+    window:
+      size: 1
+      kind: consecutive
+    actions:
+      - http:
+          url: "https://httpbin.org/post"
+          method: "POST"
+          headers:
+            "Content-Type": "application/json"
+          payload: '{"alert": "High loss detected", "value": {value}, "step": {step}, "rule": "{rule_id}"}'
+          timeout_sec: 30
+          retries: 2

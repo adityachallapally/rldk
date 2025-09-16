@@ -1,0 +1,81 @@
+# RLDK Monitoring Rules - Demonstrates all action types and window kinds
+
+rules:
+  # Stop training when KL divergence is too high for consecutive steps
+  - id: stop_on_high_kl
+    where: name == "kl"
+    condition: value > 0.35
+    window:
+      size: 5
+      kind: consecutive
+    cooldown_steps: 5
+    actions:
+      - warn:
+          msg: "KL divergence {value:.3f} exceeded threshold at step {step} - stopping training"
+      - stop: {}
+
+  # Create sentinel file when reward drops in rolling window
+  - id: reward_drop_sentinel
+    where: name == "reward"
+    condition: mean(value) < -0.2
+    window:
+      size: 10
+      kind: rolling
+    grace_steps: 20
+    actions:
+      - warn:
+          msg: "Rolling average reward {mean(value):.3f} below threshold at step {step}"
+      - sentinel:
+          path: "artifacts/reward_drop_sentinel.json"
+
+  # Execute shell command when gradient norm is too high
+  - id: high_gradient_alert
+    where: name == "grad_norm"
+    condition: value > 8.0
+    window:
+      size: 1
+      kind: consecutive
+    actions:
+      - warn:
+          msg: "High gradient norm {value:.2f} detected at step {step}"
+      - shell:
+          command: "echo 'High gradient norm: {value:.2f} at step {step}' >> artifacts/grad_norm_alerts.log"
+          timeout_sec: 10
+
+  # Send HTTP webhook when loss spikes
+  - id: loss_spike_webhook
+    where: name == "loss"
+    condition: value > 1.5
+    window:
+      size: 1
+      kind: consecutive
+    actions:
+      - warn:
+          msg: "Loss spike {value:.3f} detected at step {step}"
+      - http:
+          url: "https://httpbin.org/post"
+          method: "POST"
+          headers:
+            "Content-Type": "application/json"
+            "User-Agent": "RLDK-Monitor/1.0"
+          payload: '{"alert": "loss_spike", "value": {value}, "step": {step}, "rule": "{rule_id}", "run_id": "{run_id}"}'
+          timeout_sec: 30
+          retries: 3
+
+  # Rolling window example - detect sustained low performance
+  - id: sustained_low_reward
+    where: name == "reward"
+    condition: mean(value) < 0.1
+    window:
+      size: 20
+      kind: rolling
+    grace_steps: 50
+    cooldown_steps: 100
+    actions:
+      - warn:
+          msg: "Sustained low reward performance: rolling avg {mean(value):.3f} at step {step}"
+      - sentinel:
+          path: "artifacts/low_performance_sentinel.json"
+      - shell:
+          command: "echo 'Low performance detected at step {step}' | mail -s 'RLDK Alert' admin@example.com || true"
+          timeout_sec: 30

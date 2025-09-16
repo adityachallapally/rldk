@@ -161,6 +161,41 @@ def monitor(
         "--field-map",
         help="JSON object mapping input keys to canonical event fields.",
     ),
+    pid: Optional[int] = typer.Option(
+        None,
+        "--pid",
+        help="Process ID to send signals to for stop actions.",
+    ),
+    alerts: Optional[Path] = typer.Option(
+        None,
+        "--alerts",
+        help="Path to write alerts.jsonl and alerts.txt files.",
+    ),
+    kill_timeout_sec: int = typer.Option(
+        5,
+        "--kill-timeout-sec",
+        help="Timeout in seconds before sending SIGKILL after SIGTERM.",
+    ),
+    http_timeout_sec: int = typer.Option(
+        30,
+        "--http-timeout-sec",
+        help="Timeout in seconds for HTTP requests.",
+    ),
+    retries: int = typer.Option(
+        3,
+        "--retries",
+        help="Number of retries for HTTP requests.",
+    ),
+    cooldown_steps: int = typer.Option(
+        0,
+        "--cooldown-steps",
+        help="Global cooldown steps for all rules.",
+    ),
+    grace_steps: int = typer.Option(
+        0,
+        "--grace-steps",
+        help="Global grace steps for all rules.",
+    ),
 ) -> None:
     """Monitor JSONL metrics with streaming or batch analysis."""
     ensure_config_initialized()
@@ -177,16 +212,50 @@ def monitor(
     except Exception as exc:
         typer.echo(f"Failed to load rules: {exc}", err=True)
         raise typer.Exit(1)
+    
+    # Apply global overrides to rules
+    for rule in rule_defs:
+        if cooldown_steps > 0:
+            rule.cooldown_steps = cooldown_steps
+        if grace_steps > 0:
+            rule.grace_steps = grace_steps
+        # Apply global PID to stop actions
+        if pid is not None:
+            for stop_action in rule.stop_actions:
+                if stop_action.pid is None:
+                    stop_action.pid = pid
+        # Apply global timeouts and retries
+        for http_action in rule.http_actions:
+            http_action.timeout_sec = http_timeout_sec
+            http_action.retries = retries
+    
     engine = MonitorEngine(rule_defs)
+    
+    # Set up alerts output
+    alerts_dir = alerts or Path("artifacts")
+    alerts_jsonl_path = alerts_dir / "alerts.jsonl"
+    alerts_txt_path = alerts_dir / "alerts.txt"
+    
+    if alerts_dir and not alerts_dir.exists():
+        alerts_dir.mkdir(parents=True, exist_ok=True)
 
-    def emit_alerts(alerts):
-        for alert in alerts:
+    def emit_alerts(alerts_list):
+        for alert in alerts_list:
+            # Print to console
             if getattr(alert, "message", None):
                 typer.echo(alert.message)
             else:
                 typer.echo(
                     f"[{alert.rule_id}] {alert.event.name} {alert.event.value:.4f} at step {alert.event.step}"
                 )
+            
+            # Write to alerts.jsonl
+            if alerts_dir:
+                try:
+                    with alerts_jsonl_path.open("a", encoding="utf-8") as f:
+                        f.write(json.dumps(alert.to_dict()) + "\n")
+                except Exception as exc:
+                    typer.echo(f"Failed to write alert to JSONL: {exc}", err=True)
 
     try:
         if stream is not None:
@@ -201,6 +270,25 @@ def monitor(
     except Exception as exc:
         typer.echo(f"Monitoring failed: {exc}", err=True)
         raise typer.Exit(1)
+
+    # Generate human-readable alerts summary
+    if alerts_dir and engine._alerts:
+        try:
+            with alerts_txt_path.open("w", encoding="utf-8") as f:
+                f.write("RLDK Monitoring Alerts Summary\n")
+                f.write("=" * 40 + "\n\n")
+                
+                for alert in engine._alerts:
+                    f.write(f"Rule: {alert.rule_id}\n")
+                    f.write(f"Action: {alert.action}\n")
+                    f.write(f"Step: {alert.event.step}\n")
+                    f.write(f"Time: {alert.event.time}\n")
+                    f.write(f"Metric: {alert.event.name} = {alert.event.value:.4f}\n")
+                    if alert.message:
+                        f.write(f"Message: {alert.message}\n")
+                    f.write("-" * 40 + "\n")
+        except Exception as exc:
+            typer.echo(f"Failed to write alerts summary: {exc}", err=True)
 
     report_payload = engine.generate_report().to_dict()
     if report is not None:

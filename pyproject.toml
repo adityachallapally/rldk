@@ -54,6 +54,7 @@ dependencies = [
     "psutil>=5.9.0",
     "detoxify>=0.5.2",
     "vaderSentiment>=3.3.2",
+    "requests>=2.31.0",
 ]
 
 [project.optional-dependencies]

@@ -1,0 +1,2662 @@
+{
+  "rules": {
+    "http_webhook": {
+      "condition": "value > 2.0",
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "grace_steps": 0,
+      "cooldown_steps": 0,
+      "activations": 118,
+      "where": "name == \"loss\"",
+      "first_activation": {
+        "step": 11,
+        "time": "2025-09-16T21:54:34.495484Z",
+        "value": 2.1,
+        "name": "loss",
+        "message": "loss 2.1000 at step 11 (rule http_webhook)",
+        "run_id": "demo-run-123"
+      },
+      "last_activation": {
+        "step": 100,
+        "time": "2025-09-16T21:54:34.497712Z",
+        "value": 2.5,
+        "name": "loss",
+        "message": "HTTP POST to https://httpbin.org/post succeeded",
+        "run_id": "demo-run-123"
+      }
+    },
+    "rolling_reward_drop": {
+      "condition": "mean(value) < -0.5",
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "grace_steps": 20,
+      "cooldown_steps": 0,
+      "activations": 32,
+      "where": "name == \"reward\"",
+      "first_activation": {
+        "step": 85,
+        "time": "2025-09-16T21:54:34.497306Z",
+        "value": -0.6000000000000001,
+        "name": "reward",
+        "message": "Rolling average reward {mean(value):.3f} below threshold at step {step}",
+        "run_id": "demo-run-123"
+      },
+      "last_activation": {
+        "step": 100,
+        "time": "2025-09-16T21:54:34.497701Z",
+        "value": -0.9000000000000001,
+        "name": "reward",
+        "message": "Created sentinel file: artifacts/reward_drop_sentinel.json",
+        "run_id": "demo-run-123"
+      }
+    },
+    "shell_notification": {
+      "condition": "value > 10.0",
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "grace_steps": 0,
+      "cooldown_steps": 0,
+      "activations": 20,
+      "where": "name == \"grad_norm\"",
+      "first_activation": {
+        "step": 15,
+        "time": "2025-09-16T21:54:34.495584Z",
+        "value": 16.5,
+        "name": "grad_norm",
+        "message": "grad_norm 16.5000 at step 15 (rule shell_notification)",
+        "run_id": "demo-run-123"
+      },
+      "last_activation": {
+        "step": 99,
+        "time": "2025-09-16T21:54:34.497683Z",
+        "value": 10.5,
+        "name": "grad_norm",
+        "message": "Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 99' | tee -a artifacts/grad_norm_alerts.log",
+        "run_id": "demo-run-123"
+      }
+    },
+    "stop_on_high_kl": {
+      "condition": "value > 0.35",
+      "window": {
+        "size": 5,
+        "kind": "consecutive"
+      },
+      "grace_steps": 0,
+      "cooldown_steps": 5,
+      "activations": 12,
+      "where": "name == \"kl\"",
+      "first_activation": {
+        "step": 66,
+        "time": "2025-09-16T21:54:34.496837Z",
+        "value": 0.36,
+        "name": "kl",
+        "message": "KL 0.360 exceeded at step 66 - stopping training",
+        "run_id": "demo-run-123"
+      },
+      "last_activation": {
+        "step": 96,
+        "time": "2025-09-16T21:54:34.497567Z",
+        "value": 0.66,
+        "name": "kl",
+        "message": "Stop action executed: {'action': 'stop', 'success': False, 'error': 'No PID specified for stop action'}",
+        "run_id": "demo-run-123"
+      }
+    }
+  },
+  "alerts": [
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 11,
+      "time": "2025-09-16T21:54:34.495484Z",
+      "name": "loss",
+      "value": 2.1,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.1000 at step 11 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 11,
+      "time": "2025-09-16T21:54:34.495484Z",
+      "name": "loss",
+      "value": 2.1,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 12,
+      "time": "2025-09-16T21:54:34.495508Z",
+      "name": "loss",
+      "value": 2.2,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.2000 at step 12 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 12,
+      "time": "2025-09-16T21:54:34.495508Z",
+      "name": "loss",
+      "value": 2.2,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 13,
+      "time": "2025-09-16T21:54:34.495533Z",
+      "name": "loss",
+      "value": 2.3,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.3000 at step 13 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 13,
+      "time": "2025-09-16T21:54:34.495533Z",
+      "name": "loss",
+      "value": 2.3,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 14,
+      "time": "2025-09-16T21:54:34.495556Z",
+      "name": "loss",
+      "value": 2.4000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.4000 at step 14 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 14,
+      "time": "2025-09-16T21:54:34.495556Z",
+      "name": "loss",
+      "value": 2.4000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 15,
+      "time": "2025-09-16T21:54:34.495592Z",
+      "name": "loss",
+      "value": 2.5,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.5000 at step 15 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 15,
+      "time": "2025-09-16T21:54:34.495592Z",
+      "name": "loss",
+      "value": 2.5,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "warn",
+      "step": 15,
+      "time": "2025-09-16T21:54:34.495584Z",
+      "name": "grad_norm",
+      "value": 16.5,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "grad_norm 16.5000 at step 15 (rule shell_notification)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "shell",
+      "step": 15,
+      "time": "2025-09-16T21:54:34.495584Z",
+      "name": "grad_norm",
+      "value": 16.5,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 15' | tee -a artifacts/grad_norm_alerts.log",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 16,
+      "time": "2025-09-16T21:54:34.495617Z",
+      "name": "loss",
+      "value": 2.6,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.6000 at step 16 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 16,
+      "time": "2025-09-16T21:54:34.495617Z",
+      "name": "loss",
+      "value": 2.6,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 17,
+      "time": "2025-09-16T21:54:34.495642Z",
+      "name": "loss",
+      "value": 2.7,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.7000 at step 17 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 17,
+      "time": "2025-09-16T21:54:34.495642Z",
+      "name": "loss",
+      "value": 2.7,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 18,
+      "time": "2025-09-16T21:54:34.495666Z",
+      "name": "loss",
+      "value": 2.8,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.8000 at step 18 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 18,
+      "time": "2025-09-16T21:54:34.495666Z",
+      "name": "loss",
+      "value": 2.8,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 19,
+      "time": "2025-09-16T21:54:34.495693Z",
+      "name": "loss",
+      "value": 2.9000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.9000 at step 19 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 19,
+      "time": "2025-09-16T21:54:34.495693Z",
+      "name": "loss",
+      "value": 2.9000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "warn",
+      "step": 19,
+      "time": "2025-09-16T21:54:34.495687Z",
+      "name": "grad_norm",
+      "value": 10.5,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "grad_norm 10.5000 at step 19 (rule shell_notification)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "shell",
+      "step": 19,
+      "time": "2025-09-16T21:54:34.495687Z",
+      "name": "grad_norm",
+      "value": 10.5,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 19' | tee -a artifacts/grad_norm_alerts.log",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 20,
+      "time": "2025-09-16T21:54:34.495718Z",
+      "name": "loss",
+      "value": 4.5,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 4.5000 at step 20 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 20,
+      "time": "2025-09-16T21:54:34.495718Z",
+      "name": "loss",
+      "value": 4.5,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 21,
+      "time": "2025-09-16T21:54:34.495751Z",
+      "name": "loss",
+      "value": 3.1,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.1000 at step 21 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 21,
+      "time": "2025-09-16T21:54:34.495751Z",
+      "name": "loss",
+      "value": 3.1,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 22,
+      "time": "2025-09-16T21:54:34.495775Z",
+      "name": "loss",
+      "value": 3.2,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.2000 at step 22 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 22,
+      "time": "2025-09-16T21:54:34.495775Z",
+      "name": "loss",
+      "value": 3.2,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 23,
+      "time": "2025-09-16T21:54:34.495798Z",
+      "name": "loss",
+      "value": 3.3000000000000003,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.3000 at step 23 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 23,
+      "time": "2025-09-16T21:54:34.495798Z",
+      "name": "loss",
+      "value": 3.3000000000000003,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 24,
+      "time": "2025-09-16T21:54:34.495822Z",
+      "name": "loss",
+      "value": 3.4000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.4000 at step 24 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 24,
+      "time": "2025-09-16T21:54:34.495822Z",
+      "name": "loss",
+      "value": 3.4000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "warn",
+      "step": 30,
+      "time": "2025-09-16T21:54:34.495957Z",
+      "name": "grad_norm",
+      "value": 14.0,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "grad_norm 14.0000 at step 30 (rule shell_notification)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "shell",
+      "step": 30,
+      "time": "2025-09-16T21:54:34.495957Z",
+      "name": "grad_norm",
+      "value": 14.0,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 30' | tee -a artifacts/grad_norm_alerts.log",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 36,
+      "time": "2025-09-16T21:54:34.496112Z",
+      "name": "loss",
+      "value": 2.1,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.1000 at step 36 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 36,
+      "time": "2025-09-16T21:54:34.496112Z",
+      "name": "loss",
+      "value": 2.1,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 37,
+      "time": "2025-09-16T21:54:34.496136Z",
+      "name": "loss",
+      "value": 2.2,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.2000 at step 37 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 37,
+      "time": "2025-09-16T21:54:34.496136Z",
+      "name": "loss",
+      "value": 2.2,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 38,
+      "time": "2025-09-16T21:54:34.496160Z",
+      "name": "loss",
+      "value": 2.3,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.3000 at step 38 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 38,
+      "time": "2025-09-16T21:54:34.496160Z",
+      "name": "loss",
+      "value": 2.3,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 39,
+      "time": "2025-09-16T21:54:34.496182Z",
+      "name": "loss",
+      "value": 2.4000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.4000 at step 39 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 39,
+      "time": "2025-09-16T21:54:34.496182Z",
+      "name": "loss",
+      "value": 2.4000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "warn",
+      "step": 39,
+      "time": "2025-09-16T21:54:34.496177Z",
+      "name": "grad_norm",
+      "value": 10.5,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "grad_norm 10.5000 at step 39 (rule shell_notification)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "shell",
+      "step": 39,
+      "time": "2025-09-16T21:54:34.496177Z",
+      "name": "grad_norm",
+      "value": 10.5,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 39' | tee -a artifacts/grad_norm_alerts.log",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 40,
+      "time": "2025-09-16T21:54:34.496206Z",
+      "name": "loss",
+      "value": 4.0,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 4.0000 at step 40 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 40,
+      "time": "2025-09-16T21:54:34.496206Z",
+      "name": "loss",
+      "value": 4.0,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 41,
+      "time": "2025-09-16T21:54:34.496238Z",
+      "name": "loss",
+      "value": 2.6,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.6000 at step 41 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 41,
+      "time": "2025-09-16T21:54:34.496238Z",
+      "name": "loss",
+      "value": 2.6,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 42,
+      "time": "2025-09-16T21:54:34.496263Z",
+      "name": "loss",
+      "value": 2.7,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.7000 at step 42 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 42,
+      "time": "2025-09-16T21:54:34.496263Z",
+      "name": "loss",
+      "value": 2.7,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 43,
+      "time": "2025-09-16T21:54:34.496285Z",
+      "name": "loss",
+      "value": 2.8,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.8000 at step 43 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 43,
+      "time": "2025-09-16T21:54:34.496285Z",
+      "name": "loss",
+      "value": 2.8,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 44,
+      "time": "2025-09-16T21:54:34.496309Z",
+      "name": "loss",
+      "value": 2.9000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.9000 at step 44 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 44,
+      "time": "2025-09-16T21:54:34.496309Z",
+      "name": "loss",
+      "value": 2.9000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 45,
+      "time": "2025-09-16T21:54:34.496335Z",
+      "name": "loss",
+      "value": 3.0,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.0000 at step 45 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 45,
+      "time": "2025-09-16T21:54:34.496335Z",
+      "name": "loss",
+      "value": 3.0,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "warn",
+      "step": 45,
+      "time": "2025-09-16T21:54:34.496327Z",
+      "name": "grad_norm",
+      "value": 11.5,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "grad_norm 11.5000 at step 45 (rule shell_notification)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "shell",
+      "step": 45,
+      "time": "2025-09-16T21:54:34.496327Z",
+      "name": "grad_norm",
+      "value": 11.5,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 45' | tee -a artifacts/grad_norm_alerts.log",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 46,
+      "time": "2025-09-16T21:54:34.496357Z",
+      "name": "loss",
+      "value": 3.1,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.1000 at step 46 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 46,
+      "time": "2025-09-16T21:54:34.496357Z",
+      "name": "loss",
+      "value": 3.1,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 47,
+      "time": "2025-09-16T21:54:34.496379Z",
+      "name": "loss",
+      "value": 3.2,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.2000 at step 47 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 47,
+      "time": "2025-09-16T21:54:34.496379Z",
+      "name": "loss",
+      "value": 3.2,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 48,
+      "time": "2025-09-16T21:54:34.496403Z",
+      "name": "loss",
+      "value": 3.3000000000000003,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.3000 at step 48 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 48,
+      "time": "2025-09-16T21:54:34.496403Z",
+      "name": "loss",
+      "value": 3.3000000000000003,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 49,
+      "time": "2025-09-16T21:54:34.496427Z",
+      "name": "loss",
+      "value": 3.4000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.4000 at step 49 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 49,
+      "time": "2025-09-16T21:54:34.496427Z",
+      "name": "loss",
+      "value": 3.4000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "warn",
+      "step": 59,
+      "time": "2025-09-16T21:54:34.496675Z",
+      "name": "grad_norm",
+      "value": 10.5,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "grad_norm 10.5000 at step 59 (rule shell_notification)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "shell",
+      "step": 59,
+      "time": "2025-09-16T21:54:34.496675Z",
+      "name": "grad_norm",
+      "value": 10.5,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 59' | tee -a artifacts/grad_norm_alerts.log",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 60,
+      "time": "2025-09-16T21:54:34.496703Z",
+      "name": "loss",
+      "value": 3.5,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.5000 at step 60 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 60,
+      "time": "2025-09-16T21:54:34.496703Z",
+      "name": "loss",
+      "value": 3.5,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 61,
+      "time": "2025-09-16T21:54:34.496736Z",
+      "name": "loss",
+      "value": 2.1,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.1000 at step 61 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 61,
+      "time": "2025-09-16T21:54:34.496736Z",
+      "name": "loss",
+      "value": 2.1,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 62,
+      "time": "2025-09-16T21:54:34.496762Z",
+      "name": "loss",
+      "value": 2.2,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.2000 at step 62 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 62,
+      "time": "2025-09-16T21:54:34.496762Z",
+      "name": "loss",
+      "value": 2.2,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 63,
+      "time": "2025-09-16T21:54:34.496786Z",
+      "name": "loss",
+      "value": 2.3,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.3000 at step 63 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 63,
+      "time": "2025-09-16T21:54:34.496786Z",
+      "name": "loss",
+      "value": 2.3,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 64,
+      "time": "2025-09-16T21:54:34.496808Z",
+      "name": "loss",
+      "value": 2.4000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.4000 at step 64 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 64,
+      "time": "2025-09-16T21:54:34.496808Z",
+      "name": "loss",
+      "value": 2.4000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 65,
+      "time": "2025-09-16T21:54:34.496832Z",
+      "name": "loss",
+      "value": 2.5,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.5000 at step 65 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 65,
+      "time": "2025-09-16T21:54:34.496832Z",
+      "name": "loss",
+      "value": 2.5,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 66,
+      "time": "2025-09-16T21:54:34.496855Z",
+      "name": "loss",
+      "value": 2.6,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.6000 at step 66 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 66,
+      "time": "2025-09-16T21:54:34.496855Z",
+      "name": "loss",
+      "value": 2.6,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "stop_on_high_kl",
+      "action": "warn",
+      "step": 66,
+      "time": "2025-09-16T21:54:34.496837Z",
+      "name": "kl",
+      "value": 0.36,
+      "window": {
+        "size": 5,
+        "kind": "consecutive"
+      },
+      "message": "KL 0.360 exceeded at step 66 - stopping training",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "stop_on_high_kl",
+      "action": "stop",
+      "step": 66,
+      "time": "2025-09-16T21:54:34.496837Z",
+      "name": "kl",
+      "value": 0.36,
+      "window": {
+        "size": 5,
+        "kind": "consecutive"
+      },
+      "message": "Stop action executed: {'action': 'stop', 'success': False, 'error': 'No PID specified for stop action'}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 67,
+      "time": "2025-09-16T21:54:34.496878Z",
+      "name": "loss",
+      "value": 2.7,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.7000 at step 67 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 67,
+      "time": "2025-09-16T21:54:34.496878Z",
+      "name": "loss",
+      "value": 2.7,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 68,
+      "time": "2025-09-16T21:54:34.496902Z",
+      "name": "loss",
+      "value": 2.8,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.8000 at step 68 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 68,
+      "time": "2025-09-16T21:54:34.496902Z",
+      "name": "loss",
+      "value": 2.8,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 69,
+      "time": "2025-09-16T21:54:34.496925Z",
+      "name": "loss",
+      "value": 2.9000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.9000 at step 69 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 69,
+      "time": "2025-09-16T21:54:34.496925Z",
+      "name": "loss",
+      "value": 2.9000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 70,
+      "time": "2025-09-16T21:54:34.496949Z",
+      "name": "loss",
+      "value": 3.0,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.0000 at step 70 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 70,
+      "time": "2025-09-16T21:54:34.496949Z",
+      "name": "loss",
+      "value": 3.0,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 71,
+      "time": "2025-09-16T21:54:34.496983Z",
+      "name": "loss",
+      "value": 3.1,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.1000 at step 71 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 71,
+      "time": "2025-09-16T21:54:34.496983Z",
+      "name": "loss",
+      "value": 3.1,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 72,
+      "time": "2025-09-16T21:54:34.497007Z",
+      "name": "loss",
+      "value": 3.2,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.2000 at step 72 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 72,
+      "time": "2025-09-16T21:54:34.497007Z",
+      "name": "loss",
+      "value": 3.2,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "stop_on_high_kl",
+      "action": "warn",
+      "step": 72,
+      "time": "2025-09-16T21:54:34.496989Z",
+      "name": "kl",
+      "value": 0.42000000000000004,
+      "window": {
+        "size": 5,
+        "kind": "consecutive"
+      },
+      "message": "KL 0.420 exceeded at step 72 - stopping training",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "stop_on_high_kl",
+      "action": "stop",
+      "step": 72,
+      "time": "2025-09-16T21:54:34.496989Z",
+      "name": "kl",
+      "value": 0.42000000000000004,
+      "window": {
+        "size": 5,
+        "kind": "consecutive"
+      },
+      "message": "Stop action executed: {'action': 'stop', 'success': False, 'error': 'No PID specified for stop action'}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 73,
+      "time": "2025-09-16T21:54:34.497029Z",
+      "name": "loss",
+      "value": 3.3000000000000003,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.3000 at step 73 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 73,
+      "time": "2025-09-16T21:54:34.497029Z",
+      "name": "loss",
+      "value": 3.3000000000000003,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 74,
+      "time": "2025-09-16T21:54:34.497053Z",
+      "name": "loss",
+      "value": 3.4000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.4000 at step 74 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 74,
+      "time": "2025-09-16T21:54:34.497053Z",
+      "name": "loss",
+      "value": 3.4000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "warn",
+      "step": 75,
+      "time": "2025-09-16T21:54:34.497071Z",
+      "name": "grad_norm",
+      "value": 16.5,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "grad_norm 16.5000 at step 75 (rule shell_notification)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "shell",
+      "step": 75,
+      "time": "2025-09-16T21:54:34.497071Z",
+      "name": "grad_norm",
+      "value": 16.5,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 75' | tee -a artifacts/grad_norm_alerts.log",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "stop_on_high_kl",
+      "action": "warn",
+      "step": 78,
+      "time": "2025-09-16T21:54:34.497129Z",
+      "name": "kl",
+      "value": 0.48000000000000004,
+      "window": {
+        "size": 5,
+        "kind": "consecutive"
+      },
+      "message": "KL 0.480 exceeded at step 78 - stopping training",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "stop_on_high_kl",
+      "action": "stop",
+      "step": 78,
+      "time": "2025-09-16T21:54:34.497129Z",
+      "name": "kl",
+      "value": 0.48000000000000004,
+      "window": {
+        "size": 5,
+        "kind": "consecutive"
+      },
+      "message": "Stop action executed: {'action': 'stop', 'success': False, 'error': 'No PID specified for stop action'}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "warn",
+      "step": 79,
+      "time": "2025-09-16T21:54:34.497164Z",
+      "name": "grad_norm",
+      "value": 10.5,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "grad_norm 10.5000 at step 79 (rule shell_notification)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "shell",
+      "step": 79,
+      "time": "2025-09-16T21:54:34.497164Z",
+      "name": "grad_norm",
+      "value": 10.5,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 79' | tee -a artifacts/grad_norm_alerts.log",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 80,
+      "time": "2025-09-16T21:54:34.497195Z",
+      "name": "loss",
+      "value": 3.0,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.0000 at step 80 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 80,
+      "time": "2025-09-16T21:54:34.497195Z",
+      "name": "loss",
+      "value": 3.0,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "stop_on_high_kl",
+      "action": "warn",
+      "step": 84,
+      "time": "2025-09-16T21:54:34.497277Z",
+      "name": "kl",
+      "value": 0.54,
+      "window": {
+        "size": 5,
+        "kind": "consecutive"
+      },
+      "message": "KL 0.540 exceeded at step 84 - stopping training",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "stop_on_high_kl",
+      "action": "stop",
+      "step": 84,
+      "time": "2025-09-16T21:54:34.497277Z",
+      "name": "kl",
+      "value": 0.54,
+      "window": {
+        "size": 5,
+        "kind": "consecutive"
+      },
+      "message": "Stop action executed: {'action': 'stop', 'success': False, 'error': 'No PID specified for stop action'}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "warn",
+      "step": 85,
+      "time": "2025-09-16T21:54:34.497306Z",
+      "name": "reward",
+      "value": -0.6000000000000001,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Rolling average reward {mean(value):.3f} below threshold at step {step}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "sentinel",
+      "step": 85,
+      "time": "2025-09-16T21:54:34.497306Z",
+      "name": "reward",
+      "value": -0.6000000000000001,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Created sentinel file: artifacts/reward_drop_sentinel.json",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 86,
+      "time": "2025-09-16T21:54:34.497342Z",
+      "name": "loss",
+      "value": 2.1,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.1000 at step 86 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 86,
+      "time": "2025-09-16T21:54:34.497342Z",
+      "name": "loss",
+      "value": 2.1,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "warn",
+      "step": 86,
+      "time": "2025-09-16T21:54:34.497330Z",
+      "name": "reward",
+      "value": -0.6200000000000001,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Rolling average reward {mean(value):.3f} below threshold at step {step}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "sentinel",
+      "step": 86,
+      "time": "2025-09-16T21:54:34.497330Z",
+      "name": "reward",
+      "value": -0.6200000000000001,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Created sentinel file: artifacts/reward_drop_sentinel.json",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 87,
+      "time": "2025-09-16T21:54:34.497365Z",
+      "name": "loss",
+      "value": 2.2,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.2000 at step 87 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 87,
+      "time": "2025-09-16T21:54:34.497365Z",
+      "name": "loss",
+      "value": 2.2,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "warn",
+      "step": 87,
+      "time": "2025-09-16T21:54:34.497354Z",
+      "name": "reward",
+      "value": -0.6400000000000001,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Rolling average reward {mean(value):.3f} below threshold at step {step}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "sentinel",
+      "step": 87,
+      "time": "2025-09-16T21:54:34.497354Z",
+      "name": "reward",
+      "value": -0.6400000000000001,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Created sentinel file: artifacts/reward_drop_sentinel.json",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 88,
+      "time": "2025-09-16T21:54:34.497389Z",
+      "name": "loss",
+      "value": 2.3,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.3000 at step 88 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 88,
+      "time": "2025-09-16T21:54:34.497389Z",
+      "name": "loss",
+      "value": 2.3,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "warn",
+      "step": 88,
+      "time": "2025-09-16T21:54:34.497377Z",
+      "name": "reward",
+      "value": -0.6599999999999999,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Rolling average reward {mean(value):.3f} below threshold at step {step}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "sentinel",
+      "step": 88,
+      "time": "2025-09-16T21:54:34.497377Z",
+      "name": "reward",
+      "value": -0.6599999999999999,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Created sentinel file: artifacts/reward_drop_sentinel.json",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 89,
+      "time": "2025-09-16T21:54:34.497415Z",
+      "name": "loss",
+      "value": 2.4000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.4000 at step 89 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 89,
+      "time": "2025-09-16T21:54:34.497415Z",
+      "name": "loss",
+      "value": 2.4000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "warn",
+      "step": 89,
+      "time": "2025-09-16T21:54:34.497403Z",
+      "name": "reward",
+      "value": -0.6799999999999999,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Rolling average reward {mean(value):.3f} below threshold at step {step}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "sentinel",
+      "step": 89,
+      "time": "2025-09-16T21:54:34.497403Z",
+      "name": "reward",
+      "value": -0.6799999999999999,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Created sentinel file: artifacts/reward_drop_sentinel.json",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 90,
+      "time": "2025-09-16T21:54:34.497439Z",
+      "name": "loss",
+      "value": 2.5,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.5000 at step 90 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 90,
+      "time": "2025-09-16T21:54:34.497439Z",
+      "name": "loss",
+      "value": 2.5,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "warn",
+      "step": 90,
+      "time": "2025-09-16T21:54:34.497428Z",
+      "name": "reward",
+      "value": -0.7,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Rolling average reward {mean(value):.3f} below threshold at step {step}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "sentinel",
+      "step": 90,
+      "time": "2025-09-16T21:54:34.497428Z",
+      "name": "reward",
+      "value": -0.7,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Created sentinel file: artifacts/reward_drop_sentinel.json",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "warn",
+      "step": 90,
+      "time": "2025-09-16T21:54:34.497433Z",
+      "name": "grad_norm",
+      "value": 14.0,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "grad_norm 14.0000 at step 90 (rule shell_notification)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "shell",
+      "step": 90,
+      "time": "2025-09-16T21:54:34.497433Z",
+      "name": "grad_norm",
+      "value": 14.0,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 90' | tee -a artifacts/grad_norm_alerts.log",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "stop_on_high_kl",
+      "action": "warn",
+      "step": 90,
+      "time": "2025-09-16T21:54:34.497422Z",
+      "name": "kl",
+      "value": 0.6000000000000001,
+      "window": {
+        "size": 5,
+        "kind": "consecutive"
+      },
+      "message": "KL 0.600 exceeded at step 90 - stopping training",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "stop_on_high_kl",
+      "action": "stop",
+      "step": 90,
+      "time": "2025-09-16T21:54:34.497422Z",
+      "name": "kl",
+      "value": 0.6000000000000001,
+      "window": {
+        "size": 5,
+        "kind": "consecutive"
+      },
+      "message": "Stop action executed: {'action': 'stop', 'success': False, 'error': 'No PID specified for stop action'}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 91,
+      "time": "2025-09-16T21:54:34.497470Z",
+      "name": "loss",
+      "value": 2.6,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.6000 at step 91 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 91,
+      "time": "2025-09-16T21:54:34.497470Z",
+      "name": "loss",
+      "value": 2.6,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "warn",
+      "step": 91,
+      "time": "2025-09-16T21:54:34.497459Z",
+      "name": "reward",
+      "value": -0.72,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Rolling average reward {mean(value):.3f} below threshold at step {step}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "sentinel",
+      "step": 91,
+      "time": "2025-09-16T21:54:34.497459Z",
+      "name": "reward",
+      "value": -0.72,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Created sentinel file: artifacts/reward_drop_sentinel.json",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 92,
+      "time": "2025-09-16T21:54:34.497492Z",
+      "name": "loss",
+      "value": 2.7,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.7000 at step 92 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 92,
+      "time": "2025-09-16T21:54:34.497492Z",
+      "name": "loss",
+      "value": 2.7,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "warn",
+      "step": 92,
+      "time": "2025-09-16T21:54:34.497481Z",
+      "name": "reward",
+      "value": -0.74,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Rolling average reward {mean(value):.3f} below threshold at step {step}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "sentinel",
+      "step": 92,
+      "time": "2025-09-16T21:54:34.497481Z",
+      "name": "reward",
+      "value": -0.74,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Created sentinel file: artifacts/reward_drop_sentinel.json",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 93,
+      "time": "2025-09-16T21:54:34.497515Z",
+      "name": "loss",
+      "value": 2.8,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.8000 at step 93 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 93,
+      "time": "2025-09-16T21:54:34.497515Z",
+      "name": "loss",
+      "value": 2.8,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "warn",
+      "step": 93,
+      "time": "2025-09-16T21:54:34.497503Z",
+      "name": "reward",
+      "value": -0.76,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Rolling average reward {mean(value):.3f} below threshold at step {step}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "sentinel",
+      "step": 93,
+      "time": "2025-09-16T21:54:34.497503Z",
+      "name": "reward",
+      "value": -0.76,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Created sentinel file: artifacts/reward_drop_sentinel.json",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 94,
+      "time": "2025-09-16T21:54:34.497538Z",
+      "name": "loss",
+      "value": 2.9000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.9000 at step 94 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 94,
+      "time": "2025-09-16T21:54:34.497538Z",
+      "name": "loss",
+      "value": 2.9000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "warn",
+      "step": 94,
+      "time": "2025-09-16T21:54:34.497526Z",
+      "name": "reward",
+      "value": -0.78,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Rolling average reward {mean(value):.3f} below threshold at step {step}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "sentinel",
+      "step": 94,
+      "time": "2025-09-16T21:54:34.497526Z",
+      "name": "reward",
+      "value": -0.78,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Created sentinel file: artifacts/reward_drop_sentinel.json",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 95,
+      "time": "2025-09-16T21:54:34.497561Z",
+      "name": "loss",
+      "value": 3.0,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.0000 at step 95 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 95,
+      "time": "2025-09-16T21:54:34.497561Z",
+      "name": "loss",
+      "value": 3.0,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "warn",
+      "step": 95,
+      "time": "2025-09-16T21:54:34.497550Z",
+      "name": "reward",
+      "value": -0.8,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Rolling average reward {mean(value):.3f} below threshold at step {step}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "sentinel",
+      "step": 95,
+      "time": "2025-09-16T21:54:34.497550Z",
+      "name": "reward",
+      "value": -0.8,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Created sentinel file: artifacts/reward_drop_sentinel.json",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 96,
+      "time": "2025-09-16T21:54:34.497613Z",
+      "name": "loss",
+      "value": 3.1,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.1000 at step 96 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 96,
+      "time": "2025-09-16T21:54:34.497613Z",
+      "name": "loss",
+      "value": 3.1,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "warn",
+      "step": 96,
+      "time": "2025-09-16T21:54:34.497573Z",
+      "name": "reward",
+      "value": -0.8200000000000001,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Rolling average reward {mean(value):.3f} below threshold at step {step}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "sentinel",
+      "step": 96,
+      "time": "2025-09-16T21:54:34.497573Z",
+      "name": "reward",
+      "value": -0.8200000000000001,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Created sentinel file: artifacts/reward_drop_sentinel.json",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "stop_on_high_kl",
+      "action": "warn",
+      "step": 96,
+      "time": "2025-09-16T21:54:34.497567Z",
+      "name": "kl",
+      "value": 0.66,
+      "window": {
+        "size": 5,
+        "kind": "consecutive"
+      },
+      "message": "KL 0.660 exceeded at step 96 - stopping training",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "stop_on_high_kl",
+      "action": "stop",
+      "step": 96,
+      "time": "2025-09-16T21:54:34.497567Z",
+      "name": "kl",
+      "value": 0.66,
+      "window": {
+        "size": 5,
+        "kind": "consecutive"
+      },
+      "message": "Stop action executed: {'action': 'stop', 'success': False, 'error': 'No PID specified for stop action'}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 97,
+      "time": "2025-09-16T21:54:34.497640Z",
+      "name": "loss",
+      "value": 3.2,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.2000 at step 97 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 97,
+      "time": "2025-09-16T21:54:34.497640Z",
+      "name": "loss",
+      "value": 3.2,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "warn",
+      "step": 97,
+      "time": "2025-09-16T21:54:34.497625Z",
+      "name": "reward",
+      "value": -0.8400000000000001,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Rolling average reward {mean(value):.3f} below threshold at step {step}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "sentinel",
+      "step": 97,
+      "time": "2025-09-16T21:54:34.497625Z",
+      "name": "reward",
+      "value": -0.8400000000000001,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Created sentinel file: artifacts/reward_drop_sentinel.json",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 98,
+      "time": "2025-09-16T21:54:34.497665Z",
+      "name": "loss",
+      "value": 3.3000000000000003,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.3000 at step 98 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 98,
+      "time": "2025-09-16T21:54:34.497665Z",
+      "name": "loss",
+      "value": 3.3000000000000003,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "warn",
+      "step": 98,
+      "time": "2025-09-16T21:54:34.497653Z",
+      "name": "reward",
+      "value": -0.8600000000000001,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Rolling average reward {mean(value):.3f} below threshold at step {step}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "sentinel",
+      "step": 98,
+      "time": "2025-09-16T21:54:34.497653Z",
+      "name": "reward",
+      "value": -0.8600000000000001,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Created sentinel file: artifacts/reward_drop_sentinel.json",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 99,
+      "time": "2025-09-16T21:54:34.497689Z",
+      "name": "loss",
+      "value": 3.4000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 3.4000 at step 99 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 99,
+      "time": "2025-09-16T21:54:34.497689Z",
+      "name": "loss",
+      "value": 3.4000000000000004,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "warn",
+      "step": 99,
+      "time": "2025-09-16T21:54:34.497677Z",
+      "name": "reward",
+      "value": -0.8800000000000001,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Rolling average reward {mean(value):.3f} below threshold at step {step}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "sentinel",
+      "step": 99,
+      "time": "2025-09-16T21:54:34.497677Z",
+      "name": "reward",
+      "value": -0.8800000000000001,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Created sentinel file: artifacts/reward_drop_sentinel.json",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "warn",
+      "step": 99,
+      "time": "2025-09-16T21:54:34.497683Z",
+      "name": "grad_norm",
+      "value": 10.5,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "grad_norm 10.5000 at step 99 (rule shell_notification)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "shell_notification",
+      "action": "shell",
+      "step": 99,
+      "time": "2025-09-16T21:54:34.497683Z",
+      "name": "grad_norm",
+      "value": 10.5,
+      "window": {
+        "size": 3,
+        "kind": "consecutive"
+      },
+      "message": "Command executed successfully: echo 'High gradient norm detected: {value:.2f} at step 99' | tee -a artifacts/grad_norm_alerts.log",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "warn",
+      "step": 100,
+      "time": "2025-09-16T21:54:34.497712Z",
+      "name": "loss",
+      "value": 2.5,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "loss 2.5000 at step 100 (rule http_webhook)",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "http_webhook",
+      "action": "http",
+      "step": 100,
+      "time": "2025-09-16T21:54:34.497712Z",
+      "name": "loss",
+      "value": 2.5,
+      "window": {
+        "size": 1,
+        "kind": "consecutive"
+      },
+      "message": "HTTP POST to https://httpbin.org/post succeeded",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "warn",
+      "step": 100,
+      "time": "2025-09-16T21:54:34.497701Z",
+      "name": "reward",
+      "value": -0.9000000000000001,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Rolling average reward {mean(value):.3f} below threshold at step {step}",
+      "run_id": "demo-run-123"
+    },
+    {
+      "rule_id": "rolling_reward_drop",
+      "action": "sentinel",
+      "step": 100,
+      "time": "2025-09-16T21:54:34.497701Z",
+      "name": "reward",
+      "value": -0.9000000000000001,
+      "window": {
+        "size": 10,
+        "kind": "rolling"
+      },
+      "message": "Created sentinel file: artifacts/reward_drop_sentinel.json",
+      "run_id": "demo-run-123"
+    }
+  ]
+}
