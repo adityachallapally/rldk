@@ -72,6 +72,9 @@ from rldk.utils.error_handling import (
 from rldk.utils.progress import print_operation_status, timed_operation_context
 from rldk.utils.runtime import with_timeout
 
+from rldk.monitor.engine import MonitorEngine, load_rules_from_yaml
+from rldk.monitor.events import EventWriter
+
 
 def ensure_config_initialized():
     """Ensure configuration is initialized for CLI operations."""
@@ -95,9 +98,11 @@ app = typer.Typer(
 forensics_app = typer.Typer(name="forensics", help="Forensics commands for RL training analysis")
 reward_app = typer.Typer(name="reward", help="Reward model analysis commands")
 evals_app = typer.Typer(name="evals", help="Evaluation suite commands")
+monitor_app = typer.Typer(name="monitor", help="Framework-agnostic monitoring commands")
 
 # Add sub-apps to main app
 app.add_typer(forensics_app, name="forensics")
+app.add_typer(monitor_app, name="monitor")
 app.add_typer(reward_app, name="reward")
 app.add_typer(evals_app, name="evals")
 
@@ -2527,6 +2532,128 @@ def seed_cmd(
             else:
                 typer.echo("  Non-deterministic behavior enabled")
 
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+@monitor_app.command("stream")
+def monitor_stream(
+    path: str = typer.Argument(..., help="Path to JSONL file or '-' for stdin"),
+    rules: str = typer.Option(..., "--rules", help="Path to YAML rules file"),
+    pid: Optional[int] = typer.Option(None, "--pid", help="Process ID to monitor (not used in PR1)"),
+    field_map: Optional[str] = typer.Option(None, "--field-map", help="JSON field mapping for non-canonical schemas"),
+    alerts: str = typer.Option("artifacts/alerts.jsonl", "--alerts", help="Path to write alerts.jsonl"),
+    report: Optional[str] = typer.Option(None, "--report", help="Path to write report.json"),
+    cooldown_steps: int = typer.Option(0, "--cooldown-steps", help="Global cooldown steps override"),
+    grace_steps: int = typer.Option(0, "--grace-steps", help="Global grace steps override"),
+    kill_timeout_sec: int = typer.Option(5, "--kill-timeout-sec", help="Timeout for process termination (not used in PR1)"),
+    http_timeout_sec: int = typer.Option(30, "--http-timeout-sec", help="HTTP action timeout (not used in PR1)"),
+    retries: int = typer.Option(3, "--retries", help="Action retry count (not used in PR1)"),
+):
+    """Monitor JSONL events in streaming mode with live rule evaluation."""
+    ensure_config_initialized()
+    
+    try:
+        # Parse field mapping if provided
+        field_mapping = None
+        if field_map:
+            field_mapping = json.loads(field_map)
+        
+        rules = load_rules_from_yaml(rules)
+        
+        for rule in rules:
+            if cooldown_steps > 0:
+                rule.cooldown_steps = cooldown_steps
+            if grace_steps > 0:
+                rule.grace_steps = grace_steps
+        
+        engine = MonitorEngine(rules, alerts, report)
+        
+        stream_path = None if path == "-" else path
+        engine.process_stream(stream_path, field_mapping, follow=True)
+        
+    except FileNotFoundError as e:
+        typer.echo(f"Error: File not found - {e}", err=True)
+        raise typer.Exit(1)
+    except json.JSONDecodeError as e:
+        typer.echo(f"Error: Invalid JSON in field-map - {e}", err=True)
+        raise typer.Exit(1)
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+@monitor_app.command("once")
+def monitor_once(
+    path: str = typer.Argument(..., help="Path to JSONL file"),
+    rules: str = typer.Option(..., "--rules", help="Path to YAML rules file"),
+    report: Optional[str] = typer.Option(None, "--report", help="Path to write report.json"),
+    field_map: Optional[str] = typer.Option(None, "--field-map", help="JSON field mapping for non-canonical schemas"),
+    alerts: str = typer.Option("artifacts/alerts.jsonl", "--alerts", help="Path to write alerts.jsonl"),
+):
+    """Monitor JSONL events in batch mode for deterministic analysis."""
+    ensure_config_initialized()
+    
+    try:
+        # Parse field mapping if provided
+        field_mapping = None
+        if field_map:
+            field_mapping = json.loads(field_map)
+        
+        rules = load_rules_from_yaml(rules)
+        
+        engine = MonitorEngine(rules, alerts, report)
+        
+        engine.process_stream(path, field_mapping, follow=False)
+        
+        typer.echo(f"Batch monitoring complete. Alerts written to {alerts}")
+        if report:
+            typer.echo(f"Report written to {report}")
+        
+    except FileNotFoundError as e:
+        typer.echo(f"Error: File not found - {e}", err=True)
+        raise typer.Exit(1)
+    except json.JSONDecodeError as e:
+        typer.echo(f"Error: Invalid JSON in field-map - {e}", err=True)
+        raise typer.Exit(1)
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+
+@app.command()
+def emit(
+    to: str = typer.Option(..., "--to", help="Path to JSONL file to write to"),
+    name: str = typer.Option(..., "--name", help="Metric name"),
+    value: float = typer.Option(..., "--value", help="Metric value"),
+    step: int = typer.Option(..., "--step", help="Training step number"),
+    time: Optional[str] = typer.Option(None, "--time", help="ISO8601 timestamp (defaults to current time)"),
+    run_id: Optional[str] = typer.Option(None, "--run-id", help="Run identifier"),
+    tags: Optional[str] = typer.Option(None, "--tags", help="JSON tags object"),
+    meta: Optional[str] = typer.Option(None, "--meta", help="JSON metadata object"),
+):
+    """Emit a single event to JSONL file."""
+    ensure_config_initialized()
+    
+    try:
+        # Parse JSON fields if provided
+        tags_dict = None
+        if tags:
+            tags_dict = json.loads(tags)
+            
+        meta_dict = None
+        if meta:
+            meta_dict = json.loads(meta)
+        
+        with EventWriter(to, run_id) as writer:
+            writer.log(step, name, value, time, tags_dict, meta_dict)
+        
+        typer.echo(f"Event emitted to {to}")
+        
+    except json.JSONDecodeError as e:
+        typer.echo(f"Error: Invalid JSON in tags or meta - {e}", err=True)
+        raise typer.Exit(1)
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(1)

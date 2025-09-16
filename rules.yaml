@@ -1,0 +1,33 @@
+rules:
+  - id: stop_on_high_kl
+    where: name == "kl"
+    condition: value > 0.35
+    window:
+      size: 5
+      kind: consecutive
+    cooldown_steps: 5
+    actions:
+      - warn:
+          msg: "KL {value:.3f} exceeded at step {step}"
+
+  - id: warn_on_high_grad_norm
+    where: name == "grad_norm"
+    condition: value > 2.0
+    window:
+      size: 3
+      kind: consecutive
+    cooldown_steps: 10
+    actions:
+      - warn:
+          msg: "High gradient norm {value:.3f} at step {step}"
+
+  - id: rolling_kl_check
+    where: name == "kl"
+    condition: mean(value) > 0.25
+    window:
+      size: 10
+      kind: rolling
+    cooldown_steps: 0
+    actions:
+      - warn:
+          msg: "Rolling KL mean {value:.3f} exceeded threshold at step {step}"
