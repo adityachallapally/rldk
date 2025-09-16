@@ -19,10 +19,6 @@ adapter = FlexibleDataAdapter("your_data.jsonl", field_map=field_map)
 df = adapter.load()
 ```
 
-> ℹ️ **Training logs**: Core replay and monitoring tools assume JSONL files with
-> one record per training step. Use `tools/json_to_jsonl.py` to convert legacy
-> aggregated JSON metrics before ingesting them with the flexible adapter.
-
 ## Supported Formats
 
 ### 1. Flexible Data Adapter (Recommended)

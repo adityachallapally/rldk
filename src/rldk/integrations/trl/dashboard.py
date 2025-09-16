@@ -235,12 +235,12 @@ def load_metrics_data():
 
     # Find all metrics files
     if RUN_ID:
-        metrics_files = list(OUTPUT_DIR.glob(f"{{RUN_ID}}_metrics.jsonl"))
+        metrics_files = list(OUTPUT_DIR.glob(f"{{RUN_ID}}_metrics.json"))
         alerts_files = list(OUTPUT_DIR.glob(f"{{RUN_ID}}_alerts.json"))
         ppo_files = list(OUTPUT_DIR.glob(f"{{RUN_ID}}_ppo_metrics.csv"))
         checkpoint_files = list(OUTPUT_DIR.glob(f"{{RUN_ID}}_checkpoint_summary.csv"))
     else:
-        metrics_files = list(OUTPUT_DIR.glob("*_metrics.jsonl"))
+        metrics_files = list(OUTPUT_DIR.glob("*_metrics.json"))
         alerts_files = list(OUTPUT_DIR.glob("*_alerts.json"))
         ppo_files = list(OUTPUT_DIR.glob("*_ppo_metrics.csv"))
         checkpoint_files = list(OUTPUT_DIR.glob("*_checkpoint_summary.csv"))
@@ -249,11 +249,11 @@ def load_metrics_data():
     for file in metrics_files:
         try:
             with open(file, 'r') as f:
-                for line in f:
-                    record = line.strip()
-                    if not record:
-                        continue
-                    metrics_data.append(json.loads(record))
+                data = json.load(f)
+                if isinstance(data, list):
+                    metrics_data.extend(data)
+                else:
+                    metrics_data.append(data)
         except Exception as e:
             st.error(f"Error loading {{file}}: {{e}}")
 
@@ -542,12 +542,12 @@ with tab4:
         """Update dashboard data from files."""
         # Load metrics data
         if self.run_id:
-            metrics_files = list(self.output_dir.glob(f"{self.run_id}_metrics.jsonl"))
+            metrics_files = list(self.output_dir.glob(f"{self.run_id}_metrics.json"))
             alerts_files = list(self.output_dir.glob(f"{self.run_id}_alerts.json"))
             ppo_files = list(self.output_dir.glob(f"{self.run_id}_ppo_metrics.csv"))
             checkpoint_files = list(self.output_dir.glob(f"{self.run_id}_checkpoint_summary.csv"))
         else:
-            metrics_files = list(self.output_dir.glob("*_metrics.jsonl"))
+            metrics_files = list(self.output_dir.glob("*_metrics.json"))
             alerts_files = list(self.output_dir.glob("*_alerts.json"))
             ppo_files = list(self.output_dir.glob("*_ppo_metrics.csv"))
             checkpoint_files = list(self.output_dir.glob("*_checkpoint_summary.csv"))
@@ -557,11 +557,11 @@ with tab4:
         for file in metrics_files:
             try:
                 with open(file) as f:
-                    for line in f:
-                        record = line.strip()
-                        if not record:
-                            continue
-                        self.metrics_data.append(json.loads(record))
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        self.metrics_data.extend(data)
+                    else:
+                        self.metrics_data.append(data)
             except Exception as e:
                 print(f"Error loading {file}: {e}")
 
@@ -617,10 +617,22 @@ with tab4:
 
         # Save to file immediately for persistence
         if self.run_id:
-            metrics_file = self.output_dir / f"{self.run_id}_metrics.jsonl"
+            metrics_file = self.output_dir / f"{self.run_id}_metrics.json"
             try:
-                with open(metrics_file, 'a') as f:
-                    f.write(json.dumps(metrics_dict) + "\n")
+                # Load existing data
+                existing_data = []
+                if metrics_file.exists():
+                    with open(metrics_file) as f:
+                        existing_data = json.load(f)
+                        if not isinstance(existing_data, list):
+                            existing_data = [existing_data]
+
+                # Add new metrics
+                existing_data.append(metrics_dict)
+
+                # Save back to file
+                with open(metrics_file, 'w') as f:
+                    json.dump(existing_data, f, indent=2)
 
                 print(f"📊 Added metrics for step {metrics.step} to dashboard")
             except Exception as e:

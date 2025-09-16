@@ -4,14 +4,12 @@ from __future__ import annotations
 
 import json
 import time
-import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Union
 
 import numpy as np
 import pandas as pd
-from ...io.unified_writer import UnifiedWriter
 from transformers import (
     TrainerCallback,
     TrainerControl,
@@ -1061,19 +1059,10 @@ class ComprehensivePPOMonitor(TrainerCallback):
         csv_path = self.output_dir / f"{self.run_id}_comprehensive_metrics.csv"
         df.to_csv(csv_path, index=False)
 
-        # Save as JSONL for per-step compatibility
-        jsonl_path = self.output_dir / f"{self.run_id}_comprehensive_metrics.jsonl"
-
-        writer = UnifiedWriter(self.output_dir)
-        records = df.to_dict(orient="records")
-
-        try:
-            writer.write_jsonl(records, jsonl_path.name)
-        except Exception as exc:
-            warnings.warn(
-                f"Failed to write comprehensive metrics JSONL file {jsonl_path}: {exc}",
-                stacklevel=2,
-            )
+        # Save as JSON
+        json_path = self.output_dir / f"{self.run_id}_comprehensive_metrics.json"
+        with open(json_path, "w") as f:
+            json.dump(self.comprehensive_metrics_history, f, indent=2)
 
         print(f"💾 Comprehensive metrics saved: {csv_path}")
 

@@ -221,10 +221,6 @@ df = ingest_runs("wandb://project/run_id", adapter_hint="wandb")
 df = ingest_runs("path/to/openrlhf_logs", adapter_hint="openrlhf")
 ```
 
-> **Note:** Training and replay tooling expect per-step metrics in JSONL format
-> (one record per line). If you have legacy aggregated JSON logs you can convert
-> them using `python tools/json_to_jsonl.py legacy_metrics.json`.
-
 ### **CLI Commands**
 Comprehensive command-line interface for all functionality:
 

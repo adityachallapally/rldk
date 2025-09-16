@@ -179,7 +179,7 @@ The system generates several types of output files:
 - `*_comprehensive_analysis.json`: Full analysis results
 - `*_health_summary.json`: Concise health summary
 - `*_comprehensive_metrics.csv`: All metrics in CSV format
-- `*_comprehensive_metrics.jsonl`: All metrics in JSONL format
+- `*_comprehensive_metrics.json`: All metrics in JSON format
 
 ### Checkpoint Files
 - `*_comprehensive_analysis_step_*.json`: Analysis at each checkpoint

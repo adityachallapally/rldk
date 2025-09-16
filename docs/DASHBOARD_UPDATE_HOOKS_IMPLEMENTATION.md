@@ -45,12 +45,12 @@ def update_data(self):
     """Update dashboard data from files."""
     # Load metrics data
     if self.run_id:
-        metrics_files = list(self.output_dir.glob(f"{self.run_id}_metrics.jsonl"))
+        metrics_files = list(self.output_dir.glob(f"{self.run_id}_metrics.json"))
         alerts_files = list(self.output_dir.glob(f"{self.run_id}_alerts.json"))
         ppo_files = list(self.output_dir.glob(f"{self.run_id}_ppo_metrics.csv"))
         checkpoint_files = list(self.output_dir.glob(f"{self.run_id}_checkpoint_summary.csv"))
     else:
-        metrics_files = list(self.output_dir.glob("*_metrics.jsonl"))
+        metrics_files = list(self.output_dir.glob("*_metrics.json"))
         alerts_files = list(self.output_dir.glob("*_alerts.json"))
         ppo_files = list(self.output_dir.glob("*_ppo_metrics.csv"))
         checkpoint_files = list(self.output_dir.glob("*_checkpoint_summary.csv"))
@@ -66,7 +66,7 @@ def update_data(self):
 **Implementation**:
 - Converts `RLDKMetrics` objects to dictionaries
 - Adds to local dashboard storage
-- Immediately appends to persistent JSONL files
+- Immediately saves to persistent JSON files
 - Handles existing data gracefully
 
 ```python
@@ -78,11 +78,10 @@ def add_metrics(self, metrics: RLDKMetrics):
     
     # Save to file immediately for persistence
     if self.run_id:
-        metrics_file = self.output_dir / f"{self.run_id}_metrics.jsonl"
+        metrics_file = self.output_dir / f"{self.run_id}_metrics.json"
         try:
-            # Append the new record as a JSON line
-            with open(metrics_file, "a") as f:
-                f.write(json.dumps(metrics_dict) + "\n")
+            # Load existing data, add new metrics, save back
+            # ...
             print(f"📊 Added metrics for step {metrics.step} to dashboard")
         except Exception as e:
             print(f"Error saving metrics to file: {e}")
@@ -217,7 +216,7 @@ The implementation works with the existing file structure:
 
 ```
 output_dir/
-├── {run_id}_metrics.jsonl     # Training metrics (per-step JSONL)
+├── {run_id}_metrics.json      # Training metrics
 ├── {run_id}_alerts.json       # Training alerts
 ├── {run_id}_ppo_metrics.csv   # PPO-specific metrics
 └── {run_id}_checkpoint_summary.csv  # Checkpoint data
