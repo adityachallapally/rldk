@@ -16,7 +16,15 @@ from typer.testing import CliRunner
 
 from rldk.cli import app
 from rldk.emit import EventWriter
-from rldk.monitor import ActionDispatcher, Alert, Event, MonitorEngine, load_rules, read_stream
+from rldk.monitor import (
+    ActionDispatcher,
+    Alert,
+    Event,
+    MonitorEngine,
+    load_rules,
+    read_events_once,
+    read_stream,
+)
 
 
 @pytest.fixture
@@ -104,6 +112,49 @@ def test_read_stream_handles_rotation(tmp_path: Path) -> None:
         assert event2.step == 2
     finally:
         gen.close()
+
+
+def test_read_events_once_regex_trl(tmp_path: Path) -> None:
+    log_path = tmp_path / "stdout.log"
+    log_path.write_text(
+        "\n".join(
+            [
+                "step=1 kl=0.31 reward=-0.10",
+                "step=2 kl=0.62 reward=-0.05",
+            ]
+        )
+        + "\n"
+    )
+
+    events = read_events_once(log_path, regex="trl")
+    sequence = [(event.step, event.name) for event in events]
+    assert sequence == [(1, "kl"), (1, "reward"), (2, "kl"), (2, "reward")]
+    kl_values = [event.value for event in events if event.name == "kl"]
+    assert kl_values == pytest.approx([0.31, 0.62])
+
+
+def test_read_stream_regex_pattern(tmp_path: Path) -> None:
+    path = tmp_path / "metrics.log"
+    pattern = r"step=(?P<step>\d+)\s+metric=(?P<name>\w+)\s+value=(?P<value>[-+0-9.]+)"
+
+    def writer() -> None:
+        with path.open("w", encoding="utf-8") as handle:
+            for step, value in enumerate([0.2, 0.4, 0.6], start=1):
+                handle.write(f"step={step} metric=kl value={value}\n")
+                handle.flush()
+                time.sleep(0.01)
+
+    thread = threading.Thread(target=writer)
+    thread.start()
+    gen = read_stream(path, regex=pattern, poll_interval=0.01)
+    try:
+        events = [next(gen), next(gen), next(gen)]
+    finally:
+        gen.close()
+    thread.join()
+
+    assert [event.step for event in events] == [1, 2, 3]
+    assert [event.value for event in events] == pytest.approx([0.2, 0.4, 0.6])
 
 
 def test_monitor_engine_warn_action(tmp_path: Path) -> None:
@@ -488,6 +539,137 @@ def test_monitor_cli_field_map_preset(tmp_path: Path, runner: CliRunner) -> None
     assert report["rules"]["ppo_high_kl_guard"]["activations"] >= 1
     assert any(alert["rule_id"] == "ppo_high_kl_guard" for alert in report["alerts"])
 
+
+def test_monitor_cli_regex_preset(tmp_path: Path, runner: CliRunner) -> None:
+    log_path = tmp_path / "stdout.log"
+    log_path.write_text(
+        "\n".join(
+            [
+                "step=1 kl=0.30 reward=0.10",
+                "step=2 kl=0.60 reward=0.15",
+            ]
+        )
+        + "\n"
+    )
+    rules_path = tmp_path / "rules.yaml"
+    rules_path.write_text(
+        """
+rules:
+  - id: regex_kl_stop
+    where: name == "kl"
+    condition: value > 0.5
+    actions:
+      - warn: {}
+"""
+    )
+    report_path = tmp_path / "report.json"
+    alerts_path = tmp_path / "alerts.jsonl"
+
+    result = runner.invoke(
+        app,
+        [
+            "monitor",
+            "--once",
+            str(log_path),
+            "--rules",
+            str(rules_path),
+            "--regex",
+            "trl",
+            "--report",
+            str(report_path),
+            "--alerts",
+            str(alerts_path),
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    alerts = [json.loads(line) for line in alerts_path.read_text().splitlines()]
+    assert len(alerts) == 1
+    assert alerts[0]["rule_id"] == "regex_kl_stop"
+
+
+def test_monitor_cli_from_wandb(monkeypatch, tmp_path: Path, runner: CliRunner) -> None:
+    rules_path = tmp_path / "rules.yaml"
+    rules_path.write_text(
+        """
+rules:
+  - id: kl_gate
+    where: name == "kl"
+    condition: value > 0.5
+    actions:
+      - warn: {}
+"""
+    )
+    events = [
+        Event(time=_now_iso(), step=1, name="kl", value=0.4),
+        Event(time=_now_iso(), step=2, name="kl", value=0.7),
+    ]
+
+    def fake_stream(target: str):
+        for event in events:
+            yield event
+
+    monkeypatch.setattr("rldk.cli.stream_from_wandb", fake_stream)
+
+    alerts_path = tmp_path / "alerts.jsonl"
+    report_path = tmp_path / "report.json"
+    result = runner.invoke(
+        app,
+        [
+            "monitor",
+            "--from-wandb",
+            "entity/project/run",
+            "--rules",
+            str(rules_path),
+            "--alerts",
+            str(alerts_path),
+            "--report",
+            str(report_path),
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    payloads = [json.loads(line) for line in alerts_path.read_text().splitlines()]
+    assert any(alert["step"] == 2 for alert in payloads)
+
+
+def test_monitor_cli_from_mlflow(monkeypatch, tmp_path: Path, runner: CliRunner) -> None:
+    rules_path = tmp_path / "rules.yaml"
+    rules_path.write_text(
+        """
+rules:
+  - id: reward_warn
+    where: name == "reward"
+    condition: value < 0.0
+    actions:
+      - warn: {}
+"""
+    )
+    events = [
+        Event(time=_now_iso(), step=1, name="reward", value=0.2),
+        Event(time=_now_iso(), step=2, name="reward", value=-0.3),
+    ]
+
+    def fake_mlflow(run_id: str):
+        for event in events:
+            yield event
+
+    monkeypatch.setattr("rldk.cli.stream_from_mlflow", fake_mlflow)
+
+    alerts_path = tmp_path / "alerts.jsonl"
+    result = runner.invoke(
+        app,
+        [
+            "monitor",
+            "--from-mlflow",
+            "fake-run-id",
+            "--rules",
+            str(rules_path),
+            "--alerts",
+            str(alerts_path),
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    alerts = [json.loads(line) for line in alerts_path.read_text().splitlines()]
+    assert any(alert["step"] == 2 and alert["name"] == "reward" for alert in alerts)
 
 def test_monitor_cli_defaults_to_stdin(tmp_path: Path, runner: CliRunner) -> None:
     events = []
