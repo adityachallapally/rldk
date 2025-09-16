@@ -236,9 +236,9 @@ class AdvancedPPOMonitor(PPOMonitor):
     def save_ppo_analysis(self):
         """Save advanced PPO analysis and call parent method."""
         # Save convergence analysis
-        convergence_path = self.output_dir / f"{self.run_id}_convergence_analysis.json"
+        convergence_path = self.output_dir / f"{self.run_id}_convergence_analysis.jsonl"
         with open(convergence_path, "w") as f:
-            json.dump(self.convergence_analysis, f, indent=2)
+            f.write(json.dumps(self.convergence_analysis) + "\n")
         print(f"📊 Convergence analysis saved to {convergence_path}")
 
         # Call parent method to save standard PPO analysis
