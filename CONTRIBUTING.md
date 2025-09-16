@@ -1,126 +1,120 @@
 # Contributing to RLDK
 
-Thank you for your interest in contributing to RLDK! This document provides guidelines and instructions for contributing to the project.
+Thank you for helping keep the Reinforcement Learning Debug Kit reliable and well-documented. This guide explains how to prepare your development environment and how to work with the new repository conventions described in `AGENTS.md`.
+
+## Before You Start
+
+- Review the root [`AGENTS.md`](AGENTS.md) and any nested `AGENTS.md` files in the directories you plan to touch. They contain binding rules for formatting, validation, and directory layout.
+- Skim the documentation tree, especially `docs/reports/` and `docs/internal/`, so new material can be filed in the correct location.
 
 ## Development Setup
 
-1. Fork the repository and clone your fork
-2. Create a virtual environment:
+1. Fork the repository and clone your fork.
+1. Create and activate a virtual environment:
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
    ```
-3. Install development dependencies:
+1. Install development dependencies:
    ```bash
-   pip install -e ".[dev]"
+   pip install -r requirements-dev.txt
+   pip install -e .
    ```
-4. Install pre-commit hooks (optional but recommended):
+1. Install the pre-commit hooks:
    ```bash
    pre-commit install
    ```
+   Running hooks locally mirrors the checks enforced in CI.
 
-## Code Style
+## Repository Layout
 
-We use several tools to maintain code quality:
+- `src/rldk/` – Production code and configuration modules.
+- `tests/` – Automated tests. Follow `tests/AGENTS.md` for naming and fixture guidance.
+- `docs/` – Documentation. Long-form reports live in `docs/reports/`; internal engineering notes live in `docs/internal/`.
+- `examples/`, `recipes/`, `reference/` – Usage patterns and reference material.
+- `tools/`, `scripts/` – Developer utilities.
+- Root-level files are limited to project-wide assets such as this document, `README.md`, and configuration files.
 
-- **Black** for code formatting
-- **isort** for import sorting
-- **Ruff** for linting
-- **MyPy** for type checking
+## Code Style and Quality
 
-Run these tools before committing:
+We rely on automated tooling to keep the codebase consistent:
+
+- **Formatting**: [`black`](https://github.com/psf/black) and [`isort`](https://pycqa.github.io/isort/) format Python sources.
+- **Linting**: [`ruff`](https://github.com/astral-sh/ruff) and [`flake8`](https://github.com/PyCQA/flake8) catch style and correctness issues.
+- **Static typing**: [`mypy`](https://mypy-lang.org/) enforces type hints.
+- **Spelling and docs**: [`codespell`](https://github.com/codespell-project/codespell) and `mdformat` handle documentation polish.
+
+Run the combined toolchain with:
+
 ```bash
-black .
-isort .
-ruff check .
-mypy src/
+pre-commit run --files $(git diff --name-only --cached)
 ```
 
 ## Testing
 
-Run the test suite:
+Execute the automated tests before submitting a pull request:
+
 ```bash
 pytest
 ```
 
-Run tests with coverage:
-```bash
-pytest --cov=src/rldk --cov-report=html
-```
+Use markers (`-m "not slow"`) or targeted paths (`pytest tests/evals`) when a full suite run is impractical, and report any deviations in the PR description.
+
+## Documentation
+
+- Keep new documentation in `docs/`, using the structure described in `docs/AGENTS.md`.
+- Update guides, examples, and reports when behavior or APIs change.
+- When moving documents, fix relative links and verify the MkDocs site builds locally if the nav is affected.
+
+## Pull Request Process
+
+1. Create a feature branch from `main`.
+1. Make focused changes that keep code, docs, and tests in sync.
+1. Run the validation commands listed above.
+1. Fill out the pull request template, including testing evidence and references to affected documentation.
+1. Request review once the branch is ready and CI is green.
 
 ## Release Process
 
 ### Prerequisites
 
-Before creating a release, ensure you have:
+- PyPI access for the project
+- Trusted publishing configured in PyPI (OIDC)
+- GitHub Pages enabled for documentation
 
-1. **PyPI Account**: Access to the PyPI project for RLDK
-2. **Trusted Publishing Setup**: The repository must be configured in PyPI with OIDC settings for trusted publishing
-3. **GitHub Pages**: Ensure GitHub Pages is enabled for the repository
+### Steps
 
-### Release Steps
-
-1. **Update Version**: Update the version in `pyproject.toml`:
-   ```toml
-   [project]
-   version = "0.1.1"  # Update to new version
-   ```
-
-2. **Update Changelog**: Add release notes to `CHANGELOG.md` (if it exists) or update the release description
-
-3. **Commit Changes**:
+1. **Update version** in `pyproject.toml`.
+1. **Update release notes** in `CHANGELOG.md` or the release description.
+1. **Commit changes** related to the release.
    ```bash
    git add pyproject.toml CHANGELOG.md
-   git commit -m "Bump version to 0.1.1"
+   git commit -m "chore: release prep"
    ```
-
-4. **Create and Push Tag**:
+1. **Tag the release**.
    ```bash
-   git tag -a v0.1.1 -m "Release version 0.1.1"
-   git push origin v0.1.1
+   git tag -a vX.Y.Z -m "Release version X.Y.Z"
+   git push origin vX.Y.Z
    ```
+1. **Publish the GitHub release** with the new tag and release notes.
 
-5. **Create GitHub Release**:
-   - Go to the GitHub repository
-   - Click "Releases" → "Create a new release"
-   - Choose the tag you just created (e.g., `v0.1.1`)
-   - Add a release title and description
-   - Click "Publish release"
+### Automated Workflows
 
-### Automated Processes
-
-Once you create a GitHub release, the following processes will happen automatically:
-
-1. **PyPI Publishing**: The `publish_pypi.yml` workflow will:
-   - Build the package (sdist and wheel)
-   - Publish to PyPI using trusted publishing (no API tokens needed)
-   - Only triggers on published releases
-
-2. **Documentation Deployment**: The `deploy_docs.yml` workflow will:
-   - Build the MkDocs documentation
-   - Deploy to GitHub Pages
-   - Triggers on pushes to `main` branch and on tags
+- `publish_pypi.yml` builds and publishes packages when a GitHub release is published.
+- `deploy_docs.yml` rebuilds the MkDocs site on pushes to `main` and on tags.
 
 ### Troubleshooting
 
-- **PyPI Publishing Fails**: Ensure the repository is properly configured in PyPI with OIDC settings
-- **Documentation Not Updating**: Check that GitHub Pages is enabled and the workflow has the correct permissions
-- **Version Conflicts**: Ensure the version in `pyproject.toml` matches the git tag
+- Verify PyPI trusted publisher settings if publishing fails.
+- Confirm GitHub Pages is enabled if documentation does not deploy.
+- Ensure the version in `pyproject.toml` matches the git tag.
 
-## Pull Request Process
+## Questions
 
-1. Create a feature branch from `master`
-2. Make your changes following the code style guidelines
-3. Add tests for new functionality
-4. Update documentation if needed
-5. Run the full test suite
-6. Submit a pull request with a clear description
+If you need help:
 
-## Questions?
-
-If you have questions about contributing, please:
-- Open an issue on GitHub
-- Check existing issues and discussions
-- Review the documentation in the `docs/` directory
+- Open an issue or discussion on GitHub.
+- Review existing documentation in the `docs/` directory.
+- Reach out to maintainers or contributors listed in recent pull requests.
 
 Thank you for contributing to RLDK!

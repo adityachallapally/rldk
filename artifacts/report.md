@@ -11,10 +11,11 @@ The RLDK repository successfully performs live anomaly detection during training
 ### TRL Integration Monitors (src/rldk/integrations/trl/monitors.py)
 
 - **PPOMonitor** (line 86): Inherits from TrainerCallback, monitors PPO-specific metrics with real-time alert system
-- **CheckpointMonitor** (line 427): Inherits from TrainerCallback, monitors model parameters and health indicators  
+- **CheckpointMonitor** (line 427): Inherits from TrainerCallback, monitors model parameters and health indicators
 - **ComprehensivePPOMonitor** (line 594): Most advanced monitor with comprehensive forensics and anomaly detection
 
 ### Key Features for Live Monitoring
+
 - All monitors implement `on_log()` method called during training
 - Real-time alert systems with immediate stdout output
 - Threshold-based anomaly detection for KL divergence, rewards, gradients
@@ -27,12 +28,14 @@ The RLDK repository successfully performs live anomaly detection during training
 Successfully ran `examples/comprehensive_ppo_forensics_example.py` which demonstrated:
 
 ### Evidence from artifacts/live_stdout.txt:
+
 - **Earliest alert**: Line 7: `🚨 PPO Alert: Reward std 0.1000 exceeds threshold 0.01`
 - **Real-time warnings**: Lines 112, 122-129, 139-149 show warnings during training loop
 - **Anomaly detection**: Multiple anomaly types detected including "Poor coefficient adaptation" and "Poor gradient balance"
 - **Health monitoring**: Continuous health scoring and stability assessment throughout training
 
 ### Console Snippet:
+
 ```
 🚨 PPO Alert: Reward std 0.1000 exceeds threshold 0.01
 ⚠️  WARNING [kl_schedule]: Poor coefficient adaptation: 0.000
@@ -40,6 +43,7 @@ Successfully ran `examples/comprehensive_ppo_forensics_example.py` which demonst
 ```
 
 ### Timestamps and Steps:
+
 - First alert detected immediately at step 0
 - Continuous monitoring throughout 200-step simulation
 - Real-time anomaly detection with precise timestamps
@@ -51,6 +55,7 @@ Successfully ran `examples/comprehensive_ppo_forensics_example.py` which demonst
 Created and ran `scripts/monitor_harness.py` which successfully demonstrated:
 
 ### Evidence from artifacts/harness_summary.json:
+
 ```json
 {
   "first_alert_step": 0,
@@ -62,12 +67,14 @@ Created and ran `scripts/monitor_harness.py` which successfully demonstrated:
 ```
 
 ### Key Results:
+
 - **First alert step**: 0 (immediate detection)
 - **First alert wall clock**: 1757955201.8652213 (precise timestamp)
 - **Total alerts**: 200 (detected alerts for all iterations)
 - **Alert types**: Reward variance alerts triggered immediately when threshold exceeded
 
 ### Console Evidence:
+
 ```
 🚨 ALERT at step 0: 🚨 PPO Alert: Reward std 0.1000 exceeds threshold 0.05
 ```
@@ -79,12 +86,14 @@ Created and ran `scripts/monitor_harness.py` which successfully demonstrated:
 Created and ran TRL simulation mode which demonstrated:
 
 ### Evidence from artifacts/trl_stdout.txt:
+
 - **Earliest alert**: Line 7: `🚨 PPO Alert: Reward std 0.1000 exceeds threshold 0.01`
 - **Progressive escalation**: Alerts increased in frequency as metrics exceeded thresholds
 - **Multiple alert types**: KL divergence, reward variance, gradient norm, clip fraction
 - **697 total alerts**: Comprehensive monitoring throughout 200-step simulation
 
 ### Console Snippet:
+
 ```
 🚨 PPO Alert: Reward std 0.1000 exceeds threshold 0.01
 🚨 PPO Alert: Policy KL divergence 0.0510 exceeds threshold 0.05
@@ -93,6 +102,7 @@ Created and ran TRL simulation mode which demonstrated:
 ```
 
 ### Timestamps and Steps:
+
 - First alert at step 0
 - Continuous real-time monitoring throughout training
 - Progressive threshold violations detected as metrics increased
@@ -104,10 +114,11 @@ Created and ran TRL simulation mode which demonstrated:
 All three paths successfully demonstrated live anomaly detection:
 
 1. **Path A**: Bundled comprehensive PPO forensics example showed real-time warnings and anomaly detection
-2. **Path B**: Unit harness confirmed immediate alert generation with precise timestamps
-3. **Path C**: TRL simulation demonstrated extensive live monitoring with 697 alerts across multiple metrics
+1. **Path B**: Unit harness confirmed immediate alert generation with precise timestamps
+1. **Path C**: TRL simulation demonstrated extensive live monitoring with 697 alerts across multiple metrics
 
 The RLDK repository performs live anomaly detection during training with:
+
 - Real-time alert generation to stdout
 - Multiple threshold-based anomaly types
 - Precise timestamps and step tracking
@@ -179,9 +190,7 @@ print('✅ TRL simulation completed successfully!')
 - `artifacts/harness_summary.json`: Path B summary with first alert details
 - `artifacts/trl_stdout.txt`: Path C simulation output with extensive alerts
 - `artifacts/report.md`: This comprehensive report
-- `notes.md`: Discovery notes with monitor class details
-
----
+- `docs/internal/notes.md`: Discovery notes with monitor class details
 
 **FINAL VERDICT: LIVE MONITORING PASS via Path A, B, and C**
 
