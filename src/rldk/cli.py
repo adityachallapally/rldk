@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -54,6 +55,7 @@ from rldk.monitor import (
     read_events_once,
     read_stream,
 )
+from rldk.monitor.presets import FIELD_MAP_PRESETS, RULE_PRESETS, get_field_map_preset
 from rldk.emit import EventWriter
 from rldk.replay import replay
 from rldk.reward import health
@@ -105,6 +107,25 @@ def _parse_field_map_option(field_map: Optional[str]) -> Optional[Dict[str, str]
     if not isinstance(data, dict):
         raise ValueError("field map must be a JSON object mapping source keys to canonical keys")
     return {str(key): str(value) for key, value in data.items()}
+
+
+def _combine_field_maps(
+    preset: Optional[str],
+    raw_field_map: Optional[str],
+) -> Optional[Dict[str, str]]:
+    mapping: Dict[str, str] = {}
+    if preset:
+        preset_mapping = get_field_map_preset(preset)
+        if preset_mapping is None:
+            available = ", ".join(sorted(FIELD_MAP_PRESETS))
+            raise ValueError(
+                f"unknown field map preset '{preset}'. Available presets: {available}"
+            )
+        mapping.update(preset_mapping)
+    custom_mapping = _parse_field_map_option(raw_field_map)
+    if custom_mapping:
+        mapping.update(custom_mapping)
+    return mapping or None
 
 def _parse_json_mapping(raw: Optional[str], field: str) -> Optional[Dict[str, Any]]:
     if raw is None:
@@ -159,19 +180,30 @@ def monitor(
         readable=True,
         help="Analyze an existing JSONL metrics file once and exit.",
     ),
-    rules: Path = typer.Option(
+    rules: str = typer.Option(
         ...,
         "--rules",
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        readable=True,
-        help="Path to a YAML rules file.",
+        help=(
+            "Path to a YAML rules file or preset name"
+            f" ({', '.join(sorted(RULE_PRESETS))})"
+            if RULE_PRESETS
+            else "Path to a YAML rules file."
+        ),
     ),
     report: Optional[Path] = typer.Option(
         None,
         "--report",
         help="Optional path to write the monitoring summary report as JSON.",
+    ),
+    preset: Optional[str] = typer.Option(
+        None,
+        "--preset",
+        help=(
+            "Field map preset to normalize common trainer keys"
+            f" ({', '.join(sorted(FIELD_MAP_PRESETS))})"
+            if FIELD_MAP_PRESETS
+            else "Field map preset name (e.g. trl)."
+        ),
     ),
     field_map: Optional[str] = typer.Option(
         None,
@@ -213,11 +245,22 @@ def monitor(
 ) -> None:
     """Monitor JSONL metrics with streaming or batch analysis."""
     ensure_config_initialized()
-    if (stream is None) == (once is None):
-        typer.echo("Provide exactly one of --stream or --once.", err=True)
+    stream_source = stream
+    once_source = once
+    env_stream = os.environ.get("RLDK_METRICS_PATH")
+    if stream_source is None and once_source is None:
+        if env_stream:
+            stream_source = env_stream
+        elif not sys.stdin.isatty():
+            stream_source = "-"
+    if (stream_source is None) == (once_source is None):
+        typer.echo(
+            "Provide exactly one of --stream or --once, or pipe metrics via stdin.",
+            err=True,
+        )
         raise typer.Exit(1)
     try:
-        mapping = _parse_field_map_option(field_map)
+        mapping = _combine_field_maps(preset, field_map)
     except ValueError as exc:
         typer.echo(f"Invalid field map: {exc}", err=True)
         raise typer.Exit(1)
@@ -246,17 +289,22 @@ def monitor(
                 typer.echo(message)
 
     try:
-        if stream is not None:
-            for event in read_stream(stream, field_map=mapping):
+        if stream_source is not None:
+            for event in read_stream(stream_source, field_map=mapping):
                 emit_alerts(engine.process_event(event))
         else:
-            events = read_events_once(once, field_map=mapping)
+            events = read_events_once(once_source, field_map=mapping)
             for event in events:
                 emit_alerts(engine.process_event(event))
     except KeyboardInterrupt:
         typer.echo("Monitoring interrupted by user", err=True)
+    except EOFError:
+        pass
+    except typer.Exit:
+        raise
     except Exception as exc:
-        typer.echo(f"Monitoring failed: {exc}", err=True)
+        message = str(exc) or exc.__class__.__name__
+        typer.echo(f"Monitoring failed: {message}", err=True)
         raise typer.Exit(1)
 
     report_payload = engine.generate_report().to_dict()

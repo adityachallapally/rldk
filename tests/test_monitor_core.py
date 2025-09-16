@@ -194,6 +194,12 @@ rules:
     assert triggered == [3, 4]
 
 
+def test_load_rules_builtin_preset() -> None:
+    rules = load_rules("ppo_safe")
+    ids = {rule.id for rule in rules}
+    assert "ppo_high_kl_guard" in ids
+
+
 def test_stop_action_terminates_process(tmp_path: Path) -> None:
     script = (
         "import signal, time, sys\n"
@@ -240,6 +246,38 @@ rules:
     assert alerts and alerts[0].action == "stop"
     assert alerts[0].status == "success"
     assert alerts[0].details.get("terminated") is True
+
+
+def test_read_stream_directory_handles_new_files(tmp_path: Path) -> None:
+    directory = tmp_path / "logs"
+    directory.mkdir()
+
+    def writer() -> None:
+        time.sleep(0.05)
+        first_path = directory / "first.jsonl"
+        with first_path.open("w", encoding="utf-8") as handle:
+            handle.write(json.dumps({"time": _now_iso(), "step": 1, "name": "kl", "value": 0.2}) + "\n")
+            handle.flush()
+            time.sleep(0.05)
+            handle.write(json.dumps({"time": _now_iso(), "step": 2, "name": "kl", "value": 0.3}) + "\n")
+            handle.flush()
+        time.sleep(0.05)
+        second_path = directory / "second.jsonl"
+        with second_path.open("w", encoding="utf-8") as handle:
+            handle.write(json.dumps({"time": _now_iso(), "step": 3, "name": "kl", "value": 0.4}) + "\n")
+            handle.flush()
+
+    writer_thread = threading.Thread(target=writer)
+    writer_thread.start()
+
+    gen = read_stream(directory, poll_interval=0.01)
+    try:
+        events = [next(gen), next(gen), next(gen)]
+    finally:
+        gen.close()
+    writer_thread.join()
+
+    assert [event.step for event in events] == [1, 2, 3]
 
 
 def test_sentinel_action_writes_file(tmp_path: Path) -> None:
@@ -413,6 +451,70 @@ rules:
     alerts_text = alerts_path.with_suffix(".txt")
     assert alerts_text.exists()
     assert len(alerts_text.read_text().strip().splitlines()) == 2
+
+
+def test_monitor_cli_field_map_preset(tmp_path: Path, runner: CliRunner) -> None:
+    log_path = tmp_path / "metrics.jsonl"
+    values = [0.2, 0.36, 0.38, 0.4, 0.42, 0.44]
+    with log_path.open("w", encoding="utf-8") as handle:
+        for step, value in enumerate(values, start=1):
+            payload = {
+                "timestamp": _now_iso(),
+                "global_step": step,
+                "metric": "kl",
+                "value": value,
+            }
+            handle.write(json.dumps(payload) + "\n")
+    report_path = tmp_path / "report.json"
+    alerts_path = tmp_path / "alerts.jsonl"
+    result = runner.invoke(
+        app,
+        [
+            "monitor",
+            "--once",
+            str(log_path),
+            "--rules",
+            "ppo_safe",
+            "--preset",
+            "trl",
+            "--report",
+            str(report_path),
+            "--alerts",
+            str(alerts_path),
+        ],
+    )
+    assert result.exit_code == 0
+    report = json.loads(report_path.read_text())
+    assert report["rules"]["ppo_high_kl_guard"]["activations"] >= 1
+    assert any(alert["rule_id"] == "ppo_high_kl_guard" for alert in report["alerts"])
+
+
+def test_monitor_cli_defaults_to_stdin(tmp_path: Path, runner: CliRunner) -> None:
+    events = []
+    for step in range(1, 7):
+        payload = {"time": _now_iso(), "step": step, "name": "kl", "value": 0.4}
+        events.append(json.dumps(payload))
+    report_path = tmp_path / "report.json"
+    alerts_path = tmp_path / "alerts.jsonl"
+    result = runner.invoke(
+        app,
+        [
+            "monitor",
+            "--rules",
+            "ppo_safe",
+            "--preset",
+            "trl",
+            "--report",
+            str(report_path),
+            "--alerts",
+            str(alerts_path),
+        ],
+        input="\n".join(events) + "\n",
+    )
+    assert result.exit_code == 0
+    report = json.loads(report_path.read_text())
+    assert report["rules"]["ppo_high_kl_guard"]["activations"] >= 1
+    assert alerts_path.exists()
 
 
 def test_emit_cli_writes_event(tmp_path: Path, runner: CliRunner) -> None:
