@@ -624,7 +624,7 @@ class MonitorEngine:
             self._counts[rule.id][key] += 1
             
             if rule.window_kind == "rolling":
-                should_evaluate = len(buffer) >= min(rule.window_size, max(rule.grace_steps, 0) + 1)
+                should_evaluate = len(buffer) >= rule.window_size
             else:
                 should_evaluate = len(buffer) >= rule.window_size
             
