@@ -1,6 +1,7 @@
 """Utility functions for TRL integration."""
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple
+import warnings
 
 from packaging import version
 from packaging.version import InvalidVersion
@@ -154,6 +155,8 @@ def _ensure_generation_config(
     candidate: Optional["AutoModelForCausalLMWithValueHead"],
     tokenizer: Optional[AutoTokenizer],
     generation_config: Optional[GenerationConfig],
+    *,
+    allow_missing_tokenizer: bool = False,
 ) -> Optional["AutoModelForCausalLMWithValueHead"]:
     """Apply :func:`fix_generation_config` when possible."""
 
@@ -161,12 +164,130 @@ def _ensure_generation_config(
         return candidate
 
     if tokenizer is None:
+        if allow_missing_tokenizer:
+            return candidate
         raise ValueError(
             "Tokenizer is required when providing custom TRL models. "
             "Pass a tokenizer or allow prepare_models_for_ppo() to create one."
         )
 
     return fix_generation_config(candidate, tokenizer, generation_config)
+
+
+def _collect_model_names(
+    models: Iterable[Optional["AutoModelForCausalLMWithValueHead"]]
+) -> List[str]:
+    """Collect potential model identifiers for tokenizer inference."""
+
+    names: List[str] = []
+    for model in models:
+        if model is None:
+            continue
+
+        for attr in ("name_or_path", "model_name"):
+            value = getattr(model, attr, None)
+            if value:
+                names.append(value)
+
+        pretrained = getattr(model, "pretrained_model", None)
+        if pretrained is not None:
+            for attr in ("name_or_path", "model_name", "_name_or_path"):
+                value = getattr(pretrained, attr, None)
+                if value:
+                    names.append(value)
+
+        config = getattr(model, "config", None)
+        if config is not None:
+            for attr in ("name_or_path", "model_type", "_name_or_path"):
+                value = getattr(config, attr, None)
+                if value:
+                    names.append(value)
+
+    return names
+
+
+def _infer_tokenizer(
+    tokenizer: Optional[AutoTokenizer],
+    model_name: str,
+    *models: Optional["AutoModelForCausalLMWithValueHead"],
+) -> Optional[AutoTokenizer]:
+    """Infer a tokenizer from provided models or model name."""
+
+    if tokenizer is not None:
+        if getattr(tokenizer, "pad_token", None) is None and getattr(tokenizer, "eos_token", None) is not None:
+            tokenizer.pad_token = tokenizer.eos_token
+        if getattr(tokenizer, "pad_token_id", None) is None and getattr(tokenizer, "eos_token_id", None) is not None:
+            tokenizer.pad_token_id = tokenizer.eos_token_id
+        return tokenizer
+
+    candidates = []
+    seen = set()
+    for candidate in _collect_model_names(models):
+        if candidate and candidate not in seen:
+            seen.add(candidate)
+            candidates.append(candidate)
+
+    if model_name and model_name not in seen:
+        candidates.append(model_name)
+
+    for candidate in candidates:
+        try:
+            inferred = AutoTokenizer.from_pretrained(candidate)
+        except Exception:
+            continue
+
+        if getattr(inferred, "pad_token", None) is None and getattr(inferred, "eos_token", None) is not None:
+            inferred.pad_token = inferred.eos_token
+        if getattr(inferred, "pad_token_id", None) is None and getattr(inferred, "eos_token_id", None) is not None:
+            inferred.pad_token_id = inferred.eos_token_id
+        return inferred
+
+    return None
+
+
+def _auto_fix_generation_configs(
+    models: Iterable[Tuple[str, Optional["AutoModelForCausalLMWithValueHead"]]],
+    tokenizer: Optional[AutoTokenizer],
+    generation_config: Optional[GenerationConfig],
+) -> List[str]:
+    """Ensure TRL models have the expected generation configuration."""
+
+    issues: List[str] = []
+
+    if tokenizer is None:
+        issues.append(
+            "Unable to infer a tokenizer for automatic generation_config fixes; "
+            "pass a tokenizer explicitly to silence this warning."
+        )
+        return issues
+
+    seen: set[int] = set()
+    for name, candidate in models:
+        if candidate is None or not isinstance(candidate, AutoModelForCausalLMWithValueHead):
+            continue
+
+        candidate_id = id(candidate)
+        if candidate_id in seen:
+            continue
+        seen.add(candidate_id)
+
+        try:
+            fix_generation_config(candidate, tokenizer, generation_config)
+        except Exception as exc:  # pragma: no cover - defensive branch
+            issues.append(f"{name}: auto-fix failed with error: {exc}")
+            continue
+
+        if not hasattr(candidate, "generation_config") or candidate.generation_config is None:
+            issues.append(f"{name}: missing generation_config after auto-fix")
+            continue
+
+        base_prefix = getattr(candidate, "base_model_prefix", None)
+        if base_prefix and not hasattr(candidate, base_prefix):
+            issues.append(
+                f"{name}: missing base model attribute '{base_prefix}' after auto-fix"
+            )
+
+    return issues
 
 
 def create_ppo_trainer(
@@ -203,15 +324,23 @@ def create_ppo_trainer(
 
     use_new_api = trl_version is None or trl_version >= version.parse("0.23.0")
 
+    tokenizer = _infer_tokenizer(
+        tokenizer,
+        model_name,
+        model,
+        ref_model,
+        reward_model if isinstance(reward_model, AutoModelForCausalLMWithValueHead) else None,
+        value_model,
+    )
+
     callbacks_list: List[Any] = list(callbacks) if callbacks else []
 
-    required_components_missing = (
+    policy_components_missing = (
         tokenizer is None
         or any(component is None for component in (model, ref_model, reward_model))
     )
-    components_missing = required_components_missing or (use_new_api and value_model is None)
 
-    if components_missing:
+    if policy_components_missing:
         (
             default_model,
             default_ref_model,
@@ -228,33 +357,68 @@ def create_ppo_trainer(
         reward_model = reward_model or default_reward_model
         tokenizer = tokenizer or default_tokenizer
 
-        if use_new_api and value_model is None:
-            value_model = _prepare_value_model(
-                model_name,
-                tokenizer,
-                generation_config,
-            )
-    else:
-        model = _ensure_generation_config(model, tokenizer, generation_config)
-        ref_model = _ensure_generation_config(ref_model, tokenizer, generation_config)
-        if isinstance(reward_model, AutoModelForCausalLMWithValueHead):
-            reward_model = _ensure_generation_config(
-                reward_model,
-                tokenizer,
-                generation_config,
-            )
-        if value_model is not None:
-            value_model = _ensure_generation_config(value_model, tokenizer, generation_config)
-
-    if tokenizer is None:
-        raise ValueError("Tokenizer could not be prepared for PPO training")
-
     if use_new_api and value_model is None:
         value_model = _prepare_value_model(
             model_name,
             tokenizer,
             generation_config,
         )
+
+    tokenizer = _infer_tokenizer(
+        tokenizer,
+        model_name,
+        model,
+        ref_model,
+        reward_model if isinstance(reward_model, AutoModelForCausalLMWithValueHead) else None,
+        value_model,
+    )
+
+    if tokenizer is None:
+        raise ValueError("Tokenizer could not be prepared for PPO training")
+
+    model = _ensure_generation_config(
+        model,
+        tokenizer,
+        generation_config,
+        allow_missing_tokenizer=use_new_api,
+    )
+    ref_model = _ensure_generation_config(
+        ref_model,
+        tokenizer,
+        generation_config,
+        allow_missing_tokenizer=use_new_api,
+    )
+    reward_model = _ensure_generation_config(
+        reward_model,
+        tokenizer,
+        generation_config,
+        allow_missing_tokenizer=use_new_api,
+    )
+    if value_model is not None:
+        value_model = _ensure_generation_config(
+            value_model,
+            tokenizer,
+            generation_config,
+            allow_missing_tokenizer=use_new_api,
+        )
+
+    if use_new_api:
+        autofix_issues = _auto_fix_generation_configs(
+            (
+                ("model", model),
+                ("ref_model", ref_model),
+                ("reward_model", reward_model),
+                ("value_model", value_model),
+            ),
+            tokenizer,
+            generation_config,
+        )
+        if autofix_issues:
+            warning_message = (
+                "Automatic TRL generation_config fixes encountered issues: "
+                + "; ".join(sorted(set(autofix_issues)))
+            )
+            warnings.warn(warning_message, RuntimeWarning, stacklevel=2)
 
     if validate_setup:
         validation = validate_ppo_setup(
@@ -323,11 +487,11 @@ def check_trl_compatibility() -> dict:
 
         if trl_version_obj >= version.parse("0.23.0"):
             warnings_list.append(
-                "TRL 0.23.0+ has known issues with AutoModelForCausalLMWithValueHead.generation_config. "
-                "Use fix_generation_config() utility function."
+                "TRL 0.23.0+ requires generation_config attributes on value-head models. "
+                "RLDK automatically applies this fix when creating PPO trainers."
             )
             recommendations.append(
-                "Use prepare_models_for_ppo() or fix_generation_config() to avoid AttributeError"
+                "If you bypass RLDK utilities, call fix_generation_config() on custom TRL models"
             )
 
         if trl_version_obj < version.parse("0.23.0"):
