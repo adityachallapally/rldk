@@ -1,0 +1,96 @@
+{
+  "version": "2.0",
+  "timestamp": 1758042741.713119,
+  "total_steps": 100,
+  "overall_health_score": 0.7208765717866812,
+  "training_stability_score": 0.9823242401022865,
+  "convergence_quality_score": 0.6836213474087272,
+  "anomalies": [
+    {
+      "type": "controller_responsiveness_anomaly",
+      "severity": "warning",
+      "message": "Low controller responsiveness: 0.000",
+      "value": 0.0,
+      "threshold": 0.3,
+      "tracker": "kl_schedule"
+    },
+    {
+      "type": "coef_adaptation_anomaly",
+      "severity": "warning",
+      "message": "Poor coefficient adaptation: 0.000",
+      "value": 0.0,
+      "threshold": 0.2,
+      "tracker": "kl_schedule"
+    },
+    {
+      "type": "gradient_balance_anomaly",
+      "severity": "warning",
+      "message": "Poor gradient balance: 0.062",
+      "value": 0.06240680042626323,
+      "threshold": 0.3,
+      "tracker": "gradient_norms"
+    },
+    {
+      "type": "change_point_anomaly",
+      "severity": "warning",
+      "message": "Sudden change in gradient pattern detected",
+      "value": 1.0,
+      "threshold": 0.0,
+      "tracker": "gradient_norms"
+    }
+  ],
+  "trackers": {
+    "kl_schedule": {
+      "total_steps": 100,
+      "current_kl": 0.09911945986883751,
+      "current_kl_coef": 1.0,
+      "kl_target": 0.1,
+      "kl_health_score": 0.9763935885301603,
+      "schedule_health_score": 0.35517241379310344,
+      "time_in_target_range": 1.0,
+      "target_range_violations": 0,
+      "controller_responsiveness": 0.0,
+      "controller_overshoot": 0.2413793103448276,
+      "controller_oscillation": 0.0,
+      "coef_adaptation_quality": 0.0,
+      "anomalies": [
+        {
+          "type": "controller_responsiveness_anomaly",
+          "severity": "warning",
+          "message": "Low controller responsiveness: 0.000",
+          "value": 0.0,
+          "threshold": 0.3
+        },
+        {
+          "type": "coef_adaptation_anomaly",
+          "severity": "warning",
+          "message": "Poor coefficient adaptation: 0.000",
+          "value": 0.0,
+          "threshold": 0.2
+        }
+      ]
+    },
+    "gradient_norms": {
+      "total_steps": 100,
+      "current_policy_grad_norm": 0.45424641062246784,
+      "current_value_grad_norm": 0.25554044236873197,
+      "current_total_grad_norm": 0.5211916339019679,
+      "current_policy_value_ratio": 1.7775910787812332,
+      "gradient_health_score": 0.8070850613332753,
+      "training_stability": 0.964648480204573,
+      "gradient_flow_health": 1.0,
+      "gradient_balance": 0.06240680042626323,
+      "gradient_stability": 0.9665151288952794,
+      "exploding_gradient_risk": 0.0,
+      "vanishing_gradient_risk": 0.0,
+      "gradient_imbalance_risk": 0.0,
+      "policy_grad_trend": -0.00804046015430231,
+      "value_grad_trend": -0.0020663636132726287,
+      "ratio_trend": -0.014700256009763255,
+      "adaptive_explosion_risk": 0.0,
+      "statistical_outlier_risk": 0.0,
+      "momentum_instability_risk": 0.00747136172538327,
+      "multi_scale_anomaly_risk": 0.011255641581121868,
+      "early_warning_score": 0.01339394844188826,
+      "exponential_smoothing_trend": -0.008390674858468828,
+      "change_point_detected": 
