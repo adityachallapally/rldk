@@ -130,8 +130,6 @@ from rldk.integrations.trl import prepare_models_for_ppo
 model, ref_model, reward_model, tokenizer = prepare_models_for_ppo("gpt2")
 
 # Now safe to use with PPOTrainer
-value_model = AutoModelForCausalLMWithValueHead.from_pretrained("gpt2")
-value_model = fix_generation_config(value_model, tokenizer)
 trainer = create_ppo_trainer(
     model_name="gpt2",
     ppo_config=ppo_config,
@@ -139,14 +137,13 @@ trainer = create_ppo_trainer(
     model=model,
     ref_model=ref_model,
     reward_model=reward_model,
-    value_model=value_model,
     tokenizer=tokenizer,
 )
 ```
 
 ### Advanced Usage
 ```python
-from rldk.integrations.trl import fix_generation_config, check_trl_compatibility
+from rldk.integrations.trl import check_trl_compatibility
 from transformers import GenerationConfig
 
 # Check compatibility first
@@ -160,8 +157,8 @@ custom_config = GenerationConfig(
     temperature=0.8,
 )
 
-# Fix individual model
-model = fix_generation_config(model, tokenizer, custom_config)
+# RLDK automatically applies generation_config fixes when creating trainers.
+# Apply the utility manually only when bypassing create_ppo_trainer().
 ```
 
 ## Files Modified
