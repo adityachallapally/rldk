@@ -46,7 +46,7 @@ from rldk.io import (
     write_png,
 )
 from rldk.io import write_json as write_json_report
-from rldk.monitor import MonitorEngine, load_rules, read_events_once, read_stream
+from rldk.monitor import MonitorEngine, generate_human_summary, load_rules, read_events_once, read_stream
 from rldk.emit import EventWriter
 from rldk.replay import replay
 from rldk.reward import health
@@ -161,6 +161,36 @@ def monitor(
         "--field-map",
         help="JSON object mapping input keys to canonical event fields.",
     ),
+    pid: Optional[int] = typer.Option(
+        None,
+        "--pid",
+        help="Process ID to send signals to for stop actions.",
+    ),
+    alerts: Optional[Path] = typer.Option(
+        None,
+        "--alerts",
+        help="Path to write alerts.jsonl file.",
+    ),
+    summary: Optional[Path] = typer.Option(
+        None,
+        "--summary",
+        help="Path to write human-readable summary file.",
+    ),
+    kill_timeout_sec: int = typer.Option(
+        5,
+        "--kill-timeout-sec",
+        help="Timeout in seconds before sending SIGKILL after SIGTERM.",
+    ),
+    http_timeout_sec: int = typer.Option(
+        30,
+        "--http-timeout-sec",
+        help="Timeout in seconds for HTTP requests.",
+    ),
+    retries: int = typer.Option(
+        3,
+        "--retries",
+        help="Number of retries for HTTP requests.",
+    ),
 ) -> None:
     """Monitor JSONL metrics with streaming or batch analysis."""
     ensure_config_initialized()
@@ -177,16 +207,42 @@ def monitor(
     except Exception as exc:
         typer.echo(f"Failed to load rules: {exc}", err=True)
         raise typer.Exit(1)
+    
+    # Update stop actions with CLI-provided PID and timeouts
+    for rule in rule_defs:
+        for action in rule.actions:
+            if hasattr(action, 'pid') and action.pid is None and pid is not None:
+                action.pid = pid
+            if hasattr(action, 'kill_timeout_sec'):
+                action.kill_timeout_sec = kill_timeout_sec
+            if hasattr(action, 'timeout_sec') and hasattr(action, 'url'):  # HTTP action
+                action.timeout_sec = http_timeout_sec
+            if hasattr(action, 'retries') and hasattr(action, 'url'):  # HTTP action
+                action.retries = retries
+    
     engine = MonitorEngine(rule_defs)
+    
+    # Set up alerts file writer
+    alerts_file = None
+    if alerts is not None:
+        if alerts.parent and not alerts.parent.exists():
+            alerts.parent.mkdir(parents=True, exist_ok=True)
+        alerts_file = alerts.open("w", encoding="utf-8")
 
-    def emit_alerts(alerts):
-        for alert in alerts:
+    def emit_alerts(alerts_list):
+        for alert in alerts_list:
+            # Print to console
             if getattr(alert, "message", None):
                 typer.echo(alert.message)
             else:
                 typer.echo(
                     f"[{alert.rule_id}] {alert.event.name} {alert.event.value:.4f} at step {alert.event.step}"
                 )
+            
+            # Write to alerts file
+            if alerts_file is not None:
+                alerts_file.write(json.dumps(alert.to_dict()) + "\n")
+                alerts_file.flush()
 
     try:
         if stream is not None:
@@ -201,8 +257,13 @@ def monitor(
     except Exception as exc:
         typer.echo(f"Monitoring failed: {exc}", err=True)
         raise typer.Exit(1)
+    finally:
+        if alerts_file is not None:
+            alerts_file.close()
 
     report_payload = engine.generate_report().to_dict()
+    monitor_report = engine.generate_report()
+    
     if report is not None:
         try:
             if report.parent and not report.parent.exists():
@@ -213,6 +274,16 @@ def monitor(
             raise typer.Exit(1)
     elif once is not None:
         typer.echo(json.dumps(report_payload, indent=2, sort_keys=True))
+    
+    # Write human-readable summary
+    if summary is not None:
+        try:
+            if summary.parent and not summary.parent.exists():
+                summary.parent.mkdir(parents=True, exist_ok=True)
+            summary.write_text(generate_human_summary(monitor_report))
+        except Exception as exc:
+            typer.echo(f"Failed to write summary: {exc}", err=True)
+            raise typer.Exit(1)
 
 
 @app.command(name="emit")

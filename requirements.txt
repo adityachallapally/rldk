@@ -35,6 +35,7 @@ tokenizers==0.15.0
 jsonschema==4.20.0
 pyyaml==6.0.1
 packaging==23.2
+requests==2.31.0
 
 # Web framework
 flask==3.0.0
