@@ -662,7 +662,9 @@ class MonitorEngine:
                     )
                     _log_warn(alert)
                 elif isinstance(action, StopAction):
-                    result = _execute_stop_action(action, rule, event, self._pid)
+                    effective_timeout = action.kill_timeout_sec if action.kill_timeout_sec != 5 else self._kill_timeout_sec
+                    action_with_defaults = StopAction(pid=action.pid, kill_timeout_sec=effective_timeout)
+                    result = _execute_stop_action(action_with_defaults, rule, event, self._pid)
                     alert = Alert(
                         rule_id=rule.id,
                         action="stop",
@@ -682,7 +684,13 @@ class MonitorEngine:
                         message=f"Sentinel action: {result}",
                     )
                 elif isinstance(action, ShellAction):
-                    result = _execute_shell_action(action, rule, event)
+                    effective_retries = action.retries if action.retries != 0 else self._retries
+                    action_with_defaults = ShellAction(
+                        command=action.command,
+                        timeout_sec=action.timeout_sec,
+                        retries=effective_retries
+                    )
+                    result = _execute_shell_action(action_with_defaults, rule, event)
                     alert = Alert(
                         rule_id=rule.id,
                         action="shell",
@@ -692,7 +700,17 @@ class MonitorEngine:
                         message=f"Shell action: {result}",
                     )
                 elif isinstance(action, HttpAction):
-                    result = _execute_http_action(action, rule, event)
+                    effective_timeout = action.timeout_sec if action.timeout_sec != 10 else self._http_timeout_sec
+                    effective_retries = action.retries if action.retries != 0 else self._retries
+                    action_with_defaults = HttpAction(
+                        url=action.url,
+                        method=action.method,
+                        payload=action.payload,
+                        headers=action.headers,
+                        timeout_sec=effective_timeout,
+                        retries=effective_retries
+                    )
+                    result = _execute_http_action(action_with_defaults, rule, event)
                     alert = Alert(
                         rule_id=rule.id,
                         action="http",
