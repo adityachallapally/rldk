@@ -19,7 +19,8 @@
 Added comprehensive utility functions to handle the `generation_config` issue:
 
 - **`fix_generation_config()`**: Fixes a single model by adding the missing `generation_config` attribute
-- **`prepare_models_for_ppo()`**: Prepares all required models (model, ref_model, reward_model, value_model) with proper `generation_config`
+- **`prepare_models_for_ppo()`**: Prepares policy, reference, and reward models with proper `generation_config`, returning the tokenizer alongside them
+- **`create_ppo_trainer()`**: Builds a version-aware PPOTrainer and prepares a value model when required
 - **`check_trl_compatibility()`**: Checks TRL version and provides warnings/recommendations
 - **`validate_ppo_setup()`**: Validates the complete PPO setup for common issues
 
@@ -42,8 +43,12 @@ ref_model.generation_config = generation_config
 
 **After (fixed code)**:
 ```python
-# Use utility function to prepare all models with proper generation_config
-model, ref_model, reward_model, value_model, tokenizer = prepare_models_for_ppo(model_name)
+# Use the factory to prepare models and handle TRL differences automatically
+trainer = create_ppo_trainer(
+    model_name=model_name,
+    ppo_config=ppo_config,
+    train_dataset=dataset,
+)
 ```
 
 ### 3. Added Compatibility Checking
@@ -83,9 +88,9 @@ The fix now uses proper semantic versioning with the `packaging` library instead
 - ✅ Fixed variable shadowing issue (`version` → `trl_version_str`)
 
 ### 2. **Automatic Model Preparation**
-The `prepare_models_for_ppo()` function handles all the complexity:
+The `prepare_models_for_ppo()` function handles the heavy lifting when you need direct access to the models:
 - Loads tokenizer with proper pad token setup
-- Creates all required models
+- Creates policy, reference, and reward models
 - Automatically sets `generation_config` on all models
 - Returns everything ready for PPOTrainer
 
@@ -122,17 +127,20 @@ generation_config = GenerationConfig(
 from rldk.integrations.trl import prepare_models_for_ppo
 
 # Prepare all models with one function call
-model, ref_model, reward_model, value_model, tokenizer = prepare_models_for_ppo("gpt2")
+model, ref_model, reward_model, tokenizer = prepare_models_for_ppo("gpt2")
 
 # Now safe to use with PPOTrainer
-trainer = PPOTrainer(
-    args=ppo_config,
+value_model = AutoModelForCausalLMWithValueHead.from_pretrained("gpt2")
+value_model = fix_generation_config(value_model, tokenizer)
+trainer = create_ppo_trainer(
+    model_name="gpt2",
+    ppo_config=ppo_config,
+    train_dataset=dataset,
     model=model,
     ref_model=ref_model,
     reward_model=reward_model,
     value_model=value_model,
-    processing_class=tokenizer,
-    train_dataset=dataset,
+    tokenizer=tokenizer,
 )
 ```
 
