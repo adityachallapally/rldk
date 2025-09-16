@@ -1,6 +1,7 @@
 """Basic PPO integration example with RLDK monitoring."""
 
 import os
+import time
 
 import torch
 from datasets import Dataset
@@ -172,12 +173,19 @@ def test_basic_ppo_integration():
             rldk_callback.on_step_end(args, state, control)
             rldk_callback.on_log(args, state, control, fake_logs)
 
-            ppo_monitor.on_step_end(args, state, control)
-            ppo_monitor.on_log(args, state, control, fake_logs)
+            ppo_monitor.log_metrics(step=step, metrics=fake_logs)
 
             if step % 2 == 0:  # Simulate checkpoint saves
                 rldk_callback.on_save(args, state, control, model=trainer.model)
-                checkpoint_monitor.on_save(args, state, control, model=trainer.model)
+                checkpoint_monitor.log_checkpoint(
+                    step=state.global_step,
+                    checkpoint_data={
+                        "epoch": state.epoch,
+                        "timestamp": time.time(),
+                        "gradient_norm": fake_logs.get('grad_norm', 0.0),
+                    },
+                    model=trainer.model,
+                )
 
             print(f"✅ Step {step} completed")
 
