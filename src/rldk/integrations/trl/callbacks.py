@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
+from ...io.unified_writer import UnifiedWriter
 from transformers import (
     TrainerCallback,
     TrainerControl,
@@ -616,15 +617,22 @@ class RLDKCallback(TrainerCallback):
         # Convert to DataFrame
         df = pd.DataFrame([m.to_dict() for m in self.metrics_history])
 
-        # Save as CSV and JSON (aggregates only)
+        # Save as CSV and JSONL (per-step records)
         csv_path = self.output_dir / f"{self.run_id}_metrics.csv"
-        json_path = self.output_dir / f"{self.run_id}_metrics.json"
+        jsonl_path = self.output_dir / f"{self.run_id}_metrics.jsonl"
 
         df.to_csv(csv_path, index=False)
-        df.to_json(json_path, orient='records', indent=2)
 
-        # Note: JSONL file is handled separately and should not be modified here
-        # The JSONL file contains per-step events and is written in real-time
+        writer = UnifiedWriter(self.output_dir)
+        records = df.to_dict(orient="records")
+
+        try:
+            writer.write_jsonl(records, jsonl_path.name)
+        except Exception as exc:
+            warnings.warn(
+                f"Failed to write metrics JSONL file {jsonl_path}: {exc}",
+                stacklevel=2,
+            )
 
     def _save_alerts(self):
         """Save alerts to file."""
