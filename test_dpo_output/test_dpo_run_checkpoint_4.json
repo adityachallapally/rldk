@@ -1,0 +1,28 @@
+{
+  "checkpoint_info": {
+    "step": 4,
+    "epoch": 0.4,
+    "timestamp": 1757982653.146157,
+    "total_parameters": 0,
+    "trainable_parameters": 0,
+    "model_size_mb": 0.0,
+    "weight_mean": 0.0,
+    "weight_std": 0.0,
+    "weight_min": 0.0,
+    "weight_max": 0.0,
+    "gradient_mean": 0.0,
+    "gradient_std": 0.0,
+    "gradient_norm": 0.0,
+    "parameter_drift": 0.0,
+    "gradient_flow_health": 1.0,
+    "model_health_score": 1.0
+  },
+  "model_info": {
+    "total_parameters": 0,
+    "trainable_parameters": 0,
+    "model_size_mb": 0.0
+  },
+  "timestamp": 1757982653.146171,
+  "step": 4,
+  "epoch": 0.4
+}
