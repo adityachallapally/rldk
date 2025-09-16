@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
-import torch
 from transformers import (
     TrainerCallback,
     TrainerControl,
@@ -366,6 +365,7 @@ class RLDKCallback(TrainerCallback):
     def _monitor_resources(self):
         """Monitor GPU and CPU resource usage."""
         try:
+            import torch  # Lazy import to avoid CLI hang
             if torch.cuda.is_available():
                 self.current_metrics.gpu_memory_used = torch.cuda.memory_allocated() / 1024**3  # GB
                 self.current_metrics.gpu_memory_allocated = torch.cuda.max_memory_allocated() / 1024**3  # GB

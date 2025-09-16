@@ -3,12 +3,10 @@
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
-import torch
-
 
 def safe_torch_load(
     f: Union[str, Path],
-    map_location: Optional[Union[str, torch.device]] = None,
+    map_location: Optional[Union[str, "torch.device"]] = None,
     **kwargs
 ) -> Any:
     """
@@ -28,6 +26,8 @@ def safe_torch_load(
     Raises:
         ValueError: If checkpoint loading fails
     """
+    import torch  # Lazy import to avoid CLI hang
+    
     try:
         if _supports_weights_only():
             if 'weights_only' not in kwargs:
@@ -54,6 +54,8 @@ def get_torch_version_info() -> Dict[str, Any]:
     Returns:
         Dictionary with version information
     """
+    import torch  # Lazy import to avoid CLI hang
+    
     version_str = torch.__version__
     major, minor, patch = _parse_version_string(version_str)
 
@@ -98,6 +100,7 @@ def _parse_version_string(version_str: str) -> tuple[int, int, int]:
 def _supports_weights_only() -> bool:
     """Check if current PyTorch version supports weights_only parameter."""
     try:
+        import torch  # Lazy import to avoid CLI hang
         major, minor, _ = _parse_version_string(torch.__version__)
         return major > 2 or (major == 2 and minor >= 6)
     except Exception:

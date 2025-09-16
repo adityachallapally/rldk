@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
-import torch
 from transformers import (
     TrainerCallback,
     TrainerControl,
@@ -444,7 +443,7 @@ class CheckpointMonitor(TrainerCallback):
 
         # Metrics storage
         self.checkpoint_metrics_history: List[CheckpointMetrics] = []
-        self.previous_weights: Optional[Dict[str, torch.Tensor]] = None
+        self.previous_weights: Optional[Dict[str, "torch.Tensor"]] = None
 
         print(f"💾 Checkpoint Monitor initialized - Run ID: {self.run_id}")
 
