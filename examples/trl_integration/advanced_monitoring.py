@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 from typing import Any, Dict, List
 
 import numpy as np
@@ -318,14 +319,21 @@ def test_advanced_monitoring():
             custom_callback.on_step_end(args, state, control)
             custom_callback.on_log(args, state, control, fake_logs)
 
-            advanced_ppo_monitor.on_step_end(args, state, control)
-            advanced_ppo_monitor.on_log(args, state, control, fake_logs)
+            advanced_ppo_monitor.log_metrics(step=state.global_step, metrics=fake_logs)
 
             if step % 3 == 0:
                 # Simulate checkpoint
                 fake_model = torch.nn.Linear(10, 1)  # Simple model for testing
                 custom_callback.on_save(args, state, control, model=fake_model)
-                checkpoint_monitor.on_save(args, state, control, model=fake_model)
+                checkpoint_monitor.log_checkpoint(
+                    step=state.global_step,
+                    checkpoint_data={
+                        "epoch": state.epoch,
+                        "timestamp": time.time(),
+                        "gradient_norm": fake_logs.get('grad_norm', 0.0),
+                    },
+                    model=fake_model,
+                )
 
         print(f"✅ {scenario['name']} scenario completed")
 
