@@ -130,10 +130,27 @@ nav:
   - Getting Started:
     - Installation: getting-started/installation.md
     - Quick Start: getting-started/quickstart.md
-  - API Reference:
-    - Core API: reference/api.md
+  - User Guide:
+    - Experiment Tracking: user-guide/tracking.md
+    - Seeded Replay: user-guide/replay.md
+    - Forensics Analysis: user-guide/forensics.md
+    - Determinism Checking: user-guide/determinism.md
+    - Evaluation Suites: user-guide/evaluations.md
+    - Data Ingestion: user-guide/ingestion.md
   - CLI Reference:
     - Commands: reference/commands.md
+  - API Reference:
+    - Core API: reference/api.md
+  - Examples:
+    - Basic PPO CartPole: examples/basic-ppo-cartpole.md
+    - TRL Integration: examples/trl-integration.md
+    - OpenRLHF Integration: examples/openrlhf-integration.md
+  - Research:
+    - Failure Patterns: research/failure-patterns.md
+    - Best Practices: research/best-practices.md
+  - Development:
+    - Contributing: development/contributing.md
+    - Architecture: development/architecture.md
 
 # Extra
 extra:
