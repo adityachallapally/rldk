@@ -151,6 +151,12 @@ def monitor(
         readable=True,
         help="Path to a YAML rules file.",
     ),
+    pid: Optional[int] = typer.Option(
+        None, "--pid", help="Process ID for stop actions."
+    ),
+    alerts: Optional[Path] = typer.Option(
+        "artifacts/alerts.jsonl", "--alerts", help="Path for alerts.jsonl output."
+    ),
     report: Optional[Path] = typer.Option(
         None,
         "--report",
@@ -160,6 +166,15 @@ def monitor(
         None,
         "--field-map",
         help="JSON object mapping input keys to canonical event fields.",
+    ),
+    kill_timeout_sec: int = typer.Option(
+        5, "--kill-timeout-sec", help="Seconds to wait before SIGKILL after SIGTERM."
+    ),
+    http_timeout_sec: int = typer.Option(
+        10, "--http-timeout-sec", help="HTTP request timeout in seconds."
+    ),
+    retries: int = typer.Option(
+        0, "--retries", help="Number of retries for shell and HTTP actions."
     ),
 ) -> None:
     """Monitor JSONL metrics with streaming or batch analysis."""
@@ -177,7 +192,15 @@ def monitor(
     except Exception as exc:
         typer.echo(f"Failed to load rules: {exc}", err=True)
         raise typer.Exit(1)
-    engine = MonitorEngine(rule_defs)
+    
+    alert_writer = None
+    if alerts:
+        alerts_path = Path(alerts)
+        alerts_txt_path = alerts_path.with_suffix('.txt')
+        from rldk.monitor.writers import AlertWriter
+        alert_writer = AlertWriter(str(alerts_path), str(alerts_txt_path))
+    
+    engine = MonitorEngine(rule_defs, pid=pid)
 
     def emit_alerts(alerts):
         for alert in alerts:
@@ -187,13 +210,15 @@ def monitor(
                 typer.echo(
                     f"[{alert.rule_id}] {alert.event.name} {alert.event.value:.4f} at step {alert.event.step}"
                 )
+            if alert_writer:
+                alert_writer.write_alert(alert)
 
     try:
         if stream is not None:
             for event in read_stream(stream, field_map=mapping):
                 emit_alerts(engine.process_event(event))
         else:
-            events = read_events_once(once, field_map=mapping)
+            events = read_events_once(str(once), field_map=mapping)
             for event in events:
                 emit_alerts(engine.process_event(event))
     except KeyboardInterrupt:

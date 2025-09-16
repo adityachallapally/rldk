@@ -1,0 +1,39 @@
+rules:
+  - id: stop_on_high_kl
+    where: name == "kl"
+    condition: value > 0.35
+    window:
+      size: 5
+      kind: consecutive
+    cooldown_steps: 5
+    actions:
+      - warn:
+          msg: "KL {value:.3f} exceeded at step {step}"
+      - stop: {}
+  
+  - id: sentinel_on_high_grad_norm
+    where: name == "grad_norm"  
+    condition: value > 1.0
+    window:
+      size: 3
+      kind: rolling
+    actions:
+      - sentinel:
+          path: "stop.sentinel"
+      - shell:
+          command: "echo 'High gradient norm {value:.3f} at step {step}' >> grad_alerts.log"
+  
+  - id: test_http_action
+    where: name == "reward"
+    condition: value < -0.05
+    window:
+      size: 2
+      kind: rolling
+    actions:
+      - http:
+          url: "http://httpbin.org/post"
+          payload:
+            rule_id: "{rule_id}"
+            metric: "{name}"
+            value: "{value}"
+            step: "{step}"

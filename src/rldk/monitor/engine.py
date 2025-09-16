@@ -5,12 +5,14 @@ import ast
 import json
 import logging
 import os
+import signal
+import subprocess
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Deque, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Deque, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple, Union
 
 import yaml
 
@@ -18,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 CANONICAL_FIELDS = {"time", "step", "name", "value", "run_id", "tags", "meta"}
 DEFAULT_WINDOW_KIND = "consecutive"
+SUPPORTED_WINDOW_KINDS = {"consecutive", "rolling"}
 AGGREGATOR_FUNCTIONS = {"mean", "max", "min", "any", "all", "sum", "count"}
 
 
@@ -33,7 +36,7 @@ class SafeExpression:
             tree = ast.parse(expression, mode="eval")
         except SyntaxError as exc:
             raise ValueError(f"Invalid expression '{expression}': {exc}") from exc
-        _SafeExpressionValidator(self._allowed_functions).visit(tree)
+        _SafeExpressionValidator(list(self._allowed_functions)).visit(tree)
         self._code = compile(tree, "<rule>", "eval")
 
     def evaluate(self, context: Dict[str, Any], functions: Optional[Dict[str, Callable[..., Any]]] = None) -> Any:
@@ -258,6 +261,42 @@ class WarnAction:
 
 
 @dataclass
+class StopAction:
+    """Stop action definition."""
+
+    pid: Optional[int] = None
+    kill_timeout_sec: int = 5
+
+
+@dataclass
+class SentinelAction:
+    """Sentinel file action definition."""
+
+    path: str = "stop.sentinel"
+
+
+@dataclass
+class ShellAction:
+    """Shell command action definition."""
+
+    command: str
+    timeout_sec: int = 30
+    retries: int = 0
+
+
+@dataclass
+class HttpAction:
+    """HTTP request action definition."""
+
+    url: str
+    method: str = "POST"
+    payload: Optional[Dict[str, Any]] = None
+    headers: Optional[Dict[str, Any]] = None
+    timeout_sec: int = 10
+    retries: int = 0
+
+
+@dataclass
 class RuleDefinition:
     """Rule configuration for monitoring."""
 
@@ -268,7 +307,7 @@ class RuleDefinition:
     where: Optional[SafeExpression] = None
     grace_steps: int = 0
     cooldown_steps: int = 0
-    warn_actions: List[WarnAction] = field(default_factory=list)
+    actions: List[Union[WarnAction, StopAction, SentinelAction, ShellAction, HttpAction]] = field(default_factory=list)
 
 
 @dataclass
@@ -552,7 +591,7 @@ def _metric_key(event: Event) -> MetricKey:
 class MonitorEngine:
     """Evaluate rules against incoming events."""
 
-    def __init__(self, rules: Sequence[RuleDefinition]):
+    def __init__(self, rules: Sequence[RuleDefinition], pid: Optional[int] = None):
         if not rules:
             raise ValueError("MonitorEngine requires at least one rule")
         self._rules = list(rules)
@@ -561,6 +600,7 @@ class MonitorEngine:
         self._cooldowns: Dict[str, Dict[MetricKey, int]] = defaultdict(dict)
         self._stats: Dict[str, RuleStats] = defaultdict(RuleStats)
         self._alerts: List[Alert] = []
+        self._pid = pid
 
     def process_event(self, event: Event) -> List[Alert]:
         fired_alerts: List[Alert] = []
@@ -572,11 +612,20 @@ class MonitorEngine:
             key = _metric_key(event)
             buffer = self._buffers[rule.id].get(key)
             if buffer is None:
-                buffer = deque(maxlen=rule.window_size)
+                if rule.window_kind == "rolling":
+                    buffer = deque(maxlen=rule.window_size)
+                else:  # consecutive
+                    buffer = deque(maxlen=rule.window_size)
                 self._buffers[rule.id][key] = buffer
             buffer.append(event)
             self._counts[rule.id][key] += 1
-            if len(buffer) < rule.window_size:
+            
+            if rule.window_kind == "rolling":
+                should_evaluate = len(buffer) >= min(rule.window_size, max(rule.grace_steps, 0) + 1)
+            else:
+                should_evaluate = len(buffer) >= rule.window_size
+            
+            if not should_evaluate:
                 continue
             if self._counts[rule.id][key] < max(rule.grace_steps, 0):
                 continue
@@ -594,21 +643,66 @@ class MonitorEngine:
             if not condition_met:
                 continue
             self._cooldowns[rule.id][key] = event.step
-            actions = rule.warn_actions or [WarnAction()]
+            actions = rule.actions or [WarnAction()]
+            
             for action in actions:
-                message = _render_warn_message(action, rule, event)
-                alert = Alert(
-                    rule_id=rule.id,
-                    action="warn",
-                    event=event,
-                    window_size=rule.window_size,
-                    window_kind=rule.window_kind,
-                    message=message,
-                )
-                fired_alerts.append(alert)
-                self._alerts.append(alert)
-                _log_warn(alert)
-                self._record_stats(rule.id, event, alert)
+                alert = None
+                if isinstance(action, WarnAction):
+                    message = _render_warn_message(action, rule, event)
+                    alert = Alert(
+                        rule_id=rule.id,
+                        action="warn",
+                        event=event,
+                        window_size=rule.window_size,
+                        window_kind=rule.window_kind,
+                        message=message,
+                    )
+                    _log_warn(alert)
+                elif isinstance(action, StopAction):
+                    result = _execute_stop_action(action, rule, event, self._pid)
+                    alert = Alert(
+                        rule_id=rule.id,
+                        action="stop",
+                        event=event,
+                        window_size=rule.window_size,
+                        window_kind=rule.window_kind,
+                        message=f"Stop action: {result}",
+                    )
+                elif isinstance(action, SentinelAction):
+                    result = _execute_sentinel_action(action, rule, event)
+                    alert = Alert(
+                        rule_id=rule.id,
+                        action="sentinel",
+                        event=event,
+                        window_size=rule.window_size,
+                        window_kind=rule.window_kind,
+                        message=f"Sentinel action: {result}",
+                    )
+                elif isinstance(action, ShellAction):
+                    result = _execute_shell_action(action, rule, event)
+                    alert = Alert(
+                        rule_id=rule.id,
+                        action="shell",
+                        event=event,
+                        window_size=rule.window_size,
+                        window_kind=rule.window_kind,
+                        message=f"Shell action: {result}",
+                    )
+                elif isinstance(action, HttpAction):
+                    result = _execute_http_action(action, rule, event)
+                    alert = Alert(
+                        rule_id=rule.id,
+                        action="http",
+                        event=event,
+                        window_size=rule.window_size,
+                        window_kind=rule.window_kind,
+                        message=f"HTTP action: {result}",
+                    )
+                
+                if alert:
+                    fired_alerts.append(alert)
+                    self._alerts.append(alert)
+                    self._record_stats(rule.id, event, alert)
         return fired_alerts
 
     def _record_stats(self, rule_id: str, event: Event, alert: Alert) -> None:
@@ -769,6 +863,121 @@ def _render_warn_message(action: WarnAction, rule: RuleDefinition, event: Event)
         return template
 
 
+def _execute_stop_action(action: StopAction, rule: RuleDefinition, event: Event, pid: Optional[int] = None) -> Dict[str, Any]:
+    """Execute stop action with SIGTERM -> SIGKILL fallback."""
+    target_pid = action.pid or pid
+    if not target_pid:
+        return {"success": False, "error": "No PID specified for stop action"}
+    
+    try:
+        os.kill(target_pid, signal.SIGTERM)
+        
+        for _ in range(action.kill_timeout_sec):
+            try:
+                os.kill(target_pid, 0)  # Check if process exists
+                time.sleep(1)
+            except ProcessLookupError:
+                return {"success": True, "signal": "SIGTERM"}
+        
+        os.kill(target_pid, signal.SIGKILL)
+        return {"success": True, "signal": "SIGKILL"}
+        
+    except ProcessLookupError:
+        return {"success": False, "error": "Process not found"}
+    except PermissionError:
+        return {"success": False, "error": "Permission denied"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def _execute_sentinel_action(action: SentinelAction, rule: RuleDefinition, event: Event) -> Dict[str, Any]:
+    """Execute sentinel file action."""
+    try:
+        Path(action.path).touch()
+        return {"success": True, "path": action.path}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def _execute_shell_action(action: ShellAction, rule: RuleDefinition, event: Event) -> Dict[str, Any]:
+    """Execute shell command action with templating."""
+    template_context = {
+        "name": event.name, "value": event.value, "step": event.step,
+        "time": event.time, "rule_id": rule.id, "run_id": event.run_id,
+        "tags": event.tags, "meta": event.meta
+    }
+    
+    try:
+        templated_command = action.command.format(**template_context)
+    except Exception as e:
+        return {"success": False, "error": f"Template error: {e}"}
+    
+    for attempt in range(action.retries + 1):
+        try:
+            result = subprocess.run(
+                templated_command, shell=True, capture_output=True, 
+                text=True, timeout=action.timeout_sec
+            )
+            return {
+                "success": result.returncode == 0,
+                "returncode": result.returncode,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "attempt": attempt + 1
+            }
+        except subprocess.TimeoutExpired:
+            if attempt == action.retries:
+                return {"success": False, "error": "Command timed out"}
+        except Exception as e:
+            if attempt == action.retries:
+                return {"success": False, "error": str(e)}
+    
+    return {"success": False, "error": "All retries failed"}
+
+
+def _execute_http_action(action: HttpAction, rule: RuleDefinition, event: Event) -> Dict[str, Any]:
+    """Execute HTTP request action with templating."""
+    try:
+        import requests
+    except ImportError:
+        return {"success": False, "error": "requests library not available"}
+    
+    template_context = {
+        "name": event.name, "value": event.value, "step": event.step,
+        "time": event.time, "rule_id": rule.id, "run_id": event.run_id,
+        "tags": event.tags, "meta": event.meta
+    }
+    
+    try:
+        if action.payload:
+            payload = json.loads(json.dumps(action.payload).format(**template_context))
+        else:
+            payload = template_context
+    except Exception as e:
+        return {"success": False, "error": f"Payload template error: {e}"}
+    
+    for attempt in range(action.retries + 1):
+        try:
+            response = requests.request(
+                method=action.method,
+                url=action.url,
+                json=payload,
+                headers=action.headers,
+                timeout=action.timeout_sec
+            )
+            return {
+                "success": response.status_code < 400,
+                "status_code": response.status_code,
+                "response": response.text[:500],  # Truncate response
+                "attempt": attempt + 1
+            }
+        except requests.RequestException as e:
+            if attempt == action.retries:
+                return {"success": False, "error": str(e)}
+    
+    return {"success": False, "error": "All retries failed"}
+
+
 def _log_warn(alert: Alert) -> None:
     if alert.message:
         logger.warning("[%s] %s", alert.rule_id, alert.message)
@@ -806,8 +1015,8 @@ def load_rules(path: str | os.PathLike[str]) -> List[RuleDefinition]:
         if window_size <= 0:
             raise ValueError(f"Rule '{rule_id}' window size must be positive")
         window_kind = window_cfg.get("kind", DEFAULT_WINDOW_KIND) or DEFAULT_WINDOW_KIND
-        if window_kind != DEFAULT_WINDOW_KIND:
-            raise ValueError(f"Rule '{rule_id}' uses unsupported window kind '{window_kind}'")
+        if window_kind not in SUPPORTED_WINDOW_KINDS:
+            raise ValueError(f"Rule '{rule_id}' uses unsupported window kind '{window_kind}'. Supported: {SUPPORTED_WINDOW_KINDS}")
         grace_steps = int(rule_data.get("grace_steps", 0))
         if grace_steps < 0:
             raise ValueError(f"Rule '{rule_id}' grace_steps must be non-negative")
@@ -816,9 +1025,10 @@ def load_rules(path: str | os.PathLike[str]) -> List[RuleDefinition]:
             raise ValueError(f"Rule '{rule_id}' cooldown_steps must be non-negative")
         where_expr = rule_data.get("where")
         where = SafeExpression(where_expr, []) if where_expr else None
-        condition = SafeExpression(condition_expr, AGGREGATOR_FUNCTIONS)
+        condition = SafeExpression(condition_expr, list(AGGREGATOR_FUNCTIONS))
         actions_data = rule_data.get("actions", []) or []
-        warn_actions: List[WarnAction] = []
+        actions: List[Union[WarnAction, StopAction, SentinelAction, ShellAction, HttpAction]] = []
+        
         for action_entry in actions_data:
             if isinstance(action_entry, str):
                 action_name = action_entry
@@ -828,10 +1038,38 @@ def load_rules(path: str | os.PathLike[str]) -> List[RuleDefinition]:
                 params = params or {}
             else:
                 raise ValueError(f"Rule '{rule_id}' has invalid action definition: {action_entry}")
-            if action_name != "warn":
+            
+            if action_name == "warn":
+                message_template = params.get("msg") if isinstance(params, dict) else None
+                actions.append(WarnAction(message_template=message_template))
+            elif action_name == "stop":
+                actions.append(StopAction(
+                    pid=params.get("pid"),
+                    kill_timeout_sec=params.get("kill_timeout_sec", 5)
+                ))
+            elif action_name == "sentinel":
+                actions.append(SentinelAction(path=params.get("path", "stop.sentinel")))
+            elif action_name == "shell":
+                if "command" not in params:
+                    raise ValueError(f"Rule '{rule_id}' shell action missing 'command'")
+                actions.append(ShellAction(
+                    command=params["command"],
+                    timeout_sec=params.get("timeout_sec", 30),
+                    retries=params.get("retries", 0)
+                ))
+            elif action_name == "http":
+                if "url" not in params:
+                    raise ValueError(f"Rule '{rule_id}' http action missing 'url'")
+                actions.append(HttpAction(
+                    url=params["url"],
+                    method=params.get("method", "POST"),
+                    payload=params.get("payload"),
+                    headers=params.get("headers"),
+                    timeout_sec=params.get("timeout_sec", 10),
+                    retries=params.get("retries", 0)
+                ))
+            else:
                 raise ValueError(f"Rule '{rule_id}' references unsupported action '{action_name}'")
-            message_template = params.get("msg") if isinstance(params, dict) else None
-            warn_actions.append(WarnAction(message_template=message_template))
         rules.append(
             RuleDefinition(
                 id=rule_id,
@@ -841,7 +1079,7 @@ def load_rules(path: str | os.PathLike[str]) -> List[RuleDefinition]:
                 where=where,
                 grace_steps=grace_steps,
                 cooldown_steps=cooldown_steps,
-                warn_actions=warn_actions,
+                actions=actions,
             )
         )
     return rules
@@ -854,6 +1092,10 @@ __all__ = [
     "MonitorReport",
     "RuleDefinition",
     "WarnAction",
+    "StopAction",
+    "SentinelAction",
+    "ShellAction",
+    "HttpAction",
     "canonicalize_event",
     "load_rules",
     "read_events_once",
