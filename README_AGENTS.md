@@ -135,12 +135,24 @@ def your_function(config=None):
 7. **Missing error handling**
 8. **Missing type hints**
 
-## 🛠 **Available Tools**
+## 🛠 **Manual Checks**
 
-- `./scripts/check_file_organization.sh` - Check file organization
-- `./scripts/cleanup_files.sh` - Clean up file organization issues
-- `./scripts/validate_configuration.sh` - Validate configuration usage
-- `./scripts/analyze_dependencies.sh` - Analyze dependencies
+You can manually check for common issues:
+
+1. **File Organization**:
+   - Look for Python files in root directory
+   - Check for test files outside `tests/` directory
+   - Verify documentation files are in `docs/`
+
+2. **Configuration Usage**:
+   - Search for hardcoded numeric values
+   - Check if functions use configuration parameters
+   - Verify configuration imports are present
+
+3. **Dependencies**:
+   - Look for circular import patterns
+   - Check for unused imports
+   - Verify import order is correct
 
 ## 📖 **Comprehensive Documentation**
 
@@ -148,22 +160,6 @@ def your_function(config=None):
 - `PROJECT_STRUCTURE.md` - Project structure guidelines
 - `PR_GUIDELINES.md` - Pull request guidelines
 - `DEPENDENCY_MANAGEMENT.md` - Dependency management guidelines
-
-## 🚀 **Quick Commands**
-
-```bash
-# Check file organization
-./scripts/check_file_organization.sh
-
-# Clean up files
-./scripts/cleanup_files.sh
-
-# Validate configuration
-./scripts/validate_configuration.sh
-
-# Analyze dependencies
-./scripts/analyze_dependencies.sh
-```
 
 ---
 

@@ -478,93 +478,40 @@ When changing APIs:
    touch docs/implementation_notes.md
    ```
 
-## 🛠 **Tools and Scripts**
+## 🛠 **Manual Checks**
 
-### **File Organization Script**
+### **File Organization Checks**
 
-```bash
-#!/bin/bash
-# scripts/check_file_organization.sh
+You can manually check for common file organization issues:
 
-echo "Checking file organization..."
+1. **Files in wrong locations**:
+   - Look for Python files in root directory
+   - Look for test files outside `tests/` directory
+   - Look for documentation files outside `docs/` directory
 
-# Check for files in wrong locations
-echo "Files in root that shouldn't be there:"
-find . -maxdepth 1 -name "*.py" -not -name "setup.py" -not -name "conftest.py"
-find . -maxdepth 1 -name "test_*.py"
-find . -maxdepth 1 -name "*_SUMMARY.md"
-find . -maxdepth 1 -name "*_IMPLEMENTATION*.md"
+2. **Duplicate functionality**:
+   - Search for multiple utility files
+   - Search for multiple helper files
+   - Search for multiple common files
 
-# Check for duplicate functionality
-echo "Potential duplicate files:"
-find . -name "*utils*" -type f
-find . -name "*helper*" -type f
-find . -name "*common*" -type f
+3. **Configuration usage**:
+   - Search for hardcoded numeric values
+   - Check if functions use configuration parameters
+   - Verify configuration imports are present
 
-# Check configuration usage
-echo "Files with hardcoded values:"
-grep -r "if.*> [0-9]" src/ --include="*.py" | grep -v "config\."
-grep -r "if.*< [0-9]" src/ --include="*.py" | grep -v "config\."
-```
+### **Dependency Analysis**
 
-### **Configuration Validation Script**
+You can manually analyze dependencies:
 
-```bash
-#!/bin/bash
-# scripts/validate_configuration.sh
+1. **Find imports**:
+   - Search for all import statements
+   - Check for circular import patterns
+   - Look for unused imports
 
-echo "Validating configuration..."
-
-# Check for hardcoded values
-echo "Potential hardcoded values:"
-grep -r "0\.[0-9]" src/ --include="*.py" | grep -v "config\." | grep -v "test_"
-grep -r "[0-9]\.[0-9]" src/ --include="*.py" | grep -v "config\." | grep -v "test_"
-
-# Check configuration imports
-echo "Files missing config imports:"
-grep -L "from.*config" src/rldk/*.py
-grep -L "import.*config" src/rldk/*.py
-
-# Validate configuration files
-python -c "from src.rldk.config import validate_all_configs; validate_all_configs()"
-```
-
-### **Dependency Analysis Script**
-
-```bash
-#!/bin/bash
-# scripts/analyze_dependencies.sh
-
-echo "Analyzing dependencies..."
-
-# Find circular dependencies
-echo "Checking for circular imports..."
-python -c "
-import ast
-import os
-
-def find_imports(filepath):
-    with open(filepath, 'r') as f:
-        tree = ast.parse(f.read())
-    imports = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                imports.append(alias.name)
-        elif isinstance(node, ast.ImportFrom):
-            if node.module:
-                imports.append(node.module)
-    return imports
-
-# Check for potential circular imports
-for root, dirs, files in os.walk('src/rldk'):
-    for file in files:
-        if file.endswith('.py'):
-            filepath = os.path.join(root, file)
-            imports = find_imports(filepath)
-            print(f'{filepath}: {imports}')
-"
-```
+2. **Check dependencies**:
+   - Verify import order is correct
+   - Check for missing imports
+   - Look for potential circular dependencies
 
 ## 📚 **Best Practices**
 

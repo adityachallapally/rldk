@@ -46,94 +46,26 @@ This document provides comprehensive guidelines for managing dependencies and an
    grep -r "your_function" docs/
    ```
 
-### **Dependency Analysis Tools**
+### **Manual Dependency Analysis**
 
-#### **Import Analysis Script**
+#### **Import Analysis**
 
-```bash
-#!/bin/bash
-# scripts/analyze_imports.sh
+You can manually analyze imports and dependencies:
 
-echo "🔍 Analyzing imports and dependencies..."
+1. **Find all imports**:
+   - Search for `from.*import` and `import.*` patterns in source code
+   - Look for local imports (starting with `rldk.`)
+   - Identify third-party imports
 
-# Find all imports
-echo "All imports in source code:"
-grep -r "from.*import\|import.*" src/ --include="*.py" | sort | uniq
+2. **Check for circular imports**:
+   - Look for modules that import each other
+   - Check for import cycles in the dependency graph
+   - Verify import order is correct
 
-# Find circular import patterns
-echo "Potential circular imports:"
-python3 -c "
-import ast
-import os
-
-def find_imports(filepath):
-    try:
-        with open(filepath, 'r') as f:
-            tree = ast.parse(f.read())
-        imports = []
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    imports.append(alias.name)
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imports.append(node.module)
-        return imports
-    except:
-        return []
-
-# Check for potential circular imports
-for root, dirs, files in os.walk('src/rldk'):
-    for file in files:
-        if file.endswith('.py') and file != '__init__.py':
-            filepath = os.path.join(root, file)
-            imports = find_imports(filepath)
-            for imp in imports:
-                if imp.startswith('rldk.'):
-                    print(f'{filepath}: {imp}')
-"
-
-# Find unused imports
-echo "Potentially unused imports:"
-python3 -c "
-import ast
-import os
-
-def find_unused_imports(filepath):
-    try:
-        with open(filepath, 'r') as f:
-            content = f.read()
-        tree = ast.parse(content)
-        
-        imports = []
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    imports.append(alias.name)
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imports.append(node.module)
-        
-        # Check if imports are used
-        unused = []
-        for imp in imports:
-            if imp not in content.replace('import ' + imp, ''):
-                unused.append(imp)
-        
-        return unused
-    except:
-        return []
-
-# Check for unused imports
-for root, dirs, files in os.walk('src/rldk'):
-    for file in files:
-        if file.endswith('.py'):
-            filepath = os.path.join(root, file)
-            unused = find_unused_imports(filepath)
-            if unused:
-                print(f'{filepath}: {unused}')
-"
-```
+3. **Find unused imports**:
+   - Check if imported modules are actually used in the code
+   - Look for imports that are never referenced
+   - Remove unused imports to clean up the code
 
 #### **Dependency Graph Generator**
 
@@ -417,240 +349,40 @@ def some_function():
     return json.dumps(data)
 ```
 
-## 🔧 **Dependency Management Tools**
+## 🔧 **Manual Dependency Management**
 
-### **Dependency Checker Script**
+### **Dependency Checking**
 
-```bash
-#!/bin/bash
-# scripts/check_dependencies.sh
+You can manually check for dependency issues:
 
-echo "🔍 Checking dependencies..."
+1. **Check for circular dependencies**:
+   - Look for modules that import each other
+   - Check for import cycles in the dependency graph
+   - Verify import order is correct
 
-# Check for circular dependencies
-echo "Checking for circular dependencies..."
-python3 -c "
-import ast
-import os
+2. **Check for unused imports**:
+   - Look for imports that are never used in the code
+   - Remove unused imports to clean up the code
+   - Verify all imports are necessary
 
-def find_imports(filepath):
-    try:
-        with open(filepath, 'r') as f:
-            tree = ast.parse(f.read())
-        imports = []
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    imports.append(alias.name)
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imports.append(node.module)
-        return imports
-    except:
-        return []
+3. **Check for missing imports**:
+   - Look for common missing imports like `json`, `os`, `sys`
+   - Verify all used modules are imported
+   - Check for runtime import errors
 
-# Build dependency graph
-dependencies = {}
-for root, dirs, files in os.walk('src/rldk'):
-    for file in files:
-        if file.endswith('.py') and file != '__init__.py':
-            filepath = os.path.join(root, file)
-            module_name = filepath.replace('src/rldk/', '').replace('.py', '').replace('/', '.')
-            imports = find_imports(filepath)
-            dependencies[module_name] = [imp for imp in imports if imp.startswith('rldk.')]
+### **Import Organization**
 
-# Check for cycles
-def has_cycle(module, visited, rec_stack):
-    visited.add(module)
-    rec_stack.add(module)
-    
-    for dep in dependencies.get(module, []):
-        dep_name = dep[5:]  # Remove 'rldk.'
-        if dep_name not in visited:
-            if has_cycle(dep_name, visited, rec_stack):
-                return True
-        elif dep_name in rec_stack:
-            return True
-    
-    rec_stack.remove(module)
-    return False
+You can manually organize imports:
 
-# Check all modules for cycles
-cycles_found = False
-for module in dependencies:
-    if has_cycle(module, set(), set()):
-        print(f'Circular dependency found involving: {module}')
-        cycles_found = True
+1. **Sort imports by category**:
+   - Standard library imports first
+   - Third-party imports second
+   - Local imports last
 
-if not cycles_found:
-    print('No circular dependencies found')
-"
-
-# Check for unused imports
-echo "Checking for unused imports..."
-python3 -c "
-import ast
-import os
-
-def find_unused_imports(filepath):
-    try:
-        with open(filepath, 'r') as f:
-            content = f.read()
-        tree = ast.parse(content)
-        
-        imports = []
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    imports.append(alias.name)
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imports.append(node.module)
-        
-        # Check if imports are used
-        unused = []
-        for imp in imports:
-            if imp not in content.replace('import ' + imp, ''):
-                unused.append(imp)
-        
-        return unused
-    except:
-        return []
-
-# Check for unused imports
-unused_found = False
-for root, dirs, files in os.walk('src/rldk'):
-    for file in files:
-        if file.endswith('.py'):
-            filepath = os.path.join(root, file)
-            unused = find_unused_imports(filepath)
-            if unused:
-                print(f'{filepath}: {unused}')
-                unused_found = True
-
-if not unused_found:
-    print('No unused imports found')
-"
-
-# Check for missing imports
-echo "Checking for missing imports..."
-python3 -c "
-import ast
-import os
-
-def find_missing_imports(filepath):
-    try:
-        with open(filepath, 'r') as f:
-            content = f.read()
-        tree = ast.parse(content)
-        
-        imports = []
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    imports.append(alias.name)
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imports.append(node.module)
-        
-        # Check for common missing imports
-        missing = []
-        if 'json' in content and 'json' not in imports:
-            missing.append('json')
-        if 'os' in content and 'os' not in imports:
-            missing.append('os')
-        if 'sys' in content and 'sys' not in imports:
-            missing.append('sys')
-        
-        return missing
-    except:
-        return []
-
-# Check for missing imports
-missing_found = False
-for root, dirs, files in os.walk('src/rldk'):
-    for file in files:
-        if file.endswith('.py'):
-            filepath = os.path.join(root, file)
-            missing = find_missing_imports(filepath)
-            if missing:
-                print(f'{filepath}: {missing}')
-                missing_found = True
-
-if not missing_found:
-    print('No missing imports found')
-"
-```
-
-### **Import Optimizer Script**
-
-```python
-# scripts/optimize_imports.py
-import ast
-import os
-import re
-
-def optimize_imports(filepath):
-    """Optimize imports in a Python file."""
-    with open(filepath, 'r') as f:
-        content = f.read()
-    
-    # Parse the file
-    tree = ast.parse(content)
-    
-    # Find all imports
-    imports = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                imports.append(f"import {alias.name}")
-        elif isinstance(node, ast.ImportFrom):
-            if node.module:
-                if node.names:
-                    names = [alias.name for alias in node.names]
-                    imports.append(f"from {node.module} import {', '.join(names)}")
-                else:
-                    imports.append(f"from {node.module} import *")
-    
-    # Sort imports
-    stdlib_imports = []
-    third_party_imports = []
-    local_imports = []
-    
-    for imp in imports:
-        if imp.startswith('import ') or imp.startswith('from '):
-            if 'rldk' in imp:
-                local_imports.append(imp)
-            elif any(stdlib in imp for stdlib in ['os', 'sys', 'json', 'math', 'random', 'datetime']):
-                stdlib_imports.append(imp)
-            else:
-                third_party_imports.append(imp)
-    
-    # Generate optimized imports
-    optimized_imports = []
-    if stdlib_imports:
-        optimized_imports.extend(sorted(stdlib_imports))
-    if third_party_imports:
-        optimized_imports.extend(sorted(third_party_imports))
-    if local_imports:
-        optimized_imports.extend(sorted(local_imports))
-    
-    return optimized_imports
-
-def optimize_all_imports():
-    """Optimize imports in all Python files."""
-    for root, dirs, files in os.walk('src/rldk'):
-        for file in files:
-            if file.endswith('.py'):
-                filepath = os.path.join(root, file)
-                print(f"Optimizing imports in {filepath}")
-                optimized = optimize_imports(filepath)
-                # Write optimized imports back to file
-                # (Implementation would write back to file)
-
-if __name__ == "__main__":
-    optimize_all_imports()
-```
+2. **Group related imports**:
+   - Group imports from the same module
+   - Use consistent import style
+   - Remove duplicate imports
 
 ## 📊 **Dependency Metrics**
 
@@ -662,101 +394,24 @@ if __name__ == "__main__":
 - **Missing Imports**: Number of missing imports
 - **Dependency Depth**: Maximum depth of dependency chain
 
-### **Tracking Script**
+### **Manual Metrics Tracking**
 
-```python
-# scripts/track_dependency_metrics.py
-import ast
-import os
-import json
-from datetime import datetime
+You can manually track dependency metrics:
 
-def calculate_dependency_metrics():
-    """Calculate dependency metrics for the codebase."""
-    metrics = {
-        'timestamp': datetime.now().isoformat(),
-        'circular_dependencies': 0,
-        'total_imports': 0,
-        'unused_imports': 0,
-        'missing_imports': 0,
-        'max_dependency_depth': 0,
-        'modules': {}
-    }
-    
-    # Analyze each module
-    for root, dirs, files in os.walk('src/rldk'):
-        for file in files:
-            if file.endswith('.py') and file != '__init__.py':
-                filepath = os.path.join(root, file)
-                module_name = filepath.replace('src/rldk/', '').replace('.py', '').replace('/', '.')
-                
-                try:
-                    with open(filepath, 'r') as f:
-                        content = f.read()
-                    tree = ast.parse(content)
-                    
-                    # Count imports
-                    imports = []
-                    for node in ast.walk(tree):
-                        if isinstance(node, ast.Import):
-                            for alias in node.names:
-                                imports.append(alias.name)
-                        elif isinstance(node, ast.ImportFrom):
-                            if node.module:
-                                imports.append(node.module)
-                    
-                    metrics['modules'][module_name] = {
-                        'imports': len(imports),
-                        'import_list': imports
-                    }
-                    metrics['total_imports'] += len(imports)
-                    
-                except Exception as e:
-                    print(f"Error analyzing {filepath}: {e}")
-    
-    # Calculate additional metrics
-    # (Implementation would calculate circular dependencies, unused imports, etc.)
-    
-    return metrics
+1. **Count imports**:
+   - Count total imports in each module
+   - Track import patterns over time
+   - Monitor import complexity
 
-def save_metrics(metrics, filename='dependency_metrics.json'):
-    """Save metrics to a JSON file."""
-    with open(filename, 'w') as f:
-        json.dump(metrics, f, indent=2)
+2. **Track changes**:
+   - Compare import counts between versions
+   - Monitor new dependencies
+   - Track removed dependencies
 
-def compare_metrics(old_metrics, new_metrics):
-    """Compare metrics between two versions."""
-    comparison = {
-        'timestamp': datetime.now().isoformat(),
-        'changes': {}
-    }
-    
-    # Compare total imports
-    if old_metrics['total_imports'] != new_metrics['total_imports']:
-        comparison['changes']['total_imports'] = {
-            'old': old_metrics['total_imports'],
-            'new': new_metrics['total_imports'],
-            'difference': new_metrics['total_imports'] - old_metrics['total_imports']
-        }
-    
-    # Compare modules
-    for module in new_metrics['modules']:
-        if module not in old_metrics['modules']:
-            comparison['changes'][f'new_module_{module}'] = 'added'
-        elif old_metrics['modules'][module]['imports'] != new_metrics['modules'][module]['imports']:
-            comparison['changes'][f'module_{module}'] = {
-                'old_imports': old_metrics['modules'][module]['imports'],
-                'new_imports': new_metrics['modules'][module]['imports'],
-                'difference': new_metrics['modules'][module]['imports'] - old_metrics['modules'][module]['imports']
-            }
-    
-    return comparison
-
-if __name__ == "__main__":
-    metrics = calculate_dependency_metrics()
-    save_metrics(metrics)
-    print("Dependency metrics saved to dependency_metrics.json")
-```
+3. **Quality metrics**:
+   - Count circular dependencies
+   - Track unused imports
+   - Monitor missing imports
 
 ## 🎯 **Best Practices**
 
@@ -895,20 +550,11 @@ def analyze_data(data, config=None):
 
 ## 🚀 **Quick Reference**
 
-### **Dependency Analysis Commands**
-```bash
-# Check for circular dependencies
-./scripts/check_dependencies.sh
-
-# Analyze imports
-./scripts/analyze_imports.sh
-
-# Generate dependency graph
-python scripts/generate_dependency_graph.py
-
-# Track dependency metrics
-python scripts/track_dependency_metrics.py
-```
+### **Manual Dependency Analysis**
+- Check for circular dependencies by examining import patterns
+- Look for unused imports in each module
+- Verify all necessary imports are present
+- Organize imports by category (stdlib, third-party, local)
 
 ### **Common Issues to Avoid**
 - Circular dependencies
