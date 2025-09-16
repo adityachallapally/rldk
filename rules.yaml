@@ -1,0 +1,54 @@
+rules:
+  - id: stop_on_high_kl
+    where: name == "kl"
+    condition: value > 0.35
+    window:
+      size: 5
+      kind: consecutive
+    cooldown_steps: 5
+    actions:
+      - warn:
+          msg: "KL {value:.3f} exceeded at step {step}"
+      - stop: {}
+
+  - id: warn_on_low_reward
+    where: name == "reward"
+    condition: mean(value) < -0.5
+    window:
+      size: 10
+      kind: rolling
+    grace_steps: 5
+    actions:
+      - warn:
+          msg: "Low reward detected: {value:.3f} at step {step}"
+
+  - id: shell_on_grad_explosion
+    where: name == "grad_norm"
+    condition: value > 10.0
+    actions:
+      - shell:
+          command: "echo 'Gradient explosion at step {step}: {value}' >> gradient_alerts.log"
+          timeout_sec: 5
+          retries: 1
+
+  - id: sentinel_on_anomaly
+    where: name == "kl"
+    condition: value > 1.0
+    actions:
+      - sentinel:
+          path: "stop.sentinel"
+
+  - id: http_alert_on_anomaly
+    where: name == "kl"
+    condition: value > 0.8
+    actions:
+      - http:
+          url: "http://localhost:8080/alert"
+          method: "POST"
+          payload:
+            alert_type: "kl_anomaly"
+            step: "{step}"
+            value: "{value}"
+            timestamp: "{time}"
+          timeout_sec: 10
+          retries: 2

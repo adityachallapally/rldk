@@ -42,6 +42,9 @@ flask==3.0.0
 # System monitoring
 psutil==5.9.0
 
+# HTTP requests for monitor actions
+requests>=2.31.0
+
 # Content analysis
 detoxify==0.5.2
 vaderSentiment==3.3.2
