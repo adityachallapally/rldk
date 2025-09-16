@@ -265,7 +265,7 @@ class StopAction:
     """Stop action definition."""
 
     pid: Optional[int] = None
-    kill_timeout_sec: int = 5
+    kill_timeout_sec: Optional[int] = None
 
 
 @dataclass
@@ -280,8 +280,8 @@ class ShellAction:
     """Shell command action definition."""
 
     command: str
-    timeout_sec: int = 30
-    retries: int = 0
+    timeout_sec: Optional[int] = None
+    retries: Optional[int] = None
 
 
 @dataclass
@@ -292,8 +292,8 @@ class HttpAction:
     method: str = "POST"
     payload: Optional[Dict[str, Any]] = None
     headers: Optional[Dict[str, Any]] = None
-    timeout_sec: int = 10
-    retries: int = 0
+    timeout_sec: Optional[int] = None
+    retries: Optional[int] = None
 
 
 @dataclass
@@ -662,7 +662,7 @@ class MonitorEngine:
                     )
                     _log_warn(alert)
                 elif isinstance(action, StopAction):
-                    effective_timeout = action.kill_timeout_sec if action.kill_timeout_sec != 5 else self._kill_timeout_sec
+                    effective_timeout = action.kill_timeout_sec if action.kill_timeout_sec is not None else self._kill_timeout_sec
                     action_with_defaults = StopAction(pid=action.pid, kill_timeout_sec=effective_timeout)
                     result = _execute_stop_action(action_with_defaults, rule, event, self._pid)
                     alert = Alert(
@@ -684,10 +684,11 @@ class MonitorEngine:
                         message=f"Sentinel action: {result}",
                     )
                 elif isinstance(action, ShellAction):
-                    effective_retries = action.retries if action.retries != 0 else self._retries
+                    effective_timeout = action.timeout_sec if action.timeout_sec is not None else 30
+                    effective_retries = action.retries if action.retries is not None else self._retries
                     action_with_defaults = ShellAction(
                         command=action.command,
-                        timeout_sec=action.timeout_sec,
+                        timeout_sec=effective_timeout,
                         retries=effective_retries
                     )
                     result = _execute_shell_action(action_with_defaults, rule, event)
@@ -700,8 +701,8 @@ class MonitorEngine:
                         message=f"Shell action: {result}",
                     )
                 elif isinstance(action, HttpAction):
-                    effective_timeout = action.timeout_sec if action.timeout_sec != 10 else self._http_timeout_sec
-                    effective_retries = action.retries if action.retries != 0 else self._retries
+                    effective_timeout = action.timeout_sec if action.timeout_sec is not None else self._http_timeout_sec
+                    effective_retries = action.retries if action.retries is not None else self._retries
                     action_with_defaults = HttpAction(
                         url=action.url,
                         method=action.method,
@@ -1080,7 +1081,7 @@ def load_rules(path: str | os.PathLike[str]) -> List[RuleDefinition]:
             elif action_name == "stop":
                 actions.append(StopAction(
                     pid=params.get("pid"),
-                    kill_timeout_sec=params.get("kill_timeout_sec", 5)
+                    kill_timeout_sec=params.get("kill_timeout_sec")
                 ))
             elif action_name == "sentinel":
                 actions.append(SentinelAction(path=params.get("path", "stop.sentinel")))
@@ -1089,8 +1090,8 @@ def load_rules(path: str | os.PathLike[str]) -> List[RuleDefinition]:
                     raise ValueError(f"Rule '{rule_id}' shell action missing 'command'")
                 actions.append(ShellAction(
                     command=params["command"],
-                    timeout_sec=params.get("timeout_sec", 30),
-                    retries=params.get("retries", 0)
+                    timeout_sec=params.get("timeout_sec"),
+                    retries=params.get("retries")
                 ))
             elif action_name == "http":
                 if "url" not in params:
@@ -1100,8 +1101,8 @@ def load_rules(path: str | os.PathLike[str]) -> List[RuleDefinition]:
                     method=params.get("method", "POST"),
                     payload=params.get("payload"),
                     headers=params.get("headers"),
-                    timeout_sec=params.get("timeout_sec", 10),
-                    retries=params.get("retries", 0)
+                    timeout_sec=params.get("timeout_sec"),
+                    retries=params.get("retries")
                 ))
             else:
                 raise ValueError(f"Rule '{rule_id}' references unsupported action '{action_name}'")
