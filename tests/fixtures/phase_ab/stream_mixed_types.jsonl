@@ -1,0 +1,15 @@
+{"time": 1690000000.0, "step": "0", "name": "reward", "value": "0.5", "run_id": "test-run-456"}
+{"time": 1690000000.1, "step": 0, "name": "kl", "value": 0.01, "run_id": "test-run-456"}
+{"time": 1690000001.0, "step": 1, "name": "reward", "value": null, "run_id": "test-run-456"}
+{"time": 1690000001.1, "step": "1", "name": "kl", "value": "0.012", "run_id": "test-run-456"}
+{"time": 1690000002.0, "step": 2, "name": "reward", "value": 0.54, "run_id": "test-run-456"}
+{"time": 1690000002.1, "step": 2, "name": "kl", "value": "invalid", "run_id": "test-run-456"}
+{"time": 1690000003.0, "step": 3, "name": "reward", "value": 0.56, "run_id": "test-run-456"}
+{"time": 1690000004.0, "step": 4, "name": "reward", "value": "0.58", "run_id": "test-run-456"}
+{"time": 1690000004.1, "step": 4, "name": "kl", "value": 0.018, "run_id": "test-run-456"}
+{"time": 1690000005.0, "step": 5, "name": "reward", "value": null, "run_id": "test-run-456"}
+{"time": 1690000005.1, "step": 5, "name": "kl", "value": "0.020", "run_id": "test-run-456"}
+{"time": 1690000006.0, "step": 6, "name": "reward", "value": 0.62, "run_id": "test-run-456"}
+{"time": 1690000006.1, "step": 6, "name": "kl", "value": 0.022, "run_id": "test-run-456"}
+{"time": 1690000007.0, "step": 7, "name": "reward", "value": "0.64", "run_id": "test-run-456"}
+{"time": 1690000007.1, "step": 7, "name": "kl", "value": 0.024, "run_id": "test-run-456"}
