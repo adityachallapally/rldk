@@ -165,30 +165,23 @@ def check_reward_drift_score_file_mode():
     scores_b_path = fixtures_dir / "scores_b.jsonl"
     
     with tempfile.TemporaryDirectory() as temp_dir:
-        original_cwd = Path.cwd()
-        try:
-            import os
-            os.chdir(temp_dir)
-            
-            cmd_parts = drift_cmd.split() + [
-                "--scores-a", str(scores_a_path),
-                "--scores-b", str(scores_b_path)
-            ]
-            
-            result = subprocess.run(
-                cmd_parts,
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            
-            assert result.returncode == 0, f"Command failed: {result.stderr}"
-            
-            report_path = Path("rldk_reports/reward_drift.json")
-            assert report_path.exists(), "Drift report not found"
-            
-        finally:
-            os.chdir(original_cwd)
+        cmd_parts = drift_cmd.split() + [
+            "--scores-a", str(scores_a_path),
+            "--scores-b", str(scores_b_path)
+        ]
+        
+        result = subprocess.run(
+            cmd_parts,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=temp_dir
+        )
+        
+        assert result.returncode == 0, f"Command failed: {result.stderr}"
+        
+        report_path = Path(temp_dir) / "rldk_reports/reward_drift.json"
+        assert report_path.exists(), "Drift report not found"
 
 
 def check_api_accepts_dataframe():

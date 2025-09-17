@@ -116,3 +116,5 @@ class TestPhaseABAPI:
         
         tolerance = 1e-6
         assert abs(health_list - health_df) <= tolerance
+        assert abs(health_path - health_df) <= tolerance
+        assert abs(health_path - health_list) <= tolerance

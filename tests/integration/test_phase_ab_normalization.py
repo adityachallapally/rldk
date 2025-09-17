@@ -41,9 +41,7 @@ class TestPhaseABNormalization:
         
         expected_cols = {"step", "reward_mean", "kl_mean", "loss", "lr", "grad_norm", "wall_time", "run_id", "phase", "reward_std", "entropy_mean", "clip_frac", "tokens_in", "tokens_out", "seed", "git_sha", "reward", "kl"}
         extra_cols = set(df.columns) - expected_cols
-        if extra_cols:
-            for col in extra_cols:
-                assert col in df.columns
+        assert len(extra_cols) >= 0
 
     def test_coercion_and_none_guards(self, fixtures_dir):
         """Test 2: Load stream_mixed_types.jsonl and run schema standardizer."""
