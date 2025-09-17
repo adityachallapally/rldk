@@ -19,8 +19,15 @@ def _lazy_import_bisect():
     return bisect_commits, BisectResult
 
 def _lazy_import_reward():
-    from .reward import RewardHealthReport, compare_models, health
-    return health, RewardHealthReport, compare_models
+    from .reward import (
+        HealthAnalysisResult,
+        RewardHealthReport,
+        compare_models,
+        health,
+        reward_health,
+    )
+
+    return health, RewardHealthReport, compare_models, reward_health, HealthAnalysisResult
 
 def _lazy_import_evals():
     from .evals import EvalResult, run
@@ -116,12 +123,17 @@ def bisect_commits(*args, **kwargs):
     return bisect_commits_func(*args, **kwargs)
 
 def health(*args, **kwargs):
-    health_func, _, _ = _lazy_import_reward()
+    health_func, *_ = _lazy_import_reward()
     return health_func(*args, **kwargs)
 
 def compare_models(*args, **kwargs):
-    _, _, compare_models_func = _lazy_import_reward()
+    _, _, compare_models_func, _, _ = _lazy_import_reward()
     return compare_models_func(*args, **kwargs)
+
+
+def reward_health(*args, **kwargs):
+    _, _, _, reward_health_func, _ = _lazy_import_reward()
+    return reward_health_func(*args, **kwargs)
 
 def run(*args, **kwargs):
     run_func, _ = _lazy_import_evals()
@@ -265,6 +277,7 @@ DivergenceReport = _create_lazy_class('DivergenceReport', _lazy_import_diff, 1)
 DeterminismReport = _create_lazy_class('DeterminismReport', _lazy_import_determinism, 1)
 BisectResult = _create_lazy_class('BisectResult', _lazy_import_bisect, 1)
 RewardHealthReport = _create_lazy_class('RewardHealthReport', _lazy_import_reward, 1)
+HealthAnalysisResult = _create_lazy_class('HealthAnalysisResult', _lazy_import_reward, 4)
 EvalResult = _create_lazy_class('EvalResult', _lazy_import_evals, 1)
 ReplayReport = _create_lazy_class('ReplayReport', _lazy_import_replay, 1)
 ComprehensivePPOForensics = _create_lazy_class('ComprehensivePPOForensics', _lazy_import_forensics, 3)
@@ -298,7 +311,9 @@ __all__ = [
     "bisect_commits",
     "BisectResult",
     "health",
+    "reward_health",
     "RewardHealthReport",
+    "HealthAnalysisResult",
     "compare_models",
     "run",
     "EvalResult",

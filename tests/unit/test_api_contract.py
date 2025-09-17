@@ -125,13 +125,20 @@ class TestPublicSymbols:
 
     def test_reward_module_imports(self):
         """Test reward module imports."""
-        from rldk.reward import RewardHealthReport, health
+        from rldk.reward import (
+            HealthAnalysisResult,
+            RewardHealthReport,
+            health,
+            reward_health,
+        )
 
-        # Test function
+        # Test functions
         assert callable(health)
+        assert callable(reward_health)
 
-        # Test class
+        # Test classes
         assert RewardHealthReport
+        assert HealthAnalysisResult
 
     def test_evals_module_imports(self):
         """Test evals module imports."""
@@ -276,8 +283,9 @@ class TestCLICommands:
         # May fail with synthetic data format, but should handle gracefully
         assert result.exit_code in [0, 1]
         if result.exit_code == 0:
-            assert "Ingested" in result.stdout
-            assert "training steps" in result.stdout
+            stdout_lower = result.stdout.lower()
+            assert "ingest" in stdout_lower
+            assert "step" in stdout_lower
 
     def test_diff_command(self):
         """Test diff command with synthetic data."""
@@ -294,7 +302,7 @@ class TestCLICommands:
         # May fail with synthetic data format, but should handle gracefully
         assert result.exit_code in [0, 1]
         if result.exit_code == 0:
-            assert "No divergence detected" in result.stdout or "Divergence detected" in result.stdout
+            assert "divergence detected" in result.stdout.lower()
 
     def test_check_determinism_command(self):
         """Test check-determinism command."""

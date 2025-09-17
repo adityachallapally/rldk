@@ -17,7 +17,9 @@ def test_imports():
     assert hasattr(rldk, "check")
     assert hasattr(rldk, "bisect_commits")
     assert hasattr(rldk, "health")
+    assert hasattr(rldk, "reward_health")
     assert hasattr(rldk, "RewardHealthReport")
+    assert hasattr(rldk, "HealthAnalysisResult")
     assert hasattr(rldk, "run")
     assert hasattr(rldk, "EvalResult")
 
