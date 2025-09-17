@@ -528,7 +528,11 @@ divergence = first_divergence(run_a, run_b, signals=["loss", "reward"])
 determinism_check = check(cmd="python train.py", replicas=5)
 
 # 4. Analyze reward model health
-health_report = reward_health(training_data, reference_data)
+health_result = reward_health(
+    training_data,  # DataFrame, list of dicts, or path to JSONL/table logs
+    reference_data,
+)
+print(health_result.report.passed)
 ```
 
 ## 📊 **What You Get**

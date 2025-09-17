@@ -287,6 +287,35 @@ drift_report = compare_models(
 )
 ```
 
+#### `reward_health`
+
+High-level helper that normalizes inputs and returns a `HealthAnalysisResult`.
+
+```python
+from rldk import HealthAnalysisResult, reward_health
+
+# Accepts DataFrames, lists of dictionaries, or JSONL/table paths
+analysis = reward_health(
+    run_data=[{"step": 1, "reward_mean": 0.5}, {"step": 2, "reward_mean": 0.6}],
+    reward_col="reward_mean",
+)
+
+assert isinstance(analysis, HealthAnalysisResult)
+print(analysis.report.passed)
+print(analysis.metrics.head())
+summary = analysis.to_dict()
+```
+
+#### `HealthAnalysisResult`
+
+The object returned by `reward_health` combines the underlying
+`RewardHealthReport` with the normalized metrics used for analysis.
+
+- `report`: Raw `RewardHealthReport` dataclass with detailed findings
+- `metrics`: Normalized training metrics DataFrame for the run
+- `reference_metrics`: Optional normalized reference DataFrame
+- `to_dict()`: JSON-ready summary for serialization or logging
+
 ### Evaluation Suites
 
 #### `run`

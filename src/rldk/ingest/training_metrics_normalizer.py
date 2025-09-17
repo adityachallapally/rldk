@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Dict, Iterable, Optional, Union
+from typing import Any, Dict, Iterable, Mapping, Optional, Sequence, Union
 
 import pandas as pd
 
@@ -226,8 +226,55 @@ def normalize_training_metrics_source(
     return standardize_training_metrics(renamed)
 
 
+def normalize_training_metrics(
+    source: Union[pd.DataFrame, Sequence[Mapping[str, Any]], str, Path],
+    field_map: Optional[Dict[str, str]] = None,
+) -> pd.DataFrame:
+    """Normalize training metrics regardless of source format."""
+
+    if isinstance(source, pd.DataFrame):
+        raw_df = source.copy()
+    elif isinstance(source, (str, Path)):
+        return normalize_training_metrics_source(source, field_map=field_map)
+    elif isinstance(source, Sequence):
+        try:
+            records = list(source)
+        except TypeError as exc:  # pragma: no cover - defensive guard
+            raise ValidationError(
+                "Unable to iterate over training metrics records",
+                suggestion="Provide a pandas DataFrame, list of dicts, or a file path",
+                error_code="INVALID_TRAINING_METRICS_ITERABLE",
+            ) from exc
+
+        if not records:
+            raw_df = pd.DataFrame()
+        else:
+            invalid_record = next(
+                (record for record in records if not isinstance(record, Mapping)), None
+            )
+            if invalid_record is not None:
+                raise ValidationError(
+                    "All metric records must be mappings (dict-like objects)",
+                    suggestion="Ensure each item is a dict with step and metric values",
+                    error_code="INVALID_METRIC_RECORD",
+                    details={"invalid_record": invalid_record},
+                )
+            raw_df = pd.DataFrame(records)
+    else:
+        raise ValidationError(
+            f"Unsupported training metrics input type: {type(source).__name__}",
+            suggestion="Provide a pandas DataFrame, list of dicts, or a metrics file path",
+            error_code="UNSUPPORTED_TRAINING_METRICS_INPUT",
+            details={"received_type": type(source).__name__},
+        )
+
+    renamed = _rename_with_field_map(raw_df, field_map)
+    return standardize_training_metrics(renamed)
+
+
 __all__ = [
     "TRAINING_METRIC_COLUMNS",
+    "normalize_training_metrics",
     "normalize_training_metrics_source",
     "standardize_training_metrics",
 ]

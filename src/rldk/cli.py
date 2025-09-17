@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import numpy as np
 import pandas as pd
 import typer
+import click
 
 from rldk.bisect import bisect_commits
 
@@ -88,6 +89,18 @@ from rldk.utils.error_handling import (
 )
 from rldk.utils.progress import print_operation_status, timed_operation_context
 from rldk.utils.runtime import with_timeout
+
+
+# Typer 0.9 expects click.Parameter.make_metavar to accept an optional context.
+# Click 8.1 requires a context argument, so we provide a shim to keep help text working
+# across versions.
+if click.Parameter.make_metavar.__code__.co_argcount == 2:  # pragma: no cover - version guard
+    _original_make_metavar = click.Parameter.make_metavar
+
+    def _safe_make_metavar(self, ctx=None):
+        return _original_make_metavar(self, ctx)
+
+    click.Parameter.make_metavar = _safe_make_metavar
 
 
 def ensure_config_initialized():
