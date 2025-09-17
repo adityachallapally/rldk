@@ -22,6 +22,44 @@ from ..utils.error_handling import (
 from ..utils.progress import spinner
 
 
+logger = logging.getLogger(__name__)
+
+
+_CANONICAL_COLUMNS = [
+    "step",
+    "phase",
+    "reward_mean",
+    "reward_std",
+    "kl_mean",
+    "entropy_mean",
+    "clip_frac",
+    "grad_norm",
+    "lr",
+    "loss",
+    "tokens_in",
+    "tokens_out",
+    "wall_time",
+    "seed",
+    "run_id",
+    "git_sha",
+]
+
+
+_NUMERIC_COLUMNS = {
+    "reward_mean",
+    "reward_std",
+    "kl_mean",
+    "entropy_mean",
+    "clip_frac",
+    "grad_norm",
+    "lr",
+    "loss",
+    "tokens_in",
+    "tokens_out",
+    "wall_time",
+}
+
+
 def ingest_runs(
     source: Union[str, Path],
     adapter_hint: Optional[str] = None,
@@ -192,52 +230,44 @@ def ingest_runs(
 
 
 def _standardize_schema(df: pd.DataFrame) -> pd.DataFrame:
-    """Standardize DataFrame schema to required format."""
-    required_cols = [
-        "step",
-        "phase",
-        "reward_mean",
-        "reward_std",
-        "kl_mean",
-        "entropy_mean",
-        "clip_frac",
-        "grad_norm",
-        "lr",
-        "loss",
-        "tokens_in",
-        "tokens_out",
-        "wall_time",
-        "seed",
-        "run_id",
-        "git_sha",
-    ]
+    """Standardize DataFrame schema to the TrainingMetrics format."""
 
-    # Add missing columns with None values
-    for col in required_cols:
-        if col not in df.columns:
-            df[col] = None
-
-    # Ensure step column is present and numeric
-    if "step" not in df.columns or df["step"].isna().all():
-        df["step"] = range(len(df))
-
-    # Convert step to numeric, handling any non-numeric values
-    try:
-        df["step"] = pd.to_numeric(df["step"], errors='coerce')
-        # Fill any NaN values with sequential numbers
-        if df["step"].isna().any():
-            df["step"] = df["step"].fillna(range(len(df)))
-    except Exception as e:
+    if "step" not in df.columns:
         raise ValidationError(
-            f"Failed to convert step column to numeric: {e}",
-            suggestion="Ensure step values are numeric",
-            error_code="INVALID_STEP_COLUMN"
-        ) from e
+            "DataFrame is missing required 'step' column",
+            suggestion="Ensure every record includes a numeric 'step' value",
+            error_code="MISSING_STEP_COLUMN",
+        )
 
-    # Sort by step
-    df = df.sort_values("step").reset_index(drop=True)
+    standardized = df.copy()
 
-    return df[required_cols]
+    standardized["step"] = pd.to_numeric(standardized["step"], errors="coerce")
+    invalid_steps = standardized["step"].isna()
+    invalid_count = int(invalid_steps.sum())
+    if invalid_count:
+        logger.warning(
+            "Dropped %d row%s with missing or non-numeric step during schema standardization",
+            invalid_count,
+            "" if invalid_count == 1 else "s",
+        )
+        standardized = standardized.loc[~invalid_steps].copy()
+
+    for column in _CANONICAL_COLUMNS:
+        if column not in standardized.columns:
+            standardized[column] = None
+
+    standardized["step"] = standardized["step"].astype("Int64")
+
+    for column in _NUMERIC_COLUMNS.intersection(standardized.columns):
+        standardized[column] = pd.to_numeric(standardized[column], errors="coerce")
+
+    standardized = standardized.sort_values("step").reset_index(drop=True)
+
+    canonical = [column for column in _CANONICAL_COLUMNS if column in standardized.columns]
+    extras = sorted(column for column in standardized.columns if column not in _CANONICAL_COLUMNS)
+    ordered_columns = canonical + extras
+
+    return standardized.loc[:, ordered_columns]
 
 
 def ingest_runs_to_events(
