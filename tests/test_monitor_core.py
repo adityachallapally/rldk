@@ -186,12 +186,12 @@ rules:
     for event in events:
         for alert in engine.process_event(event):
             messages.append(alert.message)
-    assert messages == ["KL 0.60 at step 2", "KL 0.80 at step 6"]
+    assert messages == ["KL 0.70 at step 3", "KL 0.80 at step 6"]
 
     report = engine.generate_report().to_dict()
     rule_summary = report["rules"]["high_kl"]
     assert rule_summary["activations"] == 2
-    assert rule_summary["first_activation"]["step"] == 2
+    assert rule_summary["first_activation"]["step"] == 3
     assert rule_summary["last_activation"]["step"] == 6
 
 
@@ -243,6 +243,70 @@ rules:
         for alert in engine.process_event(event):
             triggered.append(alert.event.step)
     assert triggered == [3, 4]
+
+
+def test_consecutive_window_requires_back_to_back_hits(tmp_path: Path) -> None:
+    rules_path = tmp_path / "rules.yaml"
+    rules_path.write_text(
+        """
+rules:
+  - id: consecutive_high_kl
+    where: name == "kl"
+    condition: value > 0.5
+    window:
+      size: 5
+    actions:
+      - warn: {}
+"""
+    )
+    engine = MonitorEngine(load_rules(rules_path))
+    values = [0.9, 0.85, 0.2, 0.92, 0.95, 0.97, 0.99, 1.01]
+    activations: List[int] = []
+    for step, value in enumerate(values, start=1):
+        event = Event(time=_now_iso(), step=step, name="kl", value=value)
+        for alert in engine.process_event(event):
+            activations.append(alert.event.step)
+
+    assert activations == [8]
+
+
+def test_rolling_allows_single_spike_but_consecutive_does_not(tmp_path: Path) -> None:
+    rules_path = tmp_path / "rules.yaml"
+    rules_path.write_text(
+        """
+rules:
+  - id: consecutive_high_kl
+    where: name == "kl"
+    condition: value > 0.8
+    window:
+      size: 3
+    actions:
+      - warn: {}
+  - id: rolling_spike
+    where: name == "kl"
+    condition: any(value > 0.8)
+    window:
+      size: 3
+      kind: rolling
+    actions:
+      - warn: {}
+"""
+    )
+
+    engine = MonitorEngine(load_rules(rules_path))
+    values = [0.2, 0.95, 0.3, 0.1]
+    consecutive_hits: List[int] = []
+    rolling_hits: List[int] = []
+    for step, value in enumerate(values, start=1):
+        event = Event(time=_now_iso(), step=step, name="kl", value=value)
+        for alert in engine.process_event(event):
+            if alert.rule_id == "consecutive_high_kl":
+                consecutive_hits.append(alert.event.step)
+            elif alert.rule_id == "rolling_spike":
+                rolling_hits.append(alert.event.step)
+
+    assert consecutive_hits == []
+    assert rolling_hits == [3, 4]
 
 
 def test_load_rules_builtin_preset() -> None:
