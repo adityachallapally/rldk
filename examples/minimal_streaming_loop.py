@@ -38,6 +38,8 @@ def main() -> int:
     _install_signal_handlers([signal.SIGINT, signal.SIGTERM])
 
     print(f"📡 Streaming metrics from PID {os.getpid()} -> {log_path}", flush=True)
+    print("Attach another terminal with 'rldk monitor --stream artifacts/run.jsonl --rules rules.yaml --pid "
+          f"{os.getpid()}' to watch and auto-stop when KL spikes.", flush=True)
     print("Press Ctrl+C to stop or allow an RLDK monitor stop action to terminate the loop.", flush=True)
 
     rng = random.Random(42)

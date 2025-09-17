@@ -1,6 +1,6 @@
 # Makefile for RL Debug Kit Reference Suite
 
-.PHONY: help init lint test cli-smoke docs-serve reference\:cpu_smoke reference\:bisect_demo reference\:setup clean profile profile-check profile-train profile-dashboard profile-clean test-trl test-trl-unit test-trl-integration test-trl-slow golden-master-test
+.PHONY: help init lint test cli-smoke docs-serve reference\:cpu_smoke reference\:bisect_demo reference\:setup clean profile profile-check profile-train profile-dashboard profile-clean test-trl test-trl-unit test-trl-integration test-trl-slow golden-master-test monitor-demo
 
 help:
 	@echo "RL Debug Kit Development Commands"
@@ -11,6 +11,7 @@ help:
 	@echo "  test                   - Run all tests"
 	@echo "  cli-smoke              - Run CLI smoke tests"
 	@echo "  docs-serve             - Serve documentation locally"
+	@echo "  monitor-demo           - Run the live monitoring demo with auto-stop"
 	@echo ""
 	@echo "Reference Suite targets:"
 	@echo "  reference:setup        - Setup reference runs for testing"
@@ -75,6 +76,34 @@ docs-serve:
 	@echo "Starting documentation server..."
 	@echo "Documentation will be available at http://localhost:8000"
 	mkdocs serve
+
+monitor-demo:
+	@echo "Running live monitoring demo..."
+	@set -eu; \
+		export PYTHONPATH="src$${PYTHONPATH:+:$${PYTHONPATH}}"; \
+		artifacts_dir=artifacts; \
+		mkdir -p $$artifacts_dir; \
+		rm -f $$artifacts_dir/run.jsonl $$artifacts_dir/alerts.jsonl $$artifacts_dir/report.json $$artifacts_dir/demo_loop.log $$artifacts_dir/monitor.log; \
+		python examples/minimal_streaming_loop.py > $$artifacts_dir/demo_loop.log 2>&1 & \
+		loop_pid=$$!; \
+		echo $$loop_pid > $$artifacts_dir/demo_loop.pid; \
+		trap "kill -TERM $$loop_pid >/dev/null 2>&1 || true; wait $$loop_pid >/dev/null 2>&1 || true; rm -f $$artifacts_dir/demo_loop.pid" EXIT; \
+		sleep 1; \
+		echo "Monitor attaching to PID $$loop_pid"; \
+		if command -v rldk >/dev/null 2>&1; then \
+			timeout 15s rldk monitor --stream $$artifacts_dir/run.jsonl --rules rules.yaml --pid $$loop_pid --alerts $$artifacts_dir/alerts.jsonl --report $$artifacts_dir/report.json > $$artifacts_dir/monitor.log 2>&1 || true; \
+		else \
+			timeout 15s python -m rldk.cli monitor --stream $$artifacts_dir/run.jsonl --rules rules.yaml --pid $$loop_pid --alerts $$artifacts_dir/alerts.jsonl --report $$artifacts_dir/report.json > $$artifacts_dir/monitor.log 2>&1 || true; \
+		fi; \
+		kill -TERM $$loop_pid >/dev/null 2>&1 || true; \
+		wait $$loop_pid >/dev/null 2>&1 || true; \
+		echo "Monitor output:"; \
+		cat $$artifacts_dir/monitor.log; \
+		echo "Alerts written to $$artifacts_dir/alerts.jsonl"; \
+		tail -n 5 $$artifacts_dir/alerts.jsonl 2>/dev/null || echo "No alerts recorded yet."; \
+		echo "Report available at $$artifacts_dir/report.json"; \
+		echo "Trainer stdout captured in $$artifacts_dir/demo_loop.log"; \
+		echo "✅ Monitor demo complete!"
 
 # Setup Reference Runs Target
 reference\:setup:
