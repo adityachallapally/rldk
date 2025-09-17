@@ -31,6 +31,7 @@ from typing import (
 import yaml
 
 from .presets import RULE_PRESETS, get_rule_preset
+from .regexes import create_line_parser
 
 logger = logging.getLogger(__name__)
 
@@ -447,7 +448,11 @@ def canonicalize_event(payload: Dict[str, Any], field_map: Optional[Dict[str, st
     )
 
 
-def read_events_once(path: str | os.PathLike[str], field_map: Optional[Dict[str, str]] = None) -> List[Event]:
+def read_events_once(
+    path: str | os.PathLike[str],
+    field_map: Optional[Dict[str, str]] = None,
+    regex: Optional[str] = None,
+) -> List[Event]:
     path_obj = Path(path)
     if not path_obj.exists():
         raise FileNotFoundError(f"Event log '{path}' does not exist")
@@ -468,29 +473,94 @@ def read_events_once(path: str | os.PathLike[str], field_map: Optional[Dict[str,
                     yield line
 
         opener = _open_text
+    parser = create_line_parser(regex) if regex else None
     events: List[Event] = []
+    auto_step = 0
+
+    def _next_auto_step() -> int:
+        nonlocal auto_step
+        auto_step += 1
+        return auto_step
+
     for line in opener(path_obj):
         line = line.strip()
         if not line:
             continue
-        try:
-            payload = json.loads(line)
-        except json.JSONDecodeError as exc:
-            logger.warning("Failed to parse JSON event: %s", exc)
-            continue
-        try:
-            events.append(canonicalize_event(payload, field_map))
-        except ValueError as exc:
-            logger.warning("Skipping invalid event: %s", exc)
+        if parser is None:
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError as exc:
+                logger.warning("Failed to parse JSON event: %s", exc)
+                continue
+            try:
+                events.append(canonicalize_event(payload, field_map))
+            except ValueError as exc:
+                logger.warning("Skipping invalid event: %s", exc)
+        else:
+            try:
+                parsed_events = list(parser.parse(line))
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning("Regex parser failed for line: %s", exc)
+                continue
+            for payload in parsed_events:
+                data = dict(payload)
+                data.setdefault("time", _now_iso())
+                data.setdefault("step", _next_auto_step())
+                try:
+                    events.append(canonicalize_event(data, field_map))
+                except ValueError as exc:
+                    logger.warning("Skipping invalid parsed event: %s", exc)
     return events
 
 
 def read_stream(
     path_or_stdin: str | os.PathLike[str],
     field_map: Optional[Dict[str, str]] = None,
+    regex: Optional[str] = None,
     poll_interval: float = 0.5,
 ) -> Iterator[Event]:
     """Yield canonical events from a stream, following file rotations."""
+
+    parser = create_line_parser(regex) if regex else None
+    auto_step = 0
+
+    def _next_auto_step() -> int:
+        nonlocal auto_step
+        auto_step += 1
+        return auto_step
+
+    def _line_events(line: str) -> Iterable[Event]:
+        nonlocal auto_step
+        if parser is None:
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError as exc:
+                logger.warning("Failed to parse JSON event: %s", exc)
+                return []
+            try:
+                event = canonicalize_event(payload, field_map)
+                auto_step = max(auto_step, event.step)
+                return [event]
+            except ValueError as exc:
+                logger.warning("Skipping invalid event: %s", exc)
+                return []
+        try:
+            parsed_payloads = list(parser.parse(line)) if parser else []
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Regex parser failed for line: %s", exc)
+            return []
+        events: List[Event] = []
+        for payload in parsed_payloads:
+            data = dict(payload)
+            data.setdefault("time", _now_iso())
+            data.setdefault("step", _next_auto_step())
+            try:
+                event = canonicalize_event(data, field_map)
+                auto_step = max(auto_step, event.step)
+                events.append(event)
+            except ValueError as exc:
+                logger.warning("Skipping invalid parsed event: %s", exc)
+        return events
 
     if str(path_or_stdin) == "-":
         import sys
@@ -499,13 +569,8 @@ def read_stream(
             line = line.strip()
             if not line:
                 continue
-            try:
-                payload = json.loads(line)
-                yield canonicalize_event(payload, field_map)
-            except json.JSONDecodeError as exc:
-                logger.warning("Failed to parse JSON event from stdin: %s", exc)
-            except ValueError as exc:
-                logger.warning("Skipping invalid stdin event: %s", exc)
+            for event in _line_events(line):
+                yield event
         return
 
     raw_target = str(path_or_stdin)
@@ -593,13 +658,8 @@ def read_stream(
                     line = line.strip()
                     if not line:
                         continue
-                    try:
-                        payload = json.loads(line)
-                        yield canonicalize_event(payload, field_map)
-                    except json.JSONDecodeError as exc:
-                        logger.warning("Failed to parse JSON event: %s", exc)
-                    except ValueError as exc:
-                        logger.warning("Skipping invalid event: %s", exc)
+                    for event in _line_events(line):
+                        yield event
             else:
                 if active_path is None:
                     time.sleep(poll_interval)

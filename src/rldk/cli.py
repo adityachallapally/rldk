@@ -54,6 +54,8 @@ from rldk.monitor import (
     load_rules,
     read_events_once,
     read_stream,
+    stream_from_mlflow,
+    stream_from_wandb,
 )
 from rldk.monitor.presets import FIELD_MAP_PRESETS, RULE_PRESETS, get_field_map_preset
 from rldk.emit import EventWriter
@@ -180,6 +182,16 @@ def monitor(
         readable=True,
         help="Analyze an existing JSONL metrics file once and exit.",
     ),
+    from_wandb: Optional[str] = typer.Option(
+        None,
+        "--from-wandb",
+        help="Stream metrics directly from a W&B run path (entity/project[/run_id]).",
+    ),
+    from_mlflow: Optional[str] = typer.Option(
+        None,
+        "--from-mlflow",
+        help="Stream metrics from an MLflow run ID using the active tracking URI.",
+    ),
     rules: str = typer.Option(
         ...,
         "--rules",
@@ -209,6 +221,11 @@ def monitor(
         None,
         "--field-map",
         help="JSON object mapping input keys to canonical event fields.",
+    ),
+    regex: Optional[str] = typer.Option(
+        None,
+        "--regex",
+        help="Regex preset or pattern to parse text logs (e.g. 'trl').",
     ),
     pid: Optional[int] = typer.Option(
         None,
@@ -247,15 +264,28 @@ def monitor(
     ensure_config_initialized()
     stream_source = stream
     once_source = once
+    wandb_source = from_wandb
+    mlflow_source = from_mlflow
     env_stream = os.environ.get("RLDK_METRICS_PATH")
-    if stream_source is None and once_source is None:
+    if (
+        stream_source is None
+        and once_source is None
+        and wandb_source is None
+        and mlflow_source is None
+    ):
         if env_stream:
             stream_source = env_stream
         elif not sys.stdin.isatty():
             stream_source = "-"
-    if (stream_source is None) == (once_source is None):
+    selections = [
+        stream_source is not None,
+        once_source is not None,
+        wandb_source is not None,
+        mlflow_source is not None,
+    ]
+    if sum(1 for selected in selections if selected) != 1:
         typer.echo(
-            "Provide exactly one of --stream or --once, or pipe metrics via stdin.",
+            "Provide exactly one source via --stream, --once, --from-wandb, or --from-mlflow (stdin also supported).",
             err=True,
         )
         raise typer.Exit(1)
@@ -288,13 +318,29 @@ def monitor(
             else:
                 typer.echo(message)
 
+    mode: str
+    if once_source is not None:
+        mode = "once"
+    elif wandb_source is not None:
+        mode = "wandb"
+    elif mlflow_source is not None:
+        mode = "mlflow"
+    else:
+        mode = "stream"
+
     try:
-        if stream_source is not None:
-            for event in read_stream(stream_source, field_map=mapping):
+        if mode == "stream":
+            for event in read_stream(stream_source, field_map=mapping, regex=regex):
                 emit_alerts(engine.process_event(event))
-        else:
-            events = read_events_once(once_source, field_map=mapping)
+        elif mode == "once":
+            events = read_events_once(once_source, field_map=mapping, regex=regex)
             for event in events:
+                emit_alerts(engine.process_event(event))
+        elif mode == "wandb":
+            for event in stream_from_wandb(wandb_source):
+                emit_alerts(engine.process_event(event))
+        elif mode == "mlflow":
+            for event in stream_from_mlflow(mlflow_source):
                 emit_alerts(engine.process_event(event))
     except KeyboardInterrupt:
         typer.echo("Monitoring interrupted by user", err=True)
@@ -302,6 +348,13 @@ def monitor(
         pass
     except typer.Exit:
         raise
+    except ValueError as exc:
+        typer.echo(f"Failed to parse metrics: {exc}", err=True)
+        raise typer.Exit(1)
+    except RuntimeError as exc:
+        message = str(exc) or exc.__class__.__name__
+        typer.echo(f"Monitoring failed: {message}", err=True)
+        raise typer.Exit(1)
     except Exception as exc:
         message = str(exc) or exc.__class__.__name__
         typer.echo(f"Monitoring failed: {message}", err=True)
@@ -316,7 +369,7 @@ def monitor(
         except Exception as exc:
             typer.echo(f"Failed to write report: {exc}", err=True)
             raise typer.Exit(1)
-    elif once is not None:
+    elif once_source is not None:
         typer.echo(json.dumps(report_payload, indent=2, sort_keys=True))
 
 

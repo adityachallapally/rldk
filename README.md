@@ -138,6 +138,13 @@ rldk monitor --stream artifacts --rules ppo_strict --preset accelerate --pid <tr
 
 # Batch analysis of a finished run with a custom rules file
 rldk monitor --once artifacts/run.jsonl --rules my_rules.yaml --report artifacts/report.json
+
+# Stream hosted runs without touching trainer code
+rldk monitor --from-wandb my-entity/my-project/my-run --rules ppo_safe --alerts artifacts/wandb_alerts.jsonl
+rldk monitor --from-mlflow 0123456789abcdef --rules dpo_basic --alerts artifacts/mlflow_alerts.jsonl
+
+# Parse TRL stdout directly with regex sniffing
+python train_trl.py | rldk monitor --rules ppo_safe --regex trl --alerts artifacts/stdout_alerts.jsonl
 ```
 
 Key conveniences:
@@ -147,6 +154,8 @@ Key conveniences:
 - **Directory tailing** – Passing a directory to `--stream` automatically follows the newest `*.jsonl` file and handles rotation.
 - **Environment hook** – Set `RLDK_METRICS_PATH` to auto-tail a metrics file without specifying `--stream`; piping JSONL to stdin also just works.
 - **Ready-made emitter** – `examples/minimal_streaming_loop.py` shows how to emit canonical events and responds to monitor stop actions out of the box.
+- **Hosted run bridges** – `--from-wandb` and `--from-mlflow` follow remote projects with clear error messages and retry guards.
+- **Regex sniffing** – `--regex` (for example `--regex trl`) extracts metrics from stdout/stderr without changing your training loop.
 
 ### **Reward Model Health Analysis**
 Comprehensive reward model analysis and drift detection:
