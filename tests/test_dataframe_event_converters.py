@@ -82,3 +82,23 @@ def test_events_to_dataframe_handles_non_numeric_metrics() -> None:
     assert df.loc[0, "run_id"] == "run-456"
     assert df.loc[0, "phase"] == "eval"
     assert df.loc[0, "seed"] == 11
+
+
+def test_dataframe_to_events_preserves_network_metrics() -> None:
+    df = pd.DataFrame(
+        {
+            "step": [5],
+            "network_bandwidth": [250.0],
+            "latency_ms": [12.5],
+        }
+    )
+
+    events = dataframe_to_events(df, run_id="net-run")
+    assert len(events) == 1
+    event_metrics = events[0].metrics
+    assert event_metrics["network_bandwidth"] == pytest.approx(250.0)
+    assert event_metrics["latency_ms"] == pytest.approx(12.5)
+
+    restored = events_to_dataframe(events)
+    assert restored.loc[0, "network_bandwidth"] == pytest.approx(250.0)
+    assert restored.loc[0, "latency_ms"] == pytest.approx(12.5)

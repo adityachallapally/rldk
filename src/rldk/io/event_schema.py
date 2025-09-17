@@ -32,6 +32,34 @@ _TRAINING_METRIC_COLUMNS = [
     "run_id",
 ]
 
+_CORE_METRIC_FIELDS = [
+    "reward_mean",
+    "reward_std",
+    "kl_mean",
+    "entropy_mean",
+    "clip_frac",
+    "grad_norm",
+    "lr",
+    "loss",
+]
+
+_NETWORK_METRIC_FIELDS = [
+    "network_bandwidth",
+    "network_latency",
+    "bandwidth_mbps",
+    "latency_ms",
+    "bandwidth_upload_mbps",
+    "bandwidth_download_mbps",
+    "total_bandwidth_mbps",
+    "allreduce_bandwidth",
+    "broadcast_bandwidth",
+    "gather_bandwidth",
+    "scatter_bandwidth",
+    "packet_loss_percent",
+    "network_errors",
+    "dns_resolution_ms",
+]
+
 _NUMERIC_COLUMNS = {
     "reward_mean",
     "reward_std",
@@ -148,18 +176,7 @@ def create_event_from_row(
     """Create an Event object from a training data row."""
 
     metrics: Dict[str, float] = {}
-    metric_fields = [
-        "reward_mean",
-        "reward_std",
-        "kl_mean",
-        "entropy_mean",
-        "clip_frac",
-        "grad_norm",
-        "lr",
-        "loss",
-    ]
-
-    for field in metric_fields:
+    for field in [*_CORE_METRIC_FIELDS, *_NETWORK_METRIC_FIELDS]:
         if field in row and row[field] is not None:
             numeric_value = _coerce_numeric(row[field])
             if numeric_value is not None:
