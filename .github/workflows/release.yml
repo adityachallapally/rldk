@@ -28,7 +28,18 @@ jobs:
       run: |
         chmod +x scripts/release_check.sh
         source .venv/bin/activate && ./scripts/release_check.sh
-    
+
+    - name: Upload monitor acceptance artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: rldk-monitor-acceptance-${{ matrix.python-version }}
+        path: |
+          artifacts/release_acceptance_alerts.jsonl
+          artifacts/release_acceptance_report.json
+          artifacts/release_acceptance_replay_report.json
+        if-no-files-found: error
+        retention-days: 30
+
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
