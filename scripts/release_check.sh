@@ -95,19 +95,22 @@ monitor_pid=""
 
 sleep 2
 
-if ! rldk monitor \
+rldk monitor \
     --stream "${metrics_path}" \
     --rules "${project_root}/rules.yaml" \
     --pid "${loop_pid}" \
     --alerts "${alerts_path}" \
     --report "${report_path}" \
-    >"${monitor_log}" 2>&1 & then
+    >"${monitor_log}" 2>&1 &
+monitor_launch_status=$?
+monitor_pid=$!
+if [[ ${monitor_launch_status} -ne 0 ]]; then
+    monitor_pid=""
     echo "❌ Failed to launch streaming monitor. Logs:" >&2
     cat "${monitor_log}" >&2 || true
     cat "${loop_log}" >&2 || true
     exit 1
 fi
-monitor_pid=$!
 
 if ! wait "${loop_pid}" >/dev/null 2>&1; then
     echo "❌ Minimal streaming loop exited with an error. Logs:" >&2
