@@ -51,6 +51,19 @@ _NUMERIC_COLUMNS = {
 _STREAM_EXTENSIONS = {".jsonl", ".ndjson"}
 _TABLE_EXTENSIONS = {".csv", ".tsv", ".parquet"}
 
+_ADAPTER_CANONICAL_OVERRIDES = {
+    "reward_mean": "reward",
+    "reward_std": "reward_std",
+    "kl_mean": "kl",
+    "entropy_mean": "entropy",
+}
+
+_POST_INGEST_ALIAS_SOURCES = {
+    "reward_mean": "reward",
+    "kl_mean": "kl",
+    "entropy_mean": "entropy",
+}
+
 
 def _stable_column_order(columns: Iterable[str]) -> list[str]:
     ordered = [column for column in TRAINING_METRIC_COLUMNS if column in columns]
@@ -108,11 +121,20 @@ def _rename_with_field_map(
     if not rename_map:
         return df
 
+    renamed = df.copy()
     overlapping = set(rename_map).intersection(df.columns)
-    if not overlapping:
-        return df
+    if overlapping:
+        renamed = renamed.rename(columns=rename_map)
 
-    return df.rename(columns=rename_map)
+    for canonical, alias in _POST_INGEST_ALIAS_SOURCES.items():
+        if canonical not in field_map.values():
+            continue
+        if canonical in renamed.columns and not renamed[canonical].dropna().empty:
+            continue
+        if alias in renamed.columns:
+            renamed[canonical] = renamed[alias]
+
+    return renamed
 
 
 def _load_table(path: Path) -> pd.DataFrame:
@@ -138,6 +160,27 @@ def _load_table(path: Path) -> pd.DataFrame:
     )
 
 
+def _invert_field_map(field_map: Optional[Dict[str, str]]) -> Optional[Dict[str, str]]:
+    if not field_map:
+        return None
+
+    inverted: Dict[str, str] = {}
+    for source, canonical in field_map.items():
+        if not isinstance(source, str) or not isinstance(canonical, str):
+            continue
+        adapter_canonical = _ADAPTER_CANONICAL_OVERRIDES.get(canonical, canonical)
+        # FlexibleDataAdapter expects canonical -> actual mappings
+        if adapter_canonical in inverted and inverted[adapter_canonical] != source:
+            logger.debug(
+                "Multiple source fields provided for canonical column '%s'; using '%s'", 
+                adapter_canonical,
+                source,
+            )
+        inverted[adapter_canonical] = source
+
+    return inverted or None
+
+
 def normalize_training_metrics_source(
     source: Union[str, Path], field_map: Optional[Dict[str, str]] = None
 ) -> pd.DataFrame:
@@ -156,10 +199,12 @@ def normalize_training_metrics_source(
             error_code="INVALID_RUN_PATH",
         ) from exc
 
+    adapter_field_map = _invert_field_map(field_map)
+
     if path_obj.is_dir():
         from .ingest import ingest_runs
 
-        raw_df = ingest_runs(path_obj)
+        raw_df = ingest_runs(path_obj, field_map=adapter_field_map)
     elif path_obj.is_file():
         suffix = path_obj.suffix.lower()
         if suffix in _STREAM_EXTENSIONS:
@@ -169,7 +214,7 @@ def normalize_training_metrics_source(
         else:
             from .ingest import ingest_runs
 
-            raw_df = ingest_runs(path_obj)
+            raw_df = ingest_runs(path_obj, field_map=adapter_field_map)
     else:
         raise ValidationError(
             f"Unsupported run path: {source}",

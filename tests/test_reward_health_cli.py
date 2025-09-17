@@ -72,3 +72,39 @@ def test_reward_health_cli_missing_reward(tmp_path: Path, runner: CliRunner) -> 
     assert result.exit_code != 0
     error_output = result.stderr or result.stdout
     assert "Use --preset or --field-map" in error_output
+
+
+def test_reward_health_cli_directory_field_map(tmp_path: Path, runner: CliRunner) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    pd.DataFrame(
+        {
+            "progress": [1, 2, 3],
+            "reward_metric": [0.5, 0.55, 0.6],
+            "kl_metric": [0.1, 0.11, 0.12],
+        }
+    ).to_csv(run_dir / "metrics.csv", index=False)
+
+    output_dir = tmp_path / "outputs"
+    mapping = json.dumps(
+        {
+            "progress": "step",
+            "reward_metric": "reward_mean",
+            "kl_metric": "kl_mean",
+        }
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "reward-health",
+            "--run",
+            str(run_dir),
+            "--output-dir",
+            str(output_dir),
+            "--field-map",
+            mapping,
+        ],
+    )
+
+    assert result.exit_code == 0, result.stdout
