@@ -407,43 +407,6 @@ rldk seed --validate
 rldk seed --seed 42 --non-deterministic
 ```
 
-## Reward Health Commands
-
-### `rldk reward-health`
-
-Analyze reward model health and detect pathologies.
-
-```bash
-rldk reward-health --run RUN_PATH [OPTIONS]
-```
-
-**Options:**
-- `--run`, `-r`: Path to training run data (required)
-- `--reference`, `-ref`: Path to reference run data
-- `--output-dir`, `-o`: Output directory for reports (default: `reward_analysis`)
-- `--preset`: Field map preset for common trainer schemas
-- `--field-map`: JSON object mapping source columns to canonical training metrics
-- `--reward-col`: Column name for reward values (default: `reward_mean`)
-- `--step-col`: Column name for training steps (default: `step`)
-- `--threshold-drift`: P-value threshold for drift detection (default: `0.1`)
-- `--threshold-saturation`: Threshold for saturation detection (default: `0.8`)
-- `--threshold-calibration`: Threshold for calibration quality (default: `0.7`)
-- `--threshold-shortcut`: Threshold for shortcut signal detection (default: `0.6`)
-- `--threshold-leakage`: Threshold for label leakage risk (default: `0.3`)
-- `--gate`: Enable CI gate mode with exit codes (0=pass, 1=warn, 2=fail)
-
-**Examples:**
-```bash
-# Basic reward health analysis
-rldk reward-health --run ./runs/experiment_1
-
-# With reference data and custom thresholds
-rldk reward-health --run ./runs/experiment_1 --reference ./runs/baseline --threshold-drift 0.05
-
-# CI gate mode
-rldk reward-health --run ./runs/experiment_1 --gate
-```
-
 ## Replay Commands
 
 ### `rldk replay`
