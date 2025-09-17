@@ -147,6 +147,36 @@ rldk monitor --from-mlflow 0123456789abcdef --rules dpo_basic --alerts artifacts
 python train_trl.py | rldk monitor --rules ppo_safe --regex trl --alerts artifacts/stdout_alerts.jsonl
 ```
 
+#### Observe any trainer in 2 lines
+
+```python
+from rldk.emit import EventWriter
+
+w = EventWriter("artifacts/run.jsonl")
+w.log(step=i, name="kl", value=kl_value)
+```
+
+```python
+f = open("artifacts/run.jsonl", "a", buffering=1)
+f.write(__import__("json").dumps({
+    "time": __import__("datetime").datetime.utcnow().isoformat()+"Z",
+    "step": i,
+    "name": "kl",
+    "value": float(kl_value),
+}) + "\n")
+f.flush()
+```
+
+Pair either snippet with the ready-to-run `rules.yaml` in the repository root:
+
+```bash
+rldk monitor --stream artifacts/run.jsonl --rules rules.yaml --pid <trainer_pid>
+```
+
+Want the full walkthrough with alerts and auto-stop baked in? Run `make monitor-demo` to launch
+`examples/minimal_streaming_loop.py`, attach the monitor, and review the resulting `artifacts/alerts.jsonl` and
+`artifacts/report.json` files.
+
 Key conveniences:
 
 - **Rule presets** – `ppo_safe`, `ppo_strict`, and `dpo_basic` cover common KL, reward, and gradient gates so you can start without writing YAML.

@@ -130,6 +130,8 @@ nav:
   - Getting Started:
     - Installation: getting-started/installation.md
     - Quick Start: getting-started/quickstart.md
+    - Live Monitor Rules Cookbook: getting-started/monitor_rules_cookbook.md
+    - Monitor Screencast Script: getting-started/monitor_screencast.md
   - API Reference:
     - Core API: reference/api.md
   - CLI Reference:
