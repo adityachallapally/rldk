@@ -6,7 +6,7 @@ import pandas as pd
 import pandas.testing as pdt
 import pytest
 
-from rldk.ingest.ingest import _standardize_schema
+from rldk.ingest import standardize_training_metrics
 
 
 def test_standardize_schema_coerces_numeric_columns() -> None:
@@ -19,7 +19,7 @@ def test_standardize_schema_coerces_numeric_columns() -> None:
         }
     )
 
-    standardized = _standardize_schema(raw)
+    standardized = standardize_training_metrics(raw)
 
     assert list(standardized["step"]) == [1, 2]
     assert standardized["reward_mean"].dtype.kind in {"f", "c"}
@@ -38,7 +38,7 @@ def test_standardize_schema_drops_rows_with_invalid_step(caplog: pytest.LogCaptu
     )
 
     caplog.set_level(logging.WARNING)
-    standardized = _standardize_schema(raw)
+    standardized = standardize_training_metrics(raw)
 
     assert list(standardized["step"]) == [1]
     assert any("Dropped 2 row" in message for message in caplog.messages)
@@ -54,7 +54,7 @@ def test_standardize_schema_column_order_and_idempotent() -> None:
         }
     )
 
-    standardized = _standardize_schema(raw)
+    standardized = standardize_training_metrics(raw)
 
     expected_prefix = [
         "step",
@@ -77,5 +77,5 @@ def test_standardize_schema_column_order_and_idempotent() -> None:
     assert standardized.columns[: len(expected_prefix)].tolist() == expected_prefix
     assert standardized.columns.tolist() == expected_prefix + ["custom_metric"]
 
-    round_trip = _standardize_schema(standardized)
+    round_trip = standardize_training_metrics(standardized)
     pdt.assert_frame_equal(standardized, round_trip)
