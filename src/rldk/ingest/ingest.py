@@ -20,44 +20,10 @@ from ..utils.error_handling import (
     validate_file_path,
 )
 from ..utils.progress import spinner
+from .training_metrics_normalizer import standardize_training_metrics
 
 
 logger = logging.getLogger(__name__)
-
-
-_CANONICAL_COLUMNS = [
-    "step",
-    "phase",
-    "reward_mean",
-    "reward_std",
-    "kl_mean",
-    "entropy_mean",
-    "clip_frac",
-    "grad_norm",
-    "lr",
-    "loss",
-    "tokens_in",
-    "tokens_out",
-    "wall_time",
-    "seed",
-    "run_id",
-    "git_sha",
-]
-
-
-_NUMERIC_COLUMNS = {
-    "reward_mean",
-    "reward_std",
-    "kl_mean",
-    "entropy_mean",
-    "clip_frac",
-    "grad_norm",
-    "lr",
-    "loss",
-    "tokens_in",
-    "tokens_out",
-    "wall_time",
-}
 
 
 def ingest_runs(
@@ -217,7 +183,7 @@ def ingest_runs(
 
     # Validate and standardize schema
     try:
-        df = _standardize_schema(df)
+        df = standardize_training_metrics(df)
         logger.info(f"Schema standardized, {len(df)} records ready")
     except Exception as e:
         raise AdapterError(
@@ -227,49 +193,6 @@ def ingest_runs(
         ) from e
 
     return df
-
-
-def _standardize_schema(df: pd.DataFrame) -> pd.DataFrame:
-    """Standardize DataFrame schema to the TrainingMetrics format."""
-
-    if "step" not in df.columns:
-        raise ValidationError(
-            "DataFrame is missing required 'step' column",
-            suggestion="Ensure every record includes a numeric 'step' value",
-            error_code="MISSING_STEP_COLUMN",
-        )
-
-    standardized = df.copy()
-
-    standardized["step"] = pd.to_numeric(standardized["step"], errors="coerce")
-    invalid_steps = standardized["step"].isna()
-    invalid_count = int(invalid_steps.sum())
-    if invalid_count:
-        logger.warning(
-            "Dropped %d row%s with missing or non-numeric step during schema standardization",
-            invalid_count,
-            "" if invalid_count == 1 else "s",
-        )
-        standardized = standardized.loc[~invalid_steps].copy()
-
-    for column in _CANONICAL_COLUMNS:
-        if column not in standardized.columns:
-            standardized[column] = None
-
-    standardized["step"] = standardized["step"].astype("Int64")
-
-    for column in _NUMERIC_COLUMNS.intersection(standardized.columns):
-        standardized[column] = pd.to_numeric(standardized[column], errors="coerce")
-
-    standardized = standardized.sort_values("step").reset_index(drop=True)
-
-    canonical = [column for column in _CANONICAL_COLUMNS if column in standardized.columns]
-    extras = sorted(column for column in standardized.columns if column not in _CANONICAL_COLUMNS)
-    ordered_columns = canonical + extras
-
-    return standardized.loc[:, ordered_columns]
-
-
 def ingest_runs_to_events(
     source: Union[str, Path],
     adapter_hint: Optional[str] = None,

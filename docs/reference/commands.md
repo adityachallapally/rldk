@@ -165,31 +165,39 @@ rldk reward reward-drift MODEL_A MODEL_B --prompts PROMPTS_FILE
 rldk reward reward-drift ./models/reward_v1 ./models/reward_v2 --prompts prompts.jsonl
 ```
 
-### `rldk reward reward-health run`
+### `rldk reward-health`
 
-Run reward health analysis on scores data.
+Normalize reward metrics and generate a health report.
 
 ```bash
-rldk reward reward-health run --scores SCORES_FILE --out OUTPUT_DIR [OPTIONS]
+rldk reward-health --run RUN_SOURCE [OPTIONS]
 ```
 
 **Options:**
-- `--scores`: Path to scores JSONL file (required)
-- `--config`: Path to health configuration YAML file
-- `--out`: Output directory for reports (required)
-- `--adapter`: Adapter type for data ingestion (`custom_jsonl`, `trl`, `openrlhf`, `wandb`)
+- `--run`, `-r`: Path to training run data (JSONL stream, metrics table, or logs directory) (required)
+- `--reference`, `-ref`: Optional reference run for drift comparison
+- `--output-dir`, `-o`: Output directory for reports (default: `reward_analysis`)
+- `--preset`: Field map preset for common trainer schemas
+- `--field-map`: JSON object mapping source columns to canonical training metrics
+- `--reward-col`: Column name for reward values (default: `reward_mean`)
+- `--step-col`: Column name for training steps (default: `step`)
+- `--threshold-drift`: P-value threshold for drift detection (default: `0.1`)
+- `--threshold-saturation`: Threshold for saturation detection (default: `0.8`)
+- `--threshold-calibration`: Threshold for calibration quality (default: `0.7`)
+- `--threshold-shortcut`: Threshold for shortcut signal detection (default: `0.6`)
+- `--threshold-leakage`: Threshold for label leakage risk (default: `0.3`)
 - `--gate`: Enable CI gate mode with exit codes (0=pass, 1=warn, 2=fail)
 
 **Examples:**
 ```bash
-# Basic reward health analysis
-rldk reward reward-health run --scores scores.jsonl --out ./reports
+# Analyze a JSONL event stream with custom field mappings
+rldk reward-health --run metrics.jsonl --field-map '{"reward": "reward_mean", "kl": "kl_mean"}'
 
-# With custom configuration
-rldk reward reward-health run --scores scores.jsonl --config custom_config.yaml --out ./reports
+# Use a CSV table that already contains normalized columns
+rldk reward-health --run ./reports/training_metrics.csv
 
-# CI gate mode
-rldk reward reward-health run --scores scores.jsonl --out ./reports --gate
+# Run with a reference directory and CI gating
+rldk reward-health --run ./runs/current --reference ./runs/baseline --gate
 ```
 
 ### `rldk reward reward-health gate`
@@ -397,41 +405,6 @@ rldk seed --validate
 
 # Set non-deterministic seed
 rldk seed --seed 42 --non-deterministic
-```
-
-## Reward Health Commands
-
-### `rldk reward-health`
-
-Analyze reward model health and detect pathologies.
-
-```bash
-rldk reward-health --run RUN_PATH [OPTIONS]
-```
-
-**Options:**
-- `--run`, `-r`: Path to training run data (required)
-- `--reference`, `-ref`: Path to reference run data
-- `--output-dir`, `-o`: Output directory for reports (default: `reward_analysis`)
-- `--reward-col`: Column name for reward values (default: `reward_mean`)
-- `--step-col`: Column name for training steps (default: `step`)
-- `--threshold-drift`: P-value threshold for drift detection (default: `0.1`)
-- `--threshold-saturation`: Threshold for saturation detection (default: `0.8`)
-- `--threshold-calibration`: Threshold for calibration quality (default: `0.7`)
-- `--threshold-shortcut`: Threshold for shortcut signal detection (default: `0.6`)
-- `--threshold-leakage`: Threshold for label leakage risk (default: `0.3`)
-- `--gate`: Enable CI gate mode with exit codes (0=pass, 1=warn, 2=fail)
-
-**Examples:**
-```bash
-# Basic reward health analysis
-rldk reward-health --run ./runs/experiment_1
-
-# With reference data and custom thresholds
-rldk reward-health --run ./runs/experiment_1 --reference ./runs/baseline --threshold-drift 0.05
-
-# CI gate mode
-rldk reward-health --run ./runs/experiment_1 --gate
 ```
 
 ## Replay Commands

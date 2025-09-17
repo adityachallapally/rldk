@@ -32,7 +32,11 @@ from rldk.evals.suites import COMPREHENSIVE_SUITE, QUICK_SUITE, SAFETY_SUITE
 from rldk.forensics.ckpt_diff import diff_checkpoints
 from rldk.forensics.env_audit import audit_environment
 from rldk.forensics.log_scan import scan_logs
-from rldk.ingest import ingest_runs, ingest_runs_to_events
+from rldk.ingest import (
+    ingest_runs,
+    ingest_runs_to_events,
+    normalize_training_metrics_source,
+)
 from rldk.io import (
     CkptDiffReportV1,
     DeterminismCardV1,
@@ -2215,6 +2219,21 @@ def reward_health(
     output_dir: str = typer.Option(
         "reward_analysis", "--output-dir", "-o", help="Output directory for reports"
     ),
+    preset: Optional[str] = typer.Option(
+        None,
+        "--preset",
+        help=(
+            "Field map preset to normalize training metrics"
+            f" ({', '.join(sorted(FIELD_MAP_PRESETS))})"
+            if FIELD_MAP_PRESETS
+            else "Field map preset name (e.g. trl)."
+        ),
+    ),
+    field_map: Optional[str] = typer.Option(
+        None,
+        "--field-map",
+        help="JSON object mapping source columns to canonical training metrics.",
+    ),
     reward_col: str = typer.Option(
         "reward_mean", "--reward-col", help="Column name for reward values"
     ),
@@ -2241,18 +2260,65 @@ def reward_health(
     ),
 ):
     """Analyze reward model health and detect pathologies."""
+
+    def _ensure_column_present(df: pd.DataFrame, column: str, kind: str) -> None:
+        if column not in df.columns:
+            raise ValidationError(
+                f"{kind.capitalize()} column '{column}' not found after normalization",
+                suggestion=(
+                    "Use --preset or --field-map to map your metrics to canonical names, "
+                    "for example --field-map '{\"reward\": \"reward_mean\"}'"
+                ),
+                error_code=f"MISSING_{kind.upper()}_COLUMN",
+            )
+        if df[column].dropna().empty:
+            raise ValidationError(
+                f"Normalized {kind} column '{column}' is empty",
+                suggestion=(
+                    "Use --preset or --field-map to map the correct column or verify the source data"
+                ),
+                error_code=f"EMPTY_{kind.upper()}_COLUMN",
+            )
+
     try:
         typer.echo(f"Analyzing reward health for run: {run_path}")
 
-        # Ingest run data
-        typer.echo("Ingesting run data...")
-        run_data = ingest_runs(run_path)
+        try:
+            combined_map = _combine_field_maps(preset, field_map)
+        except ValueError as exc:
+            typer.echo(f"Invalid field map: {exc}", err=True)
+            raise typer.Exit(1)
 
-        # Ingest reference data if provided
+        mapping_dict = combined_map or None
+
+        # Normalize run data
+        typer.echo("Normalizing run data...")
+        run_data = normalize_training_metrics_source(run_path, field_map=mapping_dict)
+
+        if run_data.empty:
+            raise ValidationError(
+                "Normalized run data is empty",
+                suggestion="Ensure the source contains reward metrics",
+                error_code="EMPTY_RUN_DATA",
+            )
+
+        _ensure_column_present(run_data, step_col, "step")
+        _ensure_column_present(run_data, reward_col, "reward")
+
         reference_data = None
         if reference_path:
-            typer.echo("Ingesting reference data...")
-            reference_data = ingest_runs(reference_path)
+            typer.echo("Normalizing reference data...")
+            reference_data = normalize_training_metrics_source(
+                reference_path, field_map=mapping_dict
+            )
+            if reference_data.empty:
+                raise ValidationError(
+                    "Normalized reference data is empty",
+                    suggestion="Verify the reference source contains reward metrics",
+                    error_code="EMPTY_REFERENCE_DATA",
+                )
+            _ensure_column_present(reference_data, step_col, "step")
+            _ensure_column_present(reference_data, reward_col, "reward")
 
         # Run reward health analysis
         typer.echo("Running reward health analysis...")
@@ -2330,6 +2396,12 @@ def reward_health(
                 typer.echo("GATE: FAIL")
             raise typer.Exit(exit_code)
 
+    except (ValidationError, AdapterError) as exc:
+        typer.echo(format_error_message(exc), err=True)
+        if gate:
+            typer.echo("GATE: FAIL")
+            raise typer.Exit(2)
+        raise typer.Exit(1)
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
         if gate:
