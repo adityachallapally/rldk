@@ -55,6 +55,7 @@ python3 -m ruff check || {
 # Run acceptance gate using the minimal streaming loop
 echo "🛡️ Running monitor acceptance gate..."
 project_root="$(pwd)"
+mkdir -p "${project_root}/artifacts"
 acceptance_dir="$(mktemp -d "${project_root}/artifacts/release_acceptance.XXXXXX")"
 metrics_path="${acceptance_dir}/artifacts/run.jsonl"
 alerts_path="${acceptance_dir}/artifacts/alerts.jsonl"
@@ -69,6 +70,10 @@ final_replay_report_path="${project_root}/artifacts/release_acceptance_replay_re
 rm -f "${final_alerts_path}" "${final_report_path}" "${final_replay_report_path}"
 
 cleanup_acceptance() {
+    if [[ -n "${monitor_pid:-}" ]]; then
+        kill -TERM "${monitor_pid}" >/dev/null 2>&1 || true
+        wait "${monitor_pid}" >/dev/null 2>&1 || true
+    fi
     if [[ -n "${loop_pid:-}" ]]; then
         kill -TERM "${loop_pid}" >/dev/null 2>&1 || true
         wait "${loop_pid}" >/dev/null 2>&1 || true
@@ -86,24 +91,49 @@ PYTHONPATH="${project_root}/src${PYTHONPATH:+:${PYTHONPATH}}" \
 python "${project_root}/examples/minimal_streaming_loop.py" \
     >"${loop_log}" 2>&1 &
 loop_pid=$!
+monitor_pid=""
 
 sleep 2
 
-if ! timeout 120s rldk monitor \
+if ! rldk monitor \
     --stream "${metrics_path}" \
     --rules "${project_root}/rules.yaml" \
     --pid "${loop_pid}" \
     --alerts "${alerts_path}" \
     --report "${report_path}" \
-    >"${monitor_log}" 2>&1; then
-    echo "❌ Streaming monitor run failed. Logs:" >&2
+    >"${monitor_log}" 2>&1 & then
+    echo "❌ Failed to launch streaming monitor. Logs:" >&2
     cat "${monitor_log}" >&2 || true
     cat "${loop_log}" >&2 || true
     exit 1
 fi
+monitor_pid=$!
 
-wait "${loop_pid}" >/dev/null 2>&1 || true
+if ! wait "${loop_pid}" >/dev/null 2>&1; then
+    echo "❌ Minimal streaming loop exited with an error. Logs:" >&2
+    cat "${loop_log}" >&2 || true
+    kill -TERM "${monitor_pid}" >/dev/null 2>&1 || true
+    wait "${monitor_pid}" >/dev/null 2>&1 || true
+    exit 1
+fi
 loop_pid=""
+
+sleep 2
+
+if kill -0 "${monitor_pid}" >/dev/null 2>&1; then
+    kill -INT "${monitor_pid}" >/dev/null 2>&1 || kill -TERM "${monitor_pid}" >/dev/null 2>&1 || true
+fi
+
+if ! wait "${monitor_pid}" >/dev/null 2>&1; then
+    monitor_status=$?
+    if [[ ${monitor_status} -ne 130 && ${monitor_status} -ne 143 ]]; then
+        echo "❌ Streaming monitor run failed. Logs:" >&2
+        cat "${monitor_log}" >&2 || true
+        cat "${loop_log}" >&2 || true
+        exit 1
+    fi
+fi
+monitor_pid=""
 
 for required_path in "${alerts_path}" "${report_path}"; do
     if [[ ! -s "${required_path}" ]]; then
@@ -163,6 +193,7 @@ cleanup_acceptance
 trap - EXIT
 unset acceptance_dir
 unset loop_pid
+unset monitor_pid
 
 echo "✅ Monitor acceptance gate passed. Artifacts copied to artifacts/release_acceptance_*."
 
