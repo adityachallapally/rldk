@@ -50,7 +50,19 @@ wheel_path="${wheel_candidates[0]}"
 
 # Test installation from built wheel in clean environment
 echo "📥 Testing installation from built wheel..."
-pip install "${wheel_path}[dev]"
+
+# Resolve absolute path so pip can apply extras when installing from a local file
+wheel_abs_path="$(
+    WHEEL_PATH="${wheel_path}" python3 - <<'PY'
+import os
+import pathlib
+
+wheel = pathlib.Path(os.environ["WHEEL_PATH"]).resolve()
+print(wheel.as_uri())
+PY
+)"
+
+pip install "rldk[dev] @ ${wheel_abs_path}"
 
 # Ensure PYTHONPATH doesn't point at the local source tree so imports resolve to the wheel
 if [[ -n "${PYTHONPATH:-}" ]]; then
