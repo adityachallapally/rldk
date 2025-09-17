@@ -87,9 +87,10 @@ def _coerce_wall_time(value: Any) -> Optional[float]:
     if value is None:
         return None
     if isinstance(value, (int, float)):
-        if math.isnan(value) or math.isinf(value):
+        value_float = float(value)
+        if not math.isfinite(value_float):
             return None
-        return float(value)
+        return value_float
     if isinstance(value, str):
         value = value.strip()
         if not value:
@@ -149,7 +150,7 @@ def stream_jsonl_to_dataframe(
     meta_fields = defaultdict(lambda: defaultdict(list))
 
     invalid_lines = 0
-    processed_lines = 0
+    valid_events = 0
 
     with path_obj.open("r", encoding="utf-8") as handle:
         for line_number, raw_line in enumerate(handle, start=1):
@@ -208,7 +209,7 @@ def stream_jsonl_to_dataframe(
                     if key in meta:
                         meta_fields[step][key].append(meta[key])
 
-            processed_lines += 1
+            valid_events += 1
 
     if invalid_lines:
         logger.warning(
@@ -218,12 +219,12 @@ def stream_jsonl_to_dataframe(
             path_obj,
         )
 
-    if processed_lines == 0 and invalid_lines == 0:
+    if valid_events == 0 and invalid_lines == 0:
         logger.info("No events found in %s; returning empty TrainingMetrics frame", path_obj)
         return pd.DataFrame(columns=_TRAINING_METRIC_COLUMNS)
 
     if not metrics:
-        if processed_lines == 0:
+        if valid_events == 0:
             raise ValidationError(
                 f"No valid events could be read from {path_obj}",
                 suggestion="Ensure the file contains JSON objects with step, name, and value",

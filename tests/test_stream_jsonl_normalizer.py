@@ -61,6 +61,21 @@ def test_stream_jsonl_to_dataframe_with_extra_metric(tmp_path: Path) -> None:
     assert df.loc[df["step"] == 1, "custom_metric"].iat[0] == pytest.approx(42)
 
 
+def test_stream_jsonl_to_dataframe_accepts_integer_wall_time(tmp_path: Path) -> None:
+    path = tmp_path / "metrics.jsonl"
+    _write_jsonl(
+        path,
+        [
+            {"time": 1, "step": 1, "name": "reward_mean", "value": 0.5},
+            {"time": 2, "step": 2, "name": "reward_mean", "value": 0.75},
+        ],
+    )
+
+    df = stream_jsonl_to_dataframe(path)
+
+    assert df["wall_time"].tolist() == pytest.approx([1.0, 2.0])
+
+
 def test_stream_jsonl_to_dataframe_warns_on_invalid_json(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
     path = tmp_path / "metrics.jsonl"
     with path.open("w", encoding="utf-8") as handle:
