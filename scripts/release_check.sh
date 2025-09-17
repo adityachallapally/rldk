@@ -102,11 +102,18 @@ rldk monitor \
     --alerts "${alerts_path}" \
     --report "${report_path}" \
     >"${monitor_log}" 2>&1 &
-monitor_launch_status=$?
 monitor_pid=$!
-if [[ ${monitor_launch_status} -ne 0 ]]; then
+sleep 1
+if ! kill -0 "${monitor_pid}" >/dev/null 2>&1; then
+    monitor_status=0
+    if ! wait "${monitor_pid}" >/dev/null 2>&1; then
+        monitor_status=$?
+    fi
     monitor_pid=""
     echo "❌ Failed to launch streaming monitor. Logs:" >&2
+    if [[ ${monitor_status} -ne 0 ]]; then
+        echo "   Exit status: ${monitor_status}" >&2
+    fi
     cat "${monitor_log}" >&2 || true
     cat "${loop_log}" >&2 || true
     exit 1
