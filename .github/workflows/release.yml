@@ -25,6 +25,8 @@ jobs:
       run: python -m venv .venv
       
     - name: Run release check script
+      env:
+        PYTHONPATH: ""
       run: |
         chmod +x scripts/release_check.sh
         source .venv/bin/activate && ./scripts/release_check.sh

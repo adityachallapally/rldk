@@ -16,6 +16,10 @@ fi
 echo "⬆️ Installing build dependencies..."
 pip install -U pip build mkdocs mkdocs-material mkdocstrings[python] mkdocs-git-revision-date-localized-plugin mkdocs-minify-plugin
 
+# Clean any previous build artifacts to avoid ambiguous wheel detection
+echo "🧹 Cleaning previous build artifacts..."
+rm -rf build dist
+
 # Build package first
 echo "🏗️ Building package..."
 python3 -m build
@@ -26,17 +30,63 @@ if [ ! -f dist/*.whl ]; then
     exit 1
 fi
 
+# Resolve built wheel path (expect exactly one)
+shopt -s nullglob
+wheel_candidates=(dist/*.whl)
+shopt -u nullglob
+
+if [ ${#wheel_candidates[@]} -eq 0 ]; then
+    echo "❌ No wheel file found in dist/ after globbing"
+    exit 1
+fi
+
+if [ ${#wheel_candidates[@]} -gt 1 ]; then
+    echo "❌ Multiple wheels found: ${wheel_candidates[*]}"
+    echo "Please clean the dist/ directory before running the release check."
+    exit 1
+fi
+
+wheel_path="${wheel_candidates[0]}"
+
 # Test installation from built wheel in clean environment
 echo "📥 Testing installation from built wheel..."
-pip install dist/*.whl
+
+# Resolve absolute path so pip can apply extras when installing from a local file
+wheel_abs_path="$(
+    WHEEL_PATH="${wheel_path}" python3 - <<'PY'
+import os
+import pathlib
+
+wheel = pathlib.Path(os.environ["WHEEL_PATH"]).resolve()
+print(wheel.as_uri())
+PY
+)"
+
+pip install "rldk[dev] @ ${wheel_abs_path}"
+
+# Ensure PYTHONPATH doesn't point at the local source tree so imports resolve to the wheel
+if [[ -n "${PYTHONPATH:-}" ]]; then
+    echo "🧹 Clearing PYTHONPATH to ensure wheel-based imports..."
+    unset PYTHONPATH
+fi
+
+# Ensure we're exercising the installed distribution instead of the local source tree
+echo "🔎 Verifying installed package location..."
+python3 - <<'PY'
+import pathlib
+import rldk
+
+package_path = pathlib.Path(rldk.__file__).resolve()
+if "site-packages" not in str(package_path):
+    raise SystemExit(
+        f"❌ Expected rldk to be imported from an installed wheel, but got: {package_path}"
+    )
+print(f"✅ rldk imported from {package_path}")
+PY
 
 # Test CLI works after installation
 echo "🧪 Testing CLI functionality..."
 rldk --help >/dev/null
-
-# Install dev dependencies for testing
-echo "📦 Installing development dependencies..."
-pip install -e .[dev]
 
 # Run actual tests - handle import issues gracefully
 echo "🧪 Running test suite..."
