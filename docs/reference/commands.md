@@ -151,18 +151,22 @@ Compare two reward models and detect drift.
 
 ```bash
 rldk reward reward-drift MODEL_A MODEL_B --prompts PROMPTS_FILE
+rldk reward reward-drift --scores-a scores_a.jsonl --scores-b scores_b.jsonl
 ```
 
 **Arguments:**
-- `MODEL_A`: Path to first reward model directory
-- `MODEL_B`: Path to second reward model directory
+- `MODEL_A`: Path to first reward model directory (required when using prompt mode)
+- `MODEL_B`: Path to second reward model directory (required when using prompt mode)
 
 **Options:**
-- `--prompts`, `-p`: Path to prompts JSONL file (required)
+- `--prompts`, `-p`: Path to prompts JSONL file (required when comparing model directories)
+- `--scores-a`: Path to the first JSONL score file (each record must contain `prompt` and `score`)
+- `--scores-b`: Path to the second JSONL score file
 
 **Examples:**
 ```bash
 rldk reward reward-drift ./models/reward_v1 ./models/reward_v2 --prompts prompts.jsonl
+rldk reward reward-drift --scores-a outputs/baseline_scores.jsonl --scores-b outputs/new_model_scores.jsonl
 ```
 
 ### `rldk reward-health`

@@ -128,6 +128,9 @@ RewardDriftReportV1 = {
         "mae_z",
         "l2_z",
         "sign_flip_rate",
+        "drift_magnitude",
+        "effect_size",
+        "confidence_summary",
         "slice_deltas",
     ],
     "properties": {
@@ -137,6 +140,9 @@ RewardDriftReportV1 = {
         "mae_z": {"type": "number"},
         "l2_z": {"type": "number"},
         "sign_flip_rate": {"type": "number"},
+        "drift_magnitude": {"type": "number"},
+        "effect_size": {"type": "number"},
+        "confidence_summary": {"type": "string"},
         "slice_deltas": {
             "type": "object",
             "additionalProperties": {

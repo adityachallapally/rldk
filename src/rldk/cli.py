@@ -5,7 +5,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
@@ -67,7 +67,7 @@ from rldk.replay import replay
 from rldk.reward import health
 
 # Import reward modules
-from rldk.reward.drift import compare_models
+from rldk.reward.drift import compare_models, compare_score_lists
 from rldk.reward.health_analysis import health as reward_health_analysis
 from rldk.reward.health_config.config import get_legacy_thresholds, load_config
 from rldk.reward.health_config.exit_codes import raise_on_failure
@@ -1017,32 +1017,156 @@ def forensics_doctor(
 # REWARD COMMANDS
 # ============================================================================
 
+def _load_score_file(path: str, label: str) -> Tuple[List[str], List[float]]:
+    """Load prompts and scores from a JSONL score file."""
+
+    prompts: List[str] = []
+    scores: List[float] = []
+
+    for line_number, record in enumerate(read_jsonl(path), start=1):
+        if not isinstance(record, dict):
+            raise ValueError(
+                f"{label} score file contains a non-object record on line {line_number}."
+            )
+
+        if "score" not in record:
+            raise ValueError(
+                f"Missing 'score' field in {label} score file on line {line_number}."
+            )
+
+        score_value = record.get("score")
+        if score_value is None:
+            raise ValueError(
+                f"Score value is missing for line {line_number} in {label} score file."
+            )
+
+        try:
+            score_float = float(score_value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"Score value on line {line_number} in {label} score file is not numeric: {score_value!r}."
+            ) from exc
+
+        prompt_value = record.get("prompt") or record.get("text") or ""
+        prompts.append(str(prompt_value))
+        scores.append(score_float)
+
+    if not scores:
+        raise ValueError(f"No scores found in {label} score file at {path}.")
+
+    return prompts, scores
+
+
+def _has_prompt_text(prompts: Sequence[str]) -> bool:
+    return any(str(prompt).strip() for prompt in prompts)
+
+
+def _validate_score_alignment(prompts_a: Sequence[str], prompts_b: Sequence[str]) -> None:
+    if len(prompts_a) != len(prompts_b):
+        raise ValueError(
+            "Score files must have the same number of records for drift comparison."
+        )
+
+    if _has_prompt_text(prompts_a) and _has_prompt_text(prompts_b):
+        mismatched_rows = [
+            str(index + 1)
+            for index, (prompt_a, prompt_b) in enumerate(zip(prompts_a, prompts_b))
+            if str(prompt_a) != str(prompt_b)
+        ]
+        if mismatched_rows:
+            joined_rows = ", ".join(mismatched_rows[:5])
+            suffix = "" if len(mismatched_rows) <= 5 else ", ..."
+            raise ValueError(
+                "Score files contain mismatched prompts at rows: "
+                f"{joined_rows}{suffix}."
+            )
+
+
+def _select_prompts(prompts_a: Sequence[str], prompts_b: Sequence[str]) -> List[str]:
+    if _has_prompt_text(prompts_a):
+        return [str(prompt) for prompt in prompts_a]
+    if _has_prompt_text(prompts_b):
+        return [str(prompt) for prompt in prompts_b]
+    return [""] * len(prompts_a)
+
+
 @reward_app.command(name="reward-drift")
 def reward_drift(
-    model_a: str = typer.Argument(..., help="Path to first reward model directory"),
-    model_b: str = typer.Argument(..., help="Path to second reward model directory"),
-    prompts: str = typer.Option(
-        ..., "--prompts", "-p", help="Path to prompts JSONL file"
+    model_a: Optional[str] = typer.Argument(
+        None, help="Path to first reward model directory"
+    ),
+    model_b: Optional[str] = typer.Argument(
+        None, help="Path to second reward model directory"
+    ),
+    prompts: Optional[str] = typer.Option(
+        None, "--prompts", "-p", help="Path to prompts JSONL file"
+    ),
+    scores_a: Optional[str] = typer.Option(
+        None, "--scores-a", help="Path to JSONL score file for the first model"
+    ),
+    scores_b: Optional[str] = typer.Option(
+        None, "--scores-b", help="Path to JSONL score file for the second model"
     ),
 ):
     """Compare two reward models and detect drift."""
     try:
-        typer.echo("Comparing reward models:")
-        typer.echo(f"  Model A: {model_a}")
-        typer.echo(f"  Model B: {model_b}")
-        typer.echo(f"  Prompts: {prompts}")
+        using_score_files = scores_a is not None or scores_b is not None
+        using_model_dirs = model_a is not None or model_b is not None
 
-        # Read prompts
-        prompt_list = list(read_jsonl(prompts))
-        prompt_texts = [p.get("text", p.get("prompt", "")) for p in prompt_list]
+        if using_score_files and using_model_dirs:
+            raise ValueError(
+                "Provide either model directories with --prompts or two score files, not both."
+            )
 
-        if not prompt_texts:
-            raise ValueError("No valid prompts found in file")
+        if using_score_files:
+            if scores_a is None or scores_b is None:
+                raise ValueError(
+                    "Both --scores-a and --scores-b must be provided when comparing score files."
+                )
 
-        typer.echo(f"Loaded {len(prompt_texts)} prompts")
+            typer.echo("Comparing reward scores from files:")
+            typer.echo(f"  Scores A: {scores_a}")
+            typer.echo(f"  Scores B: {scores_b}")
 
-        # Compare models
-        report = compare_models(model_a, model_b, prompt_texts)
+            prompts_a, scores_list_a = _load_score_file(scores_a, "First")
+            prompts_b, scores_list_b = _load_score_file(scores_b, "Second")
+            _validate_score_alignment(prompts_a, prompts_b)
+            prompt_texts = _select_prompts(prompts_a, prompts_b)
+
+            report = compare_score_lists(prompt_texts, scores_list_a, scores_list_b)
+            scores_a_values = scores_list_a
+            scores_b_values = scores_list_b
+        else:
+            if model_a is None or model_b is None:
+                raise ValueError(
+                    "Model directory paths are required when score files are not provided."
+                )
+            if prompts is None:
+                raise ValueError(
+                    "--prompts is required when comparing model directories."
+                )
+
+            typer.echo("Comparing reward models:")
+            typer.echo(f"  Model A: {model_a}")
+            typer.echo(f"  Model B: {model_b}")
+            typer.echo(f"  Prompts: {prompts}")
+
+            # Read prompts
+            prompt_list = list(read_jsonl(prompts))
+            prompt_texts = [p.get("text", p.get("prompt", "")) for p in prompt_list]
+
+            if not prompt_texts:
+                raise ValueError("No valid prompts found in file")
+
+            typer.echo(f"Loaded {len(prompt_texts)} prompts")
+
+            model_a_fn = read_reward_head(model_a)
+            model_b_fn = read_reward_head(model_b)
+
+            scores_a_values = model_a_fn(prompt_texts)
+            scores_b_values = model_b_fn(prompt_texts)
+
+            report = compare_score_lists(prompt_texts, scores_a_values, scores_b_values)
 
         # Validate report
         validate(RewardDriftReportV1, report)
@@ -1054,19 +1178,12 @@ def reward_drift(
         # Create scatter plot
         import matplotlib.pyplot as plt
 
-        # Load model outputs for plotting
-        model_a_fn = read_reward_head(model_a)
-        model_b_fn = read_reward_head(model_b)
-
-        scores_a = model_a_fn(prompt_texts)
-        scores_b = model_b_fn(prompt_texts)
-
         fig, ax = plt.subplots(figsize=(8, 8))
-        ax.scatter(scores_a, scores_b, alpha=0.6)
+        ax.scatter(scores_a_values, scores_b_values, alpha=0.6)
 
         # Add diagonal line
-        min_val = min(min(scores_a), min(scores_b))
-        max_val = max(max(scores_a), max(scores_b))
+        min_val = min(min(scores_a_values), min(scores_b_values))
+        max_val = max(max(scores_a_values), max(scores_b_values))
         ax.plot([min_val, max_val], [min_val, max_val], "r--", alpha=0.5)
 
         ax.set_xlabel("Model A Scores")
@@ -1097,6 +1214,9 @@ def reward_drift(
         typer.echo(f"  MAE (z-scored): {report['mae_z']:.4f}")
         typer.echo(f"  L2 distance (z-scored): {report['l2_z']:.4f}")
         typer.echo(f"  Sign flip rate: {report['sign_flip_rate']:.4f}")
+        typer.echo(f"  Drift magnitude: {report['drift_magnitude']:.4f}")
+        typer.echo(f"  Effect size (Cohen's d): {report['effect_size']:.4f}")
+        typer.echo(f"  Confidence: {report['confidence_summary']}")
 
         if report["slice_deltas"]:
             typer.echo("\nSlice analysis:")
