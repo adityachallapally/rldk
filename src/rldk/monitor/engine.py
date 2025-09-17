@@ -764,12 +764,15 @@ class MonitorEngine:
                 continue
             window_snapshot = tuple(buffer)
             try:
-                condition_met = bool(
-                    rule.condition.evaluate(
-                        _window_context(window_snapshot),
-                        _aggregator_functions(window_snapshot),
-                    )
+                evaluation = rule.condition.evaluate(
+                    _window_context(window_snapshot),
+                    _aggregator_functions(window_snapshot),
                 )
+                if rule.window_kind == "consecutive":
+                    series = _extract_series(evaluation, window_snapshot)
+                    condition_met = bool(series) and all(bool(item) for item in series)
+                else:
+                    condition_met = bool(evaluation)
             except ValueError as exc:
                 logger.warning("Rule '%s' evaluation failed: %s", rule.id, exc)
                 continue
