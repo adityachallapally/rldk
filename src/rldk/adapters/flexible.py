@@ -141,10 +141,10 @@ class FlexibleDataAdapter(BaseAdapter):
         # Resolve field names and validate schema
         df = self._resolve_and_validate_schema(df)
 
-        # Log resolution summary
+        # Log resolution summary (columns are already canonical after _resolve_and_validate_schema)
         resolved_fields = self._get_resolved_fields(df.columns.tolist())
         missing_fields = self.field_resolver.get_missing_fields(
-            self.required_fields, df.columns.tolist(), self.field_map
+            self.required_fields, df.columns.tolist(), {}
         )
         self.field_resolver.log_resolution_summary(
             resolved_fields, missing_fields, len(df)
@@ -319,13 +319,14 @@ class FlexibleDataAdapter(BaseAdapter):
                 self.logger.warning(f"Missing fields in lenient mode: {', '.join(missing_fields)}")
 
         resolved_data = {}
+        original_headers = df.columns.tolist()
 
         for canonical_name in self.field_resolver.get_canonical_fields():
             if canonical_name in available_headers:
                 resolved_data[canonical_name] = df[canonical_name].values
             else:
                 resolved_name = self.field_resolver.resolve_field(
-                    canonical_name, available_headers, {}
+                    canonical_name, original_headers, self.field_map
                 )
                 if resolved_name and resolved_name in df.columns:
                     if self.allow_dot_paths and '.' in resolved_name:
@@ -381,7 +382,7 @@ class FlexibleDataAdapter(BaseAdapter):
                 resolved[canonical_name] = canonical_name
             else:
                 resolved_name = self.field_resolver.resolve_field(
-                    canonical_name, available_headers, self.field_map
+                    canonical_name, available_headers, {}
                 )
                 if resolved_name:
                     resolved[canonical_name] = resolved_name
