@@ -22,7 +22,7 @@ class FieldResolver:
         ],
         "kl": [
             "kl_to_ref", "kl", "kl_ref", "kl_value", "kl_mean",
-            "kl_div", "kl_loss", "kl_penalty", "kl_regularization"
+            "kl_divergence", "kl_loss", "kl_penalty", "kl_regularization"
         ],
         "entropy": [
             "entropy", "entropy_mean", "avg_entropy", "mean_entropy",
@@ -270,14 +270,23 @@ class FieldResolver:
         }
 
         for canonical, actual in field_map.items():
-            if actual not in available_headers:
-                if self.allow_dot_paths and self._check_nested_field(actual, available_headers):
-                    results["warnings"].append(
-                        f"Field '{actual}' for '{canonical}' uses nested path - validation will happen during data extraction"
-                    )
-                else:
-                    results["invalid_mappings"].append(f"'{actual}' for '{canonical}'")
-                    results["valid"] = False
+            if actual in available_headers:
+                continue
+
+            if self.allow_dot_paths and '.' in actual:
+                results["warnings"].append(
+                    f"Field '{actual}' for '{canonical}' uses nested path - validation will happen during data extraction"
+                )
+                continue
+
+            if self.allow_dot_paths and self._check_nested_field(actual, available_headers):
+                results["warnings"].append(
+                    f"Field '{actual}' for '{canonical}' uses nested path - validation will happen during data extraction"
+                )
+                continue
+
+            results["invalid_mappings"].append(canonical)
+            results["valid"] = False
 
         return results
 

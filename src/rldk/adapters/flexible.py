@@ -351,15 +351,11 @@ class FlexibleDataAdapter(BaseAdapter):
 
         resolved_df = df.copy()
         resolved_fields: Dict[str, str] = {}
+        resolved_candidates = self._get_resolved_fields(
+            available_headers, effective_field_map
+        )
 
-        for canonical_name in self.field_resolver.get_canonical_fields():
-            resolved_name = self.field_resolver.resolve_field(
-                canonical_name, available_headers, effective_field_map
-            )
-
-            if not resolved_name:
-                continue
-
+        for canonical_name, resolved_name in resolved_candidates.items():
             if self.allow_dot_paths and '.' in resolved_name and resolved_name not in df.columns:
                 resolved_series = self._extract_nested_field(df, resolved_name)
             else:
@@ -498,6 +494,28 @@ class FlexibleDataAdapter(BaseAdapter):
 
         return effective
 
+    def _get_resolved_fields(
+        self,
+        available_headers: Sequence[str],
+        effective_field_map: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, str]:
+        headers_list = list(available_headers)
+        effective = (
+            effective_field_map
+            if effective_field_map is not None
+            else self._build_effective_field_map(headers_list)
+        )
+
+        resolved: Dict[str, str] = {}
+        for canonical_name in self.field_resolver.get_canonical_fields():
+            resolved_name = self.field_resolver.resolve_field(
+                canonical_name, headers_list, effective
+            )
+            if resolved_name:
+                resolved[canonical_name] = resolved_name
+
+        return resolved
+
     def get_metadata(self) -> dict:
         """Get metadata about the loaded data."""
         return {
@@ -584,7 +602,21 @@ class FlexibleJSONLAdapter(FlexibleDataAdapter):
         schema_info = self._analyze_schema()
 
         # Second pass: load data with resolved schema
-        return self._load_with_schema(schema_info)
+        streamed = self._load_with_schema(schema_info)
+        converted = self._convert_to_training_metrics(streamed)
+
+        try:
+            from ..ingest.training_metrics_normalizer import (
+                standardize_training_metrics,
+            )
+
+            return standardize_training_metrics(converted)
+        except ValidationError as exc:
+            raise AdapterError(
+                f"Failed to standardize schema for {self.source}: {exc}",
+                suggestion="Check that the field mapping resolves 'step' and numeric metrics",
+                error_code="SCHEMA_STANDARDIZATION_FAILED",
+            ) from exc
 
     def _analyze_schema(self) -> Dict[str, Any]:
         """Analyze schema from first few records."""
@@ -615,10 +647,13 @@ class FlexibleJSONLAdapter(FlexibleDataAdapter):
         # Analyze field mapping
         sample_df = pd.DataFrame(sample_data)
         available_headers = sample_df.columns.tolist()
+        effective_field_map = self._build_effective_field_map(available_headers)
 
-        resolved_fields = self._get_resolved_fields(available_headers)
+        resolved_fields = self._get_resolved_fields(
+            available_headers, effective_field_map
+        )
         missing_fields = self.field_resolver.get_missing_fields(
-            self.required_fields, available_headers, self.field_map
+            self.required_fields, available_headers, effective_field_map
         )
 
         if missing_fields:
@@ -629,8 +664,12 @@ class FlexibleJSONLAdapter(FlexibleDataAdapter):
                 )
             elif self.validation_mode == "flexible":
                 step_missing = 'step' in missing_fields
-                has_metric = any(self.field_resolver.resolve_field(metric, available_headers, self.field_map)
-                               for metric in ['reward', 'score', 'return', 'kl', 'entropy', 'loss'])
+                has_metric = any(
+                    self.field_resolver.resolve_field(
+                        metric, available_headers, effective_field_map
+                    )
+                    for metric in ['reward', 'score', 'return', 'kl', 'entropy', 'loss']
+                )
 
                 if step_missing:
                     raise SchemaError(
@@ -643,10 +682,17 @@ class FlexibleJSONLAdapter(FlexibleDataAdapter):
                         [], available_headers, self.field_resolver
                     )
 
+        self._log_resolution_summary(
+            resolved_fields,
+            missing_fields,
+            len(sample_data),
+        )
+
         return {
             "resolved_fields": resolved_fields,
             "available_headers": available_headers,
-            "sample_data": sample_data
+            "sample_data": sample_data,
+            "effective_field_map": effective_field_map,
         }
 
     def _load_with_schema(self, schema_info: Dict[str, Any]) -> pd.DataFrame:

@@ -520,6 +520,42 @@ class TestFlexibleJSONLAdapter:
 
         Path(f.name).unlink()
 
+    def test_streaming_path_resolves_fields(self, tmp_path, monkeypatch):
+        """Streaming mode should honor field maps and standardize output."""
+        file_path = tmp_path / "large.jsonl"
+        records = [
+            {"iteration": 0, "score": 0.5, "kl_divergence": 0.1},
+            {"iteration": 1, "score": 0.6, "kl_divergence": 0.12},
+        ]
+
+        with file_path.open("w", encoding="utf-8") as handle:
+            for record in records:
+                handle.write(json.dumps(record) + "\n")
+
+        adapter = FlexibleJSONLAdapter(
+            file_path,
+            field_map={"step": "iteration", "reward": "score"},
+            stream_large_files=True,
+        )
+
+        original_stat = Path.stat
+
+        def fake_stat(path_obj: Path):
+            result = original_stat(path_obj)
+            if path_obj == file_path:
+                values = list(result)
+                values[6] = 101 * 1024 * 1024
+                return type(result)(values)
+            return result
+
+        monkeypatch.setattr(Path, "stat", fake_stat)
+
+        df = adapter.load()
+
+        assert df["step"].tolist() == [0, 1]
+        assert df["reward_mean"].tolist() == pytest.approx([0.5, 0.6])
+        assert df["kl_mean"].tolist() == pytest.approx([0.1, 0.12])
+
 
 class TestFlexibleAdapterIntegration:
     """Integration tests for flexible adapters."""
@@ -687,6 +723,7 @@ class TestFlexibleAdapterIntegration:
             # Should contain suggestions for similar field names
             assert "step_count" in error_message
             assert "reward_value" in error_message
-            assert "kl_divergence" in error_message
+            # KL should be resolved automatically via synonyms
+            assert "kl" not in exc_info.value.missing_fields
             # Should contain field map suggestion
             assert "field_map" in error_message.lower()
