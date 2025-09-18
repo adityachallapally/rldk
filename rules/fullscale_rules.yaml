@@ -1,0 +1,34 @@
+rules:
+  - id: kl_spike_guard
+    description: Detect sustained spikes in KL divergence during training.
+    where: name == "kl"
+    condition: value > 0.38
+    window:
+      size: 5
+      kind: consecutive
+    cooldown_steps: 10
+    actions:
+      - warn:
+          msg: "KL divergence {value:.3f} exceeded guard band at step {step}"
+  - id: reward_collapse_watch
+    description: Alert when reward mean collapses for an extended window.
+    where: name == "reward_mean"
+    condition: value < 0.12
+    window:
+      size: 20
+      kind: sliding
+      aggregator: mean
+    cooldown_steps: 25
+    actions:
+      - warn:
+          msg: "Reward running mean {value:.3f} indicates collapse near step {step}"
+  - id: grad_norm_ceiling
+    description: Warn when gradient norms exceed the tuned ceiling.
+    where: name == "grad_norm"
+    condition: value > 1.05
+    window:
+      size: 3
+      kind: consecutive
+    actions:
+      - warn:
+          msg: "Gradient norm {value:.3f} breached ceiling at step {step}"
