@@ -177,10 +177,16 @@ def create_event_from_row(
 
     metrics: Dict[str, float] = {}
     for field in [*_CORE_METRIC_FIELDS, *_NETWORK_METRIC_FIELDS]:
-        if field in row and row[field] is not None:
-            numeric_value = _coerce_numeric(row[field])
-            if numeric_value is not None:
-                metrics[field] = numeric_value
+        if field not in row:
+            continue
+
+        value = row[field]
+        if _is_missing(value):
+            continue
+
+        numeric_value = _coerce_numeric(value)
+        if numeric_value is not None:
+            metrics[field] = numeric_value
 
     rng = {
         "seed": row.get("seed"),
@@ -342,6 +348,8 @@ def dataframe_to_events(
             "" if dropped == 1 else "s",
         )
         standardized = standardized.loc[~invalid_steps].copy()
+
+    standardized = standardized.sort_values("step", kind="mergesort").reset_index(drop=True)
 
     events: List[Event] = []
     for _, row in standardized.iterrows():
