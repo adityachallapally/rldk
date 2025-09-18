@@ -1459,9 +1459,22 @@ def run_evaluation_suite(
             sample_size=min_samples if min_samples > 0 else None,
             column_mapping=column_mapping
         )
-        
+
+        raw_scores = result.scores
+        failed_from_metadata = set(result.metadata.get("failed_evaluations", []))
+        skipped_from_metadata = set(result.metadata.get("skipped_evaluations", []))
+        skipped_from_scores = {
+            name
+            for name, score in raw_scores.items()
+            if pd.isna(score) and name not in failed_from_metadata
+        }
+
+        skipped_all = skipped_from_metadata.union(skipped_from_scores)
+        failed_evaluations = len(failed_from_metadata)
+        skipped_evaluations = len(skipped_all)
+
         serializable_scores = {}
-        for key, value in result.scores.items():
+        for key, value in raw_scores.items():
             if pd.isna(value):
                 serializable_scores[key] = None
             elif callable(value):
@@ -1477,28 +1490,25 @@ def run_evaluation_suite(
                 serializable_metadata[key] = {k: (str(v) if callable(v) else v) for k, v in value.items()}
             else:
                 serializable_metadata[key] = value
-        
-        skipped_evaluations = 0
-        failed_evaluations = 0
-        
-        if suite_name == "training_metrics":
-            # Check if evaluations were skipped due to missing columns
-            skipped_warning = any("Skipped evaluations due to missing columns" in str(w) for w in result.warnings)
-            if skipped_warning:
-                skipped_evaluations = len([s for s in result.scores.values() if pd.isna(s)])
-                failed_evaluations = 0
-            else:
-                failed_evaluations = len([s for s in result.scores.values() if pd.isna(s)])
-        else:
-            failed_evaluations = len([s for s in result.scores.values() if pd.isna(s)])
-        
+
+        if skipped_all and "skipped_evaluations" not in serializable_metadata:
+            serializable_metadata["skipped_evaluations"] = sorted(skipped_all)
+
+        successful_evaluations = len(
+            [
+                name
+                for name, score in raw_scores.items()
+                if not pd.isna(score) and name not in failed_from_metadata
+            ]
+        )
+
         return {
             "suite_name": suite_name,
             "suite_description": f"Evaluation suite: {suite_name}",
             "evaluations": serializable_scores,
             "summary": {
-                "total_evaluations": len(result.scores),
-                "successful_evaluations": len([s for s in result.scores.values() if not pd.isna(s)]),
+                "total_evaluations": len(raw_scores),
+                "successful_evaluations": successful_evaluations,
                 "failed_evaluations": failed_evaluations,
                 "skipped_evaluations": skipped_evaluations,
                 "overall_score": float(result.overall_score) if not pd.isna(result.overall_score) else None,
@@ -1528,23 +1538,61 @@ def run_evaluation_suite(
 
 @evals_app.command()
 def evaluate(
-    input_file: Path = typer.Argument(..., help="Path to JSONL input file"),
-    suite: str = typer.Option("quick", "--suite", "-s", help="Evaluation suite to run (quick/comprehensive/safety/training_metrics)"),
-    output_file: Optional[Path] = typer.Option(None, "--output", "-o", help="Path to output JSON file"),
-    output_column: str = typer.Option("output", "--output-column", help="Column name containing model outputs"),
-    events_column: str = typer.Option("events", "--events-column", help="Column name containing event logs"),
-    min_samples: int = typer.Option(10, "--min-samples", help="Minimum samples required for evaluation"),
-    timeout: int = typer.Option(300, "--timeout", help="Timeout in seconds for evaluation"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),
-    column_mapping: Optional[str] = typer.Option(None, "--column-mapping", help="Column mapping as JSON or key=value pairs (e.g., 'global_step=step,kl=kl_mean' or '{\"global_step\":\"step\"}')")
+    input_path: Path = typer.Argument(
+        ..., help="Path to run directory, metrics table, or evaluation dataset"
+    ),
+    suite: str = typer.Option(
+        "quick",
+        "--suite",
+        "-s",
+        help="Evaluation suite to run (quick/comprehensive/safety/training_metrics)",
+    ),
+    output_file: Optional[Path] = typer.Option(
+        None, "--output", "-o", help="Path to output JSON file"
+    ),
+    output_column: str = typer.Option(
+        "output", "--output-column", help="Column name containing model outputs"
+    ),
+    events_column: str = typer.Option(
+        "events", "--events-column", help="Column name containing event logs"
+    ),
+    min_samples: int = typer.Option(
+        10, "--min-samples", help="Minimum samples required for evaluation"
+    ),
+    timeout: int = typer.Option(
+        300, "--timeout", help="Timeout in seconds for evaluation"
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose logging"
+    ),
+    column_mapping: Optional[str] = typer.Option(
+        None,
+        "--column-mapping",
+        help="Column mapping as JSON or key=value pairs (e.g., 'global_step=step,kl=kl_mean' or '{\"global_step\":\"step\"}')",
+    ),
+    preset: Optional[str] = typer.Option(
+        None,
+        "--preset",
+        help=(
+            "Field map preset to normalize training metrics "
+            f"({', '.join(sorted(FIELD_MAP_PRESETS))})"
+            if FIELD_MAP_PRESETS
+            else "Field map preset name (e.g. trl)."
+        ),
+    ),
+    field_map: Optional[str] = typer.Option(
+        None,
+        "--field-map",
+        help="JSON object mapping source columns to canonical training metrics.",
+    ),
 ):
     """
-    Run evaluation suite on JSONL data.
+    Run evaluation suite on normalized runs or prepared datasets.
 
     Examples:
-        rldk evals evaluate data.jsonl --suite training_metrics --column-mapping global_step=step,kl=kl_mean
+        rldk evals evaluate /path/to/run --suite quick --preset trl
+        rldk evals evaluate metrics.csv --suite training_metrics --field-map '{"progress":"step"}'
         rldk evals evaluate data.jsonl --suite comprehensive --output results.json
-        rldk evals evaluate data.jsonl --suite training_metrics --column-mapping '{"global_step":"step","reward":"reward_mean"}'
         rldk evals evaluate data.jsonl --suite quick --min-samples 50 --verbose
         rldk evals evaluate data.jsonl --suite safety --timeout 600
     """
@@ -1556,8 +1604,8 @@ def evaluate(
         # Validate input
         print_operation_status("Validating input", "start")
 
-        # Validate input file
-        validate_file_path(input_file, must_exist=True, file_extensions=[".jsonl"])
+        # Validate input path
+        resolved_path = validate_file_path(input_path, must_exist=True)
 
         # Validate suite
         valid_suites = ["quick", "comprehensive", "safety", "training_metrics"]
@@ -1569,10 +1617,10 @@ def evaluate(
             )
 
         # Validate min_samples
-        if min_samples < 1:
+        if min_samples < 0:
             raise ValidationError(
-                f"Minimum samples must be at least 1, got: {min_samples}",
-                suggestion="Use a positive integer for minimum samples",
+                f"Minimum samples must be non-negative, got: {min_samples}",
+                suggestion="Use zero to auto-detect or a positive integer to sample",
                 error_code="INVALID_MIN_SAMPLES"
             )
 
@@ -1601,15 +1649,66 @@ def evaluate(
                     error_code="INVALID_COLUMN_MAPPING"
                 )
 
+        try:
+            combined_field_map = _combine_field_maps(preset, field_map)
+        except ValueError as exc:
+            raise ValidationError(
+                f"Invalid field map: {exc}",
+                suggestion="Provide JSON like '{\"source\":\"canonical\"}' or use --preset",
+                error_code="INVALID_FIELD_MAP",
+            ) from exc
+
+        if combined_field_map:
+            logging.info(f"Using field map: {combined_field_map}")
+
+        use_normalizer = False
+        suffix = resolved_path.suffix.lower()
+        if resolved_path.is_dir() or suffix in {".csv", ".tsv", ".parquet"}:
+            use_normalizer = True
+        elif suite == "training_metrics" or combined_field_map:
+            use_normalizer = True
+        elif suffix in {".jsonl", ".ndjson"}:
+            first_record = None
+            try:
+                with resolved_path.open("r", encoding="utf-8") as handle:
+                    for raw_line in handle:
+                        raw_line = raw_line.strip()
+                        if not raw_line:
+                            continue
+                        first_record = json.loads(raw_line)
+                        break
+            except (json.JSONDecodeError, OSError):
+                first_record = None
+
+            if isinstance(first_record, dict):
+                keys = {str(key) for key in first_record.keys()}
+                output_like = {"output", "response", "completion", "text", "generation"}
+                if not keys.intersection(output_like):
+                    metric_keys = {
+                        "reward",
+                        "reward_mean",
+                        "kl",
+                        "kl_mean",
+                        "tokens_in",
+                        "tokens_out",
+                    }
+                    if {"name", "value"}.issubset(keys) or keys.intersection(metric_keys):
+                        use_normalizer = True
+
         # Load data with progress indication
         with timed_operation_context("Data loading"):
-            logging.info(f"Loading data from {input_file}")
-            data = load_jsonl_data(input_file)
+            logging.info(f"Loading data from {resolved_path}")
+            if use_normalizer:
+                data = normalize_training_metrics_source(
+                    resolved_path, field_map=combined_field_map
+                )
+            else:
+                data = load_jsonl_data(resolved_path)
 
             if data.empty:
                 raise ValidationError(
-                    "No data found in input file",
-                    suggestion="Ensure the JSONL file contains valid data",
+                    "No data found in source",
+                    suggestion="Ensure the path contains valid training metrics or evaluation data",
                     error_code="NO_DATA_FOUND"
                 )
 
@@ -1720,12 +1819,13 @@ def evaluate(
     except ValidationError as e:
         typer.echo(format_error_message(e), err=True)
         print_usage_examples("evaluate", [
-            "rldk evals evaluate data.jsonl --suite comprehensive --output results.json",
-            "rldk evals evaluate data.jsonl --suite quick --min-samples 50 --verbose",
-            "rldk evals evaluate data.jsonl --suite safety --timeout 600"
+            "rldk evals evaluate /path/to/run --suite quick --preset trl",
+            "rldk evals evaluate metrics.csv --suite training_metrics --field-map '{\"progress\":\"step\"}'",
+            "rldk evals evaluate data.jsonl --suite comprehensive --output results.json"
         ])
         print_troubleshooting_tips([
-            "Ensure the input file is a valid JSONL file",
+            "Ensure the input path exists and points to a run, table, or dataset",
+            "Use --preset or --field-map to align custom metric column names",
             "Check that the specified columns exist in your data",
             "Use --verbose flag for detailed output",
             "Try reducing --min-samples if you have limited data"

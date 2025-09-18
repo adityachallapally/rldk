@@ -224,28 +224,33 @@ rldk reward reward-health gate --from ./reports/health.json
 
 ### `rldk evals evaluate`
 
-Run evaluation suite on JSONL data.
+Run evaluation suite on normalized training runs or evaluation datasets.
 
 ```bash
-rldk evals evaluate INPUT_FILE [OPTIONS]
+rldk evals evaluate INPUT_PATH [OPTIONS]
 ```
 
 **Arguments:**
-- `INPUT_FILE`: Path to JSONL input file
+- `INPUT_PATH`: Path to a training run directory, metrics table, or evaluation dataset
 
 **Options:**
-- `--suite`, `-s`: Evaluation suite to run (`quick`/`comprehensive`/`safety`) (default: `quick`)
+- `--suite`, `-s`: Evaluation suite to run (`quick`/`comprehensive`/`safety`/`training_metrics`) (default: `quick`)
 - `--output`, `-o`: Path to output JSON file
 - `--output-column`: Column name containing model outputs (default: `output`)
 - `--events-column`: Column name containing event logs (default: `events`)
 - `--min-samples`: Minimum samples required for evaluation (default: `10`)
 - `--timeout`: Timeout in seconds for evaluation (default: `300`)
 - `--verbose`, `-v`: Enable verbose logging
+- `--preset`: Field map preset to normalize training metrics before evaluation
+- `--field-map`: JSON object mapping source columns to canonical training metrics
 
 **Examples:**
 ```bash
-# Quick evaluation
-rldk evals evaluate data.jsonl --suite quick
+# Quick evaluation on a run directory
+rldk evals evaluate /path/to/run --suite quick --preset trl
+
+# Training metrics suite with a metrics table
+rldk evals evaluate metrics.csv --suite training_metrics --field-map '{"progress":"step"}'
 
 # Comprehensive evaluation with custom output
 rldk evals evaluate data.jsonl --suite comprehensive --output results.json
