@@ -1,7 +1,7 @@
 #!/bin/bash
 
-
-set -e  # Exit on any error
+set -e          # Exit on any error
+set -o pipefail # Ensure pipeline failures are caught
 
 # Colors for output
 RED='\033[0;31m'
