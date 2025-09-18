@@ -48,21 +48,22 @@ class FlexibleDataAdapter(BaseAdapter):
         self.validation_mode = validation_mode
         self.logger = logging.getLogger(self.__class__.__name__)
 
+        from ..ingest.stream_normalizer import _combine_field_maps
+        preset_field_map = _combine_field_maps(None, preset) if preset else {}
+        
         config_field_map = {}
         if self.config_file and self.config_file.exists():
             config_field_map = self._load_config()
         
-        from ..ingest.stream_normalizer import _combine_field_maps
-        preset_field_map = _combine_field_maps(None, preset) if preset else {}
-        
         combined_field_map = preset_field_map.copy()
+        combined_field_map.update(config_field_map)
+        
         if field_map:
             explicit_targets = set(field_map.values())
             combined_field_map = {k: v for k, v in combined_field_map.items() 
                                 if v not in explicit_targets}
             combined_field_map.update(field_map)
         
-        combined_field_map.update(config_field_map)
         self.field_map = combined_field_map
 
     def _load_config(self) -> Dict[str, str]:
@@ -286,7 +287,7 @@ class FlexibleDataAdapter(BaseAdapter):
 
         # Check for missing required fields based on validation mode
         missing_fields = self.field_resolver.get_missing_fields(
-            self.required_fields, available_headers, {}
+            self.required_fields, available_headers, self.field_map
         )
 
         if missing_fields:
@@ -321,19 +322,17 @@ class FlexibleDataAdapter(BaseAdapter):
 
         for canonical_name in self.field_resolver.get_canonical_fields():
             if canonical_name in available_headers:
-                resolved_data[canonical_name] = df[canonical_name]
+                resolved_data[canonical_name] = df[canonical_name].values
             else:
                 resolved_name = self.field_resolver.resolve_field(
                     canonical_name, available_headers, {}
                 )
-                if resolved_name:
+                if resolved_name and resolved_name in df.columns:
                     if self.allow_dot_paths and '.' in resolved_name:
-                        resolved_data[canonical_name] = self._extract_nested_field(
-                            df, resolved_name
-                        )
+                        nested_series = self._extract_nested_field(df, resolved_name)
+                        resolved_data[canonical_name] = nested_series.values
                     else:
-                        if resolved_name in df.columns:
-                            resolved_data[canonical_name] = df[resolved_name]
+                        resolved_data[canonical_name] = df[resolved_name].values
 
         # Create new DataFrame with canonical column names
         result_df = pd.DataFrame(resolved_data)
@@ -378,11 +377,14 @@ class FlexibleDataAdapter(BaseAdapter):
         """Get mapping of resolved fields."""
         resolved = {}
         for canonical_name in self.field_resolver.get_canonical_fields():
-            resolved_name = self.field_resolver.resolve_field(
-                canonical_name, available_headers, self.field_map
-            )
-            if resolved_name:
-                resolved[canonical_name] = resolved_name
+            if canonical_name in available_headers:
+                resolved[canonical_name] = canonical_name
+            else:
+                resolved_name = self.field_resolver.resolve_field(
+                    canonical_name, available_headers, self.field_map
+                )
+                if resolved_name:
+                    resolved[canonical_name] = resolved_name
         return resolved
 
     def get_metadata(self) -> dict:
@@ -494,11 +496,15 @@ class FlexibleJSONLAdapter(FlexibleDataAdapter):
 
         # Analyze field mapping
         sample_df = pd.DataFrame(sample_data)
+        original_headers = sample_df.columns.tolist()
+        
+        if self.field_map:
+            sample_df = sample_df.rename(columns=self.field_map)
         available_headers = sample_df.columns.tolist()
 
         resolved_fields = self._get_resolved_fields(available_headers)
         missing_fields = self.field_resolver.get_missing_fields(
-            self.required_fields, available_headers, self.field_map
+            self.required_fields, available_headers, {}
         )
 
         if missing_fields:
