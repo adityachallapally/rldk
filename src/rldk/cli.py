@@ -22,7 +22,7 @@ from rldk.cards import (
 )
 from rldk.config import settings
 from rldk.determinism.check import check
-from rldk.diff import first_divergence
+from rldk.diff import compare_training_metrics_tables
 from rldk.evals import run
 from rldk.evals.metrics import evaluate_bias, evaluate_throughput, evaluate_toxicity
 
@@ -145,6 +145,22 @@ def _combine_field_maps(
     if custom_mapping:
         mapping.update(custom_mapping)
     return mapping or None
+
+
+def _normalize_signals_option(signals: Sequence[str]) -> List[str]:
+    """Expand comma-delimited signal entries into a unique list."""
+
+    normalized: List[str] = []
+    seen = set()
+    for entry in signals:
+        if not isinstance(entry, str):
+            continue
+        for part in (segment.strip() for segment in entry.split(",")):
+            if not part or part in seen:
+                continue
+            normalized.append(part)
+            seen.add(part)
+    return normalized
 
 def _parse_json_mapping(raw: Optional[str], field: str) -> Optional[Dict[str, Any]]:
     if raw is None:
@@ -2049,103 +2065,79 @@ def ingest(
 
 @app.command(name="diff")
 def diff(
-    a: str = typer.Option(..., "--a", "-a", help="Path or wandb:// URI for run A"),
-    b: str = typer.Option(..., "--b", "-b", help="Path or wandb:// URI for run B"),
+    a: str = typer.Option(
+        ..., "--a", "-a", help="Path to training metrics for side A (file or directory)"
+    ),
+    b: str = typer.Option(
+        ..., "--b", "-b", help="Path to training metrics for side B (file or directory)"
+    ),
     signals: List[str] = typer.Option(
-        ..., "--signals", "-s", help="Metrics to monitor for divergence"
+        ..., "--signals", "-s", help="Training metric columns to compare"
     ),
-    tolerance: float = typer.Option(
-        2.0, "--tolerance", "-t", help="Z-score threshold for violation detection"
+    preset: Optional[str] = typer.Option(
+        None,
+        "--preset",
+        help=(
+            "Field map preset to normalize training metrics"
+            f" ({', '.join(sorted(FIELD_MAP_PRESETS))})"
+            if FIELD_MAP_PRESETS
+            else "Field map preset name (e.g. trl)."
+        ),
     ),
-    k: int = typer.Option(
-        3, "--k", "-k", help="Number of consecutive violations required"
-    ),
-    window: int = typer.Option(
-        50, "--window", "-w", help="Rolling window size for z-score calculation"
+    field_map: Optional[str] = typer.Option(
+        None,
+        "--field-map",
+        help="JSON object mapping source columns to canonical training metrics.",
     ),
     output_dir: str = typer.Option(
-        "diff_analysis", "--output-dir", "-o", help="Output directory for reports"
+        "diff_analysis", "--output-dir", "-o", help="Output directory for the diff report"
     ),
 ):
-    """Find first divergence between two training runs."""
+    """Compare normalized training metrics between two runs."""
+
     try:
-        typer.echo("Comparing runs:")
+        typer.echo("Comparing training runs:")
         typer.echo(f"  Run A: {a}")
         typer.echo(f"  Run B: {b}")
-        typer.echo(f"  Signals: {', '.join(signals)}")
-        typer.echo(f"  Tolerance: {tolerance}")
-        typer.echo(f"  K-consecutive: {k}")
-        typer.echo(f"  Window size: {window}")
 
-        # Ingest both runs
-        typer.echo("\nIngesting run A...")
-        df_a = ingest_runs(a)
+        try:
+            combined_map = _combine_field_maps(preset, field_map)
+        except ValueError as exc:
+            typer.echo(f"Invalid field map: {exc}", err=True)
+            raise typer.Exit(1)
 
-        typer.echo("Ingesting run B...")
-        df_b = ingest_runs(b)
+        mapping_dict = combined_map or None
+        signal_list = _normalize_signals_option(signals)
+        typer.echo(f"  Signals: {', '.join(signal_list)}")
 
-        # Find divergence
-        typer.echo("\nAnalyzing divergence...")
-        # Handle case where signals might be a comma-separated string
-        if isinstance(signals, str):
-            signals = [s.strip() for s in signals.split(",")]
-        elif len(signals) == 1 and "," in signals[0]:
-            # Handle case where signals is a list with one comma-separated string
-            signals = [s.strip() for s in signals[0].split(",")]
-        report = first_divergence(df_a, df_b, signals, k, window, tolerance, output_dir)
+        typer.echo("\nNormalizing run A...")
+        df_a = normalize_training_metrics_source(a, field_map=mapping_dict)
 
-        # Write reports
+        typer.echo("Normalizing run B...")
+        df_b = normalize_training_metrics_source(b, field_map=mapping_dict)
+
+        typer.echo("\nComputing diff statistics...")
+        report = compare_training_metrics_tables(df_a, df_b, signal_list)
+
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
+        report_path = output_path / "diff_report.json"
+        write_json(report, report_path)
 
-        # Create diff report JSON
-        diff_report = {
-            "version": "1",
-            "diverged": report.diverged,
-            "first_step": report.first_step,
-            "tripped_signals": report.tripped_signals,
-            "notes": report.notes,
-            "suspected_causes": report.suspected_causes,
-        }
-        write_json(diff_report, output_path / "diff_report.json")
+        summary = report.get("summary", {})
+        typer.echo("\nSummary:")
+        typer.echo(f"  Signals compared: {summary.get('signals_compared', 0)}")
+        typer.echo(f"  Verdict: {summary.get('verdict', 'unknown')}")
+        max_abs_delta = summary.get("max_abs_delta")
+        if max_abs_delta is not None:
+            typer.echo(f"  Max abs delta: {max_abs_delta}")
+        typer.echo(f"\nReport saved to: {report_path}")
 
-        # Create drift card JSON
-        drift_card = {
-            "version": "1",
-            "diverged": report.diverged,
-            "first_step": report.first_step,
-            "signals_monitored": signals,
-            "k_consecutive": k,
-            "window_size": window,
-            "tolerance": tolerance,
-        }
-        write_json(drift_card, output_path / "drift_card.json")
-
-        # Save events CSV if details exist
-        if not report.details.empty:
-            report.details.to_csv(output_path / "diff_events.csv", index=False)
-
-        # Display results
-        if report.diverged:
-            typer.echo(f"\n🚨 Divergence detected at step {report.first_step}")
-            # Format tripped signals (now a list of dicts with 'signal' key)
-            signal_names = [
-                signal_info.get("signal", str(signal_info)) if isinstance(signal_info, dict)
-                else str(signal_info)
-                for signal_info in report.tripped_signals
-            ]
-            typer.echo(f"Tripped signals: {', '.join(signal_names)}")
-        else:
-            typer.echo("\n✅ No significant divergence detected")
-
-        typer.echo(f"\nReports saved to: {output_dir}")
-        typer.echo("  - diff_report.json")
-        typer.echo("  - drift_card.json")
-        if not report.details.empty:
-            typer.echo("  - diff_events.csv")
-
-    except Exception as e:
-        typer.echo(f"Error: {e}", err=True)
+    except ValidationError as exc:
+        typer.echo(format_error_message(exc), err=True)
+        raise typer.Exit(1)
+    except Exception as exc:  # pragma: no cover - unexpected failure path
+        typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(1)
 
 

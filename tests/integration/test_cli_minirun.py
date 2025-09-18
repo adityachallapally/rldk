@@ -40,7 +40,6 @@ class TestCLIMinirun:
 
     @pytest.mark.parametrize("command,args", [
         (["ingest"], ["--adapter", "generic"]),
-        (["diff"], []),
         (["replay"], ["--command", "echo test"]),
         (["bisect"], ["--good", "abc123", "--bad", "def456", "--cmd", "echo test"]),
         (["check-determinism"], ["--cmd", "echo test", "--replicas", "2"]),
@@ -124,7 +123,16 @@ class TestCLIMinirun:
     def test_cli_diff_minirun(self, rldk_cmd, minirun_path):
         """Test diffing the minimal run fixture with itself."""
         result = subprocess.run(
-            rldk_cmd + ["diff", str(minirun_path), str(minirun_path)],
+            rldk_cmd
+            + [
+                "diff",
+                "--a",
+                str(minirun_path),
+                "--b",
+                str(minirun_path),
+                "--signals",
+                "reward_mean",
+            ],
             capture_output=True,
             text=True
         )
