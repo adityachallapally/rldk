@@ -1,0 +1,1399 @@
+{
+  "alerts": [
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 1171.6797 at step 2 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 2,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:03:42.264938Z",
+      "ts": "2025-09-18T18:32:55.431656Z",
+      "value": 1171.6796875,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 8612.0879 at step 11 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 11,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:04:54.078797Z",
+      "ts": "2025-09-18T18:32:55.438172Z",
+      "value": 8612.087890625,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83d\udd12 Excessive KL penalty: -1.5247 (threshold: -1.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "kl_penalty_mean",
+      "name": "kl_penalty_mean",
+      "rule_id": "fullscale_kl_penalty_excessive",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 11,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:04:54.079099Z",
+      "ts": "2025-09-18T18:32:55.438700Z",
+      "value": -1.5247344970703125,
+      "window": {
+        "kind": "rolling",
+        "size": 10
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udf00 Entropy collapse: 0.0298 (threshold: 0.05)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "entropy_mean",
+      "name": "entropy_mean",
+      "rule_id": "fullscale_entropy_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 19,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:05:51.660562Z",
+      "ts": "2025-09-18T18:32:55.444338Z",
+      "value": 0.029833333333333337,
+      "window": {
+        "kind": "rolling",
+        "size": 20
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 241.5845 at step 20 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 20,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:05:59.036930Z",
+      "ts": "2025-09-18T18:32:55.445276Z",
+      "value": 241.58453369140625,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udfaf Task reward collapse: 0.1000 (threshold: 0.1)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "task_reward_mean",
+      "name": "task_reward_mean",
+      "rule_id": "fullscale_task_reward_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 24,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:06:29.055291Z",
+      "ts": "2025-09-18T18:32:55.448457Z",
+      "value": 0.1,
+      "window": {
+        "kind": "rolling",
+        "size": 25
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 752.6053 at step 29 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 29,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:07:05.528932Z",
+      "ts": "2025-09-18T18:32:55.452142Z",
+      "value": 752.6053466796875,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udf00 Entropy collapse: 0.0300 (threshold: 0.05)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "entropy_mean",
+      "name": "entropy_mean",
+      "rule_id": "fullscale_entropy_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 35,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:07:48.773866Z",
+      "ts": "2025-09-18T18:32:55.456689Z",
+      "value": 0.029958333333333333,
+      "window": {
+        "kind": "rolling",
+        "size": 20
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 826.4348 at step 38 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 38,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:08:11.570865Z",
+      "ts": "2025-09-18T18:32:55.459024Z",
+      "value": 826.4347534179688,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udfaf Task reward collapse: 0.1500 (threshold: 0.1)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "task_reward_mean",
+      "name": "task_reward_mean",
+      "rule_id": "fullscale_task_reward_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 40,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:08:25.728766Z",
+      "ts": "2025-09-18T18:32:55.460880Z",
+      "value": 0.15000000000000002,
+      "window": {
+        "kind": "rolling",
+        "size": 25
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 284.1329 at step 47 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 47,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:09:16.045050Z",
+      "ts": "2025-09-18T18:32:55.465954Z",
+      "value": 284.13287353515625,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udf00 Entropy collapse: 0.0290 (threshold: 0.05)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "entropy_mean",
+      "name": "entropy_mean",
+      "rule_id": "fullscale_entropy_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 51,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:09:44.724664Z",
+      "ts": "2025-09-18T18:32:55.469162Z",
+      "value": 0.028951388888888888,
+      "window": {
+        "kind": "rolling",
+        "size": 20
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 600.5415 at step 56 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 56,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:10:20.690573Z",
+      "ts": "2025-09-18T18:32:55.472854Z",
+      "value": 600.54150390625,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udfaf Task reward collapse: 0.1000 (threshold: 0.1)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "task_reward_mean",
+      "name": "task_reward_mean",
+      "rule_id": "fullscale_task_reward_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 56,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:10:20.690727Z",
+      "ts": "2025-09-18T18:32:55.473301Z",
+      "value": 0.1,
+      "window": {
+        "kind": "rolling",
+        "size": 25
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 320.8835 at step 65 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 65,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:11:24.493598Z",
+      "ts": "2025-09-18T18:32:55.479696Z",
+      "value": 320.8835144042969,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udf00 Entropy collapse: 0.0300 (threshold: 0.05)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "entropy_mean",
+      "name": "entropy_mean",
+      "rule_id": "fullscale_entropy_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 67,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:11:38.819002Z",
+      "ts": "2025-09-18T18:32:55.481524Z",
+      "value": 0.029958333333333337,
+      "window": {
+        "kind": "rolling",
+        "size": 20
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udfaf Task reward collapse: 0.0500 (threshold: 0.1)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "task_reward_mean",
+      "name": "task_reward_mean",
+      "rule_id": "fullscale_task_reward_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 72,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:12:14.885155Z",
+      "ts": "2025-09-18T18:32:55.485371Z",
+      "value": 0.05,
+      "window": {
+        "kind": "rolling",
+        "size": 25
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 831.4905 at step 74 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 74,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:12:28.900591Z",
+      "ts": "2025-09-18T18:32:55.486977Z",
+      "value": 831.4905395507812,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83d\udcc8 Loss divergence: 24.5231 at step 80 (threshold: 10.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "loss",
+      "name": "loss",
+      "rule_id": "fullscale_loss_divergence",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 80,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:13:12.034203Z",
+      "ts": "2025-09-18T18:32:55.491047Z",
+      "value": 24.523056030273438,
+      "window": {
+        "kind": "consecutive",
+        "size": 5
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udf00 Entropy collapse: 0.0302 (threshold: 0.05)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "entropy_mean",
+      "name": "entropy_mean",
+      "rule_id": "fullscale_entropy_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 83,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:13:33.799811Z",
+      "ts": "2025-09-18T18:32:55.494261Z",
+      "value": 0.030165391156462586,
+      "window": {
+        "kind": "rolling",
+        "size": 20
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 864.7950 at step 83 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 83,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:13:33.799698Z",
+      "ts": "2025-09-18T18:32:55.493856Z",
+      "value": 864.7949829101562,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udfaf Task reward collapse: 0.0500 (threshold: 0.1)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "task_reward_mean",
+      "name": "task_reward_mean",
+      "rule_id": "fullscale_task_reward_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 88,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:14:09.562829Z",
+      "ts": "2025-09-18T18:32:55.498059Z",
+      "value": 0.05,
+      "window": {
+        "kind": "rolling",
+        "size": 25
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 612.5170 at step 92 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 92,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:14:43.995152Z",
+      "ts": "2025-09-18T18:32:55.501075Z",
+      "value": 612.5170288085938,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83d\udcc8 Loss divergence: 55.0751 at step 95 (threshold: 10.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "loss",
+      "name": "loss",
+      "rule_id": "fullscale_loss_divergence",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 95,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:15:10.376900Z",
+      "ts": "2025-09-18T18:32:55.503060Z",
+      "value": 55.07505798339844,
+      "window": {
+        "kind": "consecutive",
+        "size": 5
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udf00 Entropy collapse: 0.0301 (threshold: 0.05)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "entropy_mean",
+      "name": "entropy_mean",
+      "rule_id": "fullscale_entropy_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 99,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:15:39.129357Z",
+      "ts": "2025-09-18T18:32:55.506637Z",
+      "value": 0.03011352040816327,
+      "window": {
+        "kind": "rolling",
+        "size": 20
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 524.5065 at step 101 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 101,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:15:53.347641Z",
+      "ts": "2025-09-18T18:32:55.508284Z",
+      "value": 524.5064697265625,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udfaf Task reward collapse: 0.1000 (threshold: 0.1)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "task_reward_mean",
+      "name": "task_reward_mean",
+      "rule_id": "fullscale_task_reward_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 104,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:16:14.993367Z",
+      "ts": "2025-09-18T18:32:55.510756Z",
+      "value": 0.1,
+      "window": {
+        "kind": "rolling",
+        "size": 25
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 3308.3711 at step 110 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 110,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:17:03.115777Z",
+      "ts": "2025-09-18T18:32:55.515168Z",
+      "value": 3308.37109375,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udf00 Entropy collapse: 0.0303 (threshold: 0.05)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "entropy_mean",
+      "name": "entropy_mean",
+      "rule_id": "fullscale_entropy_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 115,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:17:38.739937Z",
+      "ts": "2025-09-18T18:32:55.519085Z",
+      "value": 0.030291666666666668,
+      "window": {
+        "kind": "rolling",
+        "size": 20
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 1298.5873 at step 119 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 119,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:18:07.855493Z",
+      "ts": "2025-09-18T18:32:55.522134Z",
+      "value": 1298.5872802734375,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udfaf Task reward collapse: 0.0500 (threshold: 0.1)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "task_reward_mean",
+      "name": "task_reward_mean",
+      "rule_id": "fullscale_task_reward_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 120,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:18:15.202132Z",
+      "ts": "2025-09-18T18:32:55.523272Z",
+      "value": 0.05,
+      "window": {
+        "kind": "rolling",
+        "size": 25
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 936.0427 at step 128 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 128,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:19:11.994028Z",
+      "ts": "2025-09-18T18:32:55.529078Z",
+      "value": 936.042724609375,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udf00 Entropy collapse: 0.0306 (threshold: 0.05)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "entropy_mean",
+      "name": "entropy_mean",
+      "rule_id": "fullscale_entropy_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 131,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:19:33.048869Z",
+      "ts": "2025-09-18T18:32:55.531534Z",
+      "value": 0.030625000000000003,
+      "window": {
+        "kind": "rolling",
+        "size": 20
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udfaf Task reward collapse: 0.1000 (threshold: 0.1)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "task_reward_mean",
+      "name": "task_reward_mean",
+      "rule_id": "fullscale_task_reward_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 136,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:20:10.129205Z",
+      "ts": "2025-09-18T18:32:55.535394Z",
+      "value": 0.1,
+      "window": {
+        "kind": "rolling",
+        "size": 25
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 395.6524 at step 137 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 137,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:20:17.354971Z",
+      "ts": "2025-09-18T18:32:55.536350Z",
+      "value": 395.6523742675781,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 83.1523 at step 146 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 146,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:21:21.522938Z",
+      "ts": "2025-09-18T18:32:55.542921Z",
+      "value": 83.1523208618164,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udf00 Entropy collapse: 0.0307 (threshold: 0.05)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "entropy_mean",
+      "name": "entropy_mean",
+      "rule_id": "fullscale_entropy_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 147,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:21:28.574939Z",
+      "ts": "2025-09-18T18:32:55.544075Z",
+      "value": 0.03075,
+      "window": {
+        "kind": "rolling",
+        "size": 20
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udfaf Task reward collapse: 0.2000 (threshold: 0.1)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "task_reward_mean",
+      "name": "task_reward_mean",
+      "rule_id": "fullscale_task_reward_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 152,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:22:04.959461Z",
+      "ts": "2025-09-18T18:32:55.547880Z",
+      "value": 0.2,
+      "window": {
+        "kind": "rolling",
+        "size": 25
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 274.3357 at step 155 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 155,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:22:26.033180Z",
+      "ts": "2025-09-18T18:32:55.550228Z",
+      "value": 274.3356628417969,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udf00 Entropy collapse: 0.0301 (threshold: 0.05)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "entropy_mean",
+      "name": "entropy_mean",
+      "rule_id": "fullscale_entropy_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 163,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:23:23.067341Z",
+      "ts": "2025-09-18T18:32:55.556224Z",
+      "value": 0.030083333333333337,
+      "window": {
+        "kind": "rolling",
+        "size": 20
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 412.7521 at step 164 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 164,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:23:30.129407Z",
+      "ts": "2025-09-18T18:32:55.557169Z",
+      "value": 412.7521057128906,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udfaf Task reward collapse: 0.0000 (threshold: 0.1)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "task_reward_mean",
+      "name": "task_reward_mean",
+      "rule_id": "fullscale_task_reward_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 168,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:23:59.595845Z",
+      "ts": "2025-09-18T18:32:55.560458Z",
+      "value": 0.0,
+      "window": {
+        "kind": "rolling",
+        "size": 25
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 256.9662 at step 173 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 173,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:24:35.188830Z",
+      "ts": "2025-09-18T18:32:55.564163Z",
+      "value": 256.9662170410156,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83d\udcca Reward variance spike: 2.5170 (threshold: 2.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "reward_std",
+      "name": "reward_std",
+      "rule_id": "fullscale_reward_variance_spike",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 176,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:24:56.296033Z",
+      "ts": "2025-09-18T18:32:55.566263Z",
+      "value": 2.5170412063598633,
+      "window": {
+        "kind": "rolling",
+        "size": 8
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udf00 Entropy collapse: 0.0308 (threshold: 0.05)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "entropy_mean",
+      "name": "entropy_mean",
+      "rule_id": "fullscale_entropy_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 179,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:25:18.101239Z",
+      "ts": "2025-09-18T18:32:55.569029Z",
+      "value": 0.03079166666666667,
+      "window": {
+        "kind": "rolling",
+        "size": 20
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\u26a1 Gradient explosion: 486.1120 at step 182 (threshold: 5.0)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "grad_norm",
+      "name": "grad_norm",
+      "rule_id": "fullscale_gradient_explosion",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 182,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:25:39.601754Z",
+      "ts": "2025-09-18T18:32:55.571300Z",
+      "value": 486.1119689941406,
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    {
+      "action": "warn",
+      "message": "\ud83c\udfaf Task reward collapse: 0.1500 (threshold: 0.1)",
+      "meta": {
+        "batch_size": 4,
+        "learning_rate": 1e-05
+      },
+      "metric": "task_reward_mean",
+      "name": "task_reward_mean",
+      "rule_id": "fullscale_task_reward_collapse",
+      "run_id": "fullscale_run_42_1758218592",
+      "status": "success",
+      "step": 184,
+      "tags": {
+        "model": "gpt2-medium",
+        "seed": 42
+      },
+      "time": "2025-09-18T18:25:58.602319Z",
+      "ts": "2025-09-18T18:32:55.573151Z",
+      "value": 0.15000000000000002,
+      "window": {
+        "kind": "rolling",
+        "size": 25
+      }
+    }
+  ],
+  "rules": {
+    "fullscale_advantage_anomaly": {
+      "activations": 0,
+      "condition": "value > 3.0",
+      "cooldown_steps": 12,
+      "grace_steps": 8,
+      "where": "name == \"advantage_std\"",
+      "window": {
+        "kind": "rolling",
+        "size": 10
+      }
+    },
+    "fullscale_baseline_drift": {
+      "activations": 0,
+      "condition": "value > 1.5 or value < -1.5",
+      "cooldown_steps": 20,
+      "grace_steps": 10,
+      "where": "name == \"baseline\"",
+      "window": {
+        "kind": "rolling",
+        "size": 15
+      }
+    },
+    "fullscale_entropy_collapse": {
+      "activations": 11,
+      "condition": "mean(value) < 0.05",
+      "cooldown_steps": 15,
+      "first_activation": {
+        "message": "\ud83c\udf00 Entropy collapse: 0.0298 (threshold: 0.05)",
+        "name": "entropy_mean",
+        "run_id": "fullscale_run_42_1758218592",
+        "status": "success",
+        "step": 19,
+        "time": "2025-09-18T18:05:51.660562Z",
+        "value": 0.029833333333333337
+      },
+      "grace_steps": 10,
+      "last_activation": {
+        "message": "\ud83c\udf00 Entropy collapse: 0.0308 (threshold: 0.05)",
+        "name": "entropy_mean",
+        "run_id": "fullscale_run_42_1758218592",
+        "status": "success",
+        "step": 179,
+        "time": "2025-09-18T18:25:18.101239Z",
+        "value": 0.03079166666666667
+      },
+      "where": "name == \"entropy_mean\"",
+      "window": {
+        "kind": "rolling",
+        "size": 20
+      }
+    },
+    "fullscale_gradient_explosion": {
+      "activations": 21,
+      "condition": "value > 5.0",
+      "cooldown_steps": 8,
+      "first_activation": {
+        "message": "\u26a1 Gradient explosion: 1171.6797 at step 2 (threshold: 5.0)",
+        "name": "grad_norm",
+        "run_id": "fullscale_run_42_1758218592",
+        "status": "success",
+        "step": 2,
+        "time": "2025-09-18T18:03:42.264938Z",
+        "value": 1171.6796875
+      },
+      "grace_steps": 3,
+      "last_activation": {
+        "message": "\u26a1 Gradient explosion: 486.1120 at step 182 (threshold: 5.0)",
+        "name": "grad_norm",
+        "run_id": "fullscale_run_42_1758218592",
+        "status": "success",
+        "step": 182,
+        "time": "2025-09-18T18:25:39.601754Z",
+        "value": 486.1119689941406
+      },
+      "where": "name == \"grad_norm\"",
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    },
+    "fullscale_kl_penalty_excessive": {
+      "activations": 1,
+      "condition": "value < -1.0",
+      "cooldown_steps": 12,
+      "first_activation": {
+        "message": "\ud83d\udd12 Excessive KL penalty: -1.5247 (threshold: -1.0)",
+        "name": "kl_penalty_mean",
+        "run_id": "fullscale_run_42_1758218592",
+        "status": "success",
+        "step": 11,
+        "time": "2025-09-18T18:04:54.079099Z",
+        "value": -1.5247344970703125
+      },
+      "grace_steps": 8,
+      "last_activation": {
+        "message": "\ud83d\udd12 Excessive KL penalty: -1.5247 (threshold: -1.0)",
+        "name": "kl_penalty_mean",
+        "run_id": "fullscale_run_42_1758218592",
+        "status": "success",
+        "step": 11,
+        "time": "2025-09-18T18:04:54.079099Z",
+        "value": -1.5247344970703125
+      },
+      "where": "name == \"kl_penalty_mean\"",
+      "window": {
+        "kind": "rolling",
+        "size": 10
+      }
+    },
+    "fullscale_kl_spike_guard": {
+      "activations": 0,
+      "condition": "value > 0.3",
+      "cooldown_steps": 10,
+      "grace_steps": 5,
+      "where": "name == \"kl_mean\"",
+      "window": {
+        "kind": "consecutive",
+        "size": 5
+      }
+    },
+    "fullscale_loss_divergence": {
+      "activations": 2,
+      "condition": "value > 10.0",
+      "cooldown_steps": 10,
+      "first_activation": {
+        "message": "\ud83d\udcc8 Loss divergence: 24.5231 at step 80 (threshold: 10.0)",
+        "name": "loss",
+        "run_id": "fullscale_run_42_1758218592",
+        "status": "success",
+        "step": 80,
+        "time": "2025-09-18T18:13:12.034203Z",
+        "value": 24.523056030273438
+      },
+      "grace_steps": 5,
+      "last_activation": {
+        "message": "\ud83d\udcc8 Loss divergence: 55.0751 at step 95 (threshold: 10.0)",
+        "name": "loss",
+        "run_id": "fullscale_run_42_1758218592",
+        "status": "success",
+        "step": 95,
+        "time": "2025-09-18T18:15:10.376900Z",
+        "value": 55.07505798339844
+      },
+      "where": "name == \"loss\"",
+      "window": {
+        "kind": "consecutive",
+        "size": 5
+      }
+    },
+    "fullscale_reward_collapse": {
+      "activations": 0,
+      "condition": "mean(value) < -0.5",
+      "cooldown_steps": 15,
+      "grace_steps": 10,
+      "where": "name == \"reward_mean\"",
+      "window": {
+        "kind": "rolling",
+        "size": 20
+      }
+    },
+    "fullscale_reward_variance_spike": {
+      "activations": 1,
+      "condition": "value > 2.0",
+      "cooldown_steps": 10,
+      "first_activation": {
+        "message": "\ud83d\udcca Reward variance spike: 2.5170 (threshold: 2.0)",
+        "name": "reward_std",
+        "run_id": "fullscale_run_42_1758218592",
+        "status": "success",
+        "step": 176,
+        "time": "2025-09-18T18:24:56.296033Z",
+        "value": 2.5170412063598633
+      },
+      "grace_steps": 5,
+      "last_activation": {
+        "message": "\ud83d\udcca Reward variance spike: 2.5170 (threshold: 2.0)",
+        "name": "reward_std",
+        "run_id": "fullscale_run_42_1758218592",
+        "status": "success",
+        "step": 176,
+        "time": "2025-09-18T18:24:56.296033Z",
+        "value": 2.5170412063598633
+      },
+      "where": "name == \"reward_std\"",
+      "window": {
+        "kind": "rolling",
+        "size": 8
+      }
+    },
+    "fullscale_task_reward_collapse": {
+      "activations": 11,
+      "condition": "mean(value) < 0.1",
+      "cooldown_steps": 15,
+      "first_activation": {
+        "message": "\ud83c\udfaf Task reward collapse: 0.1000 (threshold: 0.1)",
+        "name": "task_reward_mean",
+        "run_id": "fullscale_run_42_1758218592",
+        "status": "success",
+        "step": 24,
+        "time": "2025-09-18T18:06:29.055291Z",
+        "value": 0.1
+      },
+      "grace_steps": 15,
+      "last_activation": {
+        "message": "\ud83c\udfaf Task reward collapse: 0.1500 (threshold: 0.1)",
+        "name": "task_reward_mean",
+        "run_id": "fullscale_run_42_1758218592",
+        "status": "success",
+        "step": 184,
+        "time": "2025-09-18T18:25:58.602319Z",
+        "value": 0.15000000000000002
+      },
+      "where": "name == \"task_reward_mean\"",
+      "window": {
+        "kind": "rolling",
+        "size": 25
+      }
+    }
+  }
+}

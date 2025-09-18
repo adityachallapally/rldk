@@ -1,0 +1,402 @@
+RLDK Fullscale Acceptance Test - 2025-09-18 18:03:06 UTC
+[0;34m=== Phase 1: Environment Setup ===[0m
+[0;32m✓ Python 3 found[0m
+[0;32m✓ RLDK CLI found[0m
+[0;32m✓ Found: scripts/fullscale_train_rl.py[0m
+[0;32m✓ Found: rules/fullscale_rules.yaml[0m
+[0;34m=== Phase 2: RL Training with EventWriter Logging ===[0m
+[0;36mRunning: Fullscale RL training with EventWriter logging[0m
+[1;33mCommand: python3 scripts/fullscale_train_rl.py --seed 42 --max-steps 2000 --max-hours 3.0 --batch-size 4 --learning-rate 1e-5 --outdir artifacts/fullscale --model-name gpt2-medium --determinism-check[0m
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+A decoder-only architecture is being used, but right-padding was detected! For correct generation results, please set `padding_side='left'` when initializing the tokenizer.
+Usage: rldk monitor [OPTIONS]
+Try 'rldk monitor --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ No such option: --input                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+🔄 Validating input
+✅ Input validation
+🔄 Starting Data ingestion...
+Ingesting runs from: artifacts/fullscale/run.jsonl
+2025-09-18 18:32:02,837 - rldk.ingest.ingest - INFO - Auto-detected adapter: trl
+Loading data with trl adapter: |2025-09-18 18:32:02,939 - rldk.ingest.ingest - INFO - Successfully ingested 188 events from artifacts/fullscale/run.jsonl
+2025-09-18 18:32:02,942 - rldk.ingest.ingest - INFO - Schema standardized, 188 records ready
+Loading data with trl adapter: Complete
+✅ Data ingestion completed in 0.11s
+🔄 Saving results
+✅ Saving results: Saved to artifacts/fullscale/training_metrics.parquet
+
+📊 Ingestion Summary:
+  Records: 188
+  Columns: step, phase, reward_mean, reward_std, kl_mean, entropy_mean, clip_frac, grad_norm, lr, loss, tokens_in, tokens_out, wall_time, seed, run_id, git_sha, advantage_mean, advantage_std, baseline, complexity_reward_mean, kl_penalty_mean, task_reward_mean
+  Steps range: 0 to 187
+Failed to load rules: Function 'abs' is not allowed in expressions
+2025-09-18 18:32:55,431 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 1171.6797 at step 2 (threshold: 5.0)
+⚡ Gradient explosion: 1171.6797 at step 2 (threshold: 5.0)
+2025-09-18 18:32:55,438 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 8612.0879 at step 11 (threshold: 5.0)
+⚡ Gradient explosion: 8612.0879 at step 11 (threshold: 5.0)
+2025-09-18 18:32:55,438 - rldk.monitor.engine - WARNING - [fullscale_kl_penalty_excessive] 🔒 Excessive KL penalty: -1.5247 (threshold: -1.0)
+🔒 Excessive KL penalty: -1.5247 (threshold: -1.0)
+2025-09-18 18:32:55,444 - rldk.monitor.engine - WARNING - [fullscale_entropy_collapse] 🌀 Entropy collapse: 0.0298 (threshold: 0.05)
+🌀 Entropy collapse: 0.0298 (threshold: 0.05)
+2025-09-18 18:32:55,445 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 241.5845 at step 20 (threshold: 5.0)
+⚡ Gradient explosion: 241.5845 at step 20 (threshold: 5.0)
+2025-09-18 18:32:55,448 - rldk.monitor.engine - WARNING - [fullscale_task_reward_collapse] 🎯 Task reward collapse: 0.1000 (threshold: 0.1)
+🎯 Task reward collapse: 0.1000 (threshold: 0.1)
+2025-09-18 18:32:55,452 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 752.6053 at step 29 (threshold: 5.0)
+⚡ Gradient explosion: 752.6053 at step 29 (threshold: 5.0)
+2025-09-18 18:32:55,456 - rldk.monitor.engine - WARNING - [fullscale_entropy_collapse] 🌀 Entropy collapse: 0.0300 (threshold: 0.05)
+🌀 Entropy collapse: 0.0300 (threshold: 0.05)
+2025-09-18 18:32:55,459 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 826.4348 at step 38 (threshold: 5.0)
+⚡ Gradient explosion: 826.4348 at step 38 (threshold: 5.0)
+2025-09-18 18:32:55,460 - rldk.monitor.engine - WARNING - [fullscale_task_reward_collapse] 🎯 Task reward collapse: 0.1500 (threshold: 0.1)
+🎯 Task reward collapse: 0.1500 (threshold: 0.1)
+2025-09-18 18:32:55,465 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 284.1329 at step 47 (threshold: 5.0)
+⚡ Gradient explosion: 284.1329 at step 47 (threshold: 5.0)
+2025-09-18 18:32:55,469 - rldk.monitor.engine - WARNING - [fullscale_entropy_collapse] 🌀 Entropy collapse: 0.0290 (threshold: 0.05)
+🌀 Entropy collapse: 0.0290 (threshold: 0.05)
+2025-09-18 18:32:55,472 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 600.5415 at step 56 (threshold: 5.0)
+⚡ Gradient explosion: 600.5415 at step 56 (threshold: 5.0)
+2025-09-18 18:32:55,473 - rldk.monitor.engine - WARNING - [fullscale_task_reward_collapse] 🎯 Task reward collapse: 0.1000 (threshold: 0.1)
+🎯 Task reward collapse: 0.1000 (threshold: 0.1)
+2025-09-18 18:32:55,479 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 320.8835 at step 65 (threshold: 5.0)
+⚡ Gradient explosion: 320.8835 at step 65 (threshold: 5.0)
+2025-09-18 18:32:55,481 - rldk.monitor.engine - WARNING - [fullscale_entropy_collapse] 🌀 Entropy collapse: 0.0300 (threshold: 0.05)
+🌀 Entropy collapse: 0.0300 (threshold: 0.05)
+2025-09-18 18:32:55,485 - rldk.monitor.engine - WARNING - [fullscale_task_reward_collapse] 🎯 Task reward collapse: 0.0500 (threshold: 0.1)
+🎯 Task reward collapse: 0.0500 (threshold: 0.1)
+2025-09-18 18:32:55,486 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 831.4905 at step 74 (threshold: 5.0)
+⚡ Gradient explosion: 831.4905 at step 74 (threshold: 5.0)
+2025-09-18 18:32:55,491 - rldk.monitor.engine - WARNING - [fullscale_loss_divergence] 📈 Loss divergence: 24.5231 at step 80 (threshold: 10.0)
+📈 Loss divergence: 24.5231 at step 80 (threshold: 10.0)
+2025-09-18 18:32:55,493 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 864.7950 at step 83 (threshold: 5.0)
+⚡ Gradient explosion: 864.7950 at step 83 (threshold: 5.0)
+2025-09-18 18:32:55,494 - rldk.monitor.engine - WARNING - [fullscale_entropy_collapse] 🌀 Entropy collapse: 0.0302 (threshold: 0.05)
+🌀 Entropy collapse: 0.0302 (threshold: 0.05)
+2025-09-18 18:32:55,498 - rldk.monitor.engine - WARNING - [fullscale_task_reward_collapse] 🎯 Task reward collapse: 0.0500 (threshold: 0.1)
+🎯 Task reward collapse: 0.0500 (threshold: 0.1)
+2025-09-18 18:32:55,501 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 612.5170 at step 92 (threshold: 5.0)
+⚡ Gradient explosion: 612.5170 at step 92 (threshold: 5.0)
+2025-09-18 18:32:55,503 - rldk.monitor.engine - WARNING - [fullscale_loss_divergence] 📈 Loss divergence: 55.0751 at step 95 (threshold: 10.0)
+📈 Loss divergence: 55.0751 at step 95 (threshold: 10.0)
+2025-09-18 18:32:55,506 - rldk.monitor.engine - WARNING - [fullscale_entropy_collapse] 🌀 Entropy collapse: 0.0301 (threshold: 0.05)
+🌀 Entropy collapse: 0.0301 (threshold: 0.05)
+2025-09-18 18:32:55,508 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 524.5065 at step 101 (threshold: 5.0)
+⚡ Gradient explosion: 524.5065 at step 101 (threshold: 5.0)
+2025-09-18 18:32:55,510 - rldk.monitor.engine - WARNING - [fullscale_task_reward_collapse] 🎯 Task reward collapse: 0.1000 (threshold: 0.1)
+🎯 Task reward collapse: 0.1000 (threshold: 0.1)
+2025-09-18 18:32:55,515 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 3308.3711 at step 110 (threshold: 5.0)
+⚡ Gradient explosion: 3308.3711 at step 110 (threshold: 5.0)
+2025-09-18 18:32:55,519 - rldk.monitor.engine - WARNING - [fullscale_entropy_collapse] 🌀 Entropy collapse: 0.0303 (threshold: 0.05)
+🌀 Entropy collapse: 0.0303 (threshold: 0.05)
+2025-09-18 18:32:55,522 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 1298.5873 at step 119 (threshold: 5.0)
+⚡ Gradient explosion: 1298.5873 at step 119 (threshold: 5.0)
+2025-09-18 18:32:55,523 - rldk.monitor.engine - WARNING - [fullscale_task_reward_collapse] 🎯 Task reward collapse: 0.0500 (threshold: 0.1)
+🎯 Task reward collapse: 0.0500 (threshold: 0.1)
+2025-09-18 18:32:55,529 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 936.0427 at step 128 (threshold: 5.0)
+⚡ Gradient explosion: 936.0427 at step 128 (threshold: 5.0)
+2025-09-18 18:32:55,531 - rldk.monitor.engine - WARNING - [fullscale_entropy_collapse] 🌀 Entropy collapse: 0.0306 (threshold: 0.05)
+🌀 Entropy collapse: 0.0306 (threshold: 0.05)
+2025-09-18 18:32:55,535 - rldk.monitor.engine - WARNING - [fullscale_task_reward_collapse] 🎯 Task reward collapse: 0.1000 (threshold: 0.1)
+🎯 Task reward collapse: 0.1000 (threshold: 0.1)
+2025-09-18 18:32:55,536 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 395.6524 at step 137 (threshold: 5.0)
+⚡ Gradient explosion: 395.6524 at step 137 (threshold: 5.0)
+2025-09-18 18:32:55,542 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 83.1523 at step 146 (threshold: 5.0)
+⚡ Gradient explosion: 83.1523 at step 146 (threshold: 5.0)
+2025-09-18 18:32:55,544 - rldk.monitor.engine - WARNING - [fullscale_entropy_collapse] 🌀 Entropy collapse: 0.0307 (threshold: 0.05)
+🌀 Entropy collapse: 0.0307 (threshold: 0.05)
+2025-09-18 18:32:55,547 - rldk.monitor.engine - WARNING - [fullscale_task_reward_collapse] 🎯 Task reward collapse: 0.2000 (threshold: 0.1)
+🎯 Task reward collapse: 0.2000 (threshold: 0.1)
+2025-09-18 18:32:55,550 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 274.3357 at step 155 (threshold: 5.0)
+⚡ Gradient explosion: 274.3357 at step 155 (threshold: 5.0)
+2025-09-18 18:32:55,556 - rldk.monitor.engine - WARNING - [fullscale_entropy_collapse] 🌀 Entropy collapse: 0.0301 (threshold: 0.05)
+🌀 Entropy collapse: 0.0301 (threshold: 0.05)
+2025-09-18 18:32:55,557 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 412.7521 at step 164 (threshold: 5.0)
+⚡ Gradient explosion: 412.7521 at step 164 (threshold: 5.0)
+2025-09-18 18:32:55,560 - rldk.monitor.engine - WARNING - [fullscale_task_reward_collapse] 🎯 Task reward collapse: 0.0000 (threshold: 0.1)
+🎯 Task reward collapse: 0.0000 (threshold: 0.1)
+2025-09-18 18:32:55,564 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 256.9662 at step 173 (threshold: 5.0)
+⚡ Gradient explosion: 256.9662 at step 173 (threshold: 5.0)
+2025-09-18 18:32:55,566 - rldk.monitor.engine - WARNING - [fullscale_reward_variance_spike] 📊 Reward variance spike: 2.5170 (threshold: 2.0)
+📊 Reward variance spike: 2.5170 (threshold: 2.0)
+2025-09-18 18:32:55,569 - rldk.monitor.engine - WARNING - [fullscale_entropy_collapse] 🌀 Entropy collapse: 0.0308 (threshold: 0.05)
+🌀 Entropy collapse: 0.0308 (threshold: 0.05)
+2025-09-18 18:32:55,571 - rldk.monitor.engine - WARNING - [fullscale_gradient_explosion] ⚡ Gradient explosion: 486.1120 at step 182 (threshold: 5.0)
+⚡ Gradient explosion: 486.1120 at step 182 (threshold: 5.0)
+2025-09-18 18:32:55,573 - rldk.monitor.engine - WARNING - [fullscale_task_reward_collapse] 🎯 Task reward collapse: 0.1500 (threshold: 0.1)
+🎯 Task reward collapse: 0.1500 (threshold: 0.1)
+Usage: rldk reward [OPTIONS] COMMAND [ARGS]...
+Try 'rldk reward --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ No such command 'health'.                                                                                                │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+                                                                                                                            
+ Usage: rldk reward [OPTIONS] COMMAND [ARGS]...                                                                             
+                                                                                                                            
+ Reward model analysis commands                                                                                             
+                                                                                                                            
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ reward-drift    Compare two reward models and detect drift.                                                              │
+│ reward-health   Reward health analysis commands                                                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+Usage: rldk [OPTIONS] COMMAND [ARGS]...
+Try 'rldk --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ No such command 'determinism'.                                                                                           │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+                                                                                                                            
+ Usage: rldk [OPTIONS] COMMAND [ARGS]...                                                                                    
+                                                                                                                            
+ RL Debug Kit - Library and CLI for debugging reinforcement learning training runs                                          
+                                                                                                                            
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ monitor             Monitor JSONL metrics with streaming or batch analysis.                                              │
+│ emit                Append a canonical monitoring event to a JSONL file.                                                 │
+│ ingest              Ingest training runs from various sources.                                                           │
+│ diff                Compare normalized training metrics between two runs.                                                │
+│ check-determinism   Check if a training command is deterministic.                                                        │
+│ bisect              Find regression using git bisect.                                                                    │
+│ reward-health       Analyze reward model health and detect pathologies.                                                  │
+│ replay              Replay a training run with the original seed and verify reproducibility.                             │
+│ eval                Run evaluation suite with statistical analysis.                                                      │
+│ compare-runs        Compare two training runs and identify divergences.                                                  │
+│ diff-ckpt           Compare two model checkpoints and identify parameter differences.                                    │
+│ env-audit           Audit environment for determinism and reproducibility.                                               │
+│ log-scan            Scan training logs for PPO anomalies and issues.                                                     │
+│ track               Start tracking an experiment with W&B (default) or file logging.                                     │
+│ reward-drift        Compare two reward models and detect drift.                                                          │
+│ doctor              Run comprehensive diagnostics on a training run or repository.                                       │
+│ format-info         Show data format information for adapters.                                                           │
+│ validate-format     Validate data format and suggest appropriate adapter.                                                │
+│ version             Show version information.                                                                            │
+│ seed                Manage global seed for reproducible experiments.                                                     │
+│ card                Generate trust cards for RL training runs.                                                           │
+│ forensics           Forensics commands for RL training analysis                                                          │
+│ reward              Reward model analysis commands                                                                       │
+│ evals               Evaluation suite commands                                                                            │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+Usage: rldk reward reward-health [OPTIONS] COMMAND [ARGS]...
+Try 'rldk reward reward-health --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ No such command 'artifacts/fullscale/training_metrics.parquet'.                                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Usage: rldk reward-health [OPTIONS]
+Try 'rldk reward-health --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ No such option: --output Did you mean --output-dir?                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Usage: rldk check-determinism [OPTIONS]
+Try 'rldk check-determinism --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ No such option: --output Did you mean --output-dir?                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Usage: rldk diff [OPTIONS]
+Try 'rldk diff --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ No such option: --output Did you mean --output-dir?                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+total 884
+drwxr-xr-x 2 ubuntu ubuntu   4096 Sep 18 18:32 .
+drwxr-xr-x 3 ubuntu ubuntu   4096 Sep 18 18:01 ..
+-rw-r--r-- 1 ubuntu ubuntu    732 Sep 18 18:01 ACCEPTANCE_SUMMARY.md
+-rw-r--r-- 1 ubuntu ubuntu 105250 Sep 18 18:30 baseline.jsonl
+-rw-r--r-- 1 ubuntu ubuntu  57718 Sep 18 18:36 cli_logs.txt
+-rw-r--r-- 1 ubuntu ubuntu    155 Sep 18 18:26 final_metrics.json
+-rw-r--r-- 1 ubuntu ubuntu  23654 Sep 18 18:32 monitor_alerts.jsonl
+-rw-r--r-- 1 ubuntu ubuntu   3921 Sep 18 18:32 monitor_alerts.txt
+-rw-r--r-- 1 ubuntu ubuntu  38235 Sep 18 18:32 monitor_report.json
+-rw-r--r-- 1 ubuntu ubuntu 546460 Sep 18 18:26 run.jsonl
+-rw-r--r-- 1 ubuntu ubuntu  96404 Sep 18 18:32 training_metrics.parquet

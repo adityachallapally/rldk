@@ -1,0 +1,122 @@
+rules:
+  - id: fullscale_kl_spike_guard
+    where: name == "kl_mean"
+    condition: value > 0.3
+    window:
+      size: 5
+      kind: consecutive
+    cooldown_steps: 10
+    grace_steps: 5
+    actions:
+      - warn:
+          msg: "🚨 KL spike detected: {value:.4f} at step {step} (threshold: 0.3)"
+      - stop:
+          msg: "🛑 Stopping training due to KL spike: {value:.4f}"
+
+  - id: fullscale_reward_collapse
+    where: name == "reward_mean"
+    condition: mean(value) < -0.5
+    window:
+      size: 20
+      kind: rolling
+    cooldown_steps: 15
+    grace_steps: 10
+    actions:
+      - warn:
+          msg: "⚠️ Reward collapse detected: rolling mean {value:.4f} (threshold: -0.5)"
+
+  - id: fullscale_gradient_explosion
+    where: name == "grad_norm"
+    condition: value > 5.0
+    window:
+      size: 3
+      kind: consecutive
+    cooldown_steps: 8
+    grace_steps: 3
+    actions:
+      - warn:
+          msg: "⚡ Gradient explosion: {value:.4f} at step {step} (threshold: 5.0)"
+
+  - id: fullscale_loss_divergence
+    where: name == "loss"
+    condition: value > 10.0
+    window:
+      size: 5
+      kind: consecutive
+    cooldown_steps: 10
+    grace_steps: 5
+    actions:
+      - warn:
+          msg: "📈 Loss divergence: {value:.4f} at step {step} (threshold: 10.0)"
+
+  - id: fullscale_advantage_anomaly
+    where: name == "advantage_std"
+    condition: value > 3.0
+    window:
+      size: 10
+      kind: rolling
+    cooldown_steps: 12
+    grace_steps: 8
+    actions:
+      - warn:
+          msg: "🎯 Advantage variance anomaly: {value:.4f} (threshold: 3.0)"
+
+  - id: fullscale_reward_variance_spike
+    where: name == "reward_std"
+    condition: value > 2.0
+    window:
+      size: 8
+      kind: rolling
+    cooldown_steps: 10
+    grace_steps: 5
+    actions:
+      - warn:
+          msg: "📊 Reward variance spike: {value:.4f} (threshold: 2.0)"
+
+  - id: fullscale_baseline_drift
+    where: name == "baseline"
+    condition: value > 1.5 or value < -1.5
+    window:
+      size: 15
+      kind: rolling
+    cooldown_steps: 20
+    grace_steps: 10
+    actions:
+      - warn:
+          msg: "🎚️ Baseline drift: {value:.4f} (threshold: ±1.5)"
+
+  - id: fullscale_task_reward_collapse
+    where: name == "task_reward_mean"
+    condition: mean(value) < 0.1
+    window:
+      size: 25
+      kind: rolling
+    cooldown_steps: 15
+    grace_steps: 15
+    actions:
+      - warn:
+          msg: "🎯 Task reward collapse: {value:.4f} (threshold: 0.1)"
+
+  - id: fullscale_kl_penalty_excessive
+    where: name == "kl_penalty_mean"
+    condition: value < -1.0
+    window:
+      size: 10
+      kind: rolling
+    cooldown_steps: 12
+    grace_steps: 8
+    actions:
+      - warn:
+          msg: "🔒 Excessive KL penalty: {value:.4f} (threshold: -1.0)"
+
+  - id: fullscale_entropy_collapse
+    where: name == "entropy_mean"
+    condition: mean(value) < 0.05
+    window:
+      size: 20
+      kind: rolling
+    cooldown_steps: 15
+    grace_steps: 10
+    actions:
+      - warn:
+          msg: "🌀 Entropy collapse: {value:.4f} (threshold: 0.05)"
