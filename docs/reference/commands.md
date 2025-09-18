@@ -518,11 +518,13 @@ rldk card CARD_TYPE RUN_A [RUN_B] [OPTIONS]
 
 **Arguments:**
 - `CARD_TYPE`: Type of card to generate (`determinism`, `drift`, `reward`)
-- `RUN_A`: Path to first run directory (required)
-- `RUN_B`: Path to second run directory (for drift cards)
+- `RUN_A`: Path to the primary run directory or metrics file (required)
+- `RUN_B`: Path to the comparison run directory or metrics file (drift cards only)
 
 **Options:**
 - `--output-dir`, `-o`: Output directory for cards
+- `--preset`: Field map preset for common trainer outputs (e.g. `trl`)
+- `--field-map`: JSON object mapping source columns to canonical training metrics
 
 **Examples:**
 ```bash
@@ -531,6 +533,9 @@ rldk card determinism ./runs/experiment_1
 
 # Generate drift card comparing two runs
 rldk card drift ./runs/experiment_1 ./runs/experiment_2
+
+# Generate reward card from a JSONL metrics stream using the TRL preset
+rldk card reward ./logs/trl_stream.jsonl --preset trl
 
 # Generate reward card
 rldk card reward ./runs/experiment_1
