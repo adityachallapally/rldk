@@ -282,7 +282,7 @@ class RLTrainer:
         
         response_mask = torch.zeros_like(shift_labels, dtype=torch.bool)
         for i, prompt_len in enumerate(prompt_mask.sum(dim=1)):
-            response_mask[i, prompt_len-1:] = True
+            response_mask[i, prompt_len:] = True
         
         masked_log_probs = selected_log_probs * response_mask.float()
         sequence_log_probs = masked_log_probs.sum(dim=1)
@@ -302,7 +302,7 @@ class RLTrainer:
         
         response_mask = torch.zeros_like(shift_labels, dtype=torch.bool)
         for i, prompt_len in enumerate(prompt_mask.sum(dim=1)):
-            response_mask[i, prompt_len-1:] = True
+            response_mask[i, prompt_len:] = True
         
         masked_log_probs = selected_log_probs * response_mask.float()
         sequence_log_probs = masked_log_probs.sum(dim=1)
@@ -326,14 +326,14 @@ class RLTrainer:
         
         for response, domain, kl_div in zip(responses, domains, kl_divergences):
             response_tokens = self.tokenizer.encode(response)
-            entropy = len(set(response_tokens)) / len(response_tokens) if response_tokens else 0.0
+            unique_token_ratio = len(set(response_tokens)) / len(response_tokens) if response_tokens else 0.0
             
             reward, components = self.reward_fn.compute_reward(
                 response=response,
                 domain=domain,
                 kl_divergence=kl_div.item(),
                 response_length=len(response_tokens),
-                entropy=entropy,
+                entropy=unique_token_ratio,
             )
             
             rewards.append(reward)
@@ -365,7 +365,7 @@ class RLTrainer:
             "advantage_mean": advantages.mean().item(),
             "advantage_std": advantages.std().item(),
             "grad_norm": grad_norm.item(),
-            "entropy_mean": np.mean([comp["complexity_reward"] for comp in reward_components]),
+            "entropy_mean": np.mean([len(set(self.tokenizer.encode(resp))) / len(self.tokenizer.encode(resp)) if self.tokenizer.encode(resp) else 0.0 for resp in responses]),
         }
         
         for key in ["task_reward", "kl_penalty", "complexity_reward"]:
@@ -410,6 +410,7 @@ def main():
         tokenizer = AutoTokenizer.from_pretrained(args.model_name)
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
+        tokenizer.padding_side = 'left'
         
         model = AutoModelForCausalLM.from_pretrained(args.model_name)
         ref_model = AutoModelForCausalLM.from_pretrained(args.model_name)
