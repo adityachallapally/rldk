@@ -16,7 +16,7 @@ rules:
     condition: value < 0.12
     window:
       size: 20
-      kind: sliding
+      kind: rolling
       aggregator: mean
     cooldown_steps: 25
     actions:
