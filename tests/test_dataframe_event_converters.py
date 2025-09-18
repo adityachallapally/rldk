@@ -102,3 +102,36 @@ def test_dataframe_to_events_preserves_network_metrics() -> None:
     restored = events_to_dataframe(events)
     assert restored.loc[0, "network_bandwidth"] == pytest.approx(250.0)
     assert restored.loc[0, "latency_ms"] == pytest.approx(12.5)
+
+
+def test_dataframe_to_events_ignores_missing_metrics() -> None:
+    df = pd.DataFrame(
+        {
+            "step": [0, 1],
+            "reward_mean": [None, 0.75],
+            "kl_mean": [0.12, float("nan")],
+        }
+    )
+
+    events = dataframe_to_events(df, run_id="missing-metrics")
+
+    assert len(events) == 2
+    assert "reward_mean" not in events[0].metrics
+    assert events[1].metrics["reward_mean"] == pytest.approx(0.75)
+    assert events[0].metrics["kl_mean"] == pytest.approx(0.12)
+    assert "kl_mean" not in events[1].metrics
+
+
+def test_dataframe_to_events_orders_by_step_stably() -> None:
+    df = pd.DataFrame(
+        {
+            "step": [3, 1, 2, 1],
+            "reward_mean": [0.3, 0.1, 0.2, 0.15],
+            "wall_time": [30.0, 10.0, 20.0, 11.0],
+        }
+    )
+
+    events = dataframe_to_events(df, run_id="ordering")
+
+    assert [event.step for event in events] == [1, 1, 2, 3]
+    assert [event.metrics["reward_mean"] for event in events] == [0.1, 0.15, 0.2, 0.3]
