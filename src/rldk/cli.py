@@ -33,11 +33,7 @@ from rldk.evals.suites import COMPREHENSIVE_SUITE, QUICK_SUITE, SAFETY_SUITE
 from rldk.forensics.ckpt_diff import diff_checkpoints
 from rldk.forensics.env_audit import audit_environment
 from rldk.forensics.log_scan import scan_logs
-from rldk.ingest import (
-    ingest_runs,
-    ingest_runs_to_events,
-    normalize_training_metrics_source,
-)
+from rldk.ingest import ingest_runs, normalize_training_metrics_source
 from rldk.io import (
     CkptDiffReportV1,
     DeterminismCardV1,
@@ -51,6 +47,7 @@ from rldk.io import (
     write_json,
     write_png,
 )
+from rldk.io.event_schema import dataframe_to_events
 from rldk.io import write_json as write_json_report
 from rldk.monitor import (
     ActionDispatcher,
@@ -3149,21 +3146,75 @@ def card(
     card_type: str = typer.Argument(
         ..., help="Type of card to generate (determinism, drift, reward)"
     ),
-    run_a: str = typer.Argument(..., help="Path to first run directory"),
+    run_a: str = typer.Argument(
+        ..., help="Path to first run directory or metrics file"
+    ),
     run_b: Optional[str] = typer.Argument(
         None, help="Path to second run directory (for drift cards)"
     ),
     output_dir: Optional[str] = typer.Option(
         None, "--output-dir", "-o", help="Output directory for cards"
     ),
+    preset: Optional[str] = typer.Option(
+        None,
+        "--preset",
+        help=(
+            "Field map preset to normalize training metrics"
+            f" ({', '.join(sorted(FIELD_MAP_PRESETS))})"
+            if FIELD_MAP_PRESETS
+            else "Field map preset name (e.g. trl)."
+        ),
+    ),
+    field_map: Optional[str] = typer.Option(
+        None,
+        "--field-map",
+        help="JSON object mapping source columns to canonical training metrics.",
+    ),
 ):
     """Generate trust cards for RL training runs."""
     try:
+        try:
+            combined_field_map = _combine_field_maps(preset, field_map)
+        except ValueError as exc:
+            typer.echo(f"Invalid field map: {exc}", err=True)
+            raise typer.Exit(1)
+
+        def _normalize_to_events(path: str) -> Tuple[pd.DataFrame, List[Any]]:
+            try:
+                df = normalize_training_metrics_source(
+                    path, field_map=combined_field_map
+                )
+            except ValidationError as exc:
+                typer.echo(format_structured_error_message(exc), err=True)
+                raise typer.Exit(1)
+
+            run_id_value: Optional[str] = None
+            if "run_id" in df.columns:
+                non_null = df["run_id"].dropna()
+                if not non_null.empty:
+                    run_id_value = str(non_null.iloc[0])
+
+            git_sha_value: Optional[str] = None
+            if "git_sha" in df.columns:
+                git_non_null = df["git_sha"].dropna()
+                if not git_non_null.empty:
+                    git_sha_value = str(git_non_null.iloc[0])
+
+            try:
+                events = dataframe_to_events(
+                    df, run_id=run_id_value, git_sha=git_sha_value
+                )
+            except ValidationError as exc:
+                typer.echo(format_structured_error_message(exc), err=True)
+                raise typer.Exit(1)
+
+            return df, events
+
         if card_type == "determinism":
             typer.echo(f"Generating determinism card for run: {run_a}")
 
-            # Ingest events
-            events = ingest_runs_to_events(run_a)
+            # Normalize run to events
+            _, events = _normalize_to_events(run_a)
 
             # Generate card
             card_data = generate_determinism_card(events, run_a, output_dir)
@@ -3182,9 +3233,9 @@ def card(
             typer.echo(f"  Run A: {run_a}")
             typer.echo(f"  Run B: {run_b}")
 
-            # Ingest events
-            events_a = ingest_runs_to_events(run_a)
-            events_b = ingest_runs_to_events(run_b)
+            # Normalize runs to events
+            _, events_a = _normalize_to_events(run_a)
+            _, events_b = _normalize_to_events(run_b)
 
             # Generate card
             card_data = generate_drift_card(
@@ -3200,8 +3251,15 @@ def card(
         elif card_type == "reward":
             typer.echo(f"Generating reward card for run: {run_a}")
 
-            # Ingest events
-            events = ingest_runs_to_events(run_a)
+            # Normalize run to events
+            metrics_df, events = _normalize_to_events(run_a)
+
+            if metrics_df.empty or metrics_df["reward_mean"].dropna().empty:
+                typer.echo(
+                    "Warning: No reward_mean values found after normalization. "
+                    "Use --preset or --field-map to map your reward metric.",
+                    err=True,
+                )
 
             # Generate card
             card_data = generate_reward_card(events, run_a, output_dir)

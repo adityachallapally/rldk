@@ -206,7 +206,14 @@ rldk card drift runs/clean_ppo runs/doctored_ppo
 
 # Reward card
 rldk card reward runs/clean_ppo
+
+# Reward card from JSONL stream with preset mapping
+rldk card reward logs/reward_stream.jsonl --preset trl
 ```
+
+The command accepts run directories or standalone metrics files (JSONL, CSV, TSV,
+or Parquet) and supports `--preset` / `--field-map` options to align custom
+column names with the TrainingMetrics schema.
 
 ## Schema Validation
 
