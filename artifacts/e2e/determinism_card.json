@@ -1,0 +1,59 @@
+{
+  "version": "1.0",
+  "run_id": "dffceddd",
+  "generated_at": "2025-09-18T06:17:22.377563",
+  "passed": false,
+  "replicas": 0,
+  "metrics_compared": [
+    "reward_mean",
+    "reward_std",
+    "kl_mean",
+    "grad_norm",
+    "lr",
+    "loss"
+  ],
+  "replica_variance": {
+    "reward_mean": 4.184415224194202e-09,
+    "kl_mean": 4.188080870763884e-05
+  },
+  "rng_map": {
+    "python_hash_seed": null,
+    "torch_deterministic": false,
+    "torch_seed": null,
+    "numpy_seed": null,
+    "random_seed": null
+  },
+  "mismatches": [
+    {
+      "step": 1,
+      "metric": "grad_norm",
+      "replica_1": 123.57061004638672,
+      "replica_2": 0.004512113053351641,
+      "variance": 123.56609793333337
+    },
+    {
+      "step": 1,
+      "metric": "loss",
+      "replica_1": 146.11770629882812,
+      "replica_2": -0.0036513167433440685,
+      "variance": 146.12135761557147
+    }
+  ],
+  "fixes": [
+    "Set torch.backends.cudnn.deterministic = True",
+    "Set torch.backends.cudnn.benchmark = False",
+    "Set TOKENIZERS_PARALLELISM=false",
+    "Use torch.manual_seed() consistently",
+    "Set numpy.random.seed() consistently",
+    "Use random.seed() consistently",
+    "Ensure deterministic data loading"
+  ],
+  "nondeterminism_hints": [
+    "Large gradient norm detected"
+  ],
+  "flags": {
+    "cudnn_deterministic": false,
+    "cudnn_benchmark": true,
+    "tokenizers_parallelism": "true"
+  }
+}
