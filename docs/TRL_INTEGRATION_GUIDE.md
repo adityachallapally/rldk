@@ -216,6 +216,12 @@ adapter = TRLAdapter("malformed_events.jsonl")
 df = adapter.load()  # Only loads valid lines
 ```
 
+### Unknown Schemas
+
+Logs that use custom field names now fall back to the flexible adapter with a helpful
+message suggesting ``--field-map``. This keeps ingestion resilient while guiding you to
+map bespoke metrics into the shared TrainingMetrics schema.
+
 ### Missing Dependencies
 
 If TRL is not available, RLDK will raise a clear error:

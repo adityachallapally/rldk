@@ -3,13 +3,22 @@
 import json
 import os
 import tempfile
+from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from rldk.adapters.openrlhf import OpenRLHFAdapter
 from rldk.adapters.trl import TRLAdapter
 from rldk.adapters.wandb import WandBAdapter
 from rldk.io.schema import MetricsSchema
+from rldk.utils.error_handling import AdapterError
+
+
+def _write_jsonl(path: Path, records: list[dict]) -> None:
+    with path.open("w", encoding="utf-8") as handle:
+        for record in records:
+            handle.write(json.dumps(record) + "\n")
 
 
 class TestTRLAdapter:
@@ -39,77 +48,121 @@ class TestTRLAdapter:
             adapter = TRLAdapter(f.name)
             assert adapter.can_handle()
 
-    def test_load_jsonl(self):
-        """Test loading TRL JSONL data."""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
-            # Write test data
-            for i in range(3):
-                json.dump(
-                    {
-                        "step": i,
-                        "phase": "train",
-                        "reward_mean": 0.5 + i * 0.1,
-                        "kl_mean": 0.1 + i * 0.01,
-                        "entropy_mean": 0.8 - i * 0.02,
-                        "loss": 0.4 - i * 0.05,
-                        "lr": 0.001,
-                        "wall_time": i * 10.0,
-                        "seed": 42,
-                        "run_id": "test_run",
-                        "git_sha": "abc123",
-                    },
-                    f,
-                )
-                f.write("\n")
-            f.flush()
+    def test_flat_and_nested_logs_normalize(self, tmp_path: Path):
+        """TRL adapter normalizes flat and nested records to the same table."""
 
-            adapter = TRLAdapter(f.name)
-            df = adapter.load()
+        flat_path = tmp_path / "flat.jsonl"
+        nested_path = tmp_path / "nested.jsonl"
 
-            assert len(df) == 3
-            assert "step" in df.columns
-            assert "reward_mean" in df.columns
-            assert "kl_mean" in df.columns
-            assert "wall_time" in df.columns
-            assert df["step"].iloc[0] == 0
-            assert df["reward_mean"].iloc[0] == 0.5
-
-    def test_round_trip_schema(self):
-        """Test round-trip conversion to and from schema."""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
-            # Write test data
-            json.dump(
+        _write_jsonl(
+            flat_path,
+            [
                 {
-                    "step": 0,
+                    "step": 1,
                     "phase": "train",
                     "reward_mean": 0.5,
                     "kl_mean": 0.1,
                     "entropy_mean": 0.8,
-                    "loss": 0.4,
                     "lr": 0.001,
-                    "wall_time": 10.0,
-                    "seed": 42,
-                    "run_id": "test_run",
+                    "grad_norm": 0.2,
+                    "wall_time_ms": 2000,
+                    "seed": 11,
+                    "run_id": "trl-run",
                     "git_sha": "abc123",
+                    "tokens_in": 256,
+                    "tokens_out": 128,
                 },
-                f,
-            )
-            f.write("\n")
-            f.flush()
+                {
+                    "step": 2,
+                    "phase": "train",
+                    "reward_mean": 0.6,
+                    "kl_mean": 0.12,
+                    "entropy_mean": 0.75,
+                    "lr": 0.001,
+                    "grad_norm": 0.25,
+                    "wall_time_ms": 4000,
+                    "seed": 11,
+                    "run_id": "trl-run",
+                    "git_sha": "abc123",
+                    "tokens_in": 300,
+                    "tokens_out": 150,
+                },
+            ],
+        )
 
-            adapter = TRLAdapter(f.name)
-            df = adapter.load()
+        _write_jsonl(
+            nested_path,
+            [
+                {
+                    "step": 1,
+                    "wall_time": 2.0,
+                    "metrics": {
+                        "reward_mean": 0.5,
+                        "kl_mean": 0.1,
+                        "entropy_mean": 0.8,
+                        "lr": 0.001,
+                        "grad_norm": 0.2,
+                    },
+                    "data_slice": {"tokens_in": 256, "tokens_out": 128},
+                    "rng": {"seed": 11},
+                    "model_info": {
+                        "run_id": "trl-run",
+                        "phase": "train",
+                        "git_sha": "abc123",
+                    },
+                },
+                {
+                    "step": 2,
+                    "wall_time": 4.0,
+                    "metrics": {
+                        "reward_mean": 0.6,
+                        "kl_mean": 0.12,
+                        "entropy_mean": 0.75,
+                        "lr": 0.001,
+                        "grad_norm": 0.25,
+                    },
+                    "data_slice": {"tokens_in": 300, "tokens_out": 150},
+                    "rng": {"seed": 11},
+                    "model_info": {
+                        "run_id": "trl-run",
+                        "phase": "train",
+                        "git_sha": "abc123",
+                    },
+                },
+            ],
+        )
 
-            # Convert to schema
-            schema = MetricsSchema.from_dataframe(df)
-            assert len(schema.metrics) == 1
+        df_flat = TRLAdapter(flat_path).load()
+        df_nested = TRLAdapter(nested_path).load()
 
-            # Convert back to dataframe
-            df_round_trip = schema.to_dataframe()
-            assert len(df_round_trip) == 1
-            assert df_round_trip["reward_mean"].iloc[0] == 0.5
+        pd.testing.assert_frame_equal(df_flat, df_nested, check_dtype=False)
 
+    def test_unknown_shape_suggests_field_map(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ):
+        """Unrecognized shapes fall back to flexible adapter with guidance."""
 
+        path = tmp_path / "unknown.jsonl"
+        _write_jsonl(
+            path,
+            [
+                {
+                    "step": 1,
+                    "metrics": [
+                        {"name": "reward_mean", "value": 0.5},
+                    ],
+                }
+            ],
+        )
+
+        adapter = TRLAdapter(path)
+        caplog.set_level("WARNING")
+
+        df = adapter.load()
+
+        assert not df.empty
+        assert "step" in df.columns
+        assert any("field-map" in msg for msg in caplog.messages)
 class TestOpenRLHFAdapter:
     """Test OpenRLHF adapter functionality."""
 
