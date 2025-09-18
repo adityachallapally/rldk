@@ -71,6 +71,11 @@ def setup_test_environment():
     # Set environment variables for testing
     os.environ["RLDK_TEST_MODE"] = "true"
     os.environ["WANDB_MODE"] = "disabled"
+    original_pythonpath = os.environ.get("PYTHONPATH")
+    pythonpath_parts = [str(src_path)]
+    if original_pythonpath:
+        pythonpath_parts.append(original_pythonpath)
+    os.environ["PYTHONPATH"] = os.pathsep.join(pythonpath_parts)
 
     yield
 
@@ -79,6 +84,10 @@ def setup_test_environment():
         del os.environ["RLDK_TEST_MODE"]
     if "WANDB_MODE" in os.environ:
         del os.environ["WANDB_MODE"]
+    if original_pythonpath is None:
+        del os.environ["PYTHONPATH"]
+    else:
+        os.environ["PYTHONPATH"] = original_pythonpath
 
 
 # Pytest configuration
