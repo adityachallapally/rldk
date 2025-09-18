@@ -31,6 +31,7 @@ def ingest_runs(
     adapter_hint: Optional[str] = None,
     field_map: Optional[Dict[str, str]] = None,
     config_file: Optional[Union[str, Path]] = None,
+    preset: Optional[str] = None,
     validation_mode: str = "flexible",
     required_fields: Optional[List[str]] = None
 ) -> pd.DataFrame:
@@ -42,6 +43,7 @@ def ingest_runs(
         adapter_hint: Optional hint for adapter type ('trl', 'openrlhf', 'wandb', 'custom_jsonl', 'flexible')
         field_map: Optional explicit mapping from canonical to actual field names
         config_file: Optional path to YAML/JSON config file with field mapping
+        preset: Optional preset name for field mapping
         validation_mode: Validation strictness - 'strict', 'flexible', or 'lenient'
         required_fields: List of required canonical field names
 
@@ -121,6 +123,7 @@ def ingest_runs(
                 source,
                 field_map=field_map,
                 config_file=config_file,
+                preset=preset,
                 required_fields=required_fields or ['step', 'reward'],
                 validation_mode=validation_mode
             )
@@ -198,6 +201,7 @@ def ingest_runs_to_events(
     adapter_hint: Optional[str] = None,
     field_map: Optional[Dict[str, str]] = None,
     config_file: Optional[Union[str, Path]] = None,
+    preset: Optional[str] = None,
     validation_mode: str = "flexible",
     required_fields: Optional[List[str]] = None
 ) -> List[Event]:
@@ -209,6 +213,7 @@ def ingest_runs_to_events(
         adapter_hint: Optional hint for adapter type ('trl', 'openrlhf', 'wandb', 'custom_jsonl', 'flexible')
         field_map: Optional explicit mapping from canonical to actual field names
         config_file: Optional path to YAML/JSON config file with field mapping
+        preset: Optional preset name for field mapping
         validation_mode: Validation strictness - 'strict', 'flexible', or 'lenient'
         required_fields: List of required canonical field names
 
@@ -221,6 +226,7 @@ def ingest_runs_to_events(
         adapter_hint,
         field_map=field_map,
         config_file=config_file,
+        preset=preset,
         validation_mode=validation_mode,
         required_fields=required_fields
     )

@@ -23,6 +23,7 @@ class FlexibleDataAdapter(BaseAdapter):
         source: Union[str, Path],
         field_map: Optional[Dict[str, str]] = None,
         config_file: Optional[Union[str, Path]] = None,
+        preset: Optional[str] = None,
         allow_dot_paths: bool = True,
         required_fields: Optional[List[str]] = None,
         validation_mode: str = "flexible"
@@ -33,24 +34,39 @@ class FlexibleDataAdapter(BaseAdapter):
             source: Path to data file or directory
             field_map: Optional explicit mapping from canonical to actual field names
             config_file: Optional path to YAML/JSON config file with field mapping
+            preset: Optional preset name for field mapping
             allow_dot_paths: Whether to support nested field access with dot notation
             required_fields: List of required canonical field names (defaults to ['step', 'reward'])
             validation_mode: Validation strictness - 'strict', 'flexible', or 'lenient'
         """
         super().__init__(source)
         self.field_resolver = FieldResolver(allow_dot_paths=allow_dot_paths)
-        self.field_map = field_map or {}
+        self.preset = preset
         self.config_file = Path(config_file) if config_file else None
         self.allow_dot_paths = allow_dot_paths
         self.required_fields = required_fields or ['step', 'reward']
         self.validation_mode = validation_mode
         self.logger = logging.getLogger(self.__class__.__name__)
 
-        # Load field map from config file if provided
+        from ..ingest.stream_normalizer import _combine_field_maps
+        preset_field_map = _combine_field_maps(None, preset) if preset else {}
+        
+        config_field_map = {}
         if self.config_file and self.config_file.exists():
-            self._load_config()
+            config_field_map = self._load_config()
+        
+        combined_field_map = preset_field_map.copy()
+        combined_field_map.update(config_field_map)
+        
+        if field_map:
+            explicit_targets = set(field_map.values())
+            combined_field_map = {k: v for k, v in combined_field_map.items() 
+                                if v not in explicit_targets}
+            combined_field_map.update(field_map)
+        
+        self.field_map = combined_field_map
 
-    def _load_config(self) -> None:
+    def _load_config(self) -> Dict[str, str]:
         """Load field mapping from config file."""
         try:
             with open(self.config_file) as f:
@@ -66,10 +82,11 @@ class FlexibleDataAdapter(BaseAdapter):
                     )
 
             if 'field_map' in config:
-                self.field_map.update(config['field_map'])
                 self.logger.info(f"Loaded field map from {self.config_file}")
+                return config['field_map']
             else:
                 self.logger.warning(f"Config file {self.config_file} does not contain 'field_map' section")
+                return {}
 
         except Exception as e:
             raise ValidationError(
@@ -132,6 +149,12 @@ class FlexibleDataAdapter(BaseAdapter):
         self.field_resolver.log_resolution_summary(
             resolved_fields, missing_fields, len(df)
         )
+
+        try:
+            from ..ingest.training_metrics_normalizer import standardize_training_metrics
+            df = standardize_training_metrics(df)
+        except Exception as e:
+            self.logger.warning(f"Standardization failed, returning raw resolved data: {e}")
 
         return df
 
@@ -258,6 +281,10 @@ class FlexibleDataAdapter(BaseAdapter):
         """Resolve field names and validate schema."""
         available_headers = df.columns.tolist()
 
+        if self.field_map:
+            df = df.rename(columns=self.field_map)
+            available_headers = df.columns.tolist()
+
         # Check for missing required fields based on validation mode
         missing_fields = self.field_resolver.get_missing_fields(
             self.required_fields, available_headers, self.field_map
@@ -291,24 +318,21 @@ class FlexibleDataAdapter(BaseAdapter):
             elif self.validation_mode == "lenient" and missing_fields and self.logger:
                 self.logger.warning(f"Missing fields in lenient mode: {', '.join(missing_fields)}")
 
-        # Resolve field names and create new DataFrame with canonical names
         resolved_data = {}
 
         for canonical_name in self.field_resolver.get_canonical_fields():
-            resolved_name = self.field_resolver.resolve_field(
-                canonical_name, available_headers, self.field_map
-            )
-
-            if resolved_name:
-                # Extract data using resolved field name
-                if self.allow_dot_paths and '.' in resolved_name:
-                    # Handle nested field access
-                    resolved_data[canonical_name] = self._extract_nested_field(
-                        df, resolved_name
-                    )
-                else:
-                    # Direct field access
-                    resolved_data[canonical_name] = df[resolved_name]
+            if canonical_name in available_headers:
+                resolved_data[canonical_name] = df[canonical_name].values
+            else:
+                resolved_name = self.field_resolver.resolve_field(
+                    canonical_name, available_headers, {}
+                )
+                if resolved_name and resolved_name in df.columns:
+                    if self.allow_dot_paths and '.' in resolved_name:
+                        nested_series = self._extract_nested_field(df, resolved_name)
+                        resolved_data[canonical_name] = nested_series.values
+                    else:
+                        resolved_data[canonical_name] = df[resolved_name].values
 
         # Create new DataFrame with canonical column names
         result_df = pd.DataFrame(resolved_data)
@@ -353,17 +377,21 @@ class FlexibleDataAdapter(BaseAdapter):
         """Get mapping of resolved fields."""
         resolved = {}
         for canonical_name in self.field_resolver.get_canonical_fields():
-            resolved_name = self.field_resolver.resolve_field(
-                canonical_name, available_headers, self.field_map
-            )
-            if resolved_name:
-                resolved[canonical_name] = resolved_name
+            if canonical_name in available_headers:
+                resolved[canonical_name] = canonical_name
+            else:
+                resolved_name = self.field_resolver.resolve_field(
+                    canonical_name, available_headers, self.field_map
+                )
+                if resolved_name:
+                    resolved[canonical_name] = resolved_name
         return resolved
 
     def get_metadata(self) -> dict:
         """Get metadata about the loaded data."""
         return {
             "source": str(self.source),
+            "preset": self.preset,
             "field_map": self.field_map,
             "config_file": str(self.config_file) if self.config_file else None,
             "allow_dot_paths": self.allow_dot_paths,
@@ -381,6 +409,7 @@ class FlexibleJSONLAdapter(FlexibleDataAdapter):
         source: Union[str, Path],
         field_map: Optional[Dict[str, str]] = None,
         config_file: Optional[Union[str, Path]] = None,
+        preset: Optional[str] = None,
         allow_dot_paths: bool = True,
         required_fields: Optional[List[str]] = None,
         validation_mode: str = "flexible",
@@ -392,12 +421,13 @@ class FlexibleJSONLAdapter(FlexibleDataAdapter):
             source: Path to JSONL file
             field_map: Optional explicit mapping from canonical to actual field names
             config_file: Optional path to YAML/JSON config file with field mapping
+            preset: Optional preset name for field mapping
             allow_dot_paths: Whether to support nested field access with dot notation
             required_fields: List of required canonical field names (defaults to ['step', 'reward'])
             validation_mode: Validation strictness - 'strict', 'flexible', or 'lenient'
             stream_large_files: Whether to stream large files instead of loading all at once
         """
-        super().__init__(source, field_map, config_file, allow_dot_paths, required_fields, validation_mode)
+        super().__init__(source, field_map, config_file, preset, allow_dot_paths, required_fields, validation_mode)
         self.stream_large_files = stream_large_files
 
     def can_handle(self) -> bool:
@@ -466,11 +496,15 @@ class FlexibleJSONLAdapter(FlexibleDataAdapter):
 
         # Analyze field mapping
         sample_df = pd.DataFrame(sample_data)
+        original_headers = sample_df.columns.tolist()
+        
+        if self.field_map:
+            sample_df = sample_df.rename(columns=self.field_map)
         available_headers = sample_df.columns.tolist()
 
         resolved_fields = self._get_resolved_fields(available_headers)
         missing_fields = self.field_resolver.get_missing_fields(
-            self.required_fields, available_headers, self.field_map
+            self.required_fields, available_headers, {}
         )
 
         if missing_fields:
