@@ -9,6 +9,18 @@ import pandas as pd
 import pytest
 import yaml
 
+
+_ORIGINAL_NAMED_TEMPFILE = tempfile.NamedTemporaryFile
+
+
+def _text_mode_named_temporary_file(*args, **kwargs):
+    kwargs.setdefault("mode", "w")
+    kwargs.setdefault("encoding", "utf-8")
+    return _ORIGINAL_NAMED_TEMPFILE(*args, **kwargs)
+
+
+tempfile.NamedTemporaryFile = _text_mode_named_temporary_file
+
 from rldk.adapters.field_resolver import SchemaError
 from rldk.adapters.flexible import FlexibleDataAdapter, FlexibleJSONLAdapter
 
@@ -202,6 +214,57 @@ class TestFlexibleDataAdapter:
             assert df["kl"].iloc[0] == 0.1
 
         Path(f.name).unlink()
+
+    def test_field_map_converts_iteration_to_step(self):
+        """Field map entries map custom keys into the TrainingMetrics schema."""
+
+        with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+            data = [
+                {"iteration": 0, "score": 0.5, "extra": 3.2},
+                {"iteration": 1, "score": 0.6, "extra": 4.5},
+            ]
+            for record in data:
+                f.write(json.dumps(record) + "\n")
+            f.flush()
+
+        try:
+            adapter = FlexibleDataAdapter(
+                f.name,
+                field_map={"iteration": "step", "score": "reward"},
+            )
+            df = adapter.load()
+
+            assert df["step"].tolist() == [0, 1]
+            assert df["reward_mean"].tolist() == [0.5, 0.6]
+            # Unknown fields should pass through untouched
+            assert "iteration" in df.columns
+            assert df["iteration"].tolist() == [0, 1]
+            assert "extra" in df.columns
+            assert df["extra"].tolist() == [3.2, 4.5]
+        finally:
+            Path(f.name).unlink()
+
+    def test_preset_applies_trl_field_map(self):
+        """The flexible adapter uses the shared preset registry."""
+
+        with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+            data = [
+                {"global_step": 0, "reward": 0.25},
+                {"global_step": 1, "reward": 0.50},
+            ]
+            for record in data:
+                f.write(json.dumps(record) + "\n")
+            f.flush()
+
+        try:
+            adapter = FlexibleDataAdapter(f.name, preset="trl")
+            df = adapter.load()
+
+            assert df["step"].tolist() == [0, 1]
+            # Reward column is copied into the canonical TrainingMetrics column
+            assert df["reward_mean"].tolist() == [0.25, 0.50]
+        finally:
+            Path(f.name).unlink()
 
     def test_load_jsonl_with_nested_fields(self):
         """Test loading JSONL data with nested fields."""
