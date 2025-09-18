@@ -126,7 +126,7 @@ else:
 
 if reward_summary.exists():
     reward_payload = json.loads(reward_summary.read_text())
-    summary_lines.append(f"- Reward health verdict: {reward_payload.get('verdict', 'unknown')}")
+    summary_lines.append(f"- Reward health verdict: {reward_payload.get('overall_status', 'unknown')}")
     if not reward_payload.get("passed", False):
         summary_lines.append("  - ⚠️ Reward health reported issues")
 else:
