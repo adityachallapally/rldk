@@ -568,6 +568,45 @@ rules:
     assert len(alerts_text.read_text().strip().splitlines()) == 2
 
 
+def test_fullscale_rules_emit_remediation(tmp_path: Path, runner: CliRunner) -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    rules_path = repo_root / "rules" / "fullscale_rules.yaml"
+    events_path = tmp_path / "events.jsonl"
+    events = [
+        {"time": _now_iso(), "step": 1, "name": "grad_norm", "value": 1.2},
+        {"time": _now_iso(), "step": 2, "name": "grad_norm", "value": 1.3},
+        {"time": _now_iso(), "step": 3, "name": "grad_norm", "value": 1.4},
+    ]
+    events_path.write_text("\n".join(json.dumps(evt) for evt in events) + "\n")
+    alerts_path = tmp_path / "alerts.jsonl"
+    alerts_text_path = tmp_path / "alerts.txt"
+    result = runner.invoke(
+        app,
+        [
+            "monitor",
+            "--once",
+            str(events_path),
+            "--rules",
+            str(rules_path),
+            "--alerts",
+            str(alerts_path),
+            "--alerts-txt",
+            str(alerts_text_path),
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    assert "Remediation: Try reducing --learning-rate to ≤1e-4 or increasing --max-grad-norm to 1.2 to tame the spike." in result.stdout
+    lines = alerts_path.read_text().strip().splitlines()
+    assert lines, "expected at least one alert"  # defensive
+    payloads = [json.loads(line) for line in lines]
+    remediation_hints = [payload.get("details", {}).get("remediation") for payload in payloads]
+    assert any(
+        hint
+        and "Try reducing --learning-rate to ≤1e-4 or increasing --max-grad-norm to 1.2 to tame the spike." in hint
+        for hint in remediation_hints
+    )
+
+
 def test_monitor_cli_field_map_preset(tmp_path: Path, runner: CliRunner) -> None:
     log_path = tmp_path / "metrics.jsonl"
     values = [0.2, 0.36, 0.38, 0.4, 0.42, 0.44]
