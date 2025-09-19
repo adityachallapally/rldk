@@ -1,0 +1,81 @@
+{
+  "version": "2.1",
+  "timestamp": 1721664450.0,
+  "run_id": "ppo-rldk-demo-0722",
+  "total_steps": 44,
+  "overall_health_score": 0.603,
+  "training_stability_score": 0.855,
+  "convergence_quality_score": 0.959,
+  "anomalies": [
+    {
+      "type": "kl_schedule_drift",
+      "severity": "warning",
+      "message": "KL drifted beyond adaptive range for 8 consecutive steps.",
+      "value": 0.188,
+      "threshold": 0.12,
+      "tracker": "kl_schedule"
+    },
+    {
+      "type": "controller_overshoot",
+      "severity": "warning",
+      "message": "KL controller overshoot detected after coefficient bump.",
+      "value": 0.517,
+      "threshold": 0.3,
+      "tracker": "kl_schedule"
+    },
+    {
+      "type": "advantage_bias",
+      "severity": "critical",
+      "message": "Advantage mean bias reached 0.241 with limited normalization.",
+      "value": 0.241,
+      "threshold": 0.1,
+      "tracker": "advantage_statistics"
+    },
+    {
+      "type": "value_function_lag",
+      "severity": "warning",
+      "message": "Value head fell 12% behind policy improvements during surge.",
+      "value": 0.12,
+      "threshold": 0.08,
+      "tracker": "value_monitor"
+    },
+    {
+      "type": "gradient_balance",
+      "severity": "info",
+      "message": "Policy/value gradient ratio peaked at 1.46 during shutdown.",
+      "value": 1.46,
+      "threshold": 1.2,
+      "tracker": "gradient_norms"
+    }
+  ],
+  "trackers": {
+    "kl_schedule": {
+      "current_kl": 0.937,
+      "kl_target": 0.1,
+      "kl_health_score": 0.412,
+      "controller_responsiveness": 0.102,
+      "controller_overshoot": 0.517,
+      "time_in_target_range": 0.62,
+      "target_range_violations": 17
+    },
+    "gradient_norms": {
+      "current_policy_grad_norm": 0.852,
+      "current_value_grad_norm": 0.574,
+      "current_total_grad_norm": 1.011,
+      "gradient_health_score": 0.781,
+      "gradient_balance": 1.46
+    },
+    "advantage_statistics": {
+      "current_advantage_mean": 0.241,
+      "current_advantage_std": 1.062,
+      "advantage_health_score": 0.642,
+      "bias_health": 0.384,
+      "normalization_health": 0.711
+    },
+    "value_monitor": {
+      "bootstrap_mismatch": 0.12,
+      "value_head_lag_steps": 5,
+      "value_health_score": 0.733
+    }
+  }
+}
