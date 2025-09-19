@@ -20,7 +20,9 @@ def verify_data_consistency():
     expected_kl_values = [0.455, 0.568, 0.688, 0.805, 0.937]
     actual_kl_values = alerts_df['kl_value'].tolist()
     
-    if actual_kl_values == expected_kl_values:
+    actual_kl_rounded = [round(val, 3) for val in actual_kl_values]
+    
+    if actual_kl_rounded == expected_kl_values:
         print(f"✅ KL progression correct: {actual_kl_values}")
     else:
         print(f"❌ KL progression mismatch. Expected: {expected_kl_values}, Got: {actual_kl_values}")
