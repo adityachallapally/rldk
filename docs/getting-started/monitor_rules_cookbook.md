@@ -123,6 +123,24 @@ emits a warning and terminates the process specified with `--pid`.
 
 Mix and match these patterns with presets via `rldk monitor --rules ppo_safe` or your custom YAML.
 
+## Fullscale remediation hints
+
+The fullscale acceptance run reuses the following guardrails from
+`rules/fullscale_rules.yaml`. When they fire, apply the same remediations suggested by the
+alerts:
+
+- **KL spike guard (`kl_spike_guard`)** – Lower the policy temperature or learning rate to
+  tighten updates. The acceptance defaults are `--temperature 0.95` and `--learning-rate 8e-5`.
+- **Reward collapse watch (`reward_collapse_watch`)** – Increase the batch size for steadier
+  gradients or reduce the sampling temperature. Defaults are `--batch-size 4` and
+  `--temperature 0.95`.
+- **Gradient norm ceiling (`grad_norm_ceiling`)** – Ensure clipping is enabled with
+  `--max-grad-norm 2.5` or lower the learning rate when gradients breach the ceiling.
+
+These are the same hints echoed by the monitor when `scripts/fullscale_acceptance.sh`
+detects issues, so you can remediate failures locally before rerunning the acceptance
+pipeline.
+
 ## Action reference
 
 | Action | Description | Key fields |

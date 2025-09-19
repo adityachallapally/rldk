@@ -171,6 +171,45 @@ rldk evals evaluate data.jsonl --suite quick --output results.json
 rldk bisect --good abc123 --bad def456 --cmd "python train.py"
 ```
 
+## 🧪 Fullscale Acceptance Pipeline
+
+Run `scripts/fullscale_acceptance.sh` when you need an end-to-end validation of the toolkit.
+The helper script provisions an isolated virtual environment, installs RLDK in editable
+mode, and then orchestrates the following stages:
+
+- **Primary and baseline training runs** using `scripts/fullscale_train_rl.py` so you have
+  both an updating policy and a frozen control group to diff.
+- **Monitor verification** with `rules/fullscale_rules.yaml`, capturing alerts, a JSON
+  report, and human-readable summaries.
+- **Metrics ingestion and reward health analysis** to materialize normalized metrics and
+  gate on the default reward health detectors.
+- **Diff and determinism checks** that compare the primary run against the baseline and
+  ensure seeded replays stay within tolerance.
+- **Reward card generation** summarizing reward quality and health signals.
+
+The script exits non-zero when the monitor emits warning-or-higher alerts that exceed the
+guard bands or when the reward card reports issues, mirroring the gating you will see in
+`artifacts/fullscale/ACCEPTANCE_SUMMARY.md`.
+
+### Tuned defaults and anomaly simulation
+
+The acceptance trainer ships with tuned defaults so CPU runs finish in a few hours while
+still exercising all gates:
+
+- `--learning-rate`: `8e-5`
+- `--batch-size`: `4`
+- `--temperature`: `0.95`
+- `--max-grad-norm`: `2.5`
+
+Pass `--simulate-anomalies` to `scripts/fullscale_train_rl.py` when you want the legacy
+stressors (reward collapses and KL spikes) that guarantee monitor activations. Leaving the
+flag unset keeps the run in its healthy configuration so you can validate green-path
+behavior.
+
+Refer to the [monitor remediation hints](getting-started/monitor_rules_cookbook.md#fullscale-remediation-hints)
+for the adjustments the KL, reward, and gradient guards expect—these match the guidance
+emitted directly from `rules/fullscale_rules.yaml`.
+
 ## 📊 What You Get
 
 ### Complete Reproducibility
