@@ -60,141 +60,14 @@ CARD_DIR="${ARTIFACT_DIR}/cards"
 python -m rldk.cli card reward "${RUN_JSON}" --output-dir "${CARD_DIR}" | tee -a "${LOG_FILE}"
 
 python - <<PY
-import json
-import sys
 from pathlib import Path
 
-root = Path("${ARTIFACT_DIR}")
-run_path = root / "run.jsonl"
-baseline_path = root / "baseline.jsonl"
-alerts_path = root / "monitor_alerts.jsonl"
-monitor_report = root / "monitor_report.json"
-reward_summary = root / "reward_health" / "reward_health_summary.json"
-diff_report = root / "diff" / "diff_report.json"
-determinism_card = root / "determinism_report" / "determinism_card.json"
-card_json = root / "cards" / "reward_card.json"
+from rldk.acceptance.summary import summarize_from_artifacts
 
-summary_lines = ["# Fullscale Acceptance Summary", ""]
-status_ok = True
-ALERT_COUNT_THRESHOLD = 3
-WARNING_LEVEL = 1
-SEVERITY_RANK = {
-    "debug": 0,
-    "trace": 0,
-    "info": 0,
-    "notice": 0,
-    "warning": WARNING_LEVEL,
-    "error": 2,
-    "critical": 2,
-    "fatal": 3,
-}
-
-def _load_json_lines(path: Path) -> list[dict]:
-    records = []
-    with path.open() as handle:
-        for line in handle:
-            line = line.strip()
-            if not line:
-                continue
-            records.append(json.loads(line))
-    return records
-
-run_events = _load_json_lines(run_path)
-baseline_events = _load_json_lines(baseline_path)
-summary_lines.append(f"- Training events: {len(run_events)} entries in run.jsonl")
-summary_lines.append(f"- Baseline events: {len(baseline_events)} entries in baseline.jsonl")
-if len(run_events) <= 1000:
-    status_ok = False
-    summary_lines.append("  - ❌ Expected >1000 events in run.jsonl")
-if len(baseline_events) <= 1000:
-    status_ok = False
-    summary_lines.append("  - ❌ Expected >1000 events in baseline.jsonl")
-
-reward_series = [event["value"] for event in run_events if event.get("name") == "reward_mean"]
-if reward_series:
-    delta = reward_series[-1] - reward_series[0]
-    summary_lines.append(f"- Reward mean delta: {delta:.3f}")
-    if abs(delta) < 0.02:
-        status_ok = False
-        summary_lines.append("  - ❌ Reward mean did not change enough over run")
-else:
-    status_ok = False
-    summary_lines.append("- ❌ reward_mean series missing from run events")
-
-alert_records = []
-if alerts_path.exists():
-    alert_records = _load_json_lines(alerts_path)
-
-summary_lines.append(f"- Monitor alerts fired: {len(alert_records)}")
-if not alert_records:
-    summary_lines.append("  - ℹ️ No monitor alerts were emitted during the run")
-else:
-    if len(alert_records) > ALERT_COUNT_THRESHOLD:
-        status_ok = False
-        summary_lines.append(
-            f"  - ❌ Alert count {len(alert_records)} exceeded threshold {ALERT_COUNT_THRESHOLD}"
-        )
-    severities = [record.get("severity", "warning").lower() for record in alert_records]
-    high_severity = [
-        severity for severity in severities if SEVERITY_RANK.get(severity, WARNING_LEVEL) >= WARNING_LEVEL
-    ]
-    if high_severity:
-        status_ok = False
-        summary_lines.append(
-            "  - ❌ Monitor emitted warning-or-higher severity alerts: "
-            + ", ".join(sorted(set(high_severity)))
-        )
-
-if monitor_report.exists():
-    report = json.loads(monitor_report.read_text())
-    summary_lines.append(f"- Monitor report status: {report.get('status', 'unknown')}")
-else:
-    status_ok = False
-    summary_lines.append("- ❌ Monitor report missing")
-
-if reward_summary.exists():
-    reward_payload = json.loads(reward_summary.read_text())
-    summary_lines.append(f"- Reward health verdict: {reward_payload.get('overall_status', 'unknown')}")
-    if not reward_payload.get("passed", False):
-        status_ok = False
-        summary_lines.append("  - ❌ Reward health gate failed (passed flag false)")
-else:
-    status_ok = False
-    summary_lines.append("- ❌ Reward health summary missing")
-
-if diff_report.exists():
-    diff_payload = json.loads(diff_report.read_text())
-    summary_lines.append(f"- Diff verdict: {diff_payload.get('summary', {}).get('verdict', 'unknown')}")
-else:
-    status_ok = False
-    summary_lines.append("- ❌ Diff report missing")
-
-if determinism_card.exists():
-    det_payload = json.loads(determinism_card.read_text())
-    summary_lines.append(f"- Determinism check passed: {det_payload.get('passed', False)}")
-    if not det_payload.get('passed', False):
-        status_ok = False
-        summary_lines.append("  - ❌ Determinism check failed")
-else:
-    status_ok = False
-    summary_lines.append("- ❌ Determinism card missing")
-
-if card_json.exists():
-    card_payload = json.loads(card_json.read_text())
-    summary_lines.append(f"- Reward card status: {'HEALTHY' if card_payload.get('passed') else 'ISSUES'}")
-    if not card_payload.get("passed", False):
-        status_ok = False
-        summary_lines.append("  - ❌ Reward card gate failed (passed flag false)")
-else:
-    status_ok = False
-    summary_lines.append("- ❌ Reward card missing")
-
-summary_lines.append("")
-summary_lines.append("## Overall Result")
-summary_lines.append("PASS" if status_ok else "FAIL")
-
-(root / "ACCEPTANCE_SUMMARY.md").write_text("\n".join(summary_lines))
-if not status_ok:
-    sys.exit(1)
+artifact_root = Path("${ARTIFACT_DIR}")
+result = summarize_from_artifacts(artifact_root)
+(artifact_root / "ACCEPTANCE_SUMMARY.md").write_text("\n".join(result.lines))
+if not result.ok:
+    raise SystemExit(1)
 PY
 

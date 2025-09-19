@@ -1,0 +1,4 @@
+{"severity": "warning", "message": "Reward variance spike"}
+{"severity": "warning", "message": "Latency regression"}
+{"severity": "warning", "message": "Token throughput drop"}
+{"severity": "warning", "message": "High KL divergence"}
