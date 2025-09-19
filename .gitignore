@@ -136,6 +136,7 @@ Thumbs.db
 diff_analysis/
 determinism_analysis/
 *.jsonl
+!tests/fixtures/**/*.jsonl
 out.jsonl
 final_test_metrics.jsonl
 test_metrics.jsonl

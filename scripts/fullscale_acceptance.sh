@@ -59,7 +59,7 @@ python -m rldk.cli check-determinism --cmd "${DETERMINISM_CMD}" --compare "rewar
 CARD_DIR="${ARTIFACT_DIR}/cards"
 python -m rldk.cli card reward "${RUN_JSON}" --output-dir "${CARD_DIR}" | tee -a "${LOG_FILE}"
 
-python - <<'PY'
+python - <<PY
 from pathlib import Path
 
 from rldk.acceptance.summary import summarize_from_artifacts
