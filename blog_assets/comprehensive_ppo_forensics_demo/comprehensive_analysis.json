@@ -1,0 +1,144 @@
+{
+  "version": "2.0",
+  "timestamp": 1700000005,
+  "total_steps": 44,
+  "overall_health_score": 0.603,
+  "training_stability_score": 0.855,
+  "convergence_quality_score": 0.959,
+  "anomalies": [
+    {
+      "type": "kl_divergence_spike",
+      "severity": "critical",
+      "message": "KL divergence exceeded critical threshold: 0.937",
+      "value": 0.937,
+      "threshold": 0.8,
+      "tracker": "kl_schedule"
+    },
+    {
+      "type": "controller_responsiveness",
+      "severity": "warning",
+      "message": "Low controller responsiveness: 0.750",
+      "value": 0.750,
+      "threshold": 0.8,
+      "tracker": "kl_schedule"
+    },
+    {
+      "type": "controller_overshoot",
+      "severity": "warning",
+      "message": "High controller overshoot: 0.125",
+      "value": 0.125,
+      "threshold": 0.1,
+      "tracker": "kl_schedule"
+    },
+    {
+      "type": "advantage_bias",
+      "severity": "critical",
+      "message": "High advantage bias: 0.089",
+      "value": 0.089,
+      "threshold": 0.05,
+      "tracker": "advantage_statistics"
+    },
+    {
+      "type": "gradient_imbalance",
+      "severity": "warning",
+      "message": "Gradient imbalance detected: 0.156",
+      "value": 0.156,
+      "threshold": 0.2,
+      "tracker": "gradient_norms"
+    }
+  ],
+  "trackers": {
+    "kl_schedule": {
+      "total_steps": 44,
+      "current_kl": 0.937,
+      "current_kl_coef": 0.8234,
+      "kl_target": 0.1,
+      "kl_health_score": 0.456,
+      "schedule_health_score": 0.750,
+      "time_in_target_range": 0.227,
+      "target_range_violations": 34,
+      "controller_responsiveness": 0.750,
+      "controller_overshoot": 0.125,
+      "controller_oscillation": 0.089,
+      "coef_adaptation_quality": 0.678,
+      "anomalies": [
+        {
+          "type": "kl_divergence_spike",
+          "severity": "critical",
+          "message": "KL divergence exceeded critical threshold: 0.937",
+          "value": 0.937,
+          "threshold": 0.8
+        },
+        {
+          "type": "controller_responsiveness",
+          "severity": "warning",
+          "message": "Low controller responsiveness: 0.750",
+          "value": 0.750,
+          "threshold": 0.8
+        }
+      ]
+    },
+    "gradient_norms": {
+      "total_steps": 44,
+      "current_policy_grad_norm": 0.25,
+      "current_value_grad_norm": 0.18,
+      "current_total_grad_norm": 0.31,
+      "current_policy_value_ratio": 1.389,
+      "gradient_health_score": 0.823,
+      "training_stability": 0.855,
+      "gradient_flow_health": 0.912,
+      "gradient_balance": 0.844,
+      "gradient_stability": 0.867,
+      "exploding_gradient_risk": 0.0,
+      "vanishing_gradient_risk": 0.0,
+      "gradient_imbalance_risk": 0.156,
+      "policy_grad_trend": 0.0234,
+      "value_grad_trend": 0.0189,
+      "ratio_trend": 0.0045,
+      "anomalies": [
+        {
+          "type": "gradient_imbalance",
+          "severity": "warning",
+          "message": "Gradient imbalance detected: 0.156",
+          "value": 0.156,
+          "threshold": 0.2
+        }
+      ]
+    },
+    "advantage_statistics": {
+      "total_steps": 44,
+      "current_advantage_mean": 0.089,
+      "current_advantage_std": 0.8234,
+      "current_advantage_min": -0.234,
+      "current_advantage_max": 0.456,
+      "current_advantage_median": 0.067,
+      "advantage_health_score": 0.734,
+      "advantage_quality_score": 0.959,
+      "advantage_normalization_health": 0.823,
+      "advantage_bias": 0.089,
+      "advantage_scale_stability": 0.912,
+      "advantage_volatility": 0.0156,
+      "advantage_skewness": 0.234,
+      "advantage_kurtosis": 2.456,
+      "advantage_bias_risk": 0.445,
+      "advantage_scale_risk": 0.023,
+      "advantage_distribution_risk": 0.089,
+      "advantage_mean_trend": 0.0089,
+      "advantage_std_trend": -0.0034,
+      "advantage_percentiles": {
+        "25": -0.089,
+        "50": 0.067,
+        "75": 0.234
+      },
+      "anomalies": [
+        {
+          "type": "advantage_bias",
+          "severity": "critical",
+          "message": "High advantage bias: 0.089",
+          "value": 0.089,
+          "threshold": 0.05
+        }
+      ]
+    }
+  }
+}
