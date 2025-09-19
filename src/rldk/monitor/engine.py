@@ -350,6 +350,15 @@ class Alert:
                 f"[{self.rule_id}] {self.event.name} {self.event.value:.4f} "
                 f"at step {self.event.step} ({self.action})"
             )
+        severity = None
+        remediation = None
+        if self.details:
+            severity = self.details.get("severity")
+            remediation = self.details.get("remediation")
+        if severity:
+            base = f"[{str(severity).upper()}] {base}"
+        if remediation:
+            base = f"{base} | Remediation: {remediation}"
         if self.status == "error":
             return f"ERROR: {base}"
         if self.status not in {"success", "ok"}:
@@ -1008,6 +1017,24 @@ def _format_action_value(value: Any, context: Dict[str, Any]) -> Any:
     return value
 
 
+def _prepare_action_context(
+    action: ActionConfig,
+    rule: RuleDefinition,
+    event: Event,
+    extra_context: Optional[Dict[str, Any]] = None,
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    merged_context = dict(extra_context or {})
+    merged_context.setdefault("action", action.kind)
+    base_context = _template_context(rule, event, merged_context)
+    formatted_options = {
+        key: _format_action_value(value, base_context)
+        for key, value in action.options.items()
+    }
+    full_context = dict(base_context)
+    full_context.update(formatted_options)
+    return full_context, formatted_options
+
+
 def _render_action_message(
     action: ActionConfig,
     rule: RuleDefinition,
@@ -1016,14 +1043,22 @@ def _render_action_message(
 ) -> str:
     default_template = DEFAULT_ACTION_MESSAGES.get(action.kind, DEFAULT_ACTION_MESSAGES["warn"])
     template = action.message_template or default_template
-    merged_context = dict(extra_context or {})
-    merged_context.setdefault("action", action.kind)
-    context = _template_context(rule, event, merged_context)
+    context, _ = _prepare_action_context(action, rule, event, extra_context)
     try:
         return template.format(**context)
     except Exception as exc:  # pragma: no cover - formatting guard
         logger.warning("Failed to format message for rule '%s': %s", rule.id, exc)
         return template
+
+
+def _render_action_details(
+    action: ActionConfig,
+    rule: RuleDefinition,
+    event: Event,
+    extra_context: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    _, details = _prepare_action_context(action, rule, event, extra_context)
+    return details
 
 
 def _create_alert(
@@ -1091,7 +1126,15 @@ class SimpleActionExecutor(ActionExecutor):
         if action.kind != "warn":
             raise ValueError(f"Unsupported action '{action.kind}' for simple executor")
         message = _render_action_message(action, rule, event, {})
-        return _create_alert(rule, event, "warn", message=message, status="success", details={})
+        details = _render_action_details(action, rule, event, {})
+        return _create_alert(
+            rule,
+            event,
+            "warn",
+            message=message,
+            status="success",
+            details=details,
+        )
 
 
 class ActionDispatcher(ActionExecutor):

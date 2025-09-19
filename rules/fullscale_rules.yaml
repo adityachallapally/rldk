@@ -9,6 +9,9 @@ rules:
     cooldown_steps: 10
     actions:
       - warn:
+          severity: high
+          remediation: "Nudge --kl-coeff downward or shorten the PPO clip range to pull KL back under the 0.35-0.38 band."
+          runbook: "https://rldk.ai/runbooks/kl-spikes"
           msg: "KL divergence {value:.3f} exceeded guard band at step {step}"
   - id: reward_collapse_watch
     description: Alert when reward mean collapses for an extended window.
@@ -21,6 +24,9 @@ rules:
     cooldown_steps: 25
     actions:
       - warn:
+          severity: critical
+          remediation: "Inspect the reward head for saturation and consider lowering --vf-coeff or refreshing preference data."
+          runbook: "https://rldk.ai/runbooks/reward-collapse"
           msg: "Reward running mean {value:.3f} indicates collapse near step {step}"
   - id: grad_norm_ceiling
     description: Warn when gradient norms exceed the tuned ceiling.
@@ -31,4 +37,7 @@ rules:
       kind: consecutive
     actions:
       - warn:
+          severity: medium
+          remediation: "Try reducing --learning-rate to ≤1e-4 or increasing --max-grad-norm to 1.2 to tame the spike."
+          runbook: "https://rldk.ai/runbooks/gradient-instability"
           msg: "Gradient norm {value:.3f} breached ceiling at step {step}"
