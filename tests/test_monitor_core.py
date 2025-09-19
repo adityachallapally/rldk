@@ -568,6 +568,40 @@ rules:
     assert len(alerts_text.read_text().strip().splitlines()) == 2
 
 
+def test_fullscale_rules_include_remediation_hints(tmp_path: Path, runner: CliRunner) -> None:
+    events_path = tmp_path / "events.jsonl"
+    with events_path.open("w", encoding="utf-8") as handle:
+        for step in range(1, 6):
+            payload = {"time": _now_iso(), "step": step, "name": "kl", "value": 0.5}
+            handle.write(json.dumps(payload) + "\n")
+
+    rules_path = Path(__file__).resolve().parents[1] / "rules" / "fullscale_rules.yaml"
+    alerts_path = tmp_path / "alerts.jsonl"
+    result = runner.invoke(
+        app,
+        [
+            "monitor",
+            "--once",
+            str(events_path),
+            "--rules",
+            str(rules_path),
+            "--alerts",
+            str(alerts_path),
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+
+    alerts = [json.loads(line) for line in alerts_path.read_text().splitlines() if line.strip()]
+    assert alerts, "expected at least one alert from KL spike guard"
+    messages = "\n".join(alert.get("message", "") for alert in alerts)
+    assert "--temperature" in messages
+    assert "--learning-rate" in messages
+
+    text_summary = alerts_path.with_suffix(".txt").read_text()
+    assert "--temperature" in text_summary
+    assert "--learning-rate" in text_summary
+
+
 def test_monitor_cli_field_map_preset(tmp_path: Path, runner: CliRunner) -> None:
     log_path = tmp_path / "metrics.jsonl"
     values = [0.2, 0.36, 0.38, 0.4, 0.42, 0.44]

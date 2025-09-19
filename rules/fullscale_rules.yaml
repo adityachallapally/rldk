@@ -9,7 +9,7 @@ rules:
     cooldown_steps: 10
     actions:
       - warn:
-          msg: "KL divergence {value:.3f} exceeded guard band at step {step}"
+          msg: "KL divergence {value:.3f} exceeded guard band at step {step}; consider lowering --temperature (default 0.95) or reducing --learning-rate (default 8e-5) to tighten updates"
   - id: reward_collapse_watch
     description: Alert when reward mean collapses for an extended window.
     where: name == "reward_mean"
@@ -21,7 +21,7 @@ rules:
     cooldown_steps: 25
     actions:
       - warn:
-          msg: "Reward running mean {value:.3f} indicates collapse near step {step}"
+          msg: "Reward running mean {value:.3f} indicates collapse near step {step}; consider increasing --batch-size (default 4) for steadier gradients or lowering --temperature to curb degenerate sampling"
   - id: grad_norm_ceiling
     description: Warn when gradient norms exceed the tuned ceiling.
     where: name == "grad_norm"
@@ -31,4 +31,4 @@ rules:
       kind: consecutive
     actions:
       - warn:
-          msg: "Gradient norm {value:.3f} breached ceiling at step {step}"
+          msg: "Gradient norm {value:.3f} breached ceiling at step {step}; ensure gradient clipping via --max-grad-norm (default 2.5) is active or lower --learning-rate to reduce update size"
