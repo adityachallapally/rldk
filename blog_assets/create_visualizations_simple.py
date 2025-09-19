@@ -67,12 +67,14 @@ def create_kl_spike_detection_plot():
                       label='Stop Alert' if not stop_labeled else "", zorder=5)
             stop_labeled = True
     
-    final_alert = alerts_df[alerts_df['action'] == 'stop'].iloc[-1]
-    ax.annotate(f'Training Stopped\nKL={final_alert["value"]:.3f}', 
-                xy=(final_alert['step'], final_alert['value']), 
-                xytext=(final_alert['step'] + 10, final_alert['value'] - 0.1),
-                arrowprops=dict(arrowstyle='->', color='red', lw=2),
-                fontsize=11, ha='left', bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
+    stop_alerts = alerts_df[alerts_df['action'] == 'stop']
+    if not stop_alerts.empty:
+        final_alert = stop_alerts.iloc[-1]
+        ax.annotate(f'Training Stopped\nKL={final_alert["value"]:.3f}', 
+                    xy=(final_alert['step'], final_alert['value']), 
+                    xytext=(final_alert['step'] + 10, final_alert['value'] - 0.1),
+                    arrowprops=dict(arrowstyle='->', color='red', lw=2),
+                    fontsize=11, ha='left', bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
     
     ax.set_xlabel('Training Step', fontsize=14)
     ax.set_ylabel('KL Divergence', fontsize=14)
@@ -197,7 +199,11 @@ def create_training_metrics_plot():
     
     if len(kl_data) > 0 and len(reward_data) > 0 and len(grad_data) > 0:
         kl_norm = kl_data['value'] / kl_data['value'].max()
-        reward_norm = (reward_data['value'] - reward_data['value'].min()) / (reward_data['value'].max() - reward_data['value'].min())
+        reward_range = reward_data['value'].max() - reward_data['value'].min()
+        if reward_range > 0:
+            reward_norm = (reward_data['value'] - reward_data['value'].min()) / reward_range
+        else:
+            reward_norm = pd.Series([0.5] * len(reward_data))
         grad_norm = grad_data['value'] / grad_data['value'].max()
         
         ax4.plot(kl_data['step'], kl_norm, 'b-', linewidth=2, alpha=0.8, label='KL (normalized)')
