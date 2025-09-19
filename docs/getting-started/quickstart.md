@@ -90,6 +90,39 @@ summary = tracker.finish_experiment()
 print(f"Experiment completed: {summary['experiment_id']}")
 ```
 
+## 3½. Validate the fullscale pipeline
+
+Before digging into ad-hoc experiments, run `scripts/fullscale_acceptance.sh` to confirm the
+tooling works end-to-end on your machine. The script provisions a temporary virtual
+environment, installs RLDK in editable mode, and chains together:
+
+1. A **primary** and **baseline** invocation of `scripts/fullscale_train_rl.py` so you can
+   diff an updating policy against a frozen control run.
+2. The **monitor once** workflow with `rules/fullscale_rules.yaml`, producing alerts and a
+   detailed report.
+3. **Metrics ingestion**, **reward health analysis**, and **reward card** generation to gate
+   on the default detectors.
+4. A **diff** against the baseline and a **determinism** replay to ensure reproducibility.
+
+The helper exits with a non-zero status when those monitor rules raise warning-or-higher
+alerts beyond their thresholds or when the reward card reports issues. Check the generated
+`artifacts/fullscale/ACCEPTANCE_SUMMARY.md` for the same verdicts the CI gate expects.
+
+### Tuned defaults and anomaly simulation
+
+The acceptance trainer uses CPU-friendly defaults that still exercise every gate:
+
+- `--learning-rate`: `8e-5`
+- `--batch-size`: `4`
+- `--temperature`: `0.95`
+- `--max-grad-norm`: `2.5`
+
+Keep the defaults for a healthy baseline run. Pass `--simulate-anomalies` to
+`scripts/fullscale_train_rl.py` if you want the deterministic KL spikes and reward collapse
+scenario that force alert paths. The remediation advice in
+[`monitor_rules_cookbook.md`](monitor_rules_cookbook.md#fullscale-remediation-hints) mirrors the
+suggestions emitted by `rules/fullscale_rules.yaml` when those guards activate.
+
 ## 3. Run Forensics Analysis
 
 Now let's analyze some training data for anomalies:
