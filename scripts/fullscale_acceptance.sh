@@ -76,6 +76,18 @@ card_json = root / "cards" / "reward_card.json"
 
 summary_lines = ["# Fullscale Acceptance Summary", ""]
 status_ok = True
+ALERT_COUNT_THRESHOLD = 3
+WARNING_LEVEL = 1
+SEVERITY_RANK = {
+    "debug": 0,
+    "trace": 0,
+    "info": 0,
+    "notice": 0,
+    "warning": WARNING_LEVEL,
+    "error": 2,
+    "critical": 2,
+    "fatal": 3,
+}
 
 def _load_json_lines(path: Path) -> list[dict]:
     records = []
@@ -116,6 +128,22 @@ if alerts_path.exists():
 summary_lines.append(f"- Monitor alerts fired: {len(alert_records)}")
 if not alert_records:
     summary_lines.append("  - ℹ️ No monitor alerts were emitted during the run")
+else:
+    if len(alert_records) > ALERT_COUNT_THRESHOLD:
+        status_ok = False
+        summary_lines.append(
+            f"  - ❌ Alert count {len(alert_records)} exceeded threshold {ALERT_COUNT_THRESHOLD}"
+        )
+    severities = [record.get("severity", "warning").lower() for record in alert_records]
+    high_severity = [
+        severity for severity in severities if SEVERITY_RANK.get(severity, WARNING_LEVEL) >= WARNING_LEVEL
+    ]
+    if high_severity:
+        status_ok = False
+        summary_lines.append(
+            "  - ❌ Monitor emitted warning-or-higher severity alerts: "
+            + ", ".join(sorted(set(high_severity)))
+        )
 
 if monitor_report.exists():
     report = json.loads(monitor_report.read_text())
@@ -128,7 +156,8 @@ if reward_summary.exists():
     reward_payload = json.loads(reward_summary.read_text())
     summary_lines.append(f"- Reward health verdict: {reward_payload.get('overall_status', 'unknown')}")
     if not reward_payload.get("passed", False):
-        summary_lines.append("  - ⚠️ Reward health reported issues")
+        status_ok = False
+        summary_lines.append("  - ❌ Reward health gate failed (passed flag false)")
 else:
     status_ok = False
     summary_lines.append("- ❌ Reward health summary missing")
@@ -153,6 +182,9 @@ else:
 if card_json.exists():
     card_payload = json.loads(card_json.read_text())
     summary_lines.append(f"- Reward card status: {'HEALTHY' if card_payload.get('passed') else 'ISSUES'}")
+    if not card_payload.get("passed", False):
+        status_ok = False
+        summary_lines.append("  - ❌ Reward card gate failed (passed flag false)")
 else:
     status_ok = False
     summary_lines.append("- ❌ Reward card missing")
