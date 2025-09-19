@@ -94,3 +94,14 @@ The verification demonstrates:
 The TRL API compatibility issue encountered in Path C is a technical implementation detail that doesn't affect the core monitoring functionality, which was successfully demonstrated in Paths A and B.
 
 **FINAL VERDICT: LIVE MONITORING PASS** ✅
+
+## Appendix: Fullscale Acceptance Expectations
+
+- Default hyperparameters for `scripts/fullscale_train_rl.py` now use a lower learning
+  rate (8e-5), a cooler sampling temperature (0.95), a batch size of 4, and a higher
+  gradient clipping threshold (2.5).
+- The scripted reward collapse and KL spike toggles are disabled by default so the
+  acceptance recordings reflect genuine optimization. Use `--simulate-anomalies` if
+  you need the previous alert-heavy traces.
+- Expect few or zero monitor alerts when executing `scripts/fullscale_acceptance.sh`
+  with the new defaults because alerts now depend on organic training dynamics.

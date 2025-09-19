@@ -25,7 +25,7 @@ RUN_JSON="${ARTIFACT_DIR}/run.jsonl"
 BASELINE_JSON="${ARTIFACT_DIR}/baseline.jsonl"
 rm -f "${RUN_JSON}" "${BASELINE_JSON}"
 
-TRAIN_COMMON=("python" "${ROOT_DIR}/scripts/fullscale_train_rl.py" "--max-steps" "40" "--batch-size" "1" "--max-new-tokens" "32" "--learning-rate" "3e-4" "--kl-coeff" "0.08" "--aux-weight" "0.35" "--noise-weight" "0.2" "--temperature" "1.05" "--outdir" "${ARTIFACT_DIR}" "--print-interval" "10")
+TRAIN_COMMON=("python" "${ROOT_DIR}/scripts/fullscale_train_rl.py" "--max-steps" "40" "--batch-size" "4" "--max-new-tokens" "32" "--learning-rate" "8e-5" "--kl-coeff" "0.08" "--aux-weight" "0.35" "--noise-weight" "0.2" "--temperature" "0.95" "--max-grad-norm" "2.5" "--outdir" "${ARTIFACT_DIR}" "--print-interval" "10")
 
 (
   echo "=== TRAINING: primary run ==="
@@ -53,7 +53,7 @@ python -m rldk.cli diff --a "${RUN_JSON}" --b "${BASELINE_JSON}" --signals "rewa
 
 DETERMINISM_DIR="${ARTIFACT_DIR}/determinism_report"
 mkdir -p "${DETERMINISM_DIR}"
-DETERMINISM_CMD="python ${ROOT_DIR}/scripts/fullscale_train_rl.py --seed 2718 --max-steps 12 --batch-size 1 --max-new-tokens 24 --learning-rate 3e-4 --kl-coeff 0.08 --aux-weight 0.35 --noise-weight 0.2 --temperature 1.05 --outdir ${ARTIFACT_DIR}/determinism --run-id det"
+DETERMINISM_CMD="python ${ROOT_DIR}/scripts/fullscale_train_rl.py --seed 2718 --max-steps 12 --batch-size 4 --max-new-tokens 24 --learning-rate 8e-5 --kl-coeff 0.08 --aux-weight 0.35 --noise-weight 0.2 --temperature 0.95 --max-grad-norm 2.5 --outdir ${ARTIFACT_DIR}/determinism --run-id det"
 python -m rldk.cli check-determinism --cmd "${DETERMINISM_CMD}" --compare "reward_mean,kl,loss" --runs 2 --stride 1 --output-dir "${DETERMINISM_DIR}" --tolerance 0.5 | tee -a "${LOG_FILE}"
 
 CARD_DIR="${ARTIFACT_DIR}/cards"

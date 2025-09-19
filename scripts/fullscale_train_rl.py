@@ -6,7 +6,9 @@ RLDK.  It exercises a PPO-lite training loop that uses a frozen GPT-2 backbone w
 an adapter head trained via REINFORCE-style updates.  Metrics are emitted through the
 canonical :class:`rldk.emit.EventWriter` interface so downstream tooling can ingest the
 run and normalize it into the ``TrainingMetrics`` table.  The defaults are tuned so the
-script runs on CPU within a few hours while still producing a rich event stream.
+script runs on CPU within a few hours while still producing a rich event stream.  Use
+``--simulate-anomalies`` to opt back into the older scripted collapse/spike perturbations
+if you need deterministic alert demonstrations.
 
 The implementation focuses on debuggability rather than raw throughput.  Extensive
 logging, deterministic seeding, and reward decomposition make it easier for RLDK
@@ -351,22 +353,27 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Fullscale RL acceptance training run")
     parser.add_argument("--seed", type=int, default=13)
     parser.add_argument("--max-steps", type=int, default=160)
-    parser.add_argument("--batch-size", type=int, default=2)
-    parser.add_argument("--learning-rate", type=float, default=3e-4)
+    parser.add_argument("--batch-size", type=int, default=4)
+    parser.add_argument("--learning-rate", type=float, default=8e-5)
     parser.add_argument("--kl-coeff", type=float, default=0.08)
     parser.add_argument("--aux-weight", type=float, default=0.35)
     parser.add_argument("--noise-weight", type=float, default=0.2)
     parser.add_argument("--max-new-tokens", type=int, default=48)
-    parser.add_argument("--temperature", type=float, default=1.05)
+    parser.add_argument("--temperature", type=float, default=0.95)
     parser.add_argument("--dataset-size", type=int, default=4096)
     parser.add_argument("--model-name", type=str, default="gpt2-medium")
     parser.add_argument("--outdir", type=Path, default=Path("artifacts/fullscale"))
     parser.add_argument("--run-id", type=str, default="run")
     parser.add_argument("--ema-beta", type=float, default=0.04)
-    parser.add_argument("--max-grad-norm", type=float, default=1.5)
+    parser.add_argument("--max-grad-norm", type=float, default=2.5)
     parser.add_argument("--disable-updates", action="store_true", help="Skip optimizer updates for baseline runs")
     parser.add_argument("--override-event-path", type=str, default=None)
     parser.add_argument("--print-interval", type=int, default=10)
+    parser.add_argument(
+        "--simulate-anomalies",
+        action="store_true",
+        help="Re-enable scripted collapse/spike behavior for alert demos",
+    )
 
     args = parser.parse_args(argv)
 
@@ -389,6 +396,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "dataset_size": args.dataset_size,
                 "model_name": args.model_name,
                 "disable_updates": args.disable_updates,
+                "simulate_anomalies": args.simulate_anomalies,
             },
             indent=2,
         )
@@ -484,12 +492,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
         logged_reward = total_reward
         logged_kl = kl_value
-        collapse_active = 1.0 if step % 55 in range(28, 52) else 0.0
-        spike_active = 1.0 if step % 60 == 0 else 0.0
-        if collapse_active:
-            logged_reward -= 0.35
-        if spike_active:
-            logged_kl += 0.45
+        collapse_active = 0.0
+        spike_active = 0.0
+        if args.simulate_anomalies:
+            collapse_active = 1.0 if step % 55 in range(28, 52) else 0.0
+            spike_active = 1.0 if step % 60 == 0 else 0.0
+            if collapse_active:
+                logged_reward -= 0.35
+            if spike_active:
+                logged_kl += 0.45
 
         wall_time = time.time() - step_start
         ema_reward_gap = total_reward - ema_reward
