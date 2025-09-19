@@ -14,7 +14,7 @@ This exact scenario played out in our demo run, where RLDK's real-time monitorin
 
 RLDK's live monitoring system caught this failure through a series of escalating alerts, each timestamped and actionable:
 
-### Alert Timeline from <ref_file file="/home/ubuntu/repos/rldk/blog_assets/artifacts/alerts.jsonl" />
+### Alert Timeline from <ref_file file="blog_assets/artifacts/alerts.jsonl" />
 
 ```json
 {"timestamp": 1700000001, "step": 10, "severity": "info", "message": "KL divergence: 0.455", "kl_value": 0.455, "threshold": 0.4}
@@ -42,7 +42,7 @@ The system's escalation protocol worked perfectly:
 
 ## Forensic Analysis: Post-Mortem Deep Dive
 
-After termination, RLDK's forensic engine analyzed the complete training run to understand what went wrong. The comprehensive analysis from <ref_file file="/home/ubuntu/repos/rldk/blog_assets/comprehensive_ppo_forensics_demo/comprehensive_analysis.json" /> revealed:
+After termination, RLDK's forensic engine analyzed the complete training run to understand what went wrong. The comprehensive analysis from <ref_file file="blog_assets/comprehensive_ppo_forensics_demo/comprehensive_analysis.json" /> revealed:
 
 ### Health Score Breakdown
 - **Overall Health**: 0.603 (Poor - below 0.7 threshold)
@@ -77,9 +77,9 @@ The forensic system identified exactly what caused the training failure:
 
 ### Training Metrics Analysis
 
-The complete training data from <ref_file file="/home/ubuntu/repos/rldk/blog_assets/artifacts/run.jsonl" /> shows the progression:
+The complete training data from <ref_file file="blog_assets/artifacts/run.jsonl" /> shows the progression:
 
-<ref_snippet file="/home/ubuntu/repos/rldk/blog_assets/artifacts/run.jsonl" lines="1-5" />
+<ref_snippet file="blog_assets/artifacts/run.jsonl" lines="1-5" />
 
 Key observations:
 - **Reward degradation**: Dropped from 0.75 to 0.61 as KL spiked
@@ -137,7 +137,7 @@ print(f"Anomalies detected: {len(analysis.anomalies)}")
 
 Generate publication-ready plots with our visualization script:
 
-<ref_snippet file="/home/ubuntu/repos/rldk/blog_assets/create_visualizations_simple.py" lines="15-25" />
+<ref_snippet file="blog_assets/create_visualizations_simple.py" lines="15-25" />
 
 Key features:
 - **Safety checks**: Handles empty DataFrames gracefully
@@ -358,8 +358,8 @@ The era of blind RL training is over. With RLDK, every training run is monitored
 
 ---
 
-*This blog post demonstrates RLDK's capabilities using real training data. All metrics, timestamps, and health scores are from actual training runs, ensuring complete reproducibility and accuracy.*
+*This blog post demonstrates RLDK's capabilities using synthetic but realistic training data that follows authentic PPO failure patterns. All metrics, timestamps, and health scores are carefully crafted to represent typical RL training scenarios, ensuring complete reproducibility and educational value.*
 
 **Repository**: [https://github.com/adityachallapally/rldk](https://github.com/adityachallapally/rldk)  
 **Documentation**: [RLDK Documentation](https://github.com/adityachallapally/rldk/blob/main/docs/)  
-**Demo Files**: <ref_file file="/home/ubuntu/repos/rldk/blog_assets/" />
+**Demo Files**: <ref_file file="blog_assets/" />

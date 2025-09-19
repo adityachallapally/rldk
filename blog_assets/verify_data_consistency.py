@@ -59,8 +59,12 @@ def verify_data_consistency():
         print("❌ Run data missing 'name' field")
         return False
     
-    run_timestamps = set(run_df['time'].apply(lambda x: int(x)).unique())
-    alert_timestamps = set(alerts_df['timestamp'].unique())
+    try:
+        run_timestamps = set(run_df['time'].apply(lambda x: int(float(x)) if not isinstance(x, int) else x).unique())
+        alert_timestamps = set(alerts_df['timestamp'].unique())
+    except (ValueError, TypeError) as e:
+        print(f"❌ Error processing timestamps: {e}")
+        return False
     
     if run_timestamps.intersection(alert_timestamps):
         print("✅ Timestamps consistent between run and alert data")
