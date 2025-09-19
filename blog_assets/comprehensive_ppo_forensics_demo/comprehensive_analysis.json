@@ -1,0 +1,162 @@
+{
+  "version": "2.0",
+  "timestamp": 1758320915.4157267,
+  "total_steps": 140,
+  "overall_health_score": 0.6027812556317143,
+  "training_stability_score": 0.8546154913293582,
+  "convergence_quality_score": 0.9588476554656404,
+  "anomalies": [
+    {
+      "type": "controller_responsiveness_anomaly",
+      "severity": "warning",
+      "message": "Low controller responsiveness: 0.000",
+      "value": 0,
+      "threshold": 0.3,
+      "tracker": "kl_schedule"
+    },
+    {
+      "type": "controller_overshoot_anomaly",
+      "severity": "warning",
+      "message": "High controller overshoot: 0.517",
+      "value": 0.5172413793103449,
+      "threshold": 0.3,
+      "tracker": "kl_schedule"
+    },
+    {
+      "type": "coef_adaptation_anomaly",
+      "severity": "warning",
+      "message": "Poor coefficient adaptation: 0.000",
+      "value": 0,
+      "threshold": 0.2,
+      "tracker": "kl_schedule"
+    },
+    {
+      "type": "advantage_bias_anomaly",
+      "severity": "critical",
+      "message": "High advantage bias: 0.2371",
+      "value": 0.23707725911305477,
+      "threshold": 0.1,
+      "tracker": "advantage_statistics"
+    },
+    {
+      "type": "advantage_normalization_anomaly",
+      "severity": "warning",
+      "message": "Poor advantage normalization: 0.490",
+      "value": 0.4897318957988705,
+      "threshold": 0.5,
+      "tracker": "advantage_statistics"
+    }
+  ],
+  "trackers": {
+    "kl_schedule": {
+      "total_steps": 140,
+      "current_kl": 0.08647291003631208,
+      "current_kl_coef": 1.0972007501394976,
+      "kl_target": 0.1,
+      "kl_health_score": 0.8723046044721923,
+      "schedule_health_score": 0.2,
+      "time_in_target_range": 0.79,
+      "target_range_violations": 21,
+      "controller_responsiveness": 0,
+      "controller_overshoot": 0.5172413793103449,
+      "controller_oscillation": 0.0,
+      "coef_adaptation_quality": 0,
+      "anomalies": [
+        {
+          "type": "controller_responsiveness_anomaly",
+          "severity": "warning",
+          "message": "Low controller responsiveness: 0.000",
+          "value": 0,
+          "threshold": 0.3
+        },
+        {
+          "type": "controller_overshoot_anomaly",
+          "severity": "warning",
+          "message": "High controller overshoot: 0.517",
+          "value": 0.5172413793103449,
+          "threshold": 0.3
+        },
+        {
+          "type": "coef_adaptation_anomaly",
+          "severity": "warning",
+          "message": "Poor coefficient adaptation: 0.000",
+          "value": 0,
+          "threshold": 0.2
+        }
+      ]
+    },
+    "gradient_norms": {
+      "total_steps": 140,
+      "current_policy_grad_norm": 0.4189852595760519,
+      "current_value_grad_norm": 0.38656856694635355,
+      "current_total_grad_norm": 0.5700735958566833,
+      "current_policy_value_ratio": 1.083857549220232,
+      "gradient_health_score": 0.8644834964510779,
+      "training_stability": 0.9192309826587164,
+      "gradient_flow_health": 1.0,
+      "gradient_balance": 0.4756188468858049,
+      "gradient_stability": 0.8073799521780897,
+      "exploding_gradient_risk": 0.0,
+      "vanishing_gradient_risk": 0.0,
+      "gradient_imbalance_risk": 0.0,
+      "policy_grad_trend": 0.0016664318394196598,
+      "value_grad_trend": -0.00034761932348688666,
+      "ratio_trend": 0.0042521690669452385,
+      "adaptive_explosion_risk": 0.0,
+      "statistical_outlier_risk": 0.0,
+      "momentum_instability_risk": 0.03494531505592958,
+      "multi_scale_anomaly_risk": 0.05199827002168632,
+      "early_warning_score": 0.07918048890525475,
+      "exponential_smoothing_trend": -0.008061926430670639,
+      "change_point_detected": false,
+      "gradient_acceleration": -0.02481883457148224,
+      "anomalies": []
+    },
+    "advantage_statistics": {
+      "total_steps": 140,
+      "current_advantage_mean": 0.2486003750697488,
+      "current_advantage_std": 1.0234949818539822,
+      "current_advantage_min": -0.7748946067842335,
+      "current_advantage_max": 1.272095356923731,
+      "current_advantage_median": 0.2486003750697488,
+      "advantage_health_score": 0.47433692160358704,
+      "advantage_quality_score": 0.9588476554656404,
+      "advantage_normalization_health": 0.4897318957988705,
+      "advantage_bias": 0.23707725911305477,
+      "advantage_scale_stability": 0.979463791597741,
+      "advantage_volatility": 0.008996637502376392,
+      "advantage_skewness": 0.1341996386208918,
+      "advantage_kurtosis": -0.04575169559754322,
+      "advantage_bias_risk": 1.0,
+      "advantage_scale_risk": 0.006115940810120708,
+      "advantage_distribution_risk": 0.20332648553937083,
+      "advantage_mean_trend": 0.004191626883072111,
+      "advantage_std_trend": -0.0033837095197992747,
+      "advantage_percentiles": {
+        "p5": -1.415031151976252,
+        "p10": -1.0117067980690408,
+        "p25": -0.2811451081301899,
+        "p50": 0.36437895855304175,
+        "p75": 0.9083263647894385,
+        "p90": 1.5922347786346356,
+        "p95": 1.9452234384131226
+      },
+      "anomalies": [
+        {
+          "type": "advantage_bias_anomaly",
+          "severity": "critical",
+          "message": "High advantage bias: 0.2371",
+          "value": 0.23707725911305477,
+          "threshold": 0.1
+        },
+        {
+          "type": "advantage_normalization_anomaly",
+          "severity": "warning",
+          "message": "Poor advantage normalization: 0.490",
+          "value": 0.4897318957988705,
+          "threshold": 0.5
+        }
+      ]
+    }
+  }
+}

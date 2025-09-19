@@ -1,0 +1,30 @@
+TODO List for PR Comments:
+
+1. Fix KeyError on 'metric' column in create_visualizations.py
+   - Update all references from 'metric' to 'name' field as present in run.jsonl
+   - Ensure metric names match those in artifact data
+
+2. Fix health score/data mismatch in enhanced_scan_results.json
+   - Update health scores to match blog post claims (0.603 overall, 0.855 stability, 0.959 convergence)
+   - Address critical 'adaptive_explosion_anomaly' with 100% risk
+
+3. Fix KL/data step mismatch in comprehensive_demo_run_comprehensive_metrics.json
+   - File only has 20 steps but blog references step 44
+   - Update demo data to include at least 44 steps with KL progression 0.455→0.937
+
+4. Fix robustness issues in create_visualizations_simple.py
+   - Add validation check before accessing stop alerts to avoid crashes
+   - Add safety check for division by zero when normalizing reward values
+
+5. Fix data provenance mismatch in tracking demo files
+   - Replace ML classification data with actual RL/PPO tracking data
+   - Ensure experiment IDs correspond to RL experiments
+
+6. Clarify synthetic vs. real data in asset_organization.md
+   - Document which assets use synthetic vs real data
+   - Avoid implying synthetic data is real demo data
+
+7. Fix data inconsistency and timestamp mismatch in final_comprehensive_analysis.json
+   - Update total_steps to match (should be 140, not 20)
+   - Ensure health scores match blog post references
+   - Align timestamps across all demo files
