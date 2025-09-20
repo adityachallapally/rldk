@@ -26,10 +26,10 @@
   },
   "comprehensive_analysis": {
     "version": "2.0",
-    "timestamp": 1757623035.5225763,
+    "timestamp": 1758329575.3934932,
     "total_steps": 50,
     "overall_health_score": 0.7615413533834586,
-    "training_stability_score": 0.5499999999999999,
+    "training_stability_score": 0.655,
     "convergence_quality_score": 1.0,
     "anomalies": [
       {
@@ -76,8 +76,24 @@
         "type": "ratio_trend_anomaly",
         "severity": "warning",
         "message": "Strong ratio trend: 1.4098",
-        "value": 1.4097744360902258,
+        "value": 1.4097744360902245,
         "threshold": 0.1,
+        "tracker": "gradient_norms"
+      },
+      {
+        "type": "adaptive_explosion_anomaly",
+        "severity": "critical",
+        "message": "Adaptive explosion risk: 100.00%",
+        "value": 1.0,
+        "threshold": 0.3,
+        "tracker": "gradient_norms"
+      },
+      {
+        "type": "change_point_anomaly",
+        "severity": "warning",
+        "message": "Sudden change in gradient pattern detected",
+        "value": 1.0,
+        "threshold": 0.0,
         "tracker": "gradient_norms"
       }
     ],
@@ -126,16 +142,24 @@
         "current_total_grad_norm": 8.005623023850173,
         "current_policy_value_ratio": 26.666666666666668,
         "gradient_health_score": 0.7,
-        "training_stability": 0.39999999999999997,
+        "training_stability": 0.6100000000000001,
         "gradient_flow_health": 1.0,
         "gradient_balance": 0.0,
         "gradient_stability": 0.9999999999999999,
         "exploding_gradient_risk": 0.0,
         "vanishing_gradient_risk": 0.0,
         "gradient_imbalance_risk": 1.0,
-        "policy_grad_trend": 0.4229323308270677,
-        "value_grad_trend": -1.0136204428557187e-17,
-        "ratio_trend": 1.4097744360902258,
+        "policy_grad_trend": 0.42293233082706766,
+        "value_grad_trend": 1.7095765070919703e-17,
+        "ratio_trend": 1.4097744360902245,
+        "adaptive_explosion_risk": 1.0,
+        "statistical_outlier_risk": 0.0,
+        "momentum_instability_risk": 0.0,
+        "multi_scale_anomaly_risk": 0.2,
+        "early_warning_score": 4.4408920985006264e-17,
+        "exponential_smoothing_trend": 0.027545348399680734,
+        "change_point_detected": true,
+        "gradient_acceleration": 0.0,
         "anomalies": [
           {
             "type": "gradient_imbalance_anomaly",
@@ -155,8 +179,22 @@
             "type": "ratio_trend_anomaly",
             "severity": "warning",
             "message": "Strong ratio trend: 1.4098",
-            "value": 1.4097744360902258,
+            "value": 1.4097744360902245,
             "threshold": 0.1
+          },
+          {
+            "type": "adaptive_explosion_anomaly",
+            "severity": "critical",
+            "message": "Adaptive explosion risk: 100.00%",
+            "value": 1.0,
+            "threshold": 0.3
+          },
+          {
+            "type": "change_point_anomaly",
+            "severity": "warning",
+            "message": "Sudden change in gradient pattern detected",
+            "value": 1.0,
+            "threshold": 0.0
           }
         ]
       },
