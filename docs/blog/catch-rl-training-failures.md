@@ -33,23 +33,23 @@ Reusable artifacts:
 
 ---
 
-## Forensic Analysis with `rldk log-scan` and `rldk doctor`
+## Forensic Analysis with `rldk forensics log-scan` and `rldk forensics doctor`
 
 Generate PPO fixtures, then run the forensic stack against a **doctored** run that injects a short KL surge for demonstration:
 
 ```bash
 python tests/_make_fixtures.py
-rldk log-scan test_artifacts/logs_doctored_kl_spike
-rldk doctor   test_artifacts/logs_doctored_kl_spike
+rldk forensics log-scan test_artifacts/logs_doctored_kl_spike
+rldk forensics doctor   test_artifacts/logs_doctored_kl_spike
 python examples/comprehensive_ppo_forensics_example.py
 ```
 
-`rldk log-scan` fired **183 anomaly rules**, flagging a KL surge at steps `800` to `804` and **controller drift** through step `999`.
+`rldk forensics log-scan` (alias `rldk log-scan`) fired **183 anomaly rules**, flagging a KL surge at steps `800` to `804` and **controller drift** through step `999`.
 
 * *Controller drift*: the adaptive KL controller stopped tracking the target envelope, so effective regularization decayed.
 * *Advantage bias*: the mean of normalized advantages deviated from zero. The demo shows **advantage bias = 0.237**, which signals mis-scaling or normalization slippage.
 
-`rldk doctor` bundles this analysis with an environment audit:
+`rldk forensics doctor` (alias `rldk doctor`) bundles this analysis with an environment audit:
 
 * Scan report: `rldk_reports/ppo_scan.json`
 * Environment determinism card: `rldk_reports/determinism_card.json`

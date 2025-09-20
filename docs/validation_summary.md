@@ -42,12 +42,12 @@
 #### ✅ 3. CLI smoke and report generation
 All CLI commands executed successfully with exit code 0:
 - `rldk env-audit test_artifacts/logs_clean`
-- `rldk log-scan test_artifacts/logs_doctored_kl_spike`
+- `rldk forensics log-scan test_artifacts/logs_doctored_kl_spike`
 - `rldk diff-ckpt test_artifacts/ckpt_identical/a.pt test_artifacts/ckpt_identical/b.pt`
 - `rldk diff-ckpt test_artifacts/ckpt_value_head_edit/a.pt test_artifacts/ckpt_value_head_edit/b.pt`
 - `rldk reward-drift test_artifacts/reward_drift_demo/rmA test_artifacts/reward_drift_demo/rmB --prompts test_artifacts/reward_drift_demo/prompts.jsonl`
 - `rldk compare-runs test_artifacts/logs_clean test_artifacts/logs_doctored_kl_spike`
-- `rldk doctor test_artifacts/logs_doctored_kl_spike`
+- `rldk forensics doctor test_artifacts/logs_doctored_kl_spike`
 
 #### ✅ 4. Required files generated
 All required files exist and are non-empty:
@@ -66,7 +66,7 @@ All JSON content assertions passed:
 - Reward drift contains all required metrics with expected values
 
 #### ✅ 6. Determinism across repeated runs
-- Two identical runs of `rldk log-scan` produced identical results
+- Two identical runs of `rldk forensics log-scan` produced identical results
 - KL median and grad ratio median values match within tolerance
 - Repeatability test passed
 

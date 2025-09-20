@@ -45,10 +45,10 @@ Successfully installed and tested the RLDK (RL Debug Kit) package, which meets a
 - `rldk bisect` - Bisect code or data to find regressions
 - `rldk replay` - Reproducible checkpoints and replay manifest
 - `rldk env-audit` - Environment determinism audit
-- `rldk log-scan` - PPO anomaly detection
+- `rldk forensics log-scan`: PPO anomaly detection (alias `rldk log-scan`)
 - `rldk diff-ckpt` - Checkpoint parameter comparison
 - `rldk reward-drift` - Reward model drift analysis
-- `rldk doctor` - Comprehensive diagnostics
+- `rldk forensics doctor`: Comprehensive diagnostics (alias `rldk doctor`)
 - `rldk compare-runs` - Run comparison and divergence analysis
 
 #### Python API
