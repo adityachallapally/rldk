@@ -1,0 +1,232 @@
+{
+  "timestamp": "2025-09-20T05:17:17.393802",
+  "total_time_seconds": 131.72760128974915,
+  "total_time_hours": 0.03659100035826365,
+  "results": {
+    "multi_model_experiment_tracking": {
+      "success": false,
+      "details": {},
+      "errors": [
+        "Extended experiment tracking failed: TrackingConfig.__init__() got an unexpected keyword argument 'track_environment'"
+      ]
+    },
+    "extended_ppo_forensics": {
+      "success": true,
+      "details": {
+        "very_conservative": {
+          "total_steps": 8000,
+          "anomalies_detected": 2,
+          "health_score": 0,
+          "analysis_keys": [
+            "version",
+            "timestamp",
+            "total_steps",
+            "overall_health_score",
+            "training_stability_score",
+            "convergence_quality_score",
+            "anomalies",
+            "trackers"
+          ],
+          "processing_time": 18.343379974365234,
+          "estimated_hours": 0.5,
+          "kl_target": 0.05
+        },
+        "conservative": {
+          "total_steps": 8000,
+          "anomalies_detected": 2,
+          "health_score": 0,
+          "analysis_keys": [
+            "version",
+            "timestamp",
+            "total_steps",
+            "overall_health_score",
+            "training_stability_score",
+            "convergence_quality_score",
+            "anomalies",
+            "trackers"
+          ],
+          "processing_time": 18.486319303512573,
+          "estimated_hours": 1.0,
+          "kl_target": 0.1
+        },
+        "moderate": {
+          "total_steps": 8000,
+          "anomalies_detected": 2,
+          "health_score": 0,
+          "analysis_keys": [
+            "version",
+            "timestamp",
+            "total_steps",
+            "overall_health_score",
+            "training_stability_score",
+            "convergence_quality_score",
+            "anomalies",
+            "trackers"
+          ],
+          "processing_time": 17.433861017227173,
+          "estimated_hours": 1.5,
+          "kl_target": 0.2
+        },
+        "aggressive": {
+          "total_steps": 8000,
+          "anomalies_detected": 3,
+          "health_score": 0,
+          "analysis_keys": [
+            "version",
+            "timestamp",
+            "total_steps",
+            "overall_health_score",
+            "training_stability_score",
+            "convergence_quality_score",
+            "anomalies",
+            "trackers"
+          ],
+          "processing_time": 17.401135683059692,
+          "estimated_hours": 1.0,
+          "kl_target": 0.3
+        },
+        "very_aggressive": {
+          "total_steps": 8000,
+          "anomalies_detected": 3,
+          "health_score": 0,
+          "analysis_keys": [
+            "version",
+            "timestamp",
+            "total_steps",
+            "overall_health_score",
+            "training_stability_score",
+            "convergence_quality_score",
+            "anomalies",
+            "trackers"
+          ],
+          "processing_time": 17.089268922805786,
+          "estimated_hours": 0.5,
+          "kl_target": 0.5
+        }
+      },
+      "errors": []
+    },
+    "comprehensive_determinism_testing": {
+      "success": true,
+      "details": {
+        "basic_training": {
+          "passed": true,
+          "replicas": 5,
+          "compared_metrics": [
+            "loss",
+            "reward_mean",
+            "kl"
+          ],
+          "mismatches": 0,
+          "fixes": 5,
+          "culprit": null
+        },
+        "complex_training": {
+          "passed": true,
+          "replicas": 3,
+          "compared_metrics": [
+            "loss",
+            "reward_mean",
+            "kl"
+          ],
+          "mismatches": 0,
+          "fixes": 5,
+          "culprit": null
+        }
+      },
+      "errors": []
+    },
+    "extended_evaluation_suites": {
+      "success": true,
+      "details": {
+        "quick": {
+          "metrics_evaluated": 11,
+          "overall_score": 0.19999999999999998,
+          "available_fraction": 0.45454545454545453,
+          "execution_time": 0.9008612632751465,
+          "data_size": 5000,
+          "sample_size": 1000
+        },
+        "comprehensive": {
+          "metrics_evaluated": 16,
+          "overall_score": 0.3836660825831237,
+          "available_fraction": 0.5,
+          "execution_time": 0.9231393337249756,
+          "data_size": 5000,
+          "sample_size": 1000
+        },
+        "safety": {
+          "metrics_evaluated": 5,
+          "overall_score": 0.0,
+          "available_fraction": 0.6,
+          "execution_time": 0.32569265365600586,
+          "data_size": 5000,
+          "sample_size": 1000
+        }
+      },
+      "errors": []
+    },
+    "reward_model_analysis": {
+      "success": true,
+      "details": {
+        "small": {
+          "model_name": "microsoft/DialoGPT-small",
+          "health_score": 0,
+          "data_size": 3000,
+          "analysis_completed": true
+        },
+        "medium": {
+          "model_name": "gpt2",
+          "health_score": 0,
+          "data_size": 3000,
+          "analysis_completed": true
+        },
+        "large": {
+          "model_name": "microsoft/DialoGPT-medium",
+          "health_score": 0,
+          "data_size": 3000,
+          "analysis_completed": true
+        }
+      },
+      "errors": []
+    }
+  },
+  "issues": [
+    {
+      "severity": "HIGH",
+      "component": "ExtendedExperimentTracking",
+      "description": "Failed during extended experiment tracking: TrackingConfig.__init__() got an unexpected keyword argument 'track_environment'",
+      "fix_plan": "Check ExperimentTracker memory management and long-running experiment support",
+      "cursor_prompt": "1. Open ExperimentTracker class\n2. Add memory cleanup for long experiments\n3. Implement periodic state saving\n4. Add resource monitoring for extended runs",
+      "timestamp": "2025-09-20T05:15:05.662794"
+    }
+  ],
+  "models_tested": [
+    {
+      "name": "microsoft/DialoGPT-small",
+      "size": "small",
+      "params": "117M"
+    },
+    {
+      "name": "gpt2",
+      "size": "medium",
+      "params": "124M"
+    },
+    {
+      "name": "microsoft/DialoGPT-medium",
+      "size": "large",
+      "params": "345M"
+    }
+  ],
+  "researcher_analysis": {
+    "strengths": [
+      "PPO forensics analysis works well with realistic training data"
+    ],
+    "weaknesses": [
+      "Experiment tracking fails with complex multi-model workflows",
+      "1 critical issues block researcher workflows"
+    ],
+    "critical_issues": 1,
+    "total_issues": 1
+  }
+}

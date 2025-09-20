@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from ...core.io import Event
+from rldk.core.io import Event
 
 
 def _deduplicate_deterministic(items: List[str]) -> List[str]:

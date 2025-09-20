@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 if TYPE_CHECKING:
-    from ...core.utils.error_handling import ValidationError
+    from rldk.core.utils.error_handling import ValidationError
 
 import numpy as np
 import pandas as pd
@@ -398,7 +398,7 @@ def _create_enhanced_validation_error(
 ) -> 'ValidationError':
     """Create enhanced validation error with column mapping suggestions and format examples."""
     from ..adapters.field_resolver import FieldResolver
-    from ...core.utils.error_handling import ValidationError
+    from rldk.core.utils.error_handling import ValidationError
 
     available_columns = df.columns.tolist()
     field_resolver = FieldResolver()

@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from ...core.config import EvaluationConfig, get_eval_config
+from rldk.core.config import EvaluationConfig, get_eval_config
 
 logger = logging.getLogger(__name__)
 

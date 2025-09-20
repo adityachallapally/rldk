@@ -9,8 +9,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 
-from ...core.utils.error_handling import EvaluationError, ValidationError
-from ...core.utils.progress import progress_bar
+from rldk.core.utils.error_handling import EvaluationError, ValidationError
+from rldk.core.utils.progress import progress_bar
 from .metrics import calculate_confidence_intervals, calculate_effect_sizes
 from .schema import (
     _create_enhanced_validation_error,

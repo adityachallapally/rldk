@@ -1,0 +1,150 @@
+{
+  "timestamp": "2025-09-20T05:12:29.260240",
+  "total_time": 72.1199541091919,
+  "results": {
+    "experiment_tracking": {
+      "success": false,
+      "details": {},
+      "errors": [
+        "Experiment tracking failed: 'ExperimentTracker' object has no attribute 'metadata'"
+      ]
+    },
+    "ppo_forensics": {
+      "success": true,
+      "details": {
+        "conservative": {
+          "total_steps": 1000,
+          "anomalies_detected": 8,
+          "health_score": 0,
+          "analysis_keys": [
+            "version",
+            "timestamp",
+            "total_steps",
+            "overall_health_score",
+            "training_stability_score",
+            "convergence_quality_score",
+            "anomalies",
+            "trackers"
+          ]
+        },
+        "moderate": {
+          "total_steps": 1000,
+          "anomalies_detected": 6,
+          "health_score": 0,
+          "analysis_keys": [
+            "version",
+            "timestamp",
+            "total_steps",
+            "overall_health_score",
+            "training_stability_score",
+            "convergence_quality_score",
+            "anomalies",
+            "trackers"
+          ]
+        },
+        "aggressive": {
+          "total_steps": 1000,
+          "anomalies_detected": 9,
+          "health_score": 0,
+          "analysis_keys": [
+            "version",
+            "timestamp",
+            "total_steps",
+            "overall_health_score",
+            "training_stability_score",
+            "convergence_quality_score",
+            "anomalies",
+            "trackers"
+          ]
+        }
+      },
+      "errors": []
+    },
+    "determinism_checking": {
+      "success": true,
+      "details": {
+        "passed": true,
+        "replicas": 3,
+        "compared_metrics": [
+          "loss",
+          "reward_mean",
+          "kl"
+        ],
+        "mismatches": 0,
+        "fixes": 5
+      },
+      "errors": []
+    },
+    "evaluation_suites": {
+      "success": false,
+      "details": {
+        "quick": {
+          "error": "'EvalResult' object has no attribute 'get'"
+        },
+        "comprehensive": {
+          "error": "'EvalResult' object has no attribute 'get'"
+        },
+        "safety": {
+          "error": "'EvalResult' object has no attribute 'get'"
+        }
+      },
+      "errors": []
+    },
+    "cli_commands": {
+      "success": true,
+      "details": {
+        "version": {
+          "return_code": 0,
+          "stdout_length": 27,
+          "stderr_length": 0,
+          "success": true
+        },
+        "help": {
+          "return_code": 0,
+          "stdout_length": 4251,
+          "stderr_length": 0,
+          "success": true
+        },
+        "seed_show": {
+          "return_code": 0,
+          "stdout_length": 122,
+          "stderr_length": 0,
+          "success": true
+        },
+        "format_info": {
+          "return_code": 1,
+          "stdout_length": 0,
+          "stderr_length": 1430,
+          "success": false
+        }
+      },
+      "errors": []
+    }
+  },
+  "issues": [
+    {
+      "severity": "HIGH",
+      "component": "ExperimentTracker",
+      "description": "Failed to track experiments with real models: 'ExperimentTracker' object has no attribute 'metadata'",
+      "fix_plan": "Check ExperimentTracker initialization and dataset tracking methods. Verify all dependencies are properly imported and configured.",
+      "timestamp": "2025-09-20T05:11:51.590020"
+    }
+  ],
+  "models_tested": [
+    {
+      "name": "microsoft/DialoGPT-small",
+      "size": "small",
+      "params": "124M"
+    },
+    {
+      "name": "gpt2",
+      "size": "medium",
+      "params": "124M"
+    },
+    {
+      "name": "microsoft/DialoGPT-medium",
+      "size": "large",
+      "params": "354M"
+    }
+  ]
+}

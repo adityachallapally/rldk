@@ -1,0 +1,169 @@
+{
+  "timestamp": "2025-09-20T05:27:01.520155",
+  "total_time_seconds": 416.6972818374634,
+  "total_time_hours": 0.11574924495485094,
+  "results": {
+    "massive_experiment_tracking": {
+      "success": false,
+      "details": {
+        "small": {
+          "error": "'ExperimentTracker' object has no attribute 'track_environment'"
+        },
+        "medium": {
+          "error": "'ExperimentTracker' object has no attribute 'track_environment'"
+        },
+        "large": {
+          "error": "'ExperimentTracker' object has no attribute 'track_environment'"
+        }
+      },
+      "errors": []
+    },
+    "extended_multi_hour_ppo_forensics": {
+      "success": false,
+      "details": {},
+      "errors": [
+        "Extended PPO forensics failed: ComprehensivePPOForensics.__init__() got an unexpected keyword argument 'kl_tolerance'"
+      ]
+    },
+    "extensive_determinism_testing": {
+      "success": false,
+      "details": {
+        "basic_large_scale": {
+          "error": "check() got an unexpected keyword argument 'command'"
+        },
+        "complex_multi_model": {
+          "error": "check() got an unexpected keyword argument 'command'"
+        },
+        "extended_training": {
+          "error": "check() got an unexpected keyword argument 'command'"
+        }
+      },
+      "errors": []
+    },
+    "comprehensive_evaluation_suites": {
+      "success": false,
+      "details": {
+        "quick_massive": {
+          "error": "No module named 'rldk.evaluations.adapters'"
+        },
+        "comprehensive_massive": {
+          "error": "No module named 'rldk.evaluations.adapters'"
+        },
+        "safety_massive": {
+          "error": "No module named 'rldk.evaluations.adapters'"
+        },
+        "performance_massive": {
+          "error": "No module named 'rldk.evaluations.adapters'"
+        },
+        "ultra_comprehensive": {
+          "error": "No module named 'rldk.evaluations.adapters'"
+        }
+      },
+      "errors": []
+    },
+    "extended_reward_model_analysis": {
+      "success": true,
+      "details": {
+        "small": {
+          "model_name": "microsoft/DialoGPT-small",
+          "health_score": 0,
+          "data_size": 40000,
+          "analysis_completed": true,
+          "processing_time": 0.005918741226196289,
+          "analysis_keys": [
+            "passed",
+            "drift_detected",
+            "saturation_issues",
+            "calibration_score",
+            "shortcut_signals",
+            "label_leakage_risk",
+            "fixes",
+            "drift_metrics",
+            "calibration_details",
+            "shortcut_analysis",
+            "saturation_analysis"
+          ]
+        },
+        "medium": {
+          "model_name": "gpt2",
+          "health_score": 0,
+          "data_size": 40000,
+          "analysis_completed": true,
+          "processing_time": 0.005030155181884766,
+          "analysis_keys": [
+            "passed",
+            "drift_detected",
+            "saturation_issues",
+            "calibration_score",
+            "shortcut_signals",
+            "label_leakage_risk",
+            "fixes",
+            "drift_metrics",
+            "calibration_details",
+            "shortcut_analysis",
+            "saturation_analysis"
+          ]
+        },
+        "large": {
+          "model_name": "microsoft/DialoGPT-medium",
+          "health_score": 0,
+          "data_size": 40000,
+          "analysis_completed": true,
+          "processing_time": 0.004361391067504883,
+          "analysis_keys": [
+            "passed",
+            "drift_detected",
+            "saturation_issues",
+            "calibration_score",
+            "shortcut_signals",
+            "label_leakage_risk",
+            "fixes",
+            "drift_metrics",
+            "calibration_details",
+            "shortcut_analysis",
+            "saturation_analysis"
+          ]
+        }
+      },
+      "errors": []
+    }
+  },
+  "issues": [
+    {
+      "severity": "HIGH",
+      "component": "ExtendedPPOForensics",
+      "description": "Failed during extended forensics analysis: ComprehensivePPOForensics.__init__() got an unexpected keyword argument 'kl_tolerance'",
+      "fix_plan": "Optimize forensics processing for large datasets and long-running analysis",
+      "cursor_prompt": "1. Open ComprehensivePPOForensics class\n2. Add memory management for large datasets\n3. Implement chunked processing\n4. Add progress tracking for long analyses",
+      "timestamp": "2025-09-20T05:22:28.547679"
+    }
+  ],
+  "models_tested": [
+    {
+      "name": "microsoft/DialoGPT-small",
+      "size": "small",
+      "params": "117M"
+    },
+    {
+      "name": "gpt2",
+      "size": "medium",
+      "params": "124M"
+    },
+    {
+      "name": "microsoft/DialoGPT-medium",
+      "size": "large",
+      "params": "345M"
+    }
+  ],
+  "researcher_analysis": {
+    "strengths": [],
+    "weaknesses": [
+      "Experiment tracking struggles with massive multi-model workflows",
+      "1 critical issues block extended researcher workflows",
+      "Testing completed too quickly - may not reflect true multi-hour scenarios"
+    ],
+    "critical_issues": 1,
+    "total_issues": 1,
+    "multi_hour_achieved": false
+  }
+}
