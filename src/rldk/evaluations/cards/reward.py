@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from ...core.io import Event
+from rldk.core.io import Event
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -213,7 +213,7 @@ def _analyze_reward_health(events: List[Event]) -> Dict[str, float]:
         return {}
 
     # Convert events to DataFrame
-    from ...core.io import events_to_dataframe
+    from rldk.core.io import events_to_dataframe
 
     df = events_to_dataframe(events)
 
@@ -264,7 +264,7 @@ def _detect_reward_drift(events: List[Event]) -> bool:
         return False
 
     # Convert events to DataFrame
-    from ...core.io import events_to_dataframe
+    from rldk.core.io import events_to_dataframe
 
     df = events_to_dataframe(events)
 
@@ -299,7 +299,7 @@ def _calculate_calibration_score(events: List[Event]) -> float:
         return 0.0
 
     # Convert events to DataFrame
-    from ...core.io import events_to_dataframe
+    from rldk.core.io import events_to_dataframe
 
     df = events_to_dataframe(events)
 
@@ -342,7 +342,7 @@ def _detect_reward_saturation(events: List[Event]) -> bool:
         return False
 
     # Convert events to DataFrame
-    from ...core.io import events_to_dataframe
+    from rldk.core.io import events_to_dataframe
 
     df = events_to_dataframe(events)
 
@@ -372,7 +372,7 @@ def _detect_shortcut_signals(events: List[Event]) -> List[str]:
         return signals
 
     # Convert events to DataFrame
-    from ...core.io import events_to_dataframe
+    from rldk.core.io import events_to_dataframe
 
     df = events_to_dataframe(events)
 
@@ -415,7 +415,7 @@ def _estimate_label_noise(events: List[Event]) -> float:
         return 0.0
 
     # Convert events to DataFrame
-    from ...core.io import events_to_dataframe
+    from rldk.core.io import events_to_dataframe
 
     df = events_to_dataframe(events)
 
@@ -442,7 +442,7 @@ def _perform_slice_analysis(events: List[Event]) -> Dict[str, Dict[str, Any]]:
         return slice_analysis
 
     # Convert events to DataFrame
-    from ...core.io import events_to_dataframe
+    from rldk.core.io import events_to_dataframe
 
     df = events_to_dataframe(events)
 

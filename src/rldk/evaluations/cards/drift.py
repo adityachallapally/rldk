@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from ..diff.diff import first_divergence_events
-from ...core.io import Event
+from ...support.diff.diff import first_divergence_events
+from rldk.core.io import Event
 
 
 def generate_drift_card(
@@ -111,7 +111,7 @@ def _calculate_metric_correlations(
         return {}
 
     # Convert events to DataFrames
-    from ...core.io import events_to_dataframe
+    from rldk.core.io import events_to_dataframe
 
     df_a = events_to_dataframe(events_a)
     df_b = events_to_dataframe(events_b)
@@ -145,7 +145,7 @@ def _detect_drift_patterns(
         return patterns
 
     # Convert to DataFrames
-    from ...core.io import events_to_dataframe
+    from rldk.core.io import events_to_dataframe
 
     df_a = events_to_dataframe(events_a)
     df_b = events_to_dataframe(events_b)
@@ -181,7 +181,7 @@ def _calculate_kl_divergence(
         return {}
 
     # Convert to DataFrames
-    from ...core.io import events_to_dataframe
+    from rldk.core.io import events_to_dataframe
 
     df_a = events_to_dataframe(events_a)
     df_b = events_to_dataframe(events_b)
@@ -215,7 +215,7 @@ def _calculate_mae(events_a: List[Event], events_b: List[Event], metric: str) ->
         return 0.0
 
     # Convert to DataFrames
-    from ...core.io import events_to_dataframe
+    from rldk.core.io import events_to_dataframe
 
     df_a = events_to_dataframe(events_a)
     df_b = events_to_dataframe(events_b)

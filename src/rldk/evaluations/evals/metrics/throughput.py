@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from ...core.utils.math_utils import safe_divide, safe_rate_calculation
+from rldk.core.utils.math_utils import safe_divide, safe_rate_calculation
 
 logger = logging.getLogger(__name__)
 

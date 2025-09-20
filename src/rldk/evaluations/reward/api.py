@@ -9,7 +9,7 @@ from typing import Any, Dict, Mapping, Optional, Sequence, Union
 import pandas as pd
 
 from ...pipelines.ingest.training_metrics_normalizer import normalize_training_metrics
-from ...core.utils.error_handling import ValidationError
+from rldk.core.utils.error_handling import ValidationError
 from .health_analysis import RewardHealthReport, health
 
 TrainingMetricsInput = Union[pd.DataFrame, Sequence[Mapping[str, Any]], str, Path]

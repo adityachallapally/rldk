@@ -5,8 +5,8 @@ from typing import Any, Dict, Optional
 import numpy as np
 import pandas as pd
 
-from ...core.config import EvaluationConfig, get_eval_config, get_suite_config
-from ...core.utils.math_utils import safe_divide, safe_rate_calculation
+from rldk.core.config import EvaluationConfig, get_eval_config, get_suite_config
+from rldk.core.utils.math_utils import safe_divide, safe_rate_calculation
 from .integrity import (
     evaluate_answer_leakage,
     evaluate_data_split_integrity,
