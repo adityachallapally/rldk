@@ -15,5 +15,5 @@ mypy==1.8.0
 ruff==0.1.0
 
 # Optional dependencies for specific features
-pyarrow==10.0.0
-openrlhf==0.1.0
+pyarrow==21.0.0
+# openrlhf requires GPU-specific build tooling; install manually if needed.
