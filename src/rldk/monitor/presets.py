@@ -55,6 +55,7 @@ RULE_PRESETS: Dict[str, RulePreset] = {
         "rules": [
             {
                 "id": "ppo_strict_kl_stop",
+                # Strict preset keeps the 0.25 gate to mirror production overrides.
                 "where": "name in (\"kl\", \"kl_mean\", \"ppo/policy/kl_mean\", \"train/kl\")",
                 "condition": "value > 0.25",
                 "window": {"size": 3, "kind": "consecutive"},
@@ -108,6 +109,7 @@ RULE_PRESETS: Dict[str, RulePreset] = {
         "rules": [
             {
                 "id": "dpo_high_kl",
+                # DPO preset retains the 0.2 limit tuned for its narrower KL envelope.
                 "where": "name in (\"dpo/kl\", \"kl\", \"kl_divergence\")",
                 "condition": "value > 0.2",
                 "window": {"size": 4, "kind": "consecutive"},
