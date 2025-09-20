@@ -1,0 +1,61 @@
+{
+  "summary": {
+    "requested_signals": [
+      "reward_mean",
+      "kl_mean",
+      "loss"
+    ],
+    "signals_compared": 3,
+    "signals_with_differences": 2,
+    "verdict": "differs",
+    "max_abs_delta": 0.012490881861594971,
+    "steps_only_a": 0,
+    "steps_only_b": 350,
+    "min_steps_compared": 5,
+    "max_steps_compared": 5
+  },
+  "signals": [
+    {
+      "signal": "reward_mean",
+      "steps_compared": 5,
+      "steps_only_a": 0,
+      "steps_only_b": 115,
+      "status": "differs",
+      "mean_a": 1.5000154963865133,
+      "mean_b": 1.499951672554016,
+      "delta_mean": -6.38238324972562e-05,
+      "median_delta": -5.9903330293265e-05,
+      "max_delta": -9.33064307906406e-06,
+      "min_delta": -0.00012507147235729654,
+      "max_abs_delta": 0.00012507147235729654
+    },
+    {
+      "signal": "kl_mean",
+      "steps_compared": 5,
+      "steps_only_a": 0,
+      "steps_only_b": 115,
+      "status": "differs",
+      "mean_a": -0.0015496386513405014,
+      "mean_b": 0.004828553754123277,
+      "delta_mean": 0.006378192405463778,
+      "median_delta": 0.0059850216093764175,
+      "max_delta": 0.012490881861594971,
+      "min_delta": 0.0009260574279323919,
+      "max_abs_delta": 0.012490881861594971
+    },
+    {
+      "signal": "loss",
+      "steps_compared": 0,
+      "steps_only_a": 0,
+      "steps_only_b": 120,
+      "status": "no_overlap",
+      "mean_a": null,
+      "mean_b": null,
+      "delta_mean": null,
+      "median_delta": null,
+      "max_delta": null,
+      "min_delta": null,
+      "max_abs_delta": null
+    }
+  ]
+}
