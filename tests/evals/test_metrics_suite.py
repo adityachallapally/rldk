@@ -2,8 +2,8 @@
 
 import pandas as pd
 import pytest
-from rldk.evals.runner import run
-from rldk.evals.schema import normalize_columns, get_schema_for_suite, RL_METRICS_SCHEMA
+from rldk.evaluations.evals.runner import run
+from rldk.evaluations.evals.schema import normalize_columns, get_schema_for_suite, RL_METRICS_SCHEMA
 
 
 def test_normalize_columns_with_mapping():

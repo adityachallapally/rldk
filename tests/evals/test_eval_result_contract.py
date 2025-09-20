@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from rldk.evals.runner import EvalResult
+from rldk.evaluations.evals.runner import EvalResult
 
 
 class TestEvalResultContract:

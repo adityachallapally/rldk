@@ -98,7 +98,7 @@ environment, installs RLDK in editable mode, and chains together:
 
 1. A **primary** and **baseline** invocation of `scripts/fullscale_train_rl.py` so you can
    diff an updating policy against a frozen control run.
-2. The **monitor once** workflow with `rules/fullscale_rules.yaml`, producing alerts and a
+2. The **monitor once** workflow with `configs/rules/fullscale_rules.yaml`, producing alerts and a
    detailed report.
 3. **Metrics ingestion**, **reward health analysis**, and **reward card** generation to gate
    on the default detectors.
@@ -121,7 +121,7 @@ Keep the defaults for a healthy baseline run. Pass `--simulate-anomalies` to
 `scripts/fullscale_train_rl.py` if you want the deterministic KL spikes and reward collapse
 scenario that force alert paths. The remediation advice in
 [`monitor_rules_cookbook.md`](monitor_rules_cookbook.md#fullscale-remediation-hints) mirrors the
-suggestions emitted by `rules/fullscale_rules.yaml` when those guards activate.
+suggestions emitted by `configs/rules/fullscale_rules.yaml` when those guards activate.
 
 ## 3. Run Forensics Analysis
 

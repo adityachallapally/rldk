@@ -45,7 +45,7 @@ except ImportError as e:
     print("   pip install transformers --break-system-packages")
     sys.exit(1)
 
-from rlhf_core.profiler import ProfilerManager
+from rldk.integrations.rlhf_core.profiler import ProfilerManager
 from tools.profiler.hooks import StepProfiler, profiler_registry
 from tools.profiler.profiler_context import ProfilerContext
 from tools.profiler.torch_profiler import TorchProfiler

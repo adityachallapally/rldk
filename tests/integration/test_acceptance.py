@@ -43,7 +43,8 @@ def main():
     print("=" * 50)
 
     # Check if fixtures exist
-    if not Path("test_artifacts").exists():
+    artifact_root = "data/fixtures/test_artifacts"
+    if not Path(artifact_root).exists():
         print("❌ Test artifacts not found. Run: python3 tests/_make_fixtures.py")
         return False
 
@@ -54,10 +55,10 @@ def main():
 
     tests = [
         # Environment audit
-        ("rldk env-audit test_artifacts/logs_clean", "Environment audit"),
+        (f"rldk env-audit {artifact_root}/logs_clean", "Environment audit"),
         # Log scan
         (
-            "rldk log-scan test_artifacts/logs_doctored_kl_spike",
+            f"rldk log-scan {artifact_root}/logs_doctored_kl_spike",
             "Log scan with KL spike detection",
         ),
     ]
@@ -67,12 +68,12 @@ def main():
         tests.extend([
             # Checkpoint diff
             (
-                "rldk diff-ckpt test_artifacts/ckpt_identical/a.pt test_artifacts/ckpt_identical/b.pt",
+                f"rldk diff-ckpt {artifact_root}/ckpt_identical/a.pt {artifact_root}/ckpt_identical/b.pt",
                 "Checkpoint diff",
             ),
             # Reward drift
             (
-                "rldk reward-drift test_artifacts/reward_drift_demo/rmA test_artifacts/reward_drift_demo/rmB --prompts test_artifacts/reward_drift_demo/prompts.jsonl",
+                f"rldk reward-drift {artifact_root}/reward_drift_demo/rmA {artifact_root}/reward_drift_demo/rmB --prompts {artifact_root}/reward_drift_demo/prompts.jsonl",
                 "Reward drift analysis",
             ),
         ])
@@ -80,10 +81,10 @@ def main():
     # Add non-PyTorch dependent tests
     tests.extend([
         # Doctor
-        ("rldk doctor test_artifacts/logs_clean", "Comprehensive diagnostics"),
+        (f"rldk doctor {artifact_root}/logs_clean", "Comprehensive diagnostics"),
         # Compare runs
         (
-            "rldk compare-runs test_artifacts/logs_clean test_artifacts/logs_doctored_kl_spike",
+            f"rldk compare-runs {artifact_root}/logs_clean {artifact_root}/logs_doctored_kl_spike",
             "Compare runs",
         ),
     ])

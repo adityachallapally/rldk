@@ -12,7 +12,7 @@ def test_kl_schedule_tracker():
     print("Testing KL Schedule Tracker...")
 
     # Import and test basic functionality
-    from rldk.forensics.kl_schedule_tracker import KLScheduleMetrics, KLScheduleTracker
+    from rldk.evaluations.forensics.kl_schedule_tracker import KLScheduleMetrics, KLScheduleTracker
 
     # Test initialization
     tracker = KLScheduleTracker(kl_target=0.1, kl_target_tolerance=0.05)
@@ -31,7 +31,7 @@ def test_gradient_norms_analyzer():
     """Test gradient norms analyzer basic functionality."""
     print("Testing Gradient Norms Analyzer...")
 
-    from rldk.forensics.gradient_norms_analyzer import (
+    from rldk.evaluations.forensics.gradient_norms_analyzer import (
         GradientNormsAnalyzer,
         GradientNormsMetrics,
     )
@@ -53,7 +53,7 @@ def test_advantage_statistics_tracker():
     """Test advantage statistics tracker basic functionality."""
     print("Testing Advantage Statistics Tracker...")
 
-    from rldk.forensics.advantage_statistics_tracker import (
+    from rldk.evaluations.forensics.advantage_statistics_tracker import (
         AdvantageStatisticsMetrics,
         AdvantageStatisticsTracker,
     )
@@ -75,7 +75,7 @@ def test_comprehensive_ppo_forensics():
     """Test comprehensive PPO forensics basic functionality."""
     print("Testing Comprehensive PPO Forensics...")
 
-    from rldk.forensics.comprehensive_ppo_forensics import (
+    from rldk.evaluations.forensics.comprehensive_ppo_forensics import (
         ComprehensivePPOForensics,
         ComprehensivePPOMetrics,
     )
@@ -110,7 +110,7 @@ def test_ppo_scan_integration():
     """Test PPO scan integration."""
     print("Testing PPO Scan Integration...")
 
-    from rldk.forensics.ppo_scan import scan_ppo_events
+    from rldk.evaluations.forensics.ppo_scan import scan_ppo_events
 
     # Test with empty events
     result = scan_ppo_events(iter([]))

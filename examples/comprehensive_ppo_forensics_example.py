@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 
 # Import RLDK components
-from rldk.forensics.comprehensive_ppo_forensics import ComprehensivePPOForensics
+from rldk.evaluations.forensics.comprehensive_ppo_forensics import ComprehensivePPOForensics
 from rldk.integrations.trl.monitors import ComprehensivePPOMonitor
 
 try:

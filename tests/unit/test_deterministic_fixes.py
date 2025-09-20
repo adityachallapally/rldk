@@ -175,7 +175,7 @@ sys.modules['pandas'] = MockPandas()
 sys.modules['torch'] = MockTorch()
 
 # Import our tracking system
-from src.rldk.tracking import DatasetTracker, ModelTracker, SeedTracker
+from src.rldk.monitoring.tracking import DatasetTracker, ModelTracker, SeedTracker
 
 
 def test_dataset_checksum_determinism():

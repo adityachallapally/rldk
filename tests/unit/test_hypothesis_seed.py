@@ -22,7 +22,7 @@ class TestSeedHypothesis:
     def test_seed_setting(self, seed: int):
         """Test that seed setting works for various seed values."""
         try:
-            from rldk.utils.seed import get_current_seed, set_global_seed
+            from rldk.core.utils.seed import get_current_seed, set_global_seed
 
             # Set seed
             result = set_global_seed(seed)
@@ -43,7 +43,7 @@ class TestSeedHypothesis:
     def test_seed_context_manager(self, seed1: int, seed2: int):
         """Test that seed context manager works correctly."""
         try:
-            from rldk.utils.seed import get_current_seed, seed_context, set_global_seed
+            from rldk.core.utils.seed import get_current_seed, seed_context, set_global_seed
 
             # Set initial seed
             set_global_seed(seed1)
@@ -66,7 +66,7 @@ class TestSeedHypothesis:
     def test_seed_state_summary(self, seed: int):
         """Test that seed state summary works for various seeds."""
         try:
-            from rldk.utils.seed import get_seed_state_summary, set_global_seed
+            from rldk.core.utils.seed import get_seed_state_summary, set_global_seed
 
             # Set seed
             set_global_seed(seed)
@@ -87,7 +87,7 @@ class TestSeedHypothesis:
     def test_seed_validation(self, seed: int):
         """Test that seed validation works for various seeds."""
         try:
-            from rldk.utils.seed import set_global_seed, validate_seed_consistency
+            from rldk.core.utils.seed import set_global_seed, validate_seed_consistency
 
             # Set seed
             set_global_seed(seed)
@@ -106,7 +106,7 @@ class TestSeedHypothesis:
     def test_reproducible_environment(self, seed: int):
         """Test that reproducible environment setup works for various seeds."""
         try:
-            from rldk.utils.seed import set_reproducible_environment
+            from rldk.core.utils.seed import set_reproducible_environment
 
             # Set up reproducible environment
             result = set_reproducible_environment(seed)
@@ -126,7 +126,7 @@ class TestSeedHypothesis:
     def test_multiple_seed_changes(self, seeds: List[int]):
         """Test that multiple seed changes work correctly."""
         try:
-            from rldk.utils.seed import get_current_seed, set_global_seed
+            from rldk.core.utils.seed import get_current_seed, set_global_seed
 
             for seed in seeds:
                 set_global_seed(seed)
@@ -142,7 +142,7 @@ class TestSeedHypothesis:
     def test_seed_restoration(self, seed: int):
         """Test that seed restoration works correctly."""
         try:
-            from rldk.utils.seed import (
+            from rldk.core.utils.seed import (
                 get_current_seed,
                 restore_seed_state,
                 set_global_seed,
@@ -170,7 +170,7 @@ class TestSeedHypothesis:
     def test_seed_determinism(self, seed: int):
         """Test that same seed produces consistent results."""
         try:
-            from rldk.utils.seed import get_current_seed, set_global_seed
+            from rldk.core.utils.seed import get_current_seed, set_global_seed
 
             # Set seed twice
             set_global_seed(seed)
@@ -193,7 +193,7 @@ class TestSeedHypothesis:
     def test_seed_edge_cases(self, seed: int):
         """Test edge cases for seed values."""
         try:
-            from rldk.utils.seed import get_current_seed, set_global_seed
+            from rldk.core.utils.seed import get_current_seed, set_global_seed
 
             # Test edge cases
             edge_cases = [0, 1, 2**16-1, 2**32-1]
@@ -211,7 +211,7 @@ class TestSeedHypothesis:
     def test_seed_type_consistency(self, seed: int):
         """Test that seed types remain consistent."""
         try:
-            from rldk.utils.seed import get_current_seed, set_global_seed
+            from rldk.core.utils.seed import get_current_seed, set_global_seed
 
             # Set seed
             result = set_global_seed(seed)

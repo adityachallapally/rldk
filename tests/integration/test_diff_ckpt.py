@@ -6,8 +6,8 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 
-from rldk.forensics.ckpt_diff import diff_checkpoints
-from rldk.io.schemas import CkptDiffReportV1, validate
+from rldk.evaluations.forensics.ckpt_diff import diff_checkpoints
+from rldk.core.io.schemas import CkptDiffReportV1, validate
 
 
 def test_diff_identical_checkpoints():

@@ -9,7 +9,7 @@ from unittest.mock import mock_open, patch
 import pandas as pd
 import pytest
 
-from rldk.replay import (
+from rldk.pipelines.replay import (
     ReplayReport,
     ReplayResult,
     _cleanup_temp_file,
@@ -157,8 +157,8 @@ class TestMetricComparison:
 class TestReplayFunction:
     """Test the main replay function."""
 
-    @patch("rldk.replay.replay._run_replay")
-    @patch("rldk.replay.replay.ingest_runs")
+    @patch("rldk.pipelines.replay.replay._run_replay")
+    @patch("rldk.pipelines.replay.replay.ingest_runs")
     def test_replay_success(self, mock_ingest, mock_run_replay):
         """Test successful replay execution."""
         # Mock original run data
@@ -205,8 +205,8 @@ class TestReplayFunction:
         assert "reward_mean" in report.metrics_compared
         assert "kl_mean" in report.metrics_compared
 
-    @patch("rldk.replay.replay._run_replay")
-    @patch("rldk.replay.replay.ingest_runs")
+    @patch("rldk.pipelines.replay.replay._run_replay")
+    @patch("rldk.pipelines.replay.replay.ingest_runs")
     def test_replay_with_tolerance_violations(self, mock_ingest, mock_run_replay):
         """Test replay with tolerance violations."""
         # Mock original run data
@@ -262,7 +262,7 @@ class TestReplayFunction:
         original_data = {"step": [0, 1, 2], "reward_mean": [0.5, 0.6, 0.7]}
         original_df = pd.DataFrame(original_data)
 
-        with patch("rldk.replay.replay.ingest_runs", return_value=original_df):
+        with patch("rldk.pipelines.replay.replay.ingest_runs", return_value=original_df):
             with pytest.raises(ValueError, match="must contain 'seed' column"):
                 replay(
                     run_path="test_run.jsonl",
@@ -281,7 +281,7 @@ class TestReplayFunction:
         }
         original_df = pd.DataFrame(original_data)
 
-        with patch("rldk.replay.replay.ingest_runs", return_value=original_df):
+        with patch("rldk.pipelines.replay.replay.ingest_runs", return_value=original_df):
             with pytest.raises(ValueError, match="seed is missing or NaN"):
                 replay(
                     run_path="test_run.jsonl",
@@ -433,12 +433,12 @@ class TestReplayResult:
 class TestTempFileCleanup:
     """Test that temporary files are cleaned up in all code paths."""
 
-    @patch("rldk.replay.replay._cleanup_temp_file")
-    @patch("rldk.replay.replay._detect_device")
-    @patch("rldk.replay.replay._get_deterministic_env")
+    @patch("rldk.pipelines.replay.replay._cleanup_temp_file")
+    @patch("rldk.pipelines.replay.replay._detect_device")
+    @patch("rldk.pipelines.replay.replay._get_deterministic_env")
     def test_temp_file_cleanup_on_command_parse_error(self, mock_env, mock_device, mock_cleanup):
         """Test that temp file is cleaned up when command parsing fails."""
-        from rldk.replay.replay import _run_replay
+        from rldk.pipelines.replay.replay import _run_replay
 
         mock_device.return_value = "cpu"
         mock_env.return_value = {}
@@ -455,15 +455,15 @@ class TestTempFileCleanup:
         assert result.success is False
         assert "Failed to parse command" in result.error_message
 
-    @patch("rldk.replay.replay._cleanup_temp_file")
-    @patch("rldk.replay.replay._detect_device")
-    @patch("rldk.replay.replay._get_deterministic_env")
+    @patch("rldk.pipelines.replay.replay._cleanup_temp_file")
+    @patch("rldk.pipelines.replay.replay._detect_device")
+    @patch("rldk.pipelines.replay.replay._get_deterministic_env")
     @patch("subprocess.run")
     def test_temp_file_cleanup_on_subprocess_timeout(self, mock_run, mock_env, mock_device, mock_cleanup):
         """Test that temp file is cleaned up when subprocess times out."""
         import subprocess
 
-        from rldk.replay.replay import _run_replay
+        from rldk.pipelines.replay.replay import _run_replay
 
         mock_device.return_value = "cpu"
         mock_env.return_value = {}
@@ -478,13 +478,13 @@ class TestTempFileCleanup:
         assert result.success is False
         assert "timed out" in result.error_message
 
-    @patch("rldk.replay.replay._cleanup_temp_file")
-    @patch("rldk.replay.replay._detect_device")
-    @patch("rldk.replay.replay._get_deterministic_env")
+    @patch("rldk.pipelines.replay.replay._cleanup_temp_file")
+    @patch("rldk.pipelines.replay.replay._detect_device")
+    @patch("rldk.pipelines.replay.replay._get_deterministic_env")
     @patch("subprocess.run")
     def test_temp_file_cleanup_on_subprocess_error(self, mock_run, mock_env, mock_device, mock_cleanup):
         """Test that temp file is cleaned up when subprocess raises exception."""
-        from rldk.replay.replay import _run_replay
+        from rldk.pipelines.replay.replay import _run_replay
 
         mock_device.return_value = "cpu"
         mock_env.return_value = {}
@@ -499,15 +499,15 @@ class TestTempFileCleanup:
         assert result.success is False
         assert "Failed to execute replay command" in result.error_message
 
-    @patch("rldk.replay.replay._cleanup_temp_file")
-    @patch("rldk.replay.replay._detect_device")
-    @patch("rldk.replay.replay._get_deterministic_env")
+    @patch("rldk.pipelines.replay.replay._cleanup_temp_file")
+    @patch("rldk.pipelines.replay.replay._detect_device")
+    @patch("rldk.pipelines.replay.replay._get_deterministic_env")
     @patch("subprocess.run")
     def test_temp_file_cleanup_on_command_failure(self, mock_run, mock_env, mock_device, mock_cleanup):
         """Test that temp file is cleaned up when command returns non-zero exit code."""
         from unittest.mock import MagicMock
 
-        from rldk.replay.replay import _run_replay
+        from rldk.pipelines.replay.replay import _run_replay
 
         mock_device.return_value = "cpu"
         mock_env.return_value = {}
@@ -528,16 +528,16 @@ class TestTempFileCleanup:
         assert result.success is False
         assert "failed with return code 1" in result.error_message
 
-    @patch("rldk.replay.replay._cleanup_temp_file")
-    @patch("rldk.replay.replay._detect_device")
-    @patch("rldk.replay.replay._get_deterministic_env")
+    @patch("rldk.pipelines.replay.replay._cleanup_temp_file")
+    @patch("rldk.pipelines.replay.replay._detect_device")
+    @patch("rldk.pipelines.replay.replay._get_deterministic_env")
     @patch("subprocess.run")
     @patch("os.path.exists")
     def test_temp_file_cleanup_on_no_metrics_file(self, mock_exists, mock_run, mock_env, mock_device, mock_cleanup):
         """Test that temp file is cleaned up when no metrics file is found."""
         from unittest.mock import MagicMock
 
-        from rldk.replay.replay import _run_replay
+        from rldk.pipelines.replay.replay import _run_replay
 
         mock_device.return_value = "cpu"
         mock_env.return_value = {}
@@ -561,9 +561,9 @@ class TestTempFileCleanup:
         assert result.success is False
         assert "No metrics file found after replay" in result.error_message
 
-    @patch("rldk.replay.replay._cleanup_temp_file")
-    @patch("rldk.replay.replay._detect_device")
-    @patch("rldk.replay.replay._get_deterministic_env")
+    @patch("rldk.pipelines.replay.replay._cleanup_temp_file")
+    @patch("rldk.pipelines.replay.replay._detect_device")
+    @patch("rldk.pipelines.replay.replay._get_deterministic_env")
     @patch("subprocess.run")
     @patch("os.path.exists")
     @patch("pandas.read_json")
@@ -571,7 +571,7 @@ class TestTempFileCleanup:
         """Test that temp file is cleaned up when metrics parsing fails."""
         from unittest.mock import MagicMock
 
-        from rldk.replay.replay import _run_replay
+        from rldk.pipelines.replay.replay import _run_replay
 
         mock_device.return_value = "cpu"
         mock_env.return_value = {}

@@ -2,7 +2,7 @@
 
 import pytest
 
-from rldk.adapters.field_resolver import FieldResolver, SchemaError
+from rldk.monitoring.adapters.field_resolver import FieldResolver, SchemaError
 
 
 class TestFieldResolver:

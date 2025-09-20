@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 import torch
 
-from rldk.tracking.seed_tracker import SeedTracker
+from rldk.monitoring.tracking.seed_tracker import SeedTracker
 
 
 class TestSeedRoundtrip:

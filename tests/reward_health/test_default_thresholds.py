@@ -7,7 +7,7 @@ from unittest.mock import mock_open, patch
 import pytest
 import yaml
 
-from rldk.reward.health_config.config import (
+from rldk.evaluations.reward.health_config.config import (
     _deep_merge,
     get_default_config_path,
     get_detector_thresholds,

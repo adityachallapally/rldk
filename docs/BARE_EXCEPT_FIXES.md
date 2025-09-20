@@ -61,7 +61,7 @@ A critical bug was identified in the adapter `can_handle` methods where `json.lo
 - **Change**: `except:` → `except OSError as e:`
 - **Added**: Warning message for cleanup errors
 
-#### `reference/smoke_tests/gpu_1hr_test.py`
+#### `tests/smoke/gpu_1hr_test.py`
 - **Line 80**: Fixed bare except in GPU availability check
 - **Change**: `except:` → `except (OSError, subprocess.SubprocessError) as e:`
 - **Added**: Specific error message
@@ -70,14 +70,14 @@ A critical bug was identified in the adapter `can_handle` methods where `json.lo
 - **Change**: `except:` → `except (OSError, subprocess.SubprocessError) as e:`
 - **Added**: Specific error message
 
-#### `reference/smoke_tests/cpu_2min_test.py`
+#### `tests/smoke/cpu_2min_test.py`
 - **Line 121**: Fixed bare except in RLDK availability check
 - **Change**: `except:` → `except (OSError, subprocess.SubprocessError) as e:`
 - **Added**: Specific error message
 
 ### 5. Training Files
 
-#### `reference/tasks/summarization/train.py`
+#### `scripts/tasks/summarization/train.py`
 - **Line 53**: Fixed bare except in KL divergence computation
 - **Change**: `except:` → `except (RuntimeError, ValueError) as e:`
 - **Added**: Warning message for KL computation errors
@@ -95,7 +95,7 @@ A critical bug was identified in the adapter `can_handle` methods where `json.lo
 
 ### 7. Profiler Files
 
-#### `rlhf_core/profiler.py`
+#### `src/rldk/integrations/rlhf_core/profiler.py`
 - **Line 94**: Fixed bare except in profiler cleanup
 - **Change**: `except:` → `except Exception as e:`
 - **Added**: Warning message for profiler cleanup errors

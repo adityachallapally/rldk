@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from rldk.evals.probes import (
+from rldk.evaluations.evals.probes import (
     evaluate_alignment,
     evaluate_hallucination,
     evaluate_harmlessness,
@@ -17,8 +17,8 @@ from rldk.evals.probes import (
     evaluate_kl_divergence,
     evaluate_reward_alignment,
 )
-from rldk.evals.runner import EvalResult, compare_evaluations, run, save_eval_results
-from rldk.evals.suites import get_eval_suite, get_suite_info, list_available_suites
+from rldk.evaluations.evals.runner import EvalResult, compare_evaluations, run, save_eval_results
+from rldk.evaluations.evals.suites import get_eval_suite, get_suite_info, list_available_suites
 
 
 class TestEvaluationRunner:
@@ -268,7 +268,7 @@ class TestEvaluationSuites:
     def test_comprehensive_evaluation_with_complete_data(self):
         """Test that all evaluation metrics work with complete data including events and output columns."""
         # Test throughput evaluation with events column
-        from rldk.evals.metrics.throughput import evaluate_throughput
+        from rldk.evaluations.evals.metrics.throughput import evaluate_throughput
         throughput_result = evaluate_throughput(self.sample_data)
 
         assert "score" in throughput_result
@@ -279,7 +279,7 @@ class TestEvaluationSuites:
         assert 0 <= throughput_result["score"] <= 1
 
         # Test toxicity evaluation with output column
-        from rldk.evals.metrics.toxicity import evaluate_toxicity
+        from rldk.evaluations.evals.metrics.toxicity import evaluate_toxicity
         toxicity_result = evaluate_toxicity(self.sample_data)
 
         assert "score" in toxicity_result
@@ -290,7 +290,7 @@ class TestEvaluationSuites:
         assert 0 <= toxicity_result["score"] <= 1
 
         # Test bias evaluation with output column
-        from rldk.evals.metrics.bias import evaluate_bias
+        from rldk.evaluations.evals.metrics.bias import evaluate_bias
         bias_result = evaluate_bias(self.sample_data)
 
         assert "score" in bias_result
@@ -334,19 +334,19 @@ class TestEvaluationSuites:
         })
 
         # Throughput should handle missing events column
-        from rldk.evals.metrics.throughput import evaluate_throughput
+        from rldk.evaluations.evals.metrics.throughput import evaluate_throughput
         throughput_result = evaluate_throughput(minimal_data)
         assert throughput_result["score"] == 0.0
         assert "missing_log_column" in throughput_result["error"]
 
         # Toxicity should handle missing output column
-        from rldk.evals.metrics.toxicity import evaluate_toxicity
+        from rldk.evaluations.evals.metrics.toxicity import evaluate_toxicity
         toxicity_result = evaluate_toxicity(minimal_data)
         assert toxicity_result["score"] == 1.0  # High score = high toxicity (bad)
         assert "missing_output_column" in toxicity_result["error"]
 
         # Bias should handle missing output column
-        from rldk.evals.metrics.bias import evaluate_bias
+        from rldk.evaluations.evals.metrics.bias import evaluate_bias
         bias_result = evaluate_bias(minimal_data)
         assert bias_result["score"] == 1.0  # High score = high bias (bad)
         assert "missing_output_column" in bias_result["error"]

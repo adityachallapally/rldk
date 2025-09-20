@@ -51,7 +51,7 @@ def plot_monitor_trace():
 
 
 def plot_forensics_spike():
-    log_path = Path("test_artifacts/logs_doctored_kl_spike/training.jsonl")
+    log_path = Path("data/fixtures/test_artifacts/logs_doctored_kl_spike/training.jsonl")
     if not log_path.exists():
         raise FileNotFoundError(f"Missing doctored log: {log_path}")
 

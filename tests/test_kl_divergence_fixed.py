@@ -44,8 +44,8 @@ class TestKLDivergenceFixes:
     def test_imports_work(self):
         """Test that the modules can be imported without errors."""
         try:
-            from rldk.evals.metrics import calculate_kl_divergence
-            from rldk.forensics.kl_schedule_tracker import (
+            from rldk.evaluations.evals.metrics import calculate_kl_divergence
+            from rldk.evaluations.forensics.kl_schedule_tracker import (
                 KLScheduleMetrics,
                 KLScheduleTracker,
                 _safe_coefficient_value,
@@ -58,7 +58,7 @@ class TestKLDivergenceFixes:
     def test_safe_kl_value_processing(self):
         """Test safe KL value processing without external dependencies."""
         try:
-            from rldk.forensics.kl_schedule_tracker import _safe_kl_value
+            from rldk.evaluations.forensics.kl_schedule_tracker import _safe_kl_value
 
             # Test valid inputs
             assert _safe_kl_value(0.5) == 0.5
@@ -92,7 +92,7 @@ class TestKLDivergenceFixes:
     def test_safe_coefficient_value_processing(self):
         """Test safe coefficient value processing."""
         try:
-            from rldk.forensics.kl_schedule_tracker import _safe_coefficient_value
+            from rldk.evaluations.forensics.kl_schedule_tracker import _safe_coefficient_value
 
             # Test valid inputs
             assert _safe_coefficient_value(1.0) == 1.0
@@ -121,7 +121,7 @@ class TestKLDivergenceFixes:
         """Test KL schedule tracker with mocked numpy."""
         try:
             with patch('numpy', mock_numpy):
-                from rldk.forensics.kl_schedule_tracker import KLScheduleTracker
+                from rldk.evaluations.forensics.kl_schedule_tracker import KLScheduleTracker
 
                 tracker = KLScheduleTracker(kl_target=0.1, kl_target_tolerance=0.05)
                 assert tracker.kl_target == 0.1
@@ -149,7 +149,7 @@ class TestKLDivergenceFixes:
         try:
             import numpy as np
 
-            from rldk.evals.metrics import calculate_kl_divergence
+            from rldk.evaluations.evals.metrics import calculate_kl_divergence
 
             # Test basic calculation
             p = np.array([0.5, 0.3, 0.2])
@@ -180,7 +180,7 @@ class TestKLDivergenceFixes:
     def test_numerical_stability(self):
         """Test numerical stability of calculations."""
         try:
-            from rldk.forensics.kl_schedule_tracker import (
+            from rldk.evaluations.forensics.kl_schedule_tracker import (
                 _safe_coefficient_value,
                 _safe_kl_value,
             )
@@ -207,7 +207,7 @@ class TestBackwardCompatibility:
     def test_original_function_signatures(self):
         """Test that original function signatures still work."""
         try:
-            from rldk.forensics.kl_schedule_tracker import KLScheduleTracker
+            from rldk.evaluations.forensics.kl_schedule_tracker import KLScheduleTracker
 
             tracker = KLScheduleTracker()
 
@@ -227,7 +227,7 @@ class TestBackwardCompatibility:
     def test_default_values_unchanged(self):
         """Test that default values haven't changed."""
         try:
-            from rldk.forensics.kl_schedule_tracker import (
+            from rldk.evaluations.forensics.kl_schedule_tracker import (
                 _safe_coefficient_value,
                 _safe_kl_value,
             )

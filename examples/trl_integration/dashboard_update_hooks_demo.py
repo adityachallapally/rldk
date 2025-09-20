@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict
 
-from rldk.utils.math_utils import safe_divide
+from rldk.core.utils.math_utils import safe_divide
 
 # Import TRL components
 try:

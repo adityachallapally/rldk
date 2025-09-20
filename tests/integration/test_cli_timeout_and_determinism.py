@@ -8,9 +8,9 @@ from pathlib import Path
 
 import pytest
 
-from rldk.determinism.runner import run_deterministic_command
-from rldk.utils.error_handling import RLDKTimeoutError
-from rldk.utils.runtime import run_with_timeout_subprocess, with_timeout
+from rldk.pipelines.determinism.runner import run_deterministic_command
+from rldk.core.utils.error_handling import RLDKTimeoutError
+from rldk.core.utils.runtime import run_with_timeout_subprocess, with_timeout
 
 
 class TestTimeoutFunctionality:
@@ -181,7 +181,7 @@ class TestCLIIntegration:
         # We can't easily test the full CLI without complex setup, but we can
         # verify the imports work correctly
         from rldk.cli import with_timeout as cli_with_timeout
-        from rldk.utils.runtime import with_timeout as runtime_with_timeout
+        from rldk.core.utils.runtime import with_timeout as runtime_with_timeout
 
         # They should be the same function
         assert cli_with_timeout is runtime_with_timeout
@@ -190,7 +190,7 @@ class TestCLIIntegration:
         """Test that CLI commands properly use determinism functionality."""
         # This test verifies that the CLI imports and uses the determinism runner
         from rldk.cli import run_deterministic_command as cli_runner
-        from rldk.determinism.runner import run_deterministic_command as runner_runner
+        from rldk.pipelines.determinism.runner import run_deterministic_command as runner_runner
 
         # They should be the same function
         assert cli_runner is runner_runner

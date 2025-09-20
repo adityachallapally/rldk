@@ -8,8 +8,8 @@ import pytest
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from rldk.utils.error_handling import safe_percentage, safe_rate_calculation
-from rldk.utils.math_utils import safe_divide_with_negative_support, try_divide
+from rldk.core.utils.error_handling import safe_percentage, safe_rate_calculation
+from rldk.core.utils.math_utils import safe_divide_with_negative_support, try_divide
 
 
 class TestDivisionHandling:

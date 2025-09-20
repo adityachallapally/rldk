@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.rldk.config import (
+from src.rldk.core.config import (
     ConfigValidator,
     EvaluationConfig,
     ForensicsConfig,
@@ -359,7 +359,7 @@ class TestEnvironmentVariableLoading:
             'RLDK_HIGH_TOXICITY_THRESHOLD': '0.8',
             'RLDK_MEMORY_EFFICIENCY_THRESHOLD': '6.0'
         }):
-            from src.rldk.config.evaluation_config import load_config_from_env
+            from src.rldk.core.config.evaluation_config import load_config_from_env
             config = load_config_from_env()
 
             assert config.MIN_SAMPLES_FOR_ANALYSIS == 20
@@ -372,7 +372,7 @@ class TestEnvironmentVariableLoading:
         with patch.dict(os.environ, {
             'RLDK_MIN_SAMPLES_FOR_ANALYSIS': 'invalid_number'
         }):
-            from src.rldk.config.evaluation_config import load_config_from_env
+            from src.rldk.core.config.evaluation_config import load_config_from_env
             config = load_config_from_env()
 
             # Should fall back to default value
@@ -383,7 +383,7 @@ class TestEnvironmentVariableLoading:
         with patch.dict(os.environ, {
             'RLDK_PERCENTILES': '[5, 10, 25, 50, 75, 90, 95]'
         }):
-            from src.rldk.config.evaluation_config import load_config_from_env
+            from src.rldk.core.config.evaluation_config import load_config_from_env
             config = load_config_from_env()
 
             assert config.PERCENTILES == [5, 10, 25, 50, 75, 90, 95]
@@ -393,7 +393,7 @@ class TestEnvironmentVariableLoading:
         with patch.dict(os.environ, {
             'RLDK_PERCENTILES': '5,10,25,50,75,90,95'
         }):
-            from src.rldk.config.evaluation_config import load_config_from_env
+            from src.rldk.core.config.evaluation_config import load_config_from_env
             config = load_config_from_env()
 
             assert config.PERCENTILES == [5, 10, 25, 50, 75, 90, 95]

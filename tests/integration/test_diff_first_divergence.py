@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from rldk.diff import first_divergence
+from rldk.support.diff import first_divergence
 
 
 class TestFirstDivergence:

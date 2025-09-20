@@ -33,16 +33,16 @@ fi
 
 # 5) Exercise the CLIs individually on fixtures (Phase A surface)
 echo "5) Exercising CLIs individually..."
-rldk env-audit test_artifacts/logs_clean
-rldk log-scan test_artifacts/logs_doctored_kl_spike
+rldk env-audit data/fixtures/test_artifacts/logs_clean
+rldk log-scan data/fixtures/test_artifacts/logs_doctored_kl_spike
 
 # Only run checkpoint tests if PyTorch is available
 if python3 -c "import torch" 2>/dev/null; then
     echo "PyTorch available, running checkpoint tests..."
-    rldk diff-ckpt test_artifacts/ckpt_identical/a.pt test_artifacts/ckpt_identical/b.pt
-    rldk diff-ckpt test_artifacts/ckpt_value_head_edit/a.pt test_artifacts/ckpt_value_head_edit/b.pt
-    rldk reward-drift test_artifacts/reward_drift_demo/rmA test_artifacts/reward_drift_demo/rmB \
-      --prompts test_artifacts/reward_drift_demo/prompts.jsonl
+    rldk diff-ckpt data/fixtures/test_artifacts/ckpt_identical/a.pt data/fixtures/test_artifacts/ckpt_identical/b.pt
+    rldk diff-ckpt data/fixtures/test_artifacts/ckpt_value_head_edit/a.pt data/fixtures/test_artifacts/ckpt_value_head_edit/b.pt
+    rldk reward-drift data/fixtures/test_artifacts/reward_drift_demo/rmA data/fixtures/test_artifacts/reward_drift_demo/rmB \
+      --prompts data/fixtures/test_artifacts/reward_drift_demo/prompts.jsonl
 else
     echo "PyTorch not available, skipping checkpoint tests..."
 fi
@@ -100,7 +100,7 @@ rules = set(ppo.get("rules_fired", []))
 # accept other benign rules, but ensure at least one spike rule on doctored and none on clean rescan
 print("Doctored rules:", rules)
 PY
-rldk log-scan test_artifacts/logs_clean
+rldk log-scan data/fixtures/test_artifacts/logs_clean
 python - << 'PY'
 import json
 ppo = json.load(open("rldk_reports/ppo_scan.json"))

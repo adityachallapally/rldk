@@ -12,11 +12,11 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
 # Import only the specific modules we need, avoiding the full package import
-from rldk.evals.metrics import (
+from rldk.evaluations.evals.metrics import (
     calculate_kl_divergence,
     calculate_kl_divergence_between_runs,
 )
-from rldk.forensics.kl_schedule_tracker import (
+from rldk.evaluations.forensics.kl_schedule_tracker import (
     KLScheduleMetrics,
     KLScheduleTracker,
     _safe_coefficient_value,

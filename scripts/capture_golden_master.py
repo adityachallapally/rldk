@@ -53,7 +53,7 @@ from rldk import (
     ingest_runs,
     run,
 )
-from rldk.tracking import ExperimentTracker, TrackingConfig
+from rldk.monitoring.tracking import ExperimentTracker, TrackingConfig
 
 
 @dataclass

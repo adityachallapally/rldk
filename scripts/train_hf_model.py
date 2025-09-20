@@ -38,7 +38,7 @@ from profiler.hooks import StepProfiler, profiler_registry
 from profiler.profiler_context import ProfilerContext
 from profiler.torch_profiler import TorchProfiler
 
-from rlhf_core.profiler import ProfilerManager
+from rldk.integrations.rlhf_core.profiler import ProfilerManager
 
 
 class HuggingFaceModelWrapper(nn.Module):

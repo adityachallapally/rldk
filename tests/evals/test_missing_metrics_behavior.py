@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from rldk.evals.runner import EvalResult
-from rldk.evals.schema import safe_mean
+from rldk.evaluations.evals.runner import EvalResult
+from rldk.evaluations.evals.schema import safe_mean
 
 
 class TestEvalResultOverallScore:

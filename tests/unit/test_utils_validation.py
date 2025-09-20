@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit tests for rldk.utils.validation module."""
+"""Unit tests for rldk.core.utils.validation module."""
 
 import json
 import os
@@ -11,10 +11,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from rldk.utils.error_handling import ValidationError
+from rldk.core.utils.error_handling import ValidationError
 
 # Import the module under test
-from rldk.utils.validation import (
+from rldk.core.utils.validation import (
     validate_adapter_type,
     validate_choice,
     validate_data_quality,

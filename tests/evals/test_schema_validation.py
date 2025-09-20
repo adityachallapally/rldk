@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from rldk.evals.schema import (
+from rldk.evaluations.evals.schema import (
     STANDARD_EVAL_SCHEMA,
     ColumnSpec,
     EvalInputSchema,

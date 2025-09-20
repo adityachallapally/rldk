@@ -31,9 +31,9 @@ from gymnasium import spaces
 
 # RLDK imports
 import rldk
-from rldk.forensics import ComprehensivePPOForensics
-from rldk.tracking import ExperimentTracker, TrackingConfig
-from rldk.utils import set_global_seed, validate_numeric_range
+from rldk.evaluations.forensics import ComprehensivePPOForensics
+from rldk.monitoring.tracking import ExperimentTracker, TrackingConfig
+from rldk.core.utils import set_global_seed, validate_numeric_range
 
 
 class CustomGridWorld(gym.Env):

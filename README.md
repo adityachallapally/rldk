@@ -167,10 +167,10 @@ f.write(__import__("json").dumps({
 f.flush()
 ```
 
-Pair either snippet with the ready-to-run `rules.yaml` in the repository root:
+Pair either snippet with the ready-to-run `configs/rules.yaml` in the repository root:
 
 ```bash
-rldk monitor --stream artifacts/run.jsonl --rules rules.yaml --pid <trainer_pid>
+rldk monitor --stream artifacts/run.jsonl --rules configs/rules.yaml --pid <trainer_pid>
 ```
 
 Want the full walkthrough with alerts and auto-stop baked in? Run `make monitor-demo` to launch

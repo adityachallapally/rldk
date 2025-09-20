@@ -46,7 +46,7 @@ src/rldk/integrations/openrlhf/
 ├── distributed.py             # Distributed training monitoring
 ├── monitors.py                # Specialized monitoring classes
 ├── dashboard.py               # Web dashboard implementation
-├── templates/
+├── configs/templates/
 │   └── dashboard.html         # Dashboard HTML template
 └── static/
     ├── css/

@@ -8,11 +8,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from rldk.adapters.custom_jsonl import CustomJSONLAdapter
-from rldk.adapters.openrlhf import OpenRLHFAdapter
-from rldk.adapters.trl import TRLAdapter
-from rldk.ingest import ingest_runs
-from rldk.io.event_schema import Event, create_event_from_row
+from rldk.monitoring.adapters.custom_jsonl import CustomJSONLAdapter
+from rldk.monitoring.adapters.openrlhf import OpenRLHFAdapter
+from rldk.monitoring.adapters.trl import TRLAdapter
+from rldk.pipelines.ingest import ingest_runs
+from rldk.core.io.event_schema import Event, create_event_from_row
 
 
 class TestJSONLIngestion:
@@ -215,7 +215,7 @@ class TestJSONLIngestion:
 
     def test_custom_jsonl_validation_with_adapter(self):
         """Test that custom JSONL validation works with the adapter."""
-        from rldk.io.validator import validate_custom_jsonl_with_adapter
+        from rldk.core.io.validator import validate_custom_jsonl_with_adapter
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
             # Write custom JSONL data
@@ -685,7 +685,7 @@ class TestJSONLIngestion:
             f.flush()
 
         try:
-            with patch('rldk.ingest.ingest.logging') as mock_logging:
+            with patch('rldk.pipelines.ingest.ingest.logging') as mock_logging:
                 ingest_runs(f.name, adapter_hint="trl")
 
                 # Verify that logging.info was called with the correct message

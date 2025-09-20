@@ -91,9 +91,9 @@ monitor-demo:
 		sleep 1; \
 		echo "Monitor attaching to PID $$loop_pid"; \
 		if command -v rldk >/dev/null 2>&1; then \
-			timeout 15s rldk monitor --stream $$artifacts_dir/run.jsonl --rules rules.yaml --pid $$loop_pid --alerts $$artifacts_dir/alerts.jsonl --report $$artifacts_dir/report.json > $$artifacts_dir/monitor.log 2>&1 || true; \
+			timeout 15s rldk monitor --stream $$artifacts_dir/run.jsonl --rules configs/rules.yaml --pid $$loop_pid --alerts $$artifacts_dir/alerts.jsonl --report $$artifacts_dir/report.json > $$artifacts_dir/monitor.log 2>&1 || true; \
 		else \
-			timeout 15s python -m rldk.cli monitor --stream $$artifacts_dir/run.jsonl --rules rules.yaml --pid $$loop_pid --alerts $$artifacts_dir/alerts.jsonl --report $$artifacts_dir/report.json > $$artifacts_dir/monitor.log 2>&1 || true; \
+			timeout 15s python -m rldk.cli monitor --stream $$artifacts_dir/run.jsonl --rules configs/rules.yaml --pid $$loop_pid --alerts $$artifacts_dir/alerts.jsonl --report $$artifacts_dir/report.json > $$artifacts_dir/monitor.log 2>&1 || true; \
 		fi; \
 		kill -TERM $$loop_pid >/dev/null 2>&1 || true; \
 		wait $$loop_pid >/dev/null 2>&1 || true; \
@@ -115,72 +115,72 @@ reference\:setup:
 reference\:cpu_smoke:
 	@echo "Running CPU smoke tests..."
 	@echo "1. Materializing dataset manifests..."
-	python3 reference/scripts/materialize.py --output-dir reference/datasets --max-samples 50
+	python3 scripts/reference/materialize.py --output-dir data/benchmarks/reference_datasets --max-samples 50
 	
 	@echo "2. Running good summarization training..."
-	python3 reference/tasks/summarization/train.py \
-		--manifest reference/datasets/ag_news_manifest.jsonl \
-		--output-dir reference/runs/summarization/good \
+	python3 scripts/tasks/summarization/train.py \
+		--manifest data/benchmarks/reference_datasets/ag_news_manifest.jsonl \
+		--output-dir var/runs/reference/summarization/good \
 		--max-steps 50 \
 		--seed 42 \
 		--pad-direction right \
 		--truncate-at 512
 	
 	@echo "3. Running doctored summarization training (tokenizer changed)..."
-	python3 reference/tasks/summarization/train.py \
-		--manifest reference/datasets/ag_news_manifest.jsonl \
-		--output-dir reference/runs/summarization/tokenizer_changed \
+	python3 scripts/tasks/summarization/train.py \
+		--manifest data/benchmarks/reference_datasets/ag_news_manifest.jsonl \
+		--output-dir var/runs/reference/summarization/tokenizer_changed \
 		--max-steps 50 \
 		--seed 42 \
 		--pad-direction left \
 		--truncate-at 256
 	
 	@echo "4. Running safety evaluations..."
-	python3 reference/tasks/safety_evals/run.py \
-		--manifest reference/datasets/imdb_manifest.jsonl \
-		--output-dir reference/runs/safety_evals/good \
+	python3 scripts/tasks/safety_evals/run.py \
+		--manifest data/benchmarks/reference_datasets/imdb_manifest.jsonl \
+		--output-dir var/runs/reference/safety_evals/good \
 		--seed 42
 	
 	@echo "5. Running code fix evaluations..."
-	python3 reference/tasks/code_fix/run.py \
-		--manifest reference/datasets/ag_news_code_manifest.jsonl \
-		--output-dir reference/runs/code_fix/good \
+	python3 scripts/tasks/code_fix/run.py \
+		--manifest data/benchmarks/reference_datasets/ag_news_code_manifest.jsonl \
+		--output-dir var/runs/reference/code_fix/good \
 		--seed 42
 	
 	@echo "6. Checking determinism on good run..."
 	rldk check-determinism \
-		--cmd "python3 reference/tasks/summarization/train.py --manifest reference/datasets/ag_news_manifest.jsonl --output-dir reference/runs/summarization/determinism_test --max-steps 10 --seed 42" \
+		--cmd "python3 scripts/tasks/summarization/train.py --manifest data/benchmarks/reference_datasets/ag_news_manifest.jsonl --output-dir var/runs/reference/summarization/determinism_test --max-steps 10 --seed 42" \
 		--compare "loss,reward_scalar" \
 		--replicas 3 \
-		--output-dir reference/expected/determinism_analysis
+		--output-dir data/fixtures/reference_expected/determinism_analysis
 	
 	@echo "7. Finding first divergence between good and doctored runs..."
 	rldk diff \
-		--a reference/runs/summarization/good \
-		--b reference/runs/summarization/tokenizer_changed \
+		--a var/runs/reference/summarization/good \
+		--b var/runs/reference/summarization/tokenizer_changed \
 		--signals "sample_id,input_ids_sha256,attention_mask_sha256,outputs.text,reward_scalar,loss" \
-		--output-dir reference/expected/drift_analysis
+		--output-dir data/fixtures/reference_expected/drift_analysis
 	
 	@echo "8. Computing reward health on good run..."
 	rldk reward-health \
-		--run reference/runs/summarization/good \
-		--output-dir reference/expected/reward_analysis \
+		--run var/runs/reference/summarization/good \
+		--output-dir data/fixtures/reference_expected/reward_analysis \
 		--reward-col reward_scalar \
 		--step-col global_step
 	
 	@echo "9. Copying determinism card to expected directory..."
-	cp reference/expected/determinism_analysis/determinism_card.md reference/expected/determinism_card.json
-	cp reference/expected/determinism_analysis/determinism_card.png reference/expected/
+	cp data/fixtures/reference_expected/determinism_analysis/determinism_card.md data/fixtures/reference_expected/determinism_card.json
+	cp data/fixtures/reference_expected/determinism_analysis/determinism_card.png data/fixtures/reference_expected/
 	
 	@echo "10. Copying drift card to expected directory..."
-	cp reference/expected/drift_analysis/drift_card.md reference/expected/drift_card.json
+	cp data/fixtures/reference_expected/drift_analysis/drift_card.md data/fixtures/reference_expected/drift_card.json
 	
 	@echo "11. Copying reward health card to expected directory..."
-	cp reference/expected/reward_analysis/reward_health_card.md reference/expected/reward_card.json
+	cp data/fixtures/reference_expected/reward_analysis/reward_health_card.md data/fixtures/reference_expected/reward_card.json
 	
 	@echo "CPU smoke tests complete!"
-	@echo "Generated files in reference/expected/:"
-	@ls -la reference/expected/
+	@echo "Generated files in data/fixtures/reference_expected/:"
+	@ls -la data/fixtures/reference_expected/
 
 # Bisect Demo Target
 reference\:bisect_demo:
@@ -192,7 +192,7 @@ reference\:bisect_demo:
 	
 	# Create bad commit
 	@echo "Creating bad commit..."
-	@bash reference/scripts/make_bad_commit.sh
+	@bash scripts/reference/make_bad_commit.sh
 	
 	# Get bad commit hash
 	@echo "Bad commit created: $(shell git rev-parse HEAD)"
@@ -207,13 +207,13 @@ reference\:bisect_demo:
 	rldk bisect \
 		--good HEAD~1 \
 		--bad HEAD \
-		--cmd "python reference/tasks/summarization/train.py --manifest reference/datasets/ag_news_manifest.jsonl --output-dir reference/runs/summarization/bisect_test --max-steps 10 --seed 42" \
+		--cmd "python scripts/tasks/summarization/train.py --manifest data/benchmarks/reference_datasets/ag_news_manifest.jsonl --output-dir var/runs/reference/summarization/bisect_test --max-steps 10 --seed 42" \
 		--metric reward_scalar \
 		--cmp "> 0.1" \
 		--window 10
 	
 	@echo "4. Writing bisect results..."
-	@echo '{"bisect_complete": true, "culprit_commit": "$(shell git rev-parse HEAD)", "timestamp": "$(shell date -Iseconds)"}' > reference/expected/bisect.json
+	@echo '{"bisect_complete": true, "culprit_commit": "$(shell git rev-parse HEAD)", "timestamp": "$(shell date -Iseconds)"}' > data/fixtures/reference_expected/bisect.json
 	
 	@echo "5. Resetting bisect..."
 	@git bisect reset
@@ -222,7 +222,7 @@ reference\:bisect_demo:
 	@git revert HEAD --no-edit
 	
 	@echo "Bisect demonstration complete!"
-	@echo "Results saved to reference/expected/bisect.json"
+	@echo "Results saved to data/fixtures/reference_expected/bisect.json"
 
 # Golden Master Test Target
 golden-master-test:
@@ -236,10 +236,10 @@ golden-master-test:
 # Clean target
 clean:
 	@echo "Cleaning generated files..."
-	rm -rf reference/datasets/
-	rm -rf reference/runs/
-	rm -rf reference/expected/
-	rm -f reference/tasks/summarization/train.py.backup
+	rm -rf data/benchmarks/reference_datasets/
+	rm -rf var/runs/reference/
+	rm -rf data/fixtures/reference_expected/
+	rm -f scripts/tasks/summarization/train.py.backup
 	rm -rf golden_master_output/
 	rm -rf replay_output/
 	rm -f golden_master.zip
@@ -256,12 +256,12 @@ install:
 # Profiler targets
 profile:
 	@echo "Running profiler test..."
-	python3 tools/run_profile.py --output-dir runs/profiler_test --steps 20
+	python3 tooling/run_profile.py --output-dir var/runs/profiler_test --steps 20
 	@echo "Profiler test complete!"
 
 profile-check:
 	@echo "Checking profiler artifacts..."
-	python3 tools/check_profile.py runs/profiler_test/context --analysis --report
+	python3 tooling/check_profile.py var/runs/profiler_test/context --analysis --report
 	@echo "Profiler check complete!"
 
 profile-train:
@@ -272,12 +272,12 @@ profile-train:
 profile-dashboard:
 	@echo "Starting profiler dashboard..."
 	@echo "Dashboard will be available at http://localhost:8501"
-	streamlit run monitor/app.py
+	streamlit run tooling/monitor/app.py
 
 profile-clean:
 	@echo "Cleaning profiler artifacts..."
-	rm -rf runs/profiler_test
-	rm -rf runs/run_*
+	rm -rf var/runs/profiler_test
+	rm -rf var/runs/run_*
 	@echo "Profiler cleanup complete!"
 
 # TRL Test Targets

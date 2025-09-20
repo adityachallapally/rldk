@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 import torch
 
-from ...utils.torch_compat import safe_torch_load
+from ...core.utils.torch_compat import safe_torch_load
 from .callbacks import OpenRLHFMetrics
 from .distributed import GPUMemoryMonitor
 

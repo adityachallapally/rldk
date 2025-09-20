@@ -26,7 +26,7 @@ def make_clean_logs():
         logs.append(log)
 
     # Write to file
-    output_path = Path("test_artifacts/logs_clean/training.jsonl")
+    output_path = Path("data/fixtures/test_artifacts/logs_clean/training.jsonl")
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output_path, "w") as f:
@@ -63,7 +63,7 @@ def make_doctored_kl_spike_logs():
         logs.append(log)
 
     # Write to file
-    output_path = Path("test_artifacts/logs_doctored_kl_spike/training.jsonl")
+    output_path = Path("data/fixtures/test_artifacts/logs_doctored_kl_spike/training.jsonl")
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output_path, "w") as f:
@@ -88,7 +88,7 @@ def make_identical_checkpoints():
 
         # Save identical checkpoints
         for name in ["a", "b"]:
-            output_path = Path(f"test_artifacts/ckpt_identical/{name}.pt")
+            output_path = Path(f"data/fixtures/test_artifacts/ckpt_identical/{name}.pt")
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
             torch.save(checkpoint_data, output_path)
@@ -115,7 +115,7 @@ def make_value_head_edit_checkpoints():
         }
 
         # Save base checkpoint
-        base_path = Path("test_artifacts/ckpt_value_head_edit/a.pt")
+        base_path = Path("data/fixtures/test_artifacts/ckpt_value_head_edit/a.pt")
         base_path.parent.mkdir(parents=True, exist_ok=True)
 
         torch.save(base_checkpoint, base_path)
@@ -130,7 +130,7 @@ def make_value_head_edit_checkpoints():
         )  # +0.1 to original
 
         # Save modified checkpoint
-        modified_path = Path("test_artifacts/ckpt_value_head_edit/b.pt")
+        modified_path = Path("data/fixtures/test_artifacts/ckpt_value_head_edit/b.pt")
 
         torch.save(modified_checkpoint, modified_path)
     except ImportError:
@@ -153,7 +153,7 @@ def make_reward_drift_demo():
     ]
 
     # Save prompts
-    prompts_path = Path("test_artifacts/reward_drift_demo/prompts.jsonl")
+    prompts_path = Path("data/fixtures/test_artifacts/reward_drift_demo/prompts.jsonl")
     prompts_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(prompts_path, "w") as f:
@@ -165,7 +165,7 @@ def make_reward_drift_demo():
         import torch
 
         for i, name in enumerate(["rmA", "rmB"]):
-            model_dir = Path(f"test_artifacts/reward_drift_demo/{name}")
+            model_dir = Path(f"data/fixtures/test_artifacts/reward_drift_demo/{name}")
             model_dir.mkdir(parents=True, exist_ok=True)
 
             # Create different model data for each model to ensure drift detection

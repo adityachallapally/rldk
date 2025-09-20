@@ -17,7 +17,7 @@ from transformers import AutoConfig, AutoModel, AutoTokenizer
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-from rldk.tracking import ExperimentTracker, TrackingConfig
+from rldk.monitoring.tracking import ExperimentTracker, TrackingConfig
 
 
 def test_with_bert_model():

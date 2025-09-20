@@ -67,11 +67,11 @@ Implemented comprehensive PPO anomaly detection:
 - `tests/test_cli_forensics.py` - CLI command tests
 
 ### Test Artifacts
-- `test_artifacts/logs_clean/` - Clean training logs with steady KL
-- `test_artifacts/logs_doctored_kl_spike/` - Logs with injected KL spike at step 800
-- `test_artifacts/ckpt_identical/` - Identical checkpoints for baseline testing
-- `test_artifacts/ckpt_value_head_edit/` - Checkpoints with modified value head
-- `test_artifacts/reward_drift_demo/` - Reward models with diverging behavior
+- `data/fixtures/test_artifacts/logs_clean/` - Clean training logs with steady KL
+- `data/fixtures/test_artifacts/logs_doctored_kl_spike/` - Logs with injected KL spike at step 800
+- `data/fixtures/test_artifacts/ckpt_identical/` - Identical checkpoints for baseline testing
+- `data/fixtures/test_artifacts/ckpt_value_head_edit/` - Checkpoints with modified value head
+- `data/fixtures/test_artifacts/reward_drift_demo/` - Reward models with diverging behavior
 
 ## 🔧 Technical Implementation
 
@@ -152,12 +152,12 @@ pip install -e .
 python3 tests/_make_fixtures.py
 
 # Run all forensics commands
-rldk env-audit test_artifacts/logs_clean
-rldk log-scan test_artifacts/logs_doctored_kl_spike
-rldk diff-ckpt test_artifacts/ckpt_identical/a.pt test_artifacts/ckpt_identical/b.pt
-rldk reward-drift test_artifacts/reward_drift_demo/rmA test_artifacts/reward_drift_demo/rmB --prompts test_artifacts/reward_drift_demo/prompts.jsonl
-rldk doctor test_artifacts/logs_clean
-rldk compare-runs test_artifacts/logs_clean test_artifacts/logs_doctored_kl_spike
+rldk env-audit data/fixtures/test_artifacts/logs_clean
+rldk log-scan data/fixtures/test_artifacts/logs_doctored_kl_spike
+rldk diff-ckpt data/fixtures/test_artifacts/ckpt_identical/a.pt data/fixtures/test_artifacts/ckpt_identical/b.pt
+rldk reward-drift data/fixtures/test_artifacts/reward_drift_demo/rmA data/fixtures/test_artifacts/reward_drift_demo/rmB --prompts data/fixtures/test_artifacts/reward_drift_demo/prompts.jsonl
+rldk doctor data/fixtures/test_artifacts/logs_clean
+rldk compare-runs data/fixtures/test_artifacts/logs_clean data/fixtures/test_artifacts/logs_doctored_kl_spike
 ```
 
 ## ✅ Acceptance Criteria Met

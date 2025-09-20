@@ -47,12 +47,12 @@ def test_phase_a_end_to_end(tmp_path):
     sh([sys.executable, "tests/_make_fixtures.py"])
 
     # 2) Env audit
-    sh(["rldk", "env-audit", "test_artifacts/logs_clean"])
+    sh(["rldk", "env-audit", "data/fixtures/test_artifacts/logs_clean"])
     det = load_json(REPORTS / "determinism_card.json")
     assert "version" in det and "flags" in det and "rng" in det
 
     # 3) PPO forensics on doctored logs
-    sh(["rldk", "log-scan", "test_artifacts/logs_doctored_kl_spike"])
+    sh(["rldk", "log-scan", "data/fixtures/test_artifacts/logs_doctored_kl_spike"])
     ppo = load_json(REPORTS / "ppo_scan.json")
     rules = [r.get("rule", "") for r in ppo.get("rules_fired", [])]
     assert (
@@ -70,8 +70,8 @@ def test_phase_a_end_to_end(tmp_path):
         [
             "rldk",
             "diff-ckpt",
-            "test_artifacts/ckpt_identical/a.pt",
-            "test_artifacts/ckpt_identical/b.pt",
+            "data/fixtures/test_artifacts/ckpt_identical/a.pt",
+            "data/fixtures/test_artifacts/ckpt_identical/b.pt",
         ]
     )
     diff_ident = load_json(REPORTS / "ckpt_diff.json")
@@ -82,8 +82,8 @@ def test_phase_a_end_to_end(tmp_path):
         [
             "rldk",
             "diff-ckpt",
-            "test_artifacts/ckpt_value_head_edit/a.pt",
-            "test_artifacts/ckpt_value_head_edit/b.pt",
+            "data/fixtures/test_artifacts/ckpt_value_head_edit/a.pt",
+            "data/fixtures/test_artifacts/ckpt_value_head_edit/b.pt",
         ]
     )
     diff_edit = load_json(REPORTS / "ckpt_diff.json")
@@ -95,10 +95,10 @@ def test_phase_a_end_to_end(tmp_path):
         [
             "rldk",
             "reward-drift",
-            "test_artifacts/reward_drift_demo/rmA",
-            "test_artifacts/reward_drift_demo/rmB",
+            "data/fixtures/test_artifacts/reward_drift_demo/rmA",
+            "data/fixtures/test_artifacts/reward_drift_demo/rmB",
             "--prompts",
-            "test_artifacts/reward_drift_demo/prompts.jsonl",
+            "data/fixtures/test_artifacts/reward_drift_demo/prompts.jsonl",
         ]
     )
     drift = load_json(REPORTS / "reward_drift.json")

@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from rldk.io.event_schema import dataframe_to_events, events_to_dataframe
+from rldk.core.io.event_schema import dataframe_to_events, events_to_dataframe
 
 
 def test_dataframe_event_round_trip_preserves_metrics() -> None:

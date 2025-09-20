@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from rldk.reward.calibration import analyze_calibration
-from rldk.reward.drift import detect_reward_drift
-from rldk.reward.health_analysis import RewardHealthReport, health
+from rldk.evaluations.reward.calibration import analyze_calibration
+from rldk.evaluations.reward.drift import detect_reward_drift
+from rldk.evaluations.reward.health_analysis import RewardHealthReport, health
 
 
 class TestRewardHealth:

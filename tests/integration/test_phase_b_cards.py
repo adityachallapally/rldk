@@ -6,16 +6,16 @@ from pathlib import Path
 
 import pytest
 
-from rldk.cards.determinism import generate_determinism_card
-from rldk.cards.drift import generate_drift_card
-from rldk.cards.reward import generate_reward_card
-from rldk.io.event_schema import (
+from rldk.evaluations.cards.determinism import generate_determinism_card
+from rldk.evaluations.cards.drift import generate_drift_card
+from rldk.evaluations.cards.reward import generate_reward_card
+from rldk.core.io.event_schema import (
     Event,
     create_event_from_row,
     dataframe_to_events,
     events_to_dataframe,
 )
-from rldk.io.schemas import DeterminismCardV2, DriftCardV1, RewardCardV1, validate
+from rldk.core.io.schemas import DeterminismCardV2, DriftCardV1, RewardCardV1, validate
 
 
 @pytest.fixture

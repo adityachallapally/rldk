@@ -125,7 +125,7 @@ detectors:
 
 ### Using Default Thresholds
 
-By default, RL Debug Kit uses the thresholds defined in `recipes/health_default.yaml`. No configuration is needed:
+By default, RL Debug Kit uses the thresholds defined in `configs/recipes/health_default.yaml`. No configuration is needed:
 
 ```bash
 rldk reward-health run --scores data/scores.jsonl --out artifacts/health
@@ -157,7 +157,7 @@ rldk reward-health run --scores data/scores.jsonl --out artifacts/health --confi
 
 User configurations are merged with the defaults, so you only need to specify the detectors you want to override. The system will:
 
-1. Load the default configuration from `recipes/health_default.yaml`
+1. Load the default configuration from `configs/recipes/health_default.yaml`
 2. Load your custom configuration
 3. Merge them (your settings take precedence)
 4. Validate the final configuration

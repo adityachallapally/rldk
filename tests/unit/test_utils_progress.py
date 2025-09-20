@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit tests for rldk.utils.progress module."""
+"""Unit tests for rldk.core.utils.progress module."""
 
 import threading
 import time
@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 
 # Import the module under test
-from rldk.utils.progress import (
+from rldk.core.utils.progress import (
     ProgressBar,
     Spinner,
     TaskContext,

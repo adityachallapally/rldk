@@ -8,19 +8,19 @@ from typing import Any, Dict, List
 import numpy as np
 import pytest
 
-from rldk.forensics.advantage_statistics_tracker import (
+from rldk.evaluations.forensics.advantage_statistics_tracker import (
     AdvantageStatisticsMetrics,
     AdvantageStatisticsTracker,
 )
-from rldk.forensics.comprehensive_ppo_forensics import (
+from rldk.evaluations.forensics.comprehensive_ppo_forensics import (
     ComprehensivePPOForensics,
     ComprehensivePPOMetrics,
 )
-from rldk.forensics.gradient_norms_analyzer import (
+from rldk.evaluations.forensics.gradient_norms_analyzer import (
     GradientNormsAnalyzer,
     GradientNormsMetrics,
 )
-from rldk.forensics.kl_schedule_tracker import KLScheduleMetrics, KLScheduleTracker
+from rldk.evaluations.forensics.kl_schedule_tracker import KLScheduleMetrics, KLScheduleTracker
 
 
 class TestKLScheduleTracker:

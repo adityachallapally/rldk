@@ -16,8 +16,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from rldk.adapters.field_resolver import SchemaError
-from rldk.adapters.flexible import FlexibleDataAdapter
+from rldk.monitoring.adapters.field_resolver import SchemaError
+from rldk.monitoring.adapters.flexible import FlexibleDataAdapter
 
 
 def create_csv_sample_data():

@@ -12,7 +12,7 @@ framework-agnostic `rldk monitor` CLI that consumes JSONL events written by any 
 5. `export LOOP_PID=$!`
 6. `sleep 1`  
    *(give the loop time to create `artifacts/run.jsonl`)*
-7. `rldk monitor --stream artifacts/run.jsonl --rules rules.yaml --pid $LOOP_PID`
+7. `rldk monitor --stream artifacts/run.jsonl --rules configs/rules.yaml --pid $LOOP_PID`
 8. `wait $LOOP_PID`
 9. `cat artifacts/alerts.jsonl`
 10. `cat artifacts/report.json`
@@ -51,7 +51,7 @@ Rules are defined in YAML under a top-level `rules:` key. Each rule supports the
 - `actions` – ordered list of actions to execute (`warn`, `stop`, `shell`, `http`). Each action accepts templated messages using
   Python-style formatting with the most recent event in scope, e.g. `"KL {value:.3f} at step {step}"`.
 
-### Starter rule set (`rules.yaml`)
+### Starter rule set (`configs/rules.yaml`)
 
 ```yaml
 rules:
@@ -126,7 +126,7 @@ Mix and match these patterns with presets via `rldk monitor --rules ppo_safe` or
 ## Fullscale remediation hints
 
 The fullscale acceptance run reuses the following guardrails from
-`rules/fullscale_rules.yaml`. When they fire, apply the same remediations suggested by the
+`configs/rules/fullscale_rules.yaml`. When they fire, apply the same remediations suggested by the
 alerts:
 
 - **KL spike guard (`kl_spike_guard`)** – Lower the policy temperature or learning rate to
@@ -160,7 +160,7 @@ All actions append a structured entry to `alerts.jsonl` that includes `rule_id`,
 
 ## Next steps
 
-- Use `--once` for batch verification of completed runs: `rldk monitor --once artifacts/run.jsonl --rules rules.yaml --report artifacts/report.json`.
+- Use `--once` for batch verification of completed runs: `rldk monitor --once artifacts/run.jsonl --rules configs/rules.yaml --report artifacts/report.json`.
 - Tail remote training runs without code changes: `rldk monitor --from-wandb entity/project/run --rules ppo_safe`.
 - Scrape stdout directly using regex presets: `python train.py | rldk monitor --regex trl --rules ppo_safe`.
 

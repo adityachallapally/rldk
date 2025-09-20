@@ -74,7 +74,7 @@ def test_python_api():
 
     # Test imports
     try:
-        from rldk import bisect, determinism, diff, evals, ingest, replay, reward
+        from rldk.support import bisect, determinism, diff, evals, ingest, replay, reward
 
         print("✅ All core modules imported successfully")
 

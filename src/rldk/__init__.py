@@ -3,23 +3,23 @@
 __version__ = "0.1.0"
 
 def _lazy_import_ingest():
-    from .ingest import ingest_runs, ingest_runs_to_events
+    from .pipelines.ingest import ingest_runs, ingest_runs_to_events
     return ingest_runs, ingest_runs_to_events
 
 def _lazy_import_diff():
-    from .diff import DivergenceReport, first_divergence
+    from .support.diff import DivergenceReport, first_divergence
     return first_divergence, DivergenceReport
 
 def _lazy_import_determinism():
-    from .determinism import DeterminismReport, check
+    from .pipelines.determinism import DeterminismReport, check
     return check, DeterminismReport
 
 def _lazy_import_bisect():
-    from .bisect import BisectResult, bisect_commits
+    from .support.bisect import BisectResult, bisect_commits
     return bisect_commits, BisectResult
 
 def _lazy_import_reward():
-    from .reward import (
+    from .evaluations.reward import (
         HealthAnalysisResult,
         RewardHealthReport,
         compare_models,
@@ -30,15 +30,15 @@ def _lazy_import_reward():
     return health, RewardHealthReport, compare_models, reward_health, HealthAnalysisResult
 
 def _lazy_import_evals():
-    from .evals import EvalResult, run
+    from .evaluations.evals import EvalResult, run
     return run, EvalResult
 
 def _lazy_import_replay():
-    from .replay import ReplayReport, replay
+    from .pipelines.replay import ReplayReport, replay
     return replay, ReplayReport
 
 def _lazy_import_forensics():
-    from .forensics import (
+    from .evaluations.forensics import (
         ComprehensivePPOForensics,
         ComprehensivePPOMetrics,
         audit_environment,
@@ -48,7 +48,7 @@ def _lazy_import_forensics():
     return scan_logs, diff_checkpoints, audit_environment, ComprehensivePPOForensics, ComprehensivePPOMetrics
 
 def _lazy_import_tracking():
-    from .tracking import (
+    from .monitoring.tracking import (
         DatasetTracker,
         EnvironmentTracker,
         ExperimentTracker,
@@ -60,7 +60,7 @@ def _lazy_import_tracking():
     return ExperimentTracker, TrackingConfig, DatasetTracker, ModelTracker, EnvironmentTracker, SeedTracker, GitTracker
 
 def _lazy_import_cards():
-    from .cards import (
+    from .evaluations.cards import (
         generate_determinism_card,
         generate_drift_card,
         generate_reward_card,
@@ -68,7 +68,7 @@ def _lazy_import_cards():
     return generate_determinism_card, generate_drift_card, generate_reward_card
 
 def _lazy_import_adapters():
-    from .adapters import (
+    from .monitoring.adapters import (
         BaseAdapter,
         CustomJSONLAdapter,
         OpenRLHFAdapter,
@@ -78,11 +78,11 @@ def _lazy_import_adapters():
     return BaseAdapter, TRLAdapter, OpenRLHFAdapter, WandBAdapter, CustomJSONLAdapter
 
 def _lazy_import_config():
-    from .config import ConfigSchema, RLDKSettings, settings
+    from .core.config import ConfigSchema, RLDKSettings, settings
     return settings, RLDKSettings, ConfigSchema
 
 def _lazy_import_io():
-    from .io import (
+    from .core.io import (
         mkdir_reports,
         read_jsonl,
         read_reward_head,
@@ -93,7 +93,7 @@ def _lazy_import_io():
     return write_json, write_png, mkdir_reports, validate, read_jsonl, read_reward_head
 
 def _lazy_import_seed():
-    from .utils.seed import (
+    from .core.utils.seed import (
         get_current_seed,
         restore_seed_state,
         set_global_seed,
@@ -295,7 +295,7 @@ OpenRLHFAdapter = _create_lazy_class('OpenRLHFAdapter', _lazy_import_adapters, 2
 WandBAdapter = _create_lazy_class('WandBAdapter', _lazy_import_adapters, 3)
 CustomJSONLAdapter = _create_lazy_class('CustomJSONLAdapter', _lazy_import_adapters, 4)
 
-from .config.settings import settings
+from .core.config import settings
 
 RLDKSettings = _create_lazy_class('RLDKSettings', _lazy_import_config, 1)
 ConfigSchema = _create_lazy_class('ConfigSchema', _lazy_import_config, 2)

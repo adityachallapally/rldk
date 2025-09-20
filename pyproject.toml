@@ -89,7 +89,7 @@ packages = ["src/rldk"]
 "src" = ""
 
 [tool.hatch.build.targets.wheel.include]
-"src/rldk/reward/health_config/data/*" = "rldk/reward/health_config/data/"
+"src/rldk/evaluations/reward/health_config/data/*" = "rldk/evaluations/reward/health_config/data/"
 
 [tool.black]
 line-length = 88

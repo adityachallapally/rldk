@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Union
 
 # Import the tracking system
 sys.path.append('src')
-from rldk.tracking import ExperimentTracker, TrackingConfig
+from rldk.monitoring.tracking import ExperimentTracker, TrackingConfig
 
 
 class LargeModel:

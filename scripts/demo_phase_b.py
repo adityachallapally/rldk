@@ -16,8 +16,8 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from rldk.evals import run
-from rldk.reward import health
+from rldk.evaluations.evals import run
+from rldk.evaluations.reward import health
 
 
 def create_synthetic_data():

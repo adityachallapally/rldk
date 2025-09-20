@@ -4,7 +4,7 @@
 This script is intentionally heavyweight compared to the quick demos that ship with
 RLDK.  It exercises a PPO-lite training loop that uses a frozen GPT-2 backbone with
 an adapter head trained via REINFORCE-style updates.  Metrics are emitted through the
-canonical :class:`rldk.emit.EventWriter` interface so downstream tooling can ingest the
+canonical :class:`rldk.support.emit.EventWriter` interface so downstream tooling can ingest the
 run and normalize it into the ``TrainingMetrics`` table.  The defaults are tuned so the
 script runs on CPU within a few hours while still producing a rich event stream.  Use
 ``--simulate-anomalies`` to opt back into the older scripted collapse/spike perturbations
@@ -34,7 +34,7 @@ from torch import nn
 from torch.nn.utils import clip_grad_norm_
 from transformers import GPT2LMHeadModel, GPT2TokenizerFast
 
-from rldk.emit import EventWriter
+from rldk.support.emit import EventWriter
 
 
 def _set_seed(seed: int) -> None:

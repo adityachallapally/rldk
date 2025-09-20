@@ -25,10 +25,10 @@ class TestPublicSymbols:
         import rldk
 
         # Test functions
-        assert callable(rldk.ingest_runs)
+        assert callable(rldk.pipelines.ingest_runs)
         assert callable(rldk.first_divergence)
         assert callable(rldk.check)
-        assert callable(rldk.bisect_commits)
+        assert callable(rldk.support.bisect_commits)
         assert callable(rldk.health)
         assert callable(rldk.run)
 
@@ -38,7 +38,7 @@ class TestPublicSymbols:
 
     def test_tracking_module_imports(self):
         """Test tracking module imports."""
-        from rldk.tracking import (
+        from rldk.monitoring.tracking import (
             DatasetTracker,
             EnvironmentTracker,
             ExperimentTracker,
@@ -59,7 +59,7 @@ class TestPublicSymbols:
 
     def test_forensics_module_imports(self):
         """Test forensics module imports."""
-        from rldk.forensics import (
+        from rldk.evaluations.forensics import (
             AdvantageStatisticsMetrics,
             AdvantageStatisticsTracker,
             ComprehensivePPOForensics,
@@ -86,7 +86,7 @@ class TestPublicSymbols:
 
     def test_determinism_module_imports(self):
         """Test determinism module imports."""
-        from rldk.determinism import DeterminismReport, check, check_determinism
+        from rldk.pipelines.determinism import DeterminismReport, check, check_determinism
 
         # Test functions
         assert callable(check)
@@ -97,7 +97,7 @@ class TestPublicSymbols:
 
     def test_diff_module_imports(self):
         """Test diff module imports."""
-        from rldk.diff import DivergenceReport, first_divergence
+        from rldk.support.diff import DivergenceReport, first_divergence
 
         # Test function
         assert callable(first_divergence)
@@ -107,7 +107,7 @@ class TestPublicSymbols:
 
     def test_bisect_module_imports(self):
         """Test bisect module imports."""
-        from rldk.bisect import BisectResult, bisect_commits
+        from rldk.support.bisect import BisectResult, bisect_commits
 
         # Test function
         assert callable(bisect_commits)
@@ -117,7 +117,7 @@ class TestPublicSymbols:
 
     def test_ingest_module_imports(self):
         """Test ingest module imports."""
-        from rldk.ingest import ingest_runs, ingest_runs_to_events
+        from rldk.pipelines.ingest import ingest_runs, ingest_runs_to_events
 
         # Test functions
         assert callable(ingest_runs)
@@ -125,7 +125,7 @@ class TestPublicSymbols:
 
     def test_reward_module_imports(self):
         """Test reward module imports."""
-        from rldk.reward import (
+        from rldk.evaluations.reward import (
             HealthAnalysisResult,
             RewardHealthReport,
             health,
@@ -142,7 +142,7 @@ class TestPublicSymbols:
 
     def test_evals_module_imports(self):
         """Test evals module imports."""
-        from rldk.evals import EvalResult, run
+        from rldk.evaluations.evals import EvalResult, run
 
         # Test function
         assert callable(run)

@@ -147,7 +147,7 @@ sleep 2
 
 rldk monitor \
     --stream "${metrics_path}" \
-    --rules "${project_root}/rules.yaml" \
+    --rules "${project_root}/configs/rules.yaml" \
     --pid "${loop_pid}" \
     --alerts "${alerts_path}" \
     --report "${report_path}" \
@@ -206,7 +206,7 @@ done
 
 if ! timeout 60s rldk monitor \
     --once "${metrics_path}" \
-    --rules "${project_root}/rules.yaml" \
+    --rules "${project_root}/configs/rules.yaml" \
     --report "${replay_report_path}" \
     >"${replay_log}" 2>&1; then
     echo "❌ Replay monitor run failed. Logs:" >&2

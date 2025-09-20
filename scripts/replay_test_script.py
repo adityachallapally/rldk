@@ -10,7 +10,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from rldk.replay import replay
+from rldk.pipelines.replay import replay
 
 
 def create_mock_training_script():

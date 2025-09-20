@@ -15,7 +15,7 @@ from transformers import (
 )
 
 from rldk.integrations.trl import PPOMonitor, RLDKCallback
-from rldk.utils.math_utils import safe_divide, safe_rate_calculation
+from rldk.core.utils.math_utils import safe_divide, safe_rate_calculation
 
 
 class RewardModelMonitor(TrainerCallback):
