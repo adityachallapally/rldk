@@ -1,0 +1,4 @@
+detector_id,fires_on_ppo,fires_on_grpo
+advantage_reward_hacking,yes,yes
+kl_controller_stuck,yes,no
+kl_spike,yes,yes
