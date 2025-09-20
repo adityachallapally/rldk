@@ -1,0 +1,24 @@
+rules:
+  - id: kl_spike_guard
+    where: name == "kl_mean"
+    condition: value > 1.5
+    window:
+      size: 5
+      kind: consecutive
+    cooldown_steps: 3
+    grace_steps: 2
+    actions:
+      - warn:
+          msg: "KL spike detected: {value:.3f} at step {step}"
+  
+  - id: loss_guard
+    where: name == "loss"
+    condition: value > 10.0
+    window:
+      size: 3
+      kind: consecutive
+    cooldown_steps: 2
+    grace_steps: 1
+    actions:
+      - warn:
+          msg: "High loss detected: {value:.3f} at step {step}"

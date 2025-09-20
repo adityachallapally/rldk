@@ -1,0 +1,27 @@
+{
+  "alerts": [],
+  "rules": {
+    "kl_spike_guard": {
+      "activations": 0,
+      "condition": "value > 1.5",
+      "cooldown_steps": 3,
+      "grace_steps": 2,
+      "where": "name == \"kl_mean\"",
+      "window": {
+        "kind": "consecutive",
+        "size": 5
+      }
+    },
+    "loss_guard": {
+      "activations": 0,
+      "condition": "value > 10.0",
+      "cooldown_steps": 2,
+      "grace_steps": 1,
+      "where": "name == \"loss\"",
+      "window": {
+        "kind": "consecutive",
+        "size": 3
+      }
+    }
+  }
+}

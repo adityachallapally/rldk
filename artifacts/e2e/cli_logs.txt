@@ -1,0 +1,27 @@
+=== RLDK End-to-End Acceptance Test Logs ===
+Test completed at: Thu Sep 18 06:17:26 AM UTC 2025
+Exit code: 0
+
+=== Environment Info ===
+Python version: Python 3.13.3
+RLDK version: 0.1.0
+Working directory: /workspace
+
+=== Artifact Summary ===
+total 444
+drwxr-xr-x 2 ubuntu ubuntu   4096 Sep 18 06:17 .
+drwxr-xr-x 3 ubuntu ubuntu   4096 Sep 18 06:16 ..
+-rw-r--r-- 1 ubuntu ubuntu   1956 Sep 18 06:17 ACCEPTANCE_SUMMARY.md
+-rw-r--r-- 1 ubuntu ubuntu   1883 Sep 18 06:16 baseline.jsonl
+-rw-r--r-- 1 ubuntu ubuntu    241 Sep 18 06:17 cli_logs.txt
+-rw-r--r-- 1 ubuntu ubuntu   1397 Sep 18 06:17 determinism_card.json
+-rw-r--r-- 1 ubuntu ubuntu 128510 Sep 18 06:17 determinism_card.png
+-rw-r--r-- 1 ubuntu ubuntu  10129 Sep 18 06:17 det_run_a.jsonl
+-rw-r--r-- 1 ubuntu ubuntu  10131 Sep 18 06:17 det_run_b.jsonl
+-rw-r--r-- 1 ubuntu ubuntu   1562 Sep 18 06:17 diff_report.json
+-rw-r--r-- 1 ubuntu ubuntu    535 Sep 18 06:16 monitor_report.json
+-rw-r--r-- 1 ubuntu ubuntu    979 Sep 18 06:17 reward_card.json
+-rw-r--r-- 1 ubuntu ubuntu 128840 Sep 18 06:17 reward_card.png
+-rw-r--r-- 1 ubuntu ubuntu    892 Sep 18 06:17 reward_health_card.md
+-rw-r--r-- 1 ubuntu ubuntu    450 Sep 18 06:17 reward_health_summary.json
+-rw-r--r-- 1 ubuntu ubuntu 122422 Sep 18 06:16 run.jsonl

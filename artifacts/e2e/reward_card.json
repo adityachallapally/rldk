@@ -1,0 +1,36 @@
+{
+  "version": "1.0",
+  "run_id": "d5296bb3",
+  "generated_at": "2025-09-18T06:17:19.186942",
+  "passed": false,
+  "drift_detected": false,
+  "calibration_score": 0.9091699758112145,
+  "saturation_detected": true,
+  "shortcut_signals": [
+    "Negative reward-KL correlation detected",
+    "Large gradient norms detected"
+  ],
+  "label_noise": 9.566031252082515e-05,
+  "metrics": {
+    "correlation": -0.9999991798599135,
+    "mae": 9.75648562113444e-05,
+    "l2_distance": 0.00011385814708345473
+  },
+  "slice_analysis": {
+    "train": {
+      "delta_mean": 1.4999235729376474,
+      "n_samples": 120
+    },
+    "early_vs_late": {
+      "delta_mean": 6.747245788574219e-05,
+      "n_samples": 20
+    }
+  },
+  "recommendations": [
+    "Reward model may be saturated - check reward scale",
+    "Consider adjusting reward function",
+    "Investigate potential shortcut learning",
+    "Review reward function design",
+    "Consider recalibration if correlation drops below 0.8"
+  ]
+}
