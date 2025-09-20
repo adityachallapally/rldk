@@ -74,6 +74,15 @@ Assets for post-mortems:
 * Full forensics: `comprehensive_ppo_forensics_demo/comprehensive_analysis.json`
 * Monitor CSV and health summaries: `comprehensive_ppo_monitor_demo/`
 
+### Cross-algorithm detector coverage
+
+GRPO-style fixtures now live in `test_artifacts/logs_grpo/seed_*` (build them with `make fixtures-grpo`). Running `scripts/build_grpo_forensics.py` spins the PPO and GRPO scans, renames the reports to `rldk_reports/grpo_*.json`, and writes a detector matrix to both CSV and Markdown.
+
+* Detector matrix (Markdown): [`docs/assets/blog_catch_failures/detector_matrix.md`](../assets/blog_catch_failures/detector_matrix.md)
+* Detector matrix (CSV): `rldk_reports/detector_matrix.csv`
+
+Two signals fire across both trainers: the KL surge rule and the reward/advantage hacking heuristic. KL controller drift remains PPO-specific in this fixture—GRPO’s group-normalized rewards keep KL inside the envelope so the controller warning stays quiet. This quick diff lets teams confirm which guardrails generalize across policy optimizers.
+
 ---
 
 ## Reproducibility Verification with `rldk check-determinism`
