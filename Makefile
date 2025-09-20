@@ -57,14 +57,14 @@ lint:
 	@echo "✅ Linting complete!"
 
 test:
-        @echo "Running all tests..."
-        pytest tests/ -v --cov=src/rldk --cov-report=xml --cov-report=html
-        @echo "✅ Tests complete!"
+	@echo "Running all tests..."
+	pytest tests/ -v --cov=src/rldk --cov-report=xml --cov-report=html
+	@echo "✅ Tests complete!"
 
 fixtures-grpo:
-        @echo "Generating GRPO fixtures..."
-        python tests/_make_fixtures.py --make grpo
-        @echo "✅ GRPO fixtures ready!"
+	@echo "Generating GRPO fixtures..."
+	python tests/_make_fixtures.py --make grpo
+	@echo "✅ GRPO fixtures ready!"
 
 cli-smoke:
 	@echo "Running CLI smoke tests..."

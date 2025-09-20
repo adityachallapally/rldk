@@ -14,6 +14,10 @@ from pathlib import Path
 from typing import Iterable, Set
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT / "src"))
+
+from rldk.io.naming_conventions import FileNamingConventions  # noqa: E402
 REPORTS_DIR = REPO_ROOT / "rldk_reports"
 BLOG_TABLE_PATH = REPO_ROOT / "docs" / "assets" / "blog_catch_failures" / "detector_matrix.md"
 CSV_OUTPUT_PATH = REPORTS_DIR / "detector_matrix.csv"
@@ -125,37 +129,31 @@ def main() -> None:
     ppo_target = REPO_ROOT / args.ppo_log
     grpo_target = REPO_ROOT / args.grpo_run
 
+    scan_filename = FileNamingConventions.get_filename("ppo_scan")
+    card_filename = FileNamingConventions.get_filename("determinism_card")
+    scan_path = REPORTS_DIR / scan_filename
+    card_path = REPORTS_DIR / card_filename
+
     if not ppo_target.exists():
         raise FileNotFoundError(f"PPO log not found at {ppo_target}")
     if not grpo_target.exists():
         raise FileNotFoundError(f"GRPO run not found at {grpo_target}")
 
-    scan_path = REPORTS_DIR / "ppo_scan.json"
-    card_path = REPORTS_DIR / "determinism_card.json"
     scan_backup = scan_path.read_bytes() if scan_path.exists() else None
     card_backup = card_path.read_bytes() if card_path.exists() else None
 
     # Run PPO log scan and rename report
     run_cli([args.python, "-m", "rldk.cli", "forensics", "log-scan", str(ppo_target)])
-    copy_report(REPORTS_DIR / "ppo_scan.json", REPORTS_DIR / "ppo_log_scan.json")
+    copy_report(scan_path, REPORTS_DIR / "ppo_log_scan.json")
 
     # Run GRPO log scan and rename report
     run_cli([args.python, "-m", "rldk.cli", "forensics", "log-scan", str(grpo_target)])
-    copy_report(
-        REPORTS_DIR / "ppo_scan.json",
-        REPORTS_DIR / "grpo_log_scan_seed1.json",
-    )
+    copy_report(scan_path, REPORTS_DIR / "grpo_log_scan_seed1.json")
 
     # Run GRPO doctor diagnostics and rename outputs
     run_cli([args.python, "-m", "rldk.cli", "forensics", "doctor", str(grpo_target)])
-    copy_report(
-        REPORTS_DIR / "ppo_scan.json",
-        REPORTS_DIR / "grpo_doctor_log_scan_seed1.json",
-    )
-    copy_report(
-        REPORTS_DIR / "determinism_card.json",
-        REPORTS_DIR / "grpo_determinism_card_seed1.json",
-    )
+    copy_report(scan_path, REPORTS_DIR / "grpo_doctor_log_scan_seed1.json")
+    copy_report(card_path, REPORTS_DIR / "grpo_determinism_card_seed1.json")
     lock_path = REPO_ROOT / "rldk.lock"
     if lock_path.exists():
         move_report(lock_path, REPORTS_DIR / "grpo_seed1.lock")

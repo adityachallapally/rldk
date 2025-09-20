@@ -184,7 +184,7 @@ def make_reward_drift_demo():
                 "bias": torch.tensor(0.1 + i * 0.2, dtype=torch.float32),
             }
 
-        torch.save(model_data, model_dir / "model.pt")
+            torch.save(model_data, model_dir / "model.pt")
     except ImportError:
         print("⚠️  PyTorch not available, skipping reward model generation")
         # Don't create dummy files - let tests handle missing files gracefully
