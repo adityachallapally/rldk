@@ -1,7 +1,7 @@
 {
   "status": "warning",
-  "overall_health_score": 0.8150630647732646,
-  "training_stability_score": 0.9397415503700712,
+  "overall_health_score": 0.8385441826546252,
+  "training_stability_score": 0.9674493022260799,
   "convergence_quality_score": 0.9814106159735771,
   "total_anomalies": 2,
   "critical_anomalies": 0,
