@@ -157,3 +157,4 @@ outputs/
 *.lock
 *.zip
 temp_diff/
+docs/blog/_methods_box.md

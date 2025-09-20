@@ -75,7 +75,13 @@ cli-smoke:
 docs-serve:
 	@echo "Starting documentation server..."
 	@echo "Documentation will be available at http://localhost:8000"
-	mkdocs serve
+	@python scripts/stamp_methods_box.py
+	RLDK_COMMIT_SHORT=$$(git rev-parse --short HEAD) mkdocs serve
+
+docs-build:
+	@echo "Building documentation..."
+	@python scripts/stamp_methods_box.py
+	RLDK_COMMIT_SHORT=$$(git rev-parse --short HEAD) mkdocs build
 
 monitor-demo:
 	@echo "Running live monitoring demo..."

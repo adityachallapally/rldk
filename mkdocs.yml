@@ -108,6 +108,7 @@ markdown_extensions:
       user: adityachallapally
       repo: rldk
   - pymdownx.mark
+  - pymdownx.snippets
   - pymdownx.smartsymbols
   - pymdownx.superfences:
       custom_fences:
