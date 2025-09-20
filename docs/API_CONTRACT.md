@@ -158,7 +158,8 @@ This document defines the public API contract for RLDK, including Python symbols
 - **Required**: `model_a` (first model path), `model_b` (second model path), `--prompts` / `-p` (prompts file)
 - **Output**: "Reward drift analysis complete" + correlation metrics
 
-#### `rldk doctor` ✅ **WORKING**
+#### `rldk forensics doctor` ✅ **WORKING**
+- **Alias**: Available as `rldk doctor`
 - **Required**: `run_or_repo` (run or repository path)
 - **Output**: "Comprehensive diagnostics complete" + issue summary
 
@@ -272,7 +273,7 @@ This document defines the public API contract for RLDK, including Python symbols
 - `rldk eval` - Evaluation suite execution
 - `rldk track` - Experiment tracking
 - `rldk reward-drift` - Reward model comparison
-- `rldk doctor` - Comprehensive diagnostics
+- `rldk forensics doctor` - Comprehensive diagnostics (alias `rldk doctor`)
 - `rldk version` - Version information
 - `rldk card` - Trust card generation
 - `rldk forensics compare-runs` - Run comparison analysis

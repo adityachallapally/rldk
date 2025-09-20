@@ -274,7 +274,7 @@ rldk --help
 rldk track --name "my_experiment" --interactive
 
 # Run forensics analysis
-rldk log-scan ./my_training_run
+rldk forensics log-scan ./my_training_run
 
 # Check determinism
 rldk check-determinism --cmd "python train.py" --compare loss,reward_mean --replicas 5

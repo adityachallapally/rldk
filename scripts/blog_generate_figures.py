@@ -31,7 +31,13 @@ def plot_monitor_trace():
     plt.style.use("seaborn-v0_8-darkgrid")
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.plot(kl["step"], kl["value"], label="KL divergence", color="#1f77b4")
-    ax.axhline(0.3, color="#ff7f0e", linestyle="--", linewidth=1.2, label="KL guardrail")
+    ax.axhline(
+        0.35,
+        color="#ff7f0e",
+        linestyle="--",
+        linewidth=1.2,
+        label="KL guardrail (5 step window)",
+    )
 
     if alert_steps:
         steps, values = zip(*alert_steps)

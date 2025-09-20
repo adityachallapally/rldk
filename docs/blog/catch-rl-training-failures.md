@@ -14,16 +14,16 @@ Start by tailing a live trainer with RLDK’s streaming monitor:
 make monitor-demo
 ````
 
-This launches `examples/minimal_streaming_loop.py`, attaches the CLI monitor with the default PPO guardrails, and auto-stops on a KL breach.
+This launches `examples/minimal_streaming_loop.py`, attaches the CLI monitor with the default PPO guardrails, and auto stops when the KL guard trips.
 
-**Guardrail rule**: stop when the token-averaged KL to the reference policy exceeds `0.3` at any step.
-The demo produced `81` KL measurements and tripped `22` stop alerts between steps `20` and `80`. KL peaked at **1.67**, above the `0.3` threshold. Alert payloads are written to `artifacts/alerts.jsonl` for replay.
+**Guardrail rule**: Stop when token averaged KL to the reference exceeds 0.35 for 5 consecutive steps.
+The demo produced `81` KL measurements and tripped `22` stop alerts between steps `20` and `80`. KL peaked at **1.67**, above the 0.35 guardrail with 5 step persistence. Alert payloads are written to `artifacts/alerts.jsonl` for replay.
 
 ![RLDK monitor caught runaway KL](../assets/blog_catch_failures/monitor_kl_trace.png)
 
-*Caption: Real-time monitor with auto-stop when KL greater than 0.3. Red X markers indicate stop events.*
+*Caption: Real-time monitor with auto stop once KL stays above 0.35 for five steps. Red X markers indicate stop events.*
 
-**Why this matters**: the monitor halted the loop seconds after KL crossed `0.3`, well before gradients could run away. In a production trainer, this saves minutes or hours of wasted compute.
+**Why this matters**: the monitor halted the loop seconds after KL stayed above 0.35 for the five step window, well before gradients could run away. In a production trainer, this saves minutes or hours of wasted compute.
 
 Reusable artifacts:
 
@@ -33,23 +33,23 @@ Reusable artifacts:
 
 ---
 
-## Forensic Analysis with `rldk log-scan` and `rldk doctor`
+## Forensic Analysis with `rldk forensics log-scan` and `rldk forensics doctor`
 
 Generate PPO fixtures, then run the forensic stack against a **doctored** run that injects a short KL surge for demonstration:
 
 ```bash
 python tests/_make_fixtures.py
-rldk log-scan test_artifacts/logs_doctored_kl_spike
-rldk doctor   test_artifacts/logs_doctored_kl_spike
+rldk forensics log-scan test_artifacts/logs_doctored_kl_spike
+rldk forensics doctor   test_artifacts/logs_doctored_kl_spike
 python examples/comprehensive_ppo_forensics_example.py
 ```
 
-`rldk log-scan` fired **183 anomaly rules**, flagging a KL surge at steps `800` to `804` and **controller drift** through step `999`.
+`rldk forensics log-scan` (alias `rldk log-scan`) fired **183 anomaly rules**, flagging a KL surge at steps `800` to `804` and **controller drift** through step `999`.
 
 * *Controller drift*: the adaptive KL controller stopped tracking the target envelope, so effective regularization decayed.
 * *Advantage bias*: the mean of normalized advantages deviated from zero. The demo shows **advantage bias = 0.237**, which signals mis-scaling or normalization slippage.
 
-`rldk doctor` bundles this analysis with an environment audit:
+`rldk forensics doctor` (alias `rldk doctor`) bundles this analysis with an environment audit:
 
 * Scan report: `rldk_reports/ppo_scan.json`
 * Environment determinism card: `rldk_reports/determinism_card.json`
@@ -132,6 +132,8 @@ All generated images and determinism reports live under `docs/assets/blog_catch_
 If you need screenshots, the JSON artifacts above contain the exact values used in the captions.
 
 ---
+
+--8<-- "blog/_methods_box.md"
 
 ## Why This Matters
 

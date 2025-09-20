@@ -13,9 +13,9 @@ All six required commands implemented and exposed through the main `rldk` CLI:
 - ✅ `rldk compare-runs A B` - Compare two training runs and identify divergences
 - ✅ `rldk diff-ckpt ckptA ckptB` - Compare model checkpoints and identify parameter differences  
 - ✅ `rldk env-audit <repo_or_run>` - Audit environment for determinism and reproducibility
-- ✅ `rldk log-scan <run_or_export>` - Scan training logs for PPO anomalies
+- ✅ `rldk forensics log-scan <run_or_export>`: Scan training logs for PPO anomalies (alias `rldk log-scan`)
 - ✅ `rldk reward-drift modelA modelB --prompts test.jsonl` - Compare reward models and detect drift
-- ✅ `rldk doctor <run_or_repo>` - Run comprehensive diagnostics
+- ✅ `rldk forensics doctor <run_or_repo>`: Run comprehensive diagnostics (alias `rldk doctor`)
 
 ### 2. PPO Forensics Inside log-scan
 
@@ -153,10 +153,10 @@ python3 tests/_make_fixtures.py
 
 # Run all forensics commands
 rldk env-audit test_artifacts/logs_clean
-rldk log-scan test_artifacts/logs_doctored_kl_spike
+rldk forensics log-scan test_artifacts/logs_doctored_kl_spike
 rldk diff-ckpt test_artifacts/ckpt_identical/a.pt test_artifacts/ckpt_identical/b.pt
 rldk reward-drift test_artifacts/reward_drift_demo/rmA test_artifacts/reward_drift_demo/rmB --prompts test_artifacts/reward_drift_demo/prompts.jsonl
-rldk doctor test_artifacts/logs_clean
+rldk forensics doctor test_artifacts/logs_clean
 rldk compare-runs test_artifacts/logs_clean test_artifacts/logs_doctored_kl_spike
 ```
 

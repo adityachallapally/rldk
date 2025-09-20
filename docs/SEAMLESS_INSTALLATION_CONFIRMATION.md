@@ -52,9 +52,9 @@ pip install -e .
 - `rldk compare-runs` - Compare training runs
 - `rldk diff-ckpt` - Compare model checkpoints
 - `rldk env-audit` - Audit environment
-- `rldk log-scan` - Scan training logs
+- `rldk forensics log-scan`: Scan training logs (alias `rldk log-scan`)
 - `rldk reward-drift` - Detect reward drift
-- `rldk doctor` - Comprehensive diagnostics
+- `rldk forensics doctor`: Comprehensive diagnostics (alias `rldk doctor`)
 - `rldk version` - Show version information
 
 ### Sub-commands

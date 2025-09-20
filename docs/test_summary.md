@@ -14,9 +14,9 @@
 - **Output**: Generated determinism card and lock file
 - **Findings**: Detected nondeterminism issues (as expected for test data)
 
-### 2. Log Scanning (`rldk log-scan`)
+### 2. Log Scanning (`rldk forensics log-scan`, alias `rldk log-scan`)
 - **Status**: ✅ Working
-- **Test**: `rldk log-scan test_artifacts/logs_doctored_kl_spike`
+- **Test**: `rldk forensics log-scan test_artifacts/logs_doctored_kl_spike`
 - **Output**: Generated PPO scan report with 182 rules fired
 - **Findings**: Detected multiple anomalies including:
   - KL controller stuck issues
@@ -35,9 +35,9 @@
 - **Output**: Generated reward drift report and visualization
 - **Findings**: Detected significant drift with low correlation (0.0823)
 
-### 5. Comprehensive Diagnostics (`rldk doctor`)
+### 5. Comprehensive Diagnostics (`rldk forensics doctor`, alias `rldk doctor`)
 - **Status**: ✅ Working
-- **Test**: `rldk doctor test_artifacts/logs_clean`
+- **Test**: `rldk forensics doctor test_artifacts/logs_clean`
 - **Output**: Combined environment audit and log scan
 - **Findings**: Detected 162 anomalies and nondeterminism issues
 
@@ -101,9 +101,9 @@ All major CLI commands are functional:
 - `rldk compare-runs` - Compare training runs
 - `rldk diff-ckpt` - Compare model checkpoints
 - `rldk env-audit` - Audit environment
-- `rldk log-scan` - Scan training logs
+- `rldk forensics log-scan`: Scan training logs (alias `rldk log-scan`)
 - `rldk reward-drift` - Detect reward drift
-- `rldk doctor` - Comprehensive diagnostics
+- `rldk forensics doctor`: Comprehensive diagnostics (alias `rldk doctor`)
 - `rldk version` - Show version information
 
 ## ✅ Sub-commands Available
