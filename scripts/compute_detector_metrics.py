@@ -92,8 +92,8 @@ def compute_metrics(alert_paths: Sequence[Path], *, window_start: int, window_en
         recall = len(true_positive_steps) / window_size if window_size else 0.0
 
         lead_time = None
-        if total_alerts:
-            first_alert = min(alert_steps)
+        if true_positive_steps:
+            first_alert = min(true_positive_steps)
             lead_time = max(0, window_start - first_alert)
             lead_times.append(float(lead_time))
 
