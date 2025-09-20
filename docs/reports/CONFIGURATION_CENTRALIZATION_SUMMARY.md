@@ -1,6 +1,7 @@
 # RLDK Configuration Centralization - Summary
 
 ## Overview
+
 Successfully centralized all hardcoded values in the RLDK codebase into a comprehensive configuration system. This eliminates magic numbers and makes the system highly configurable and maintainable.
 
 ## What Was Accomplished
@@ -17,6 +18,7 @@ Successfully centralized all hardcoded values in the RLDK codebase into a compre
 ### 2. ✅ Configuration Features
 
 **Environment-specific presets:**
+
 - `default` - Balanced settings for general use
 - `strict` - Conservative thresholds for production
 - `lenient` - Relaxed thresholds for development
@@ -28,11 +30,13 @@ Successfully centralized all hardcoded values in the RLDK codebase into a compre
 - `web` - Optimized for web display
 
 **Environment variable support:**
+
 - All parameters can be overridden via environment variables
 - Format: `RLDK_PARAMETER_NAME=value`
 - Automatic type conversion and validation
 
 **Custom configuration creation:**
+
 - `create_custom_eval_config(**kwargs)`
 - `create_custom_forensics_config(**kwargs)`
 - `create_custom_visualization_config(**kwargs)`
@@ -41,6 +45,7 @@ Successfully centralized all hardcoded values in the RLDK codebase into a compre
 ### 3. ✅ Configuration Validation System
 
 **Comprehensive validation in `src/rldk/config/validator.py`:**
+
 - Parameter range validation
 - Logical consistency checks
 - Type validation
@@ -48,6 +53,7 @@ Successfully centralized all hardcoded values in the RLDK codebase into a compre
 - Detailed error reporting
 
 **Validation functions:**
+
 - `ConfigValidator.validate_evaluation_config()`
 - `ConfigValidator.validate_forensics_config()`
 - `ConfigValidator.validate_visualization_config()`
@@ -58,11 +64,13 @@ Successfully centralized all hardcoded values in the RLDK codebase into a compre
 ### 4. ✅ Updated Core Files
 
 **Modified files to use configuration system:**
+
 - `src/rldk/evals/suites.py` - All suite definitions now use config values
 - `src/rldk/evals/metrics/toxicity.py` - Toxicity evaluation uses config
 - `src/rldk/config/__init__.py` - Exports all configuration functions
 
 **Key changes made:**
+
 - Function signatures updated to accept `config` parameter
 - Hardcoded values replaced with config references
 - Suite definitions converted to functions that use config
@@ -71,11 +79,13 @@ Successfully centralized all hardcoded values in the RLDK codebase into a compre
 ### 5. ✅ Comprehensive Documentation
 
 **Created documentation files:**
+
 - `docs/configuration.md` - Complete configuration system documentation
-- `cursor_instructions.md` - Instructions for future development
+- `../internal/cursor_instructions.md` - Instructions for future development
 - `CONFIGURATION_CENTRALIZATION_SUMMARY.md` - This summary
 
 **Documentation includes:**
+
 - Parameter descriptions and default values
 - Usage examples and best practices
 - Migration guide for existing code
@@ -85,6 +95,7 @@ Successfully centralized all hardcoded values in the RLDK codebase into a compre
 ### 6. ✅ Test Suite
 
 **Created comprehensive tests in `tests/test_config.py`:**
+
 - Configuration creation and validation tests
 - Environment variable loading tests
 - Custom configuration creation tests
@@ -95,6 +106,7 @@ Successfully centralized all hardcoded values in the RLDK codebase into a compre
 ### 7. ✅ Key Parameters Centralized
 
 **Evaluation Configuration (100+ parameters):**
+
 - KL Divergence thresholds (min, max, target)
 - Memory thresholds (efficiency, stability, GPU, range, consistency)
 - Gradient thresholds (stability, explosion, efficiency)
@@ -111,6 +123,7 @@ Successfully centralized all hardcoded values in the RLDK codebase into a compre
 - Bootstrap confidence level
 
 **Forensics Configuration (50+ parameters):**
+
 - Advantage statistics (window size, trend window, bias threshold, scale threshold)
 - Gradient analysis (norm window, explosion threshold, vanishing threshold)
 - KL divergence tracking (window size, anomaly threshold, trend window)
@@ -123,6 +136,7 @@ Successfully centralized all hardcoded values in the RLDK codebase into a compre
 - Quality scoring weights (scale stability, mean trend, volatility, skewness)
 
 **Visualization Configuration (40+ parameters):**
+
 - Figure settings (size, DPI, style)
 - Font settings (title, label, tick, legend, text sizes)
 - Color settings (primary, secondary, tertiary colors, alpha values)
@@ -145,6 +159,7 @@ Successfully centralized all hardcoded values in the RLDK codebase into a compre
 - Mean/std lines (color, style, alpha)
 
 **Suite Configuration (30+ parameters):**
+
 - Sample sizes for all suites (quick, comprehensive, safety, integrity, performance, trust)
 - Runtime estimates for all suites (min/max ranges)
 - Baseline scores for all evaluation metrics in each suite
@@ -155,31 +170,37 @@ Successfully centralized all hardcoded values in the RLDK codebase into a compre
 ## Key Benefits Achieved
 
 ### 1. **Elimination of Magic Numbers**
+
 - Core evaluation functions now use configuration values instead of hardcoded numbers
 - Foundation established for centralizing all hardcoded values throughout the codebase
 - Easy to find and modify all thresholds and parameters
 
 ### 2. **Environment-Specific Configurations**
+
 - Different presets for different use cases (production, development, research)
 - Easy switching between configurations
 - Consistent behavior across environments
 
 ### 3. **Runtime Configuration**
+
 - Environment variable overrides
 - Custom configuration creation
 - Dynamic configuration loading
 
 ### 4. **Validation and Error Prevention**
+
 - Comprehensive validation prevents invalid configurations
 - Clear error messages for configuration issues
 - Type safety and range checking
 
 ### 5. **Maintainability**
+
 - Centralized parameter management
 - Clear documentation of all parameters
 - Easy to add new parameters or modify existing ones
 
 ### 6. **Testability**
+
 - Comprehensive test suite ensures configuration reliability
 - Easy to test different configuration combinations
 - Validation tests catch configuration errors
@@ -187,6 +208,7 @@ Successfully centralized all hardcoded values in the RLDK codebase into a compre
 ## Usage Examples
 
 ### Basic Usage
+
 ```python
 from rldk.config import get_eval_config
 
@@ -200,6 +222,7 @@ if len(data) > config.MIN_SAMPLES_FOR_ANALYSIS:
 ```
 
 ### Environment-Specific Usage
+
 ```python
 # Get strict configuration for production
 config = get_eval_config("strict")
@@ -209,6 +232,7 @@ config = get_eval_config("lenient")
 ```
 
 ### Custom Configuration
+
 ```python
 from rldk.config import create_custom_eval_config
 
@@ -220,6 +244,7 @@ custom_config = create_custom_eval_config(
 ```
 
 ### Environment Variable Override
+
 ```bash
 export RLDK_MIN_SAMPLES_FOR_ANALYSIS=20
 export RLDK_HIGH_TOXICITY_THRESHOLD=0.8
@@ -228,17 +253,19 @@ export RLDK_HIGH_TOXICITY_THRESHOLD=0.8
 ## Files Created/Modified
 
 ### New Files Created:
+
 - `src/rldk/config/evaluation_config.py`
 - `src/rldk/config/forensics_config.py`
 - `src/rldk/config/visualization_config.py`
 - `src/rldk/config/suite_config.py`
 - `src/rldk/config/validator.py`
 - `docs/configuration.md`
-- `cursor_instructions.md`
+- `../internal/cursor_instructions.md`
 - `tests/test_config.py`
 - `CONFIGURATION_CENTRALIZATION_SUMMARY.md`
 
 ### Files Modified:
+
 - `src/rldk/config/__init__.py` - Added exports for all config functions
 - `src/rldk/evals/suites.py` - Updated to use configuration system
 - `src/rldk/evals/metrics/toxicity.py` - Updated to use configuration system
@@ -246,25 +273,28 @@ export RLDK_HIGH_TOXICITY_THRESHOLD=0.8
 ## Next Steps
 
 ### Immediate Actions:
+
 1. **Run tests** to ensure all configurations work correctly
-2. **Update remaining files** to use configuration system (there are still many files with hardcoded values)
-3. **Add configuration validation** to CI/CD pipeline
-4. **Update documentation** for any new parameters
+1. **Update remaining files** to use configuration system (there are still many files with hardcoded values)
+1. **Add configuration validation** to CI/CD pipeline
+1. **Update documentation** for any new parameters
 
 ### Critical Bugs Fixed:
+
 1. **Configuration parameter naming mismatch** - Fixed `MIN_CORRELATION_SAMPLES` vs `MIN_SAMPLES_FOR_CORRELATION`
-2. **Percentile mismatch in toxicity evaluation** - Fixed hardcoded percentile labels to use dynamic config
-3. **Missing config parameters** - Added config parameters to `evaluate_speed`, `evaluate_memory`, `evaluate_calibration`, `evaluate_adversarial`
-4. **Baseline score validation** - Improved error messages to show parameter names
-5. **Duplicate z_score assignment** - Removed duplicate line in toxicity evaluation
+1. **Percentile mismatch in toxicity evaluation** - Fixed hardcoded percentile labels to use dynamic config
+1. **Missing config parameters** - Added config parameters to `evaluate_speed`, `evaluate_memory`, `evaluate_calibration`, `evaluate_adversarial`
+1. **Baseline score validation** - Improved error messages to show parameter names
+1. **Duplicate z_score assignment** - Removed duplicate line in toxicity evaluation
 
 ### Future Enhancements:
+
 1. **Dynamic configuration loading** from YAML/JSON files
-2. **Configuration inheritance** and composition
-3. **Runtime configuration updates** without restart
-4. **Configuration versioning** and migration
-5. **Advanced validation rules** with custom validators
-6. **Configuration templates** and wizards
+1. **Configuration inheritance** and composition
+1. **Runtime configuration updates** without restart
+1. **Configuration versioning** and migration
+1. **Advanced validation rules** with custom validators
+1. **Configuration templates** and wizards
 
 ## Conclusion
 

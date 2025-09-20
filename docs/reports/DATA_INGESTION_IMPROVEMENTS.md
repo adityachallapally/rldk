@@ -7,31 +7,32 @@ This document summarizes the comprehensive improvements made to fix the data ing
 ## Problems Addressed
 
 ### 1. Poor Error Messages
-**Before**: Generic error "Cannot handle source: /path/to/source"
-**After**: Detailed error messages with format requirements and suggestions
+
+**Before**: Generic error "Cannot handle source: /path/to/source" **After**: Detailed error messages with format requirements and suggestions
 
 ### 2. Missing Validation
-**Before**: No validation of input data formats
-**After**: Comprehensive validation with detailed analysis
+
+**Before**: No validation of input data formats **After**: Comprehensive validation with detailed analysis
 
 ### 3. Lack of Examples
-**Before**: No examples of proper data structures
-**After**: Complete examples and documentation for each adapter
+
+**Before**: No examples of proper data structures **After**: Complete examples and documentation for each adapter
 
 ### 4. Inflexible Adapters
-**Before**: Adapters were too strict about format detection
-**After**: Flexible adapters with fallback parsing and better error handling
+
+**Before**: Adapters were too strict about format detection **After**: Flexible adapters with fallback parsing and better error handling
 
 ## Improvements Made
 
 ### 1. Enhanced Error Messages (`/workspace/src/rldk/ingest/ingest.py`)
 
 #### New Error Message Format
+
 ```python
 # Before
 raise AdapterError(f"Adapter '{adapter_hint}' cannot handle source: {source}")
 
-# After  
+# After
 raise AdapterError(
     f"Adapter '{adapter_hint}' cannot handle source: {source}",
     suggestion=f"Expected format: {format_requirements['description']}\n"
@@ -39,7 +40,7 @@ raise AdapterError(
               f"Try: {format_requirements['suggestions']}",
     error_code="ADAPTER_CANNOT_HANDLE_SOURCE",
     details={
-        "adapter": adapter_hint, 
+        "adapter": adapter_hint,
         "source": str(source),
         "expected_format": format_requirements,
         "source_analysis": source_analysis
@@ -48,6 +49,7 @@ raise AdapterError(
 ```
 
 #### New Helper Functions
+
 - `_get_adapter_format_requirements()` - Detailed format requirements for each adapter
 - `_analyze_source_format()` - Comprehensive source analysis
 - `_get_auto_detection_suggestions()` - Smart suggestions for adapter selection
@@ -55,12 +57,14 @@ raise AdapterError(
 ### 2. Comprehensive Format Analysis
 
 #### Source Analysis Features
+
 - **File Type Detection**: Automatically detects JSONL, log, and directory formats
 - **Field Analysis**: Identifies available fields in data
 - **Issue Detection**: Finds common problems (missing fields, invalid JSON, etc.)
 - **Format Suggestions**: Recommends appropriate adapters based on content
 
 #### Example Analysis Output
+
 ```json
 {
   "description": "JSONL file with 3 sample records",
@@ -75,6 +79,7 @@ raise AdapterError(
 ### 3. Detailed Format Requirements
 
 #### TRL Adapter Requirements
+
 ```json
 {
   "description": "TRL training logs (JSONL or .log files)",
@@ -89,6 +94,7 @@ raise AdapterError(
 ```
 
 #### Custom JSONL Adapter Requirements
+
 ```json
 {
   "description": "Custom JSONL format with specific field names",
@@ -105,11 +111,13 @@ raise AdapterError(
 ### 4. Flexible Adapters (`/workspace/src/rldk/adapters/trl.py`)
 
 #### Improved Detection Logic
+
 - **More Permissive**: Accepts files with required fields OR TRL keywords
 - **Fallback Parsing**: Attempts lenient parsing when strict parsing fails
 - **Better Error Handling**: Graceful handling of malformed data
 
 #### Fallback Parsing Features
+
 ```python
 def _fallback_parse(self) -> List[Dict[str, Any]]:
     """Fallback parsing with more lenient requirements."""
@@ -121,13 +129,15 @@ def _fallback_parse(self) -> List[Dict[str, Any]]:
 ### 5. Example Data Files (`/workspace/examples/data_formats/`)
 
 #### Created Example Files
+
 - `trl_example.jsonl` - Standard TRL format
-- `openrlhf_example.jsonl` - OpenRLHF format  
+- `openrlhf_example.jsonl` - OpenRLHF format
 - `custom_jsonl_example.jsonl` - Custom format with specific field names
 - `trl_log_example.log` - TRL log format
 - `README.md` - Comprehensive documentation
 
 #### Example Data Format
+
 ```json
 {"step": 0, "phase": "train", "reward_mean": 0.5, "reward_std": 0.1, "kl_mean": 0.1, "entropy_mean": 0.8, "clip_frac": 0.05, "grad_norm": 1.0, "lr": 0.001, "loss": 0.5, "tokens_in": 512, "tokens_out": 128, "wall_time": 10.0, "seed": 42, "run_id": "trl_run_001", "git_sha": "abc123"}
 ```
@@ -135,6 +145,7 @@ def _fallback_parse(self) -> List[Dict[str, Any]]:
 ### 6. New CLI Commands (`/workspace/src/rldk/cli.py`)
 
 #### Format Information Command
+
 ```bash
 # Show all adapter formats
 rldk format-info
@@ -147,6 +158,7 @@ rldk format-info --adapter custom_jsonl --examples
 ```
 
 #### Format Validation Command
+
 ```bash
 # Analyze data format
 rldk validate-format /path/to/data.jsonl
@@ -161,6 +173,7 @@ rldk validate-format /path/to/data.jsonl --verbose
 ### 7. Comprehensive Documentation
 
 #### Data Format Guide (`/workspace/examples/data_formats/README.md`)
+
 - **Complete Format Specifications**: Detailed requirements for each adapter
 - **Usage Examples**: Command-line examples for each format
 - **Troubleshooting Guide**: Common issues and solutions
@@ -169,6 +182,7 @@ rldk validate-format /path/to/data.jsonl --verbose
 ## Usage Examples
 
 ### 1. Basic Ingestion with Better Error Messages
+
 ```bash
 # Before: Generic error
 rldk ingest /path/to/data.jsonl
@@ -183,6 +197,7 @@ rldk ingest /path/to/data.jsonl
 ```
 
 ### 2. Format Validation
+
 ```bash
 # Analyze data format
 rldk validate-format /path/to/data.jsonl
@@ -197,6 +212,7 @@ rldk validate-format /path/to/data.jsonl
 ```
 
 ### 3. Format Information
+
 ```bash
 # Get format requirements
 rldk format-info --adapter trl
@@ -211,6 +227,7 @@ rldk format-info --adapter trl
 ## Testing
 
 ### Test Coverage
+
 - ✅ Format requirements generation
 - ✅ Source format analysis
 - ✅ Error message improvements
@@ -219,6 +236,7 @@ rldk format-info --adapter trl
 - ✅ CLI command functionality
 
 ### Test Results
+
 ```bash
 $ python3 test_standalone.py
 🚀 Testing data ingestion format improvements...
@@ -241,21 +259,25 @@ $ python3 test_standalone.py
 ## Benefits
 
 ### 1. Better User Experience
+
 - **Clear Error Messages**: Users understand exactly what's wrong and how to fix it
 - **Format Guidance**: Detailed requirements and examples for each adapter
 - **Validation Tools**: Users can validate data before ingestion
 
 ### 2. Improved Debugging
+
 - **Detailed Analysis**: Comprehensive source format analysis
 - **Issue Detection**: Automatic detection of common problems
 - **Suggestions**: Smart recommendations for adapter selection
 
 ### 3. Enhanced Flexibility
+
 - **Fallback Parsing**: Adapters handle partial or malformed data gracefully
 - **Better Detection**: More intelligent format detection
 - **Graceful Degradation**: System continues working even with suboptimal data
 
 ### 4. Comprehensive Documentation
+
 - **Complete Examples**: Working examples for all supported formats
 - **Troubleshooting Guide**: Solutions for common issues
 - **CLI Help**: Built-in help and validation commands
@@ -263,16 +285,19 @@ $ python3 test_standalone.py
 ## Files Modified
 
 ### Core Files
+
 - `/workspace/src/rldk/ingest/ingest.py` - Enhanced error handling and format analysis
 - `/workspace/src/rldk/adapters/trl.py` - Improved flexibility and fallback parsing
 - `/workspace/src/rldk/cli.py` - New CLI commands for format validation
 
 ### Documentation
+
 - `/workspace/examples/data_formats/README.md` - Comprehensive format guide
 - `/workspace/examples/data_formats/*.jsonl` - Example data files
 - `/workspace/DATA_INGESTION_IMPROVEMENTS.md` - This summary document
 
 ### Testing
+
 - `/workspace/test_standalone.py` - Standalone test suite
 - `/workspace/test_data_ingestion_fixes.py` - Full integration test
 
@@ -281,10 +306,10 @@ $ python3 test_standalone.py
 The data ingestion format requirements have been comprehensively improved with:
 
 1. **Better Error Messages**: Clear, actionable error messages with format requirements
-2. **Comprehensive Validation**: Detailed analysis of data formats and issues
-3. **Complete Examples**: Working examples and documentation for all formats
-4. **Flexible Adapters**: More robust adapters with fallback parsing
-5. **New CLI Tools**: Commands for format validation and information
-6. **Enhanced Documentation**: Complete guide with troubleshooting tips
+1. **Comprehensive Validation**: Detailed analysis of data formats and issues
+1. **Complete Examples**: Working examples and documentation for all formats
+1. **Flexible Adapters**: More robust adapters with fallback parsing
+1. **New CLI Tools**: Commands for format validation and information
+1. **Enhanced Documentation**: Complete guide with troubleshooting tips
 
 These improvements address all the issues identified in the original error analysis and provide a much better user experience for data ingestion.
