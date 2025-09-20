@@ -1,0 +1,45 @@
+{
+  "window_start": 800,
+  "window_end": 804,
+  "window_size": 5,
+  "seed_count": 3,
+  "per_seed": [
+    {
+      "path": "test_artifacts/logs_grpo/seed_1/alerts.jsonl",
+      "alert_steps": [],
+      "true_positive_steps": [],
+      "false_positive_steps": [],
+      "precision": 0.0,
+      "recall": 0.0,
+      "lead_time": null
+    },
+    {
+      "path": "test_artifacts/logs_grpo/seed_2/alerts.jsonl",
+      "alert_steps": [],
+      "true_positive_steps": [],
+      "false_positive_steps": [],
+      "precision": 0.0,
+      "recall": 0.0,
+      "lead_time": null
+    },
+    {
+      "path": "test_artifacts/logs_grpo/seed_3/alerts.jsonl",
+      "alert_steps": [],
+      "true_positive_steps": [],
+      "false_positive_steps": [],
+      "precision": 0.0,
+      "recall": 0.0,
+      "lead_time": null
+    }
+  ],
+  "rule_ids": [
+    "ppo_high_kl_guard"
+  ],
+  "lead_time_mean": null,
+  "lead_time_std": null,
+  "precision_mean": 0.0,
+  "precision_std": 0.0,
+  "recall_mean": 0.0,
+  "recall_std": 0.0,
+  "seeds_with_alerts": 0
+}

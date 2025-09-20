@@ -66,6 +66,30 @@ fixtures-grpo:
 	python tests/_make_fixtures.py --make grpo
 	@echo "✅ GRPO fixtures ready!"
 
+detector-metrics:
+	@mkdir -p test_artifacts/logs_doctored_kl_spike
+	@touch test_artifacts/logs_doctored_kl_spike/alerts.jsonl
+	@for seed in 1 2 3; do mkdir -p test_artifacts/logs_grpo/seed_$${seed}; touch test_artifacts/logs_grpo/seed_$${seed}/alerts.jsonl; done
+	@echo "Computing detector metrics for doctored PPO run..."
+	python scripts/compute_detector_metrics.py \
+	        --alerts test_artifacts/logs_doctored_kl_spike/alerts.jsonl \
+	        --window-start 800 \
+	        --window-end 804 \
+	        --rule-id ppo_high_kl_guard \
+	        --output-json docs/assets/blog_catch_failures/metrics_ppo.json \
+	        --output-markdown docs/assets/blog_catch_failures/metrics_ppo.md \
+	        --label "PPO doctored"
+	@echo "Computing detector metrics for doctored GRPO seeds..."
+	python scripts/compute_detector_metrics.py \
+	        --alerts "test_artifacts/logs_grpo/seed_*/alerts.jsonl" \
+	        --window-start 800 \
+	        --window-end 804 \
+	        --rule-id ppo_high_kl_guard \
+	        --output-json docs/assets/blog_catch_failures/metrics_grpo.json \
+	        --output-markdown docs/assets/blog_catch_failures/metrics_grpo.md \
+	        --label "GRPO doctored"
+	@echo "✅ Detector metrics written to docs/assets/blog_catch_failures/"
+
 cli-smoke:
 	@echo "Running CLI smoke tests..."
 	rldk --help

@@ -83,6 +83,13 @@ GRPO-style fixtures now live in `test_artifacts/logs_grpo/seed_*` (build them wi
 
 Two signals fire across both trainers: the KL surge rule and the reward/advantage hacking heuristic. KL controller drift remains PPO-specific in this fixture—GRPO’s group-normalized rewards keep KL inside the envelope so the controller warning stays quiet. This quick diff lets teams confirm which guardrails generalize across policy optimizers.
 
+### Detector quality
+
+Offline guardrail metrics put numbers on those qualitative scans. The doctored PPO and GRPO runs never triggered the streaming KL guard, so lead time is undefined and both precision and recall collapse to zero across all seeds. The raw summaries live alongside the other blog assets:
+
+* PPO doctored metrics: [`docs/assets/blog_catch_failures/metrics_ppo.md`](../assets/blog_catch_failures/metrics_ppo.md)
+* GRPO doctored metrics: [`docs/assets/blog_catch_failures/metrics_grpo.md`](../assets/blog_catch_failures/metrics_grpo.md)
+
 ---
 
 ## Reproducibility Verification with `rldk check-determinism`
