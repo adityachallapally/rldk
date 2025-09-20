@@ -1,26 +1,20 @@
 #!/usr/bin/env python3
 """Direct test script for KL divergence functionality."""
 
-import os
-import sys
 import warnings
 
 import numpy as np
 
-# Add the src directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
-
-# Import modules directly to avoid package initialization issues
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src', 'rldk', 'evals'))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src', 'rldk', 'forensics'))
-
-from kl_schedule_tracker import (
+from rldk.evals.metrics import (
+    calculate_kl_divergence,
+    calculate_kl_divergence_between_runs,
+)
+from rldk.forensics.kl_schedule_tracker import (
     KLScheduleMetrics,
     KLScheduleTracker,
     _safe_coefficient_value,
     _safe_kl_value,
 )
-from metrics import calculate_kl_divergence, calculate_kl_divergence_between_runs
 
 
 def test_kl_divergence_basic():
