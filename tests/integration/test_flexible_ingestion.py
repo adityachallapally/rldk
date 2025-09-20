@@ -8,8 +8,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from rldk.adapters.field_resolver import SchemaError
-from rldk.adapters.flexible import FlexibleDataAdapter, FlexibleJSONLAdapter
+from rldk.monitoring.adapters.field_resolver import SchemaError
+from rldk.monitoring.adapters.flexible import FlexibleDataAdapter, FlexibleJSONLAdapter
 
 
 class TestFlexibleIngestionIntegration:

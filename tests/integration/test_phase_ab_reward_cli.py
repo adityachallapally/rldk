@@ -9,7 +9,7 @@ from typing import Sequence
 import numpy as np
 import pytest
 
-from rldk.testing.cli_detect import (
+from rldk.evaluations.testing.cli_detect import (
     detect_reward_drift_cmd,
     detect_reward_health_cmd,
 )

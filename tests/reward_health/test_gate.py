@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from rldk.reward.health_utils.exit_codes import get_exit_code, raise_on_failure
+from rldk.evaluations.reward.health_utils.exit_codes import get_exit_code, raise_on_failure
 
 
 class TestExitCodeMapping:

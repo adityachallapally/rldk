@@ -7,8 +7,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from rldk.ingest import stream_jsonl_to_dataframe
-from rldk.utils.error_handling import ValidationError
+from rldk.pipelines.ingest import stream_jsonl_to_dataframe
+from rldk.core.utils.error_handling import ValidationError
 
 
 def _write_jsonl(path: Path, records: list[dict]) -> None:

@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from rldk.evals.integrity import (
+from rldk.evaluations.evals.integrity import (
     evaluate_answer_leakage,
     evaluate_data_split_integrity,
     evaluate_evaluation_robustness,
@@ -357,7 +357,7 @@ class TestIntegrationWithEvaluationFramework:
 
     def test_integrity_suite_import(self):
         """Test that integrity evaluations can be imported and used."""
-        from src.rldk.evals.suites import get_eval_suite
+        from src.rldk.evaluations.evals.suites import get_eval_suite
 
         # Test that integrity suite exists
         integrity_suite = get_eval_suite("integrity")
@@ -373,7 +373,7 @@ class TestIntegrationWithEvaluationFramework:
 
     def test_quick_suite_integration(self):
         """Test that integrity checks are integrated into quick suite."""
-        from src.rldk.evals.suites import get_eval_suite
+        from src.rldk.evaluations.evals.suites import get_eval_suite
 
         quick_suite = get_eval_suite("quick")
         evaluations = quick_suite["evaluations"]
@@ -384,7 +384,7 @@ class TestIntegrationWithEvaluationFramework:
 
     def test_comprehensive_suite_integration(self):
         """Test that integrity checks are integrated into comprehensive suite."""
-        from src.rldk.evals.suites import get_eval_suite
+        from src.rldk.evaluations.evals.suites import get_eval_suite
 
         comprehensive_suite = get_eval_suite("comprehensive")
         evaluations = comprehensive_suite["evaluations"]
@@ -397,7 +397,7 @@ class TestIntegrationWithEvaluationFramework:
 
     def test_baseline_scores(self):
         """Test that baseline scores are properly set for integrity checks."""
-        from src.rldk.evals.suites import get_eval_suite
+        from src.rldk.evaluations.evals.suites import get_eval_suite
 
         integrity_suite = get_eval_suite("integrity")
         baseline_scores = integrity_suite["baseline_scores"]

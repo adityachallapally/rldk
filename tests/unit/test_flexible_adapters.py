@@ -21,8 +21,8 @@ def _text_mode_named_temporary_file(*args, **kwargs):
 
 tempfile.NamedTemporaryFile = _text_mode_named_temporary_file
 
-from rldk.adapters.field_resolver import SchemaError
-from rldk.adapters.flexible import FlexibleDataAdapter, FlexibleJSONLAdapter
+from rldk.monitoring.adapters.field_resolver import SchemaError
+from rldk.monitoring.adapters.flexible import FlexibleDataAdapter, FlexibleJSONLAdapter
 
 
 class TestFlexibleDataAdapter:

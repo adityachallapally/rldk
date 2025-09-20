@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
-from rldk.determinism.check import check
+from rldk.pipelines.determinism.check import check
 
 
 class TestDeterminismHarness:
@@ -32,7 +32,7 @@ class TestDeterminismHarness:
         mock_result.metrics_df = pd.DataFrame(base_data)
 
         with patch("subprocess.run", return_value=mock_result), patch(
-            "rldk.determinism.check._run_deterministic_cmd", return_value=mock_result
+            "rldk.pipelines.determinism.check._run_deterministic_cmd", return_value=mock_result
         ):
             report = check(
                 cmd="python train.py",
@@ -77,7 +77,7 @@ class TestDeterminismHarness:
             replica_results.append(mock_result)
 
         with patch("subprocess.run", side_effect=replica_results), patch(
-            "rldk.determinism.check._run_deterministic_cmd", side_effect=replica_results
+            "rldk.pipelines.determinism.check._run_deterministic_cmd", side_effect=replica_results
         ):
             report = check(
                 cmd="python train.py",
@@ -105,7 +105,7 @@ class TestDeterminismHarness:
         )
 
         with patch("subprocess.run", return_value=mock_result), patch(
-            "rldk.determinism.check._run_deterministic_cmd", return_value=mock_result
+            "rldk.pipelines.determinism.check._run_deterministic_cmd", return_value=mock_result
         ):
             # Test CPU device
             report = check(
@@ -150,7 +150,7 @@ class TestDeterminismHarness:
         )
 
         with patch("subprocess.run", side_effect=[mock_result1, mock_result2]), patch(
-            "rldk.determinism.check._run_deterministic_cmd",
+            "rldk.pipelines.determinism.check._run_deterministic_cmd",
             side_effect=[mock_result1, mock_result2],
         ):
             report = check(
@@ -180,7 +180,7 @@ class TestDeterminismHarness:
             mock_results.append(mock_result)
 
         with patch("subprocess.run", side_effect=mock_results), patch(
-            "rldk.determinism.check._run_deterministic_cmd", side_effect=mock_results
+            "rldk.pipelines.determinism.check._run_deterministic_cmd", side_effect=mock_results
         ):
             report = check(
                 cmd="python train.py",
@@ -211,7 +211,7 @@ class TestDeterminismHarness:
         )
 
         with patch("subprocess.run", return_value=mock_result), patch(
-            "rldk.determinism.check._run_deterministic_cmd", return_value=mock_result
+            "rldk.pipelines.determinism.check._run_deterministic_cmd", return_value=mock_result
         ):
             report = check(
                 cmd="python train.py", compare=["reward_mean"], replicas=1, device="cpu"
@@ -238,7 +238,7 @@ class TestDeterminismHarness:
         )
 
         with patch("subprocess.run", return_value=mock_result), patch(
-            "rldk.determinism.check._run_deterministic_cmd", return_value=mock_result
+            "rldk.pipelines.determinism.check._run_deterministic_cmd", return_value=mock_result
         ):
             report = check(
                 cmd="python train.py", compare=["reward_mean"], replicas=1, device="cpu"
@@ -270,7 +270,7 @@ class TestDeterminismHarness:
         mock_result2.metrics_df = pd.DataFrame()  # Empty due to timeout
 
         with patch("subprocess.run", side_effect=[mock_result1, mock_result2]), patch(
-            "rldk.determinism.check._run_deterministic_cmd",
+            "rldk.pipelines.determinism.check._run_deterministic_cmd",
             side_effect=[mock_result1, mock_result2],
         ):
             report = check(
@@ -303,7 +303,7 @@ class TestDeterminismHarness:
         mock_result2.metrics_df = pd.DataFrame()  # Empty dataframe
 
         with patch("subprocess.run", side_effect=[mock_result1, mock_result2]), patch(
-            "rldk.determinism.check._run_deterministic_cmd",
+            "rldk.pipelines.determinism.check._run_deterministic_cmd",
             side_effect=[mock_result1, mock_result2],
         ):
             report = check(
@@ -331,7 +331,7 @@ class TestDeterminismHarness:
         mock_result.metrics_df = pd.DataFrame(base_data)
 
         with patch("subprocess.run", return_value=mock_result), patch(
-            "rldk.determinism.check._run_deterministic_cmd", return_value=mock_result
+            "rldk.pipelines.determinism.check._run_deterministic_cmd", return_value=mock_result
         ):
             report = check(
                 cmd="python train.py",

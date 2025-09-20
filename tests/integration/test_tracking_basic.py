@@ -119,7 +119,7 @@ sys.modules['transformers'] = MockTransformers()
 sys.modules['datasets'] = MockDatasets()
 
 # Now import our tracking system
-from rldk.tracking import ExperimentTracker, TrackingConfig
+from rldk.monitoring.tracking import ExperimentTracker, TrackingConfig
 
 
 def test_basic_tracking():

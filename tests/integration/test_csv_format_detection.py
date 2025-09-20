@@ -4,7 +4,7 @@ import csv
 import tempfile
 from pathlib import Path
 
-from rldk.forensics.log_scan import detect_and_read_logs, scan_logs
+from rldk.evaluations.forensics.log_scan import detect_and_read_logs, scan_logs
 
 
 def test_csv_file_detection():

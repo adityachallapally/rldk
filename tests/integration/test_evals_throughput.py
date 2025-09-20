@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from rldk.evals.metrics.throughput import (
+from rldk.evaluations.evals.metrics.throughput import (
     calculate_confidence_interval,
     calculate_tokens_per_second,
     evaluate_throughput,

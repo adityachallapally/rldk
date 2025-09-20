@@ -15,8 +15,8 @@ import pytest
 from typer.testing import CliRunner
 
 from rldk.cli import app
-from rldk.emit import EventWriter
-from rldk.monitor import (
+from rldk.support.emit import EventWriter
+from rldk.monitoring.monitor import (
     ActionDispatcher,
     Alert,
     Event,
@@ -575,7 +575,7 @@ def test_fullscale_rules_include_remediation_hints(tmp_path: Path, runner: CliRu
             payload = {"time": _now_iso(), "step": step, "name": "kl", "value": 0.5}
             handle.write(json.dumps(payload) + "\n")
 
-    rules_path = Path(__file__).resolve().parents[1] / "rules" / "fullscale_rules.yaml"
+    rules_path = Path(__file__).resolve().parents[1] / "configs" / "rules" / "fullscale_rules.yaml"
     alerts_path = tmp_path / "alerts.jsonl"
     result = runner.invoke(
         app,

@@ -9,8 +9,8 @@ import torch.nn as nn
 from typer.testing import CliRunner
 
 from rldk.cli import app
-from rldk.io.schemas import RewardDriftReportV1, validate
-from rldk.reward.drift import compare_models
+from rldk.core.io.schemas import RewardDriftReportV1, validate
+from rldk.evaluations.reward.drift import compare_models
 
 
 def test_reward_drift_identical_models():

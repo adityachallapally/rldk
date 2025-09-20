@@ -134,8 +134,8 @@ def main():
     print("=" * 50)
 
     # Define output paths
-    clean_logs_path = "test_artifacts/logs_clean/training.jsonl"
-    doctored_logs_path = "test_artifacts/logs_doctored_kl_spike/training.jsonl"
+    clean_logs_path = "data/fixtures/test_artifacts/logs_clean/training.jsonl"
+    doctored_logs_path = "data/fixtures/test_artifacts/logs_doctored_kl_spike/training.jsonl"
 
     try:
         # Generate clean logs

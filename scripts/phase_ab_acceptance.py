@@ -17,11 +17,11 @@ SRC_DIR = ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from rldk.ingest.stream_normalizer import stream_jsonl_to_dataframe
-from rldk.ingest.training_metrics_normalizer import standardize_training_metrics
-from rldk.io.event_schema import dataframe_to_events, events_to_dataframe
-from rldk.reward.api import HealthAnalysisResult, reward_health
-from rldk.testing.cli_detect import (
+from rldk.pipelines.ingest.stream_normalizer import stream_jsonl_to_dataframe
+from rldk.pipelines.ingest.training_metrics_normalizer import standardize_training_metrics
+from rldk.core.io.event_schema import dataframe_to_events, events_to_dataframe
+from rldk.evaluations.reward.api import HealthAnalysisResult, reward_health
+from rldk.evaluations.testing.cli_detect import (
     detect_reward_drift_cmd,
     detect_reward_health_cmd,
 )

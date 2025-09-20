@@ -12,9 +12,9 @@ import pandas as pd
 import pytest
 import torch
 
-from rldk.tracking.dataset_tracker import DatasetTracker
-from rldk.tracking.model_tracker import ModelTracker
-from rldk.tracking.seed_tracker import SeedTracker
+from rldk.monitoring.tracking.dataset_tracker import DatasetTracker
+from rldk.monitoring.tracking.model_tracker import ModelTracker
+from rldk.monitoring.tracking.seed_tracker import SeedTracker
 
 
 class TestTrackingEdgeCases:

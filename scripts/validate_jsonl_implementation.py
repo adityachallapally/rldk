@@ -23,10 +23,10 @@ def validate_imports():
         from rldk.integrations.trl.callbacks import RLDKCallback
         print("✅ RLDKCallback import successful")
 
-        from rldk.io.event_schema import Event, create_event_from_row
+        from rldk.core.io.event_schema import Event, create_event_from_row
         print("✅ Event schema import successful")
 
-        from rldk.adapters.trl import TRLAdapter
+        from rldk.monitoring.adapters.trl import TRLAdapter
         print("✅ TRLAdapter import successful")
 
         return True
@@ -88,9 +88,9 @@ def validate_jsonl_emission():
     try:
         from unittest.mock import Mock
 
-        from rldk.adapters.trl import TRLAdapter
+        from rldk.monitoring.adapters.trl import TRLAdapter
         from rldk.integrations.trl.callbacks import RLDKCallback
-        from rldk.io.event_schema import Event, create_event_from_row
+        from rldk.core.io.event_schema import Event, create_event_from_row
 
         # Create temporary directory
         with tempfile.TemporaryDirectory() as temp_dir:

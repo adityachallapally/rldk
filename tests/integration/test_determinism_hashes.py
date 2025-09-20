@@ -17,7 +17,7 @@ class TestDeterminismHashes:
     def test_seed_determinism(self):
         """Test that same seed produces identical results."""
         try:
-            from rldk.utils.seed import get_current_seed, set_global_seed
+            from rldk.core.utils.seed import get_current_seed, set_global_seed
 
             # Test with multiple seeds
             test_seeds = [42, 123, 456, 789, 1000]
@@ -45,7 +45,7 @@ class TestDeterminismHashes:
 
             import numpy as np
 
-            from rldk.utils.seed import set_global_seed
+            from rldk.core.utils.seed import set_global_seed
 
             # Test with multiple seeds
             test_seeds = [42, 123, 456, 789, 1000]
@@ -83,7 +83,7 @@ class TestDeterminismHashes:
 
             import numpy as np
 
-            from rldk.utils.seed import set_global_seed
+            from rldk.core.utils.seed import set_global_seed
 
             # Test with multiple seeds
             test_seeds = [42, 123, 456, 789, 1000]
@@ -164,7 +164,7 @@ class TestDeterminismHashes:
 
             import numpy as np
 
-            from rldk.utils.seed import set_global_seed
+            from rldk.core.utils.seed import set_global_seed
 
             # Test with multiple seeds
             test_seeds = [42, 123, 456, 789, 1000]
@@ -226,7 +226,7 @@ class TestDeterminismHashes:
 
             import numpy as np
 
-            from rldk.utils.seed import set_global_seed
+            from rldk.core.utils.seed import set_global_seed
 
             # Test with different environment variables
             test_seeds = [42, 123, 456]
@@ -260,7 +260,7 @@ class TestDeterminismHashes:
 
             import numpy as np
 
-            from rldk.utils.seed import set_global_seed
+            from rldk.core.utils.seed import set_global_seed
 
             def worker(seed, return_dict):
                 """Worker function for multiprocessing test."""
@@ -299,7 +299,7 @@ class TestDeterminismHashes:
 
             import numpy as np
 
-            from rldk.utils.seed import set_global_seed
+            from rldk.core.utils.seed import set_global_seed
 
             def worker(seed, results):
                 """Worker function for threading test."""
@@ -337,7 +337,7 @@ class TestDeterminismHashes:
 
             import numpy as np
 
-            from rldk.utils.seed import set_global_seed
+            from rldk.core.utils.seed import set_global_seed
 
             # Test with multiple seeds
             test_seeds = [42, 123, 456]

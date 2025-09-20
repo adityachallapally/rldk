@@ -179,7 +179,7 @@ mode, and then orchestrates the following stages:
 
 - **Primary and baseline training runs** using `scripts/fullscale_train_rl.py` so you have
   both an updating policy and a frozen control group to diff.
-- **Monitor verification** with `rules/fullscale_rules.yaml`, capturing alerts, a JSON
+- **Monitor verification** with `configs/rules/fullscale_rules.yaml`, capturing alerts, a JSON
   report, and human-readable summaries.
 - **Metrics ingestion and reward health analysis** to materialize normalized metrics and
   gate on the default reward health detectors.
@@ -208,7 +208,7 @@ behavior.
 
 Refer to the [monitor remediation hints](getting-started/monitor_rules_cookbook.md#fullscale-remediation-hints)
 for the adjustments the KL, reward, and gradient guards expect—these match the guidance
-emitted directly from `rules/fullscale_rules.yaml`.
+emitted directly from `configs/rules/fullscale_rules.yaml`.
 
 ## 📊 What You Get
 

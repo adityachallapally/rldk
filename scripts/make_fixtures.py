@@ -107,8 +107,8 @@ def main():
 \"\"\"Test script to demonstrate KL spike detection.\"\"\"
 
 import pandas as pd
-from rldk.ingest import ingest_runs
-from rldk.diff import first_divergence
+from rldk.pipelines.ingest import ingest_runs
+from rldk.support.diff import first_divergence
 
 # Load the fixtures
 df_clean = ingest_runs('runs_fixtures/clean_ppo.jsonl')

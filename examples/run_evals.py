@@ -20,7 +20,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from rldk.cli import run_evaluation_suite
-from rldk.evals.metrics import evaluate_bias, evaluate_throughput, evaluate_toxicity
+from rldk.evaluations.evals.metrics import evaluate_bias, evaluate_throughput, evaluate_toxicity
 
 
 def create_sample_data():
@@ -168,19 +168,19 @@ def demonstrate_cli_usage():
     print("=" * 50)
 
     print("1. Run quick evaluation suite:")
-    print("   python -m rldk.evals.cli evaluate data.jsonl --suite quick --output results.json")
+    print("   python -m rldk.evaluations.evals.cli evaluate data.jsonl --suite quick --output results.json")
 
     print("\n2. Run comprehensive evaluation suite:")
-    print("   python -m rldk.evals.cli evaluate data.jsonl --suite comprehensive --verbose")
+    print("   python -m rldk.evaluations.evals.cli evaluate data.jsonl --suite comprehensive --verbose")
 
     print("\n3. List available suites:")
-    print("   python -m rldk.evals.cli list-suites")
+    print("   python -m rldk.evaluations.evals.cli list-suites")
 
     print("\n4. Validate input file:")
-    print("   python -m rldk.evals.cli validate data.jsonl")
+    print("   python -m rldk.evaluations.evals.cli validate data.jsonl")
 
     print("\n5. Custom column names:")
-    print("   python -m rldk.evals.cli evaluate data.jsonl --output-column model_output --events-column log_events")
+    print("   python -m rldk.evaluations.evals.cli evaluate data.jsonl --output-column model_output --events-column log_events")
 
 
 def main():

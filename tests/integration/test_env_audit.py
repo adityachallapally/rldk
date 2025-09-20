@@ -2,8 +2,8 @@
 
 import tempfile
 
-from rldk.forensics.env_audit import audit_environment
-from rldk.io.schemas import DeterminismCardV1, validate
+from rldk.evaluations.forensics.env_audit import audit_environment
+from rldk.core.io.schemas import DeterminismCardV1, validate
 
 
 def test_env_audit():

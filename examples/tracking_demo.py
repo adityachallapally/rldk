@@ -23,7 +23,7 @@ from torch.utils.data import DataLoader, TensorDataset
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-from rldk.tracking import ExperimentTracker, TrackingConfig
+from rldk.monitoring.tracking import ExperimentTracker, TrackingConfig
 
 
 class MLPClassifier(nn.Module):

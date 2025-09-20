@@ -20,7 +20,7 @@ from rldk.integrations.trl import (
     check_trl_compatibility,
     create_ppo_trainer,
 )
-from rldk.utils.math_utils import safe_divide
+from rldk.core.utils.math_utils import safe_divide
 
 try:
     from trl import PPOConfig

@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from rldk.evals.metrics.bias import (
+from rldk.evaluations.evals.metrics.bias import (
     SimpleSentimentAnalyzer,
     calculate_demographic_bias,
     detect_demographic_mentions,

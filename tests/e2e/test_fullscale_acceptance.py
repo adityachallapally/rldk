@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from rldk.acceptance.summary import summarize_from_artifacts
+from rldk.pipelines.acceptance.summary import summarize_from_artifacts
 
 
 def _write_reward_series(path: Path, *, count: int = 1001, start: float = 0.0, delta: float = 0.1) -> None:

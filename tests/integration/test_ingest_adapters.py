@@ -8,11 +8,11 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from rldk.adapters.openrlhf import OpenRLHFAdapter
-from rldk.adapters.trl import TRLAdapter
-from rldk.adapters.wandb import WandBAdapter
-from rldk.io.schema import MetricsSchema
-from rldk.utils.error_handling import AdapterError
+from rldk.monitoring.adapters.openrlhf import OpenRLHFAdapter
+from rldk.monitoring.adapters.trl import TRLAdapter
+from rldk.monitoring.adapters.wandb import WandBAdapter
+from rldk.core.io.schema import MetricsSchema
+from rldk.core.utils.error_handling import AdapterError
 
 
 def _write_jsonl(path: Path, records: list[dict]) -> None:
@@ -393,7 +393,7 @@ class TestSchemaCompatibility:
 
     def test_schema_loads_fixtures_correctly(self):
         """Test that loading runs_fixtures/clean_ppo.jsonl through ingest produces correct schema."""
-        from rldk.ingest import ingest_runs
+        from rldk.pipelines.ingest import ingest_runs
 
         # Load the fixture through ingest
         df = ingest_runs("runs_fixtures/clean_ppo.jsonl")
@@ -420,7 +420,7 @@ class TestSchemaCompatibility:
 
     def test_all_adapters_wall_time_seconds(self):
         """Test that all adapters output wall_time in seconds, not milliseconds."""
-        from rldk.ingest import ingest_runs
+        from rldk.pipelines.ingest import ingest_runs
 
         # Test TRL adapter
         with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
@@ -484,7 +484,7 @@ class TestSchemaCompatibility:
 
     def test_cpu_determinism_pass(self):
         """Test that CPU determinism check passes with identical replicas."""
-        from rldk.determinism.check import check
+        from rldk.pipelines.determinism.check import check
 
         # Create a simple deterministic script
         script_content = """
@@ -562,7 +562,7 @@ with open(output_file, 'w') as f:
 
     def test_cpu_determinism_fail(self):
         """Test that CPU determinism check correctly handles non-deterministic operations."""
-        from rldk.determinism.check import check
+        from rldk.pipelines.determinism.check import check
 
         # Create a script that uses non-deterministic operations
         # This should be detected by the determinism check

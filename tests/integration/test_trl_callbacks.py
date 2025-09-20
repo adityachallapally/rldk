@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from rldk.integrations.trl.callbacks import RLDKCallback, RLDKMetrics
-from rldk.io.event_schema import Event
+from rldk.core.io.event_schema import Event
 
 
 class TestRLDKCallbackJSONL:
@@ -176,7 +176,7 @@ class TestRLDKCallbackJSONL:
         callback._close_jsonl_file()
 
         # Test that TRLAdapter can read the file
-        from rldk.adapters.trl import TRLAdapter
+        from rldk.monitoring.adapters.trl import TRLAdapter
 
         jsonl_files = list(self.output_dir.glob("*_events.jsonl"))
         assert len(jsonl_files) == 1
@@ -403,7 +403,7 @@ class TestRLDKCallbackJSONL:
             f.write('{"step": 2, "metrics": {"loss": 0.4}, "model_info": {"run_id": "test"}}\n')
 
         # Test that TRLAdapter can handle this
-        from rldk.adapters.trl import TRLAdapter
+        from rldk.monitoring.adapters.trl import TRLAdapter
 
         adapter = TRLAdapter(jsonl_path)
         assert adapter.can_handle()

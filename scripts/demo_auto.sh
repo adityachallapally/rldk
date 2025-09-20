@@ -128,13 +128,13 @@ main() {
     print_step "Verifying Demo Artifacts"
     
     required_files=(
-        "test_artifacts/logs_clean/training.jsonl"
-        "test_artifacts/logs_doctored_kl_spike/training.jsonl"
-        "test_artifacts/reward_drift_demo/prompts.jsonl"
-        "test_artifacts/ckpt_identical/a.pt"
-        "test_artifacts/ckpt_identical/b.pt"
-        "test_artifacts/ckpt_value_head_edit/a.pt"
-        "test_artifacts/ckpt_value_head_edit/b.pt"
+        "data/fixtures/test_artifacts/logs_clean/training.jsonl"
+        "data/fixtures/test_artifacts/logs_doctored_kl_spike/training.jsonl"
+        "data/fixtures/test_artifacts/reward_drift_demo/prompts.jsonl"
+        "data/fixtures/test_artifacts/ckpt_identical/a.pt"
+        "data/fixtures/test_artifacts/ckpt_identical/b.pt"
+        "data/fixtures/test_artifacts/ckpt_value_head_edit/a.pt"
+        "data/fixtures/test_artifacts/ckpt_value_head_edit/b.pt"
     )
     
     missing_files=0
@@ -157,43 +157,43 @@ main() {
     # Step 6: Run RLDK compare-runs
     print_step "Step 1: Comparing Training Runs"
     
-    run_with_timing "rldk compare-runs test_artifacts/logs_clean test_artifacts/logs_doctored_kl_spike" \
+    run_with_timing "rldk compare-runs data/fixtures/test_artifacts/logs_clean data/fixtures/test_artifacts/logs_doctored_kl_spike" \
         "Comparing clean vs doctored training runs"
     
     # Step 7: Run RLDK diff-ckpt
     print_step "Step 2: Comparing Checkpoints"
     
-    run_with_timing "rldk diff-ckpt test_artifacts/ckpt_identical/a.pt test_artifacts/ckpt_identical/b.pt" \
+    run_with_timing "rldk diff-ckpt data/fixtures/test_artifacts/ckpt_identical/a.pt data/fixtures/test_artifacts/ckpt_identical/b.pt" \
         "Comparing identical checkpoints"
     
-    run_with_timing "rldk diff-ckpt test_artifacts/ckpt_value_head_edit/a.pt test_artifacts/ckpt_value_head_edit/b.pt" \
+    run_with_timing "rldk diff-ckpt data/fixtures/test_artifacts/ckpt_value_head_edit/a.pt data/fixtures/test_artifacts/ckpt_value_head_edit/b.pt" \
         "Comparing checkpoints with value head differences"
     
     # Step 8: Run RLDK env-audit
     print_step "Step 3: Environment Audit"
     
-    run_with_timing "rldk env-audit test_artifacts/logs_clean" \
+    run_with_timing "rldk env-audit data/fixtures/test_artifacts/logs_clean" \
         "Auditing environment for determinism"
     
     # Step 9: Run RLDK log-scan
     print_step "Step 4: PPO Log Analysis"
     
-    run_with_timing "rldk log-scan test_artifacts/logs_clean" \
+    run_with_timing "rldk log-scan data/fixtures/test_artifacts/logs_clean" \
         "Scanning clean logs for anomalies"
     
-    run_with_timing "rldk log-scan test_artifacts/logs_doctored_kl_spike" \
+    run_with_timing "rldk log-scan data/fixtures/test_artifacts/logs_doctored_kl_spike" \
         "Scanning doctored logs for KL spike detection"
     
     # Step 10: Run RLDK reward-drift
     print_step "Step 5: Reward Model Drift Detection"
     
-    run_with_timing "rldk reward-drift test_artifacts/reward_drift_demo/rmA test_artifacts/reward_drift_demo/rmB --prompts test_artifacts/reward_drift_demo/prompts.jsonl" \
+    run_with_timing "rldk reward-drift data/fixtures/test_artifacts/reward_drift_demo/rmA data/fixtures/test_artifacts/reward_drift_demo/rmB --prompts data/fixtures/test_artifacts/reward_drift_demo/prompts.jsonl" \
         "Detecting reward model drift"
     
     # Step 11: Run RLDK doctor
     print_step "Step 6: Comprehensive Diagnostics"
     
-    run_with_timing "rldk doctor test_artifacts/logs_doctored_kl_spike" \
+    run_with_timing "rldk doctor data/fixtures/test_artifacts/logs_doctored_kl_spike" \
         "Running comprehensive diagnostics"
     
     # Step 12: Show results summary

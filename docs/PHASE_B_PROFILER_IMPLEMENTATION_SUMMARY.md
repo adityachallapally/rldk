@@ -6,7 +6,7 @@ Phase B profiler implementation has been **COMPLETED** successfully. The profile
 
 ## ✅ What's Been Implemented
 
-### 1. Core Profiler Infrastructure (`rlhf_core/profiler.py`)
+### 1. Core Profiler Infrastructure (`src/rldk/integrations/rlhf_core/profiler.py`)
 
 - **ProfilerManager class** with PyTorch profiler integration
 - **StageTimer** for timing training stages

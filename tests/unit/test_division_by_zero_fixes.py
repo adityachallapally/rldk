@@ -11,7 +11,7 @@ import pytest
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from rldk.utils.error_handling import (
+from rldk.core.utils.error_handling import (
     safe_divide,
     safe_percentage,
     safe_rate_calculation,
@@ -73,7 +73,7 @@ class TestThroughputMetricsDivisionByZero:
 
     def test_token_rate_calculation_with_zero_time_interval(self):
         """Test that token rate calculation handles zero time interval."""
-        from rldk.evals.metrics.throughput import calculate_token_throughput
+        from rldk.evaluations.evals.metrics.throughput import calculate_token_throughput
 
         # Create events with zero time interval
         events = [
@@ -91,7 +91,7 @@ class TestThroughputMetricsDivisionByZero:
 
     def test_batch_processing_with_zero_processing_time(self):
         """Test batch processing with zero processing time."""
-        from rldk.evals.metrics.throughput import calculate_batch_throughput
+        from rldk.evaluations.evals.metrics.throughput import calculate_batch_throughput
 
         # Create events with zero processing time
         events = [
@@ -111,7 +111,7 @@ class TestSuitesDivisionByZero:
 
     def test_batch_speed_calculation_with_zero_batch_times(self):
         """Test batch speed calculation with zero batch times."""
-        from rldk.evals.suites import evaluate_speed
+        from rldk.evaluations.evals.suites import evaluate_speed
 
         # Create data with zero batch times
         data = pd.DataFrame({
@@ -130,7 +130,7 @@ class TestSuitesDivisionByZero:
 
     def test_training_speed_calculation_with_zero_time(self):
         """Test training speed calculation with zero total time."""
-        from rldk.evals.suites import evaluate_efficiency
+        from rldk.evaluations.evals.suites import evaluate_efficiency
 
         # Create data with zero total time
         data = pd.DataFrame({
@@ -184,7 +184,7 @@ class TestProgressDivisionByZero:
 
     def test_download_progress_with_zero_elapsed_time(self):
         """Test download progress with zero elapsed time."""
-        from rldk.utils.progress import create_download_progress
+        from rldk.core.utils.progress import create_download_progress
 
         # Create progress callback
         callback = create_download_progress(1000, "Test Download")

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from rldk.determinism.check import DeterminismReport, check
+from rldk.pipelines.determinism.check import DeterminismReport, check
 
 
 class TestDeterminismWarnings:
@@ -26,14 +26,14 @@ class TestDeterminismWarnings:
                     warnings.simplefilter("always")
 
                     # Mock the rest of the check function to avoid actual execution
-                    with patch("rldk.determinism.check._detect_device", return_value="cpu"), \
-                         patch("rldk.determinism.check._get_deterministic_env", return_value={}), \
-                         patch("rldk.determinism.check._run_deterministic_cmd") as mock_run, \
-                         patch("rldk.determinism.check._compare_replicas", return_value=[]), \
-                         patch("rldk.determinism.check._parse_nondeterministic_ops", return_value=(None, [])), \
-                         patch("rldk.determinism.check._calculate_replica_variance", return_value={}), \
-                         patch("rldk.determinism.check._create_rng_map", return_value={}), \
-                         patch("rldk.determinism.check._detect_dataloader_issues", return_value=[]):
+                    with patch("rldk.pipelines.determinism.check._detect_device", return_value="cpu"), \
+                         patch("rldk.pipelines.determinism.check._get_deterministic_env", return_value={}), \
+                         patch("rldk.pipelines.determinism.check._run_deterministic_cmd") as mock_run, \
+                         patch("rldk.pipelines.determinism.check._compare_replicas", return_value=[]), \
+                         patch("rldk.pipelines.determinism.check._parse_nondeterministic_ops", return_value=(None, [])), \
+                         patch("rldk.pipelines.determinism.check._calculate_replica_variance", return_value={}), \
+                         patch("rldk.pipelines.determinism.check._create_rng_map", return_value={}), \
+                         patch("rldk.pipelines.determinism.check._detect_dataloader_issues", return_value=[]):
 
                         mock_result = MagicMock()
                         mock_result.metrics_df = pd.DataFrame()
@@ -67,14 +67,14 @@ class TestDeterminismWarnings:
                     warnings.simplefilter("always")
 
                     # Mock the rest of the check function
-                    with patch("rldk.determinism.check._detect_device", return_value="cpu"), \
-                         patch("rldk.determinism.check._get_deterministic_env", return_value={}), \
-                         patch("rldk.determinism.check._run_deterministic_cmd") as mock_run, \
-                         patch("rldk.determinism.check._compare_replicas", return_value=[]), \
-                         patch("rldk.determinism.check._parse_nondeterministic_ops", return_value=(None, [])), \
-                         patch("rldk.determinism.check._calculate_replica_variance", return_value={}), \
-                         patch("rldk.determinism.check._create_rng_map", return_value={}), \
-                         patch("rldk.determinism.check._detect_dataloader_issues", return_value=[]):
+                    with patch("rldk.pipelines.determinism.check._detect_device", return_value="cpu"), \
+                         patch("rldk.pipelines.determinism.check._get_deterministic_env", return_value={}), \
+                         patch("rldk.pipelines.determinism.check._run_deterministic_cmd") as mock_run, \
+                         patch("rldk.pipelines.determinism.check._compare_replicas", return_value=[]), \
+                         patch("rldk.pipelines.determinism.check._parse_nondeterministic_ops", return_value=(None, [])), \
+                         patch("rldk.pipelines.determinism.check._calculate_replica_variance", return_value={}), \
+                         patch("rldk.pipelines.determinism.check._create_rng_map", return_value={}), \
+                         patch("rldk.pipelines.determinism.check._detect_dataloader_issues", return_value=[]):
 
                         mock_result = MagicMock()
                         mock_result.metrics_df = pd.DataFrame()
@@ -108,14 +108,14 @@ class TestDeterminismWarnings:
                     warnings.simplefilter("always")
 
                     # Mock the rest of the check function
-                    with patch("rldk.determinism.check._detect_device", return_value="cpu"), \
-                         patch("rldk.determinism.check._get_deterministic_env", return_value={}), \
-                         patch("rldk.determinism.check._run_deterministic_cmd") as mock_run, \
-                         patch("rldk.determinism.check._compare_replicas", return_value=[]), \
-                         patch("rldk.determinism.check._parse_nondeterministic_ops", return_value=(None, [])), \
-                         patch("rldk.determinism.check._calculate_replica_variance", return_value={}), \
-                         patch("rldk.determinism.check._create_rng_map", return_value={}), \
-                         patch("rldk.determinism.check._detect_dataloader_issues", return_value=[]):
+                    with patch("rldk.pipelines.determinism.check._detect_device", return_value="cpu"), \
+                         patch("rldk.pipelines.determinism.check._get_deterministic_env", return_value={}), \
+                         patch("rldk.pipelines.determinism.check._run_deterministic_cmd") as mock_run, \
+                         patch("rldk.pipelines.determinism.check._compare_replicas", return_value=[]), \
+                         patch("rldk.pipelines.determinism.check._parse_nondeterministic_ops", return_value=(None, [])), \
+                         patch("rldk.pipelines.determinism.check._calculate_replica_variance", return_value={}), \
+                         patch("rldk.pipelines.determinism.check._create_rng_map", return_value={}), \
+                         patch("rldk.pipelines.determinism.check._detect_dataloader_issues", return_value=[]):
 
                         mock_result = MagicMock()
                         mock_result.metrics_df = pd.DataFrame()
@@ -149,14 +149,14 @@ class TestDeterminismWarnings:
                     warnings.simplefilter("always")
 
                     # Mock the rest of the check function
-                    with patch("rldk.determinism.check._detect_device", return_value="cpu"), \
-                         patch("rldk.determinism.check._get_deterministic_env", return_value={}), \
-                         patch("rldk.determinism.check._run_deterministic_cmd") as mock_run, \
-                         patch("rldk.determinism.check._compare_replicas", return_value=[]), \
-                         patch("rldk.determinism.check._parse_nondeterministic_ops", return_value=(None, [])), \
-                         patch("rldk.determinism.check._calculate_replica_variance", return_value={}), \
-                         patch("rldk.determinism.check._create_rng_map", return_value={}), \
-                         patch("rldk.determinism.check._detect_dataloader_issues", return_value=[]):
+                    with patch("rldk.pipelines.determinism.check._detect_device", return_value="cpu"), \
+                         patch("rldk.pipelines.determinism.check._get_deterministic_env", return_value={}), \
+                         patch("rldk.pipelines.determinism.check._run_deterministic_cmd") as mock_run, \
+                         patch("rldk.pipelines.determinism.check._compare_replicas", return_value=[]), \
+                         patch("rldk.pipelines.determinism.check._parse_nondeterministic_ops", return_value=(None, [])), \
+                         patch("rldk.pipelines.determinism.check._calculate_replica_variance", return_value={}), \
+                         patch("rldk.pipelines.determinism.check._create_rng_map", return_value={}), \
+                         patch("rldk.pipelines.determinism.check._detect_dataloader_issues", return_value=[]):
 
                         mock_result = MagicMock()
                         mock_result.metrics_df = pd.DataFrame()
@@ -193,14 +193,14 @@ class TestDeterminismWarnings:
                     warnings.simplefilter("always")
 
                     # Mock the rest of the check function
-                    with patch("rldk.determinism.check._detect_device", return_value="cpu"), \
-                         patch("rldk.determinism.check._get_deterministic_env", return_value={}), \
-                         patch("rldk.determinism.check._run_deterministic_cmd") as mock_run, \
-                         patch("rldk.determinism.check._compare_replicas", return_value=[]), \
-                         patch("rldk.determinism.check._parse_nondeterministic_ops", return_value=(None, [])), \
-                         patch("rldk.determinism.check._calculate_replica_variance", return_value={}), \
-                         patch("rldk.determinism.check._create_rng_map", return_value={}), \
-                         patch("rldk.determinism.check._detect_dataloader_issues", return_value=[]):
+                    with patch("rldk.pipelines.determinism.check._detect_device", return_value="cpu"), \
+                         patch("rldk.pipelines.determinism.check._get_deterministic_env", return_value={}), \
+                         patch("rldk.pipelines.determinism.check._run_deterministic_cmd") as mock_run, \
+                         patch("rldk.pipelines.determinism.check._compare_replicas", return_value=[]), \
+                         patch("rldk.pipelines.determinism.check._parse_nondeterministic_ops", return_value=(None, [])), \
+                         patch("rldk.pipelines.determinism.check._calculate_replica_variance", return_value={}), \
+                         patch("rldk.pipelines.determinism.check._create_rng_map", return_value={}), \
+                         patch("rldk.pipelines.determinism.check._detect_dataloader_issues", return_value=[]):
 
                         mock_result = MagicMock()
                         mock_result.metrics_df = pd.DataFrame()
@@ -230,22 +230,22 @@ class TestDeterminismWarnings:
         """Test that no warnings are issued when all dependencies are available."""
         with patch.dict(os.environ, {"RLDK_SILENCE_DETERMINISM_WARN": "0"}):
             # Mock successful imports
-            with patch("rldk.determinism.check._check_pytorch_cuda_kernels", return_value=True), \
-                 patch("rldk.determinism.check._check_tensorflow_determinism", return_value=True), \
-                 patch("rldk.determinism.check._check_jax_determinism", return_value=True):
+            with patch("rldk.pipelines.determinism.check._check_pytorch_cuda_kernels", return_value=True), \
+                 patch("rldk.pipelines.determinism.check._check_tensorflow_determinism", return_value=True), \
+                 patch("rldk.pipelines.determinism.check._check_jax_determinism", return_value=True):
 
                 with warnings.catch_warnings(record=True) as w:
                     warnings.simplefilter("always")
 
                     # Mock the rest of the check function
-                    with patch("rldk.determinism.check._detect_device", return_value="cpu"), \
-                         patch("rldk.determinism.check._get_deterministic_env", return_value={}), \
-                         patch("rldk.determinism.check._run_deterministic_cmd") as mock_run, \
-                         patch("rldk.determinism.check._compare_replicas", return_value=[]), \
-                         patch("rldk.determinism.check._parse_nondeterministic_ops", return_value=(None, [])), \
-                         patch("rldk.determinism.check._calculate_replica_variance", return_value={}), \
-                         patch("rldk.determinism.check._create_rng_map", return_value={}), \
-                         patch("rldk.determinism.check._detect_dataloader_issues", return_value=[]):
+                    with patch("rldk.pipelines.determinism.check._detect_device", return_value="cpu"), \
+                         patch("rldk.pipelines.determinism.check._get_deterministic_env", return_value={}), \
+                         patch("rldk.pipelines.determinism.check._run_deterministic_cmd") as mock_run, \
+                         patch("rldk.pipelines.determinism.check._compare_replicas", return_value=[]), \
+                         patch("rldk.pipelines.determinism.check._parse_nondeterministic_ops", return_value=(None, [])), \
+                         patch("rldk.pipelines.determinism.check._calculate_replica_variance", return_value={}), \
+                         patch("rldk.pipelines.determinism.check._create_rng_map", return_value={}), \
+                         patch("rldk.pipelines.determinism.check._detect_dataloader_issues", return_value=[]):
 
                         mock_result = MagicMock()
                         mock_result.metrics_df = pd.DataFrame()

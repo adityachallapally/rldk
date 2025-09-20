@@ -6,8 +6,8 @@ from typing import Sequence
 
 import numpy as np
 
-from rldk.ingest.stream_normalizer import stream_jsonl_to_dataframe
-from rldk.reward.api import HealthAnalysisResult, reward_health
+from rldk.pipelines.ingest.stream_normalizer import stream_jsonl_to_dataframe
+from rldk.evaluations.reward.api import HealthAnalysisResult, reward_health
 
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "phase_ab"

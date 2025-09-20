@@ -9,8 +9,8 @@ from pathlib import Path
 # Add the src directory to the path so we can import rldk
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from rldk.config import ConfigSchema, RLDKSettings, settings
-from rldk.config.schemas import AnalysisConfig, LoggingConfig, WandBConfig
+from rldk.core.config import ConfigSchema, RLDKSettings, settings
+from rldk.core.config.schemas import AnalysisConfig, LoggingConfig, WandBConfig
 
 
 def main():

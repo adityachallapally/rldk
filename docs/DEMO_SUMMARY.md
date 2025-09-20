@@ -8,17 +8,17 @@ This document summarizes the successful implementation of a comprehensive one-co
 
 ### 1. Created Missing Demo Artifacts
 
-✅ **test_artifacts/reward_drift_demo/prompts.jsonl**
+✅ **data/fixtures/test_artifacts/reward_drift_demo/prompts.jsonl**
 - Generated 50 diverse prompts for reward model testing
 - Includes various categories: math, code, safety, science, etc.
 - Structured with tags for analysis
 
-✅ **test_artifacts/logs_clean/training.jsonl**
+✅ **data/fixtures/test_artifacts/logs_clean/training.jsonl**
 - Created 1000 steps of clean PPO training logs
 - Steady KL values around 0.05 with natural variations
 - Healthy gradient ratios and training metrics
 
-✅ **test_artifacts/logs_doctored_kl_spike/training.jsonl**
+✅ **data/fixtures/test_artifacts/logs_doctored_kl_spike/training.jsonl**
 - Created 1000 steps with artificial KL spike starting at step 800
 - Demonstrates real training failure scenario
 - KL controller gets stuck while KL spikes

@@ -31,8 +31,8 @@ Next, I generated the PPO fixtures and ran the forensic stack against a doctored
 
 ```bash
 python tests/_make_fixtures.py
-rldk log-scan test_artifacts/logs_doctored_kl_spike
-rldk doctor test_artifacts/logs_doctored_kl_spike
+rldk log-scan data/fixtures/test_artifacts/logs_doctored_kl_spike
+rldk doctor data/fixtures/test_artifacts/logs_doctored_kl_spike
 python examples/comprehensive_ppo_forensics_example.py
 ```
 

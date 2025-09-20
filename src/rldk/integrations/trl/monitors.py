@@ -37,7 +37,7 @@ except ImportError:
 
 # Import comprehensive PPO forensics
 try:
-    from rldk.forensics.comprehensive_ppo_forensics import ComprehensivePPOForensics
+    from rldk.evaluations.forensics.comprehensive_ppo_forensics import ComprehensivePPOForensics
     COMPREHENSIVE_FORENSICS_AVAILABLE = True
 except ImportError:
     COMPREHENSIVE_FORENSICS_AVAILABLE = False

@@ -6,7 +6,7 @@ import pandas as pd
 import pandas.testing as pdt
 import pytest
 
-from rldk.ingest import standardize_training_metrics
+from rldk.pipelines.ingest import standardize_training_metrics
 
 
 def test_standardize_schema_coerces_numeric_columns() -> None:

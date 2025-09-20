@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit tests for rldk.utils.error_handling module."""
+"""Unit tests for rldk.core.utils.error_handling module."""
 
 import json
 import logging
@@ -20,7 +20,7 @@ def temp_dir():
 
 
 # Import the module under test
-from rldk.utils.error_handling import (
+from rldk.core.utils.error_handling import (
     AdapterError,
     EvaluationError,
     RLDKError,
@@ -41,8 +41,8 @@ from rldk.utils.error_handling import (
     validate_required_fields,
     with_retry,
 )
-from rldk.utils.runtime import with_timeout
-from rldk.utils.validation import (
+from rldk.core.utils.runtime import with_timeout
+from rldk.core.utils.validation import (
     validate_json_file_streaming,
     validate_jsonl_file_streaming,
 )
@@ -562,7 +562,7 @@ class TestAdapterSourceValidation:
     def test_validate_adapter_source_wandb_success(self):
         """Test WandB URI validation."""
         # Mock the validation function
-        with patch('rldk.utils.error_handling.validate_wandb_uri') as mock_validate:
+        with patch('rldk.core.utils.error_handling.validate_wandb_uri') as mock_validate:
             mock_validate.return_value = {"entity": "test", "project": "test", "run_id": "test"}
 
             # Should not raise exception
@@ -570,7 +570,7 @@ class TestAdapterSourceValidation:
 
     def test_validate_adapter_source_wandb_invalid(self):
         """Test WandB URI validation with invalid URI."""
-        with patch('rldk.utils.error_handling.validate_wandb_uri') as mock_validate:
+        with patch('rldk.core.utils.error_handling.validate_wandb_uri') as mock_validate:
             mock_validate.side_effect = ValidationError("Invalid URI")
 
             with pytest.raises(ValidationError):

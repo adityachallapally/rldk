@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 # Mock implementation for demonstration purposes
-# In a real environment, you would import from rldk.replay
+# In a real environment, you would import from rldk.pipelines.replay
 class MockReplayReport:
     """Mock replay report for demonstration."""
 
@@ -285,7 +285,7 @@ def demonstrate_replay_workflow():
     print(
         "2. Use CLI: rldk replay --run <run_file> --command <training_cmd> --metrics <metrics>"
     )
-    print("3. Or use Python API: from rldk.replay import replay")
+    print("3. Or use Python API: from rldk.pipelines.replay import replay")
 
 
 if __name__ == "__main__":

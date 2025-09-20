@@ -8,9 +8,9 @@ import pandas as pd
 import pytest
 from pandas.api.types import is_numeric_dtype
 
-from rldk.ingest.stream_normalizer import stream_jsonl_to_dataframe
-from rldk.ingest.training_metrics_normalizer import standardize_training_metrics
-from rldk.io.event_schema import dataframe_to_events, events_to_dataframe
+from rldk.pipelines.ingest.stream_normalizer import stream_jsonl_to_dataframe
+from rldk.pipelines.ingest.training_metrics_normalizer import standardize_training_metrics
+from rldk.core.io.event_schema import dataframe_to_events, events_to_dataframe
 
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "phase_ab"

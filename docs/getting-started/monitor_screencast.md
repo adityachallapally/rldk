@@ -24,7 +24,7 @@ Leave Terminal A visible so viewers see the PID printout and the loop logging JS
 ```bash
 rldk monitor \
   --stream artifacts/run.jsonl \
-  --rules rules.yaml \
+  --rules configs/rules.yaml \
   --pid $LOOP_PID \
   --alerts artifacts/alerts.jsonl \
   --report artifacts/report.json
@@ -49,7 +49,7 @@ Explain the key fields: `rule_id`, `message`, `action`, and `window` size.
 Record a quick follow-up showing batch mode producing the same summary:
 
 ```bash
-rldk monitor --once artifacts/run.jsonl --rules rules.yaml --report artifacts/report.json
+rldk monitor --once artifacts/run.jsonl --rules configs/rules.yaml --report artifacts/report.json
 ```
 
 Point out that alerts are unchanged and the report is deterministic.

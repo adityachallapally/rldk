@@ -15,7 +15,7 @@ import torch
 import torch.nn as nn
 
 # Import tracking components
-from rldk.tracking import (
+from rldk.monitoring.tracking import (
     DatasetTracker,
     EnvironmentTracker,
     ExperimentTracker,

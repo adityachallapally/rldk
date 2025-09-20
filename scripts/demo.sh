@@ -149,13 +149,13 @@ main() {
     print_step "Verifying Demo Artifacts"
     
     required_files=(
-        "test_artifacts/logs_clean/training.jsonl"
-        "test_artifacts/logs_doctored_kl_spike/training.jsonl"
-        "test_artifacts/reward_drift_demo/prompts.jsonl"
-        "test_artifacts/ckpt_identical/a.pt"
-        "test_artifacts/ckpt_identical/b.pt"
-        "test_artifacts/ckpt_value_head_edit/a.pt"
-        "test_artifacts/ckpt_value_head_edit/b.pt"
+        "data/fixtures/test_artifacts/logs_clean/training.jsonl"
+        "data/fixtures/test_artifacts/logs_doctored_kl_spike/training.jsonl"
+        "data/fixtures/test_artifacts/reward_drift_demo/prompts.jsonl"
+        "data/fixtures/test_artifacts/ckpt_identical/a.pt"
+        "data/fixtures/test_artifacts/ckpt_identical/b.pt"
+        "data/fixtures/test_artifacts/ckpt_value_head_edit/a.pt"
+        "data/fixtures/test_artifacts/ckpt_value_head_edit/b.pt"
     )
     
     for file in "${required_files[@]}"; do
@@ -174,7 +174,7 @@ main() {
     print_step "Step 1: Comparing Training Runs"
     print_info "This will detect when the two training runs start to diverge"
     
-    run_with_timing "rldk compare-runs test_artifacts/logs_clean test_artifacts/logs_doctored_kl_spike" \
+    run_with_timing "rldk compare-runs data/fixtures/test_artifacts/logs_clean data/fixtures/test_artifacts/logs_doctored_kl_spike" \
         "Comparing clean vs doctored training runs"
     
     if [ -f "rldk_reports/divergence_report.json" ]; then
@@ -188,10 +188,10 @@ main() {
     print_step "Step 2: Comparing Checkpoints"
     print_info "This will show parameter differences between checkpoints"
     
-    run_with_timing "rldk diff-ckpt test_artifacts/ckpt_identical/a.pt test_artifacts/ckpt_identical/b.pt" \
+    run_with_timing "rldk diff-ckpt data/fixtures/test_artifacts/ckpt_identical/a.pt data/fixtures/test_artifacts/ckpt_identical/b.pt" \
         "Comparing identical checkpoints (should show no differences)"
     
-    run_with_timing "rldk diff-ckpt test_artifacts/ckpt_value_head_edit/a.pt test_artifacts/ckpt_value_head_edit/b.pt" \
+    run_with_timing "rldk diff-ckpt data/fixtures/test_artifacts/ckpt_value_head_edit/a.pt data/fixtures/test_artifacts/ckpt_value_head_edit/b.pt" \
         "Comparing checkpoints with value head differences"
     
     if [ -f "rldk_reports/ckpt_diff.json" ]; then
@@ -204,7 +204,7 @@ main() {
     print_step "Step 3: Environment Audit"
     print_info "This will check for determinism issues in the environment"
     
-    run_with_timing "rldk env-audit test_artifacts/logs_clean" \
+    run_with_timing "rldk env-audit data/fixtures/test_artifacts/logs_clean" \
         "Auditing environment for determinism"
     
     if [ -f "rldk_reports/determinism_card.json" ]; then
@@ -217,10 +217,10 @@ main() {
     print_step "Step 4: PPO Log Analysis"
     print_info "This will scan for PPO-specific anomalies like KL spikes"
     
-    run_with_timing "rldk log-scan test_artifacts/logs_clean" \
+    run_with_timing "rldk log-scan data/fixtures/test_artifacts/logs_clean" \
         "Scanning clean logs for anomalies"
     
-    run_with_timing "rldk log-scan test_artifacts/logs_doctored_kl_spike" \
+    run_with_timing "rldk log-scan data/fixtures/test_artifacts/logs_doctored_kl_spike" \
         "Scanning doctored logs for KL spike detection"
     
     if [ -f "rldk_reports/ppo_scan.json" ]; then
@@ -234,7 +234,7 @@ main() {
     print_step "Step 5: Reward Model Drift Detection"
     print_info "This will detect if reward models have drifted apart"
     
-    run_with_timing "rldk reward-drift test_artifacts/reward_drift_demo/rmA test_artifacts/reward_drift_demo/rmB --prompts test_artifacts/reward_drift_demo/prompts.jsonl" \
+    run_with_timing "rldk reward-drift data/fixtures/test_artifacts/reward_drift_demo/rmA data/fixtures/test_artifacts/reward_drift_demo/rmB --prompts data/fixtures/test_artifacts/reward_drift_demo/prompts.jsonl" \
         "Detecting reward model drift"
     
     if [ -f "rldk_reports/reward_drift.json" ]; then
@@ -247,7 +247,7 @@ main() {
     print_step "Step 6: Comprehensive Diagnostics"
     print_info "This will run all RLDK analyses and provide a comprehensive health report"
     
-    run_with_timing "rldk doctor test_artifacts/logs_doctored_kl_spike" \
+    run_with_timing "rldk doctor data/fixtures/test_artifacts/logs_doctored_kl_spike" \
         "Running comprehensive diagnostics"
     
     # Step 12: Show results summary

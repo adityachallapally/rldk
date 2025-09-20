@@ -33,21 +33,21 @@
 
 #### ✅ 2. Generate offline fixtures
 - All required paths exist and are non-empty:
-  - `test_artifacts/logs_clean/`
-  - `test_artifacts/logs_doctored_kl_spike/`
-  - `test_artifacts/ckpt_identical/`
-  - `test_artifacts/ckpt_value_head_edit/`
-  - `test_artifacts/reward_drift_demo/`
+  - `data/fixtures/test_artifacts/logs_clean/`
+  - `data/fixtures/test_artifacts/logs_doctored_kl_spike/`
+  - `data/fixtures/test_artifacts/ckpt_identical/`
+  - `data/fixtures/test_artifacts/ckpt_value_head_edit/`
+  - `data/fixtures/test_artifacts/reward_drift_demo/`
 
 #### ✅ 3. CLI smoke and report generation
 All CLI commands executed successfully with exit code 0:
-- `rldk env-audit test_artifacts/logs_clean`
-- `rldk log-scan test_artifacts/logs_doctored_kl_spike`
-- `rldk diff-ckpt test_artifacts/ckpt_identical/a.pt test_artifacts/ckpt_identical/b.pt`
-- `rldk diff-ckpt test_artifacts/ckpt_value_head_edit/a.pt test_artifacts/ckpt_value_head_edit/b.pt`
-- `rldk reward-drift test_artifacts/reward_drift_demo/rmA test_artifacts/reward_drift_demo/rmB --prompts test_artifacts/reward_drift_demo/prompts.jsonl`
-- `rldk compare-runs test_artifacts/logs_clean test_artifacts/logs_doctored_kl_spike`
-- `rldk doctor test_artifacts/logs_doctored_kl_spike`
+- `rldk env-audit data/fixtures/test_artifacts/logs_clean`
+- `rldk log-scan data/fixtures/test_artifacts/logs_doctored_kl_spike`
+- `rldk diff-ckpt data/fixtures/test_artifacts/ckpt_identical/a.pt data/fixtures/test_artifacts/ckpt_identical/b.pt`
+- `rldk diff-ckpt data/fixtures/test_artifacts/ckpt_value_head_edit/a.pt data/fixtures/test_artifacts/ckpt_value_head_edit/b.pt`
+- `rldk reward-drift data/fixtures/test_artifacts/reward_drift_demo/rmA data/fixtures/test_artifacts/reward_drift_demo/rmB --prompts data/fixtures/test_artifacts/reward_drift_demo/prompts.jsonl`
+- `rldk compare-runs data/fixtures/test_artifacts/logs_clean data/fixtures/test_artifacts/logs_doctored_kl_spike`
+- `rldk doctor data/fixtures/test_artifacts/logs_doctored_kl_spike`
 
 #### ✅ 4. Required files generated
 All required files exist and are non-empty:

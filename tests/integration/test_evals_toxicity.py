@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from rldk.evals.metrics.toxicity import (
+from rldk.evaluations.evals.metrics.toxicity import (
     SimpleToxicityClassifier,
     detect_toxic_patterns,
     evaluate_toxicity,

@@ -10,13 +10,13 @@
 
 ### 1. Environment Audit (`rldk env-audit`)
 - **Status**: ✅ Working
-- **Test**: `rldk env-audit test_artifacts/logs_clean`
+- **Test**: `rldk env-audit data/fixtures/test_artifacts/logs_clean`
 - **Output**: Generated determinism card and lock file
 - **Findings**: Detected nondeterminism issues (as expected for test data)
 
 ### 2. Log Scanning (`rldk log-scan`)
 - **Status**: ✅ Working
-- **Test**: `rldk log-scan test_artifacts/logs_doctored_kl_spike`
+- **Test**: `rldk log-scan data/fixtures/test_artifacts/logs_doctored_kl_spike`
 - **Output**: Generated PPO scan report with 182 rules fired
 - **Findings**: Detected multiple anomalies including:
   - KL controller stuck issues
@@ -25,31 +25,31 @@
 
 ### 3. Checkpoint Comparison (`rldk diff-ckpt`)
 - **Status**: ✅ Working
-- **Test**: `rldk diff-ckpt test_artifacts/ckpt_identical/a.pt test_artifacts/ckpt_identical/b.pt`
+- **Test**: `rldk diff-ckpt data/fixtures/test_artifacts/ckpt_identical/a.pt data/fixtures/test_artifacts/ckpt_identical/b.pt`
 - **Output**: Generated checkpoint diff report and visualization
 - **Findings**: Perfect similarity (1.0000) for identical checkpoints
 
 ### 4. Reward Drift Analysis (`rldk reward-drift`)
 - **Status**: ✅ Working
-- **Test**: `rldk reward-drift test_artifacts/reward_drift_demo/rmA test_artifacts/reward_drift_demo/rmB --prompts test_artifacts/reward_drift_demo/prompts.jsonl`
+- **Test**: `rldk reward-drift data/fixtures/test_artifacts/reward_drift_demo/rmA data/fixtures/test_artifacts/reward_drift_demo/rmB --prompts data/fixtures/test_artifacts/reward_drift_demo/prompts.jsonl`
 - **Output**: Generated reward drift report and visualization
 - **Findings**: Detected significant drift with low correlation (0.0823)
 
 ### 5. Comprehensive Diagnostics (`rldk doctor`)
 - **Status**: ✅ Working
-- **Test**: `rldk doctor test_artifacts/logs_clean`
+- **Test**: `rldk doctor data/fixtures/test_artifacts/logs_clean`
 - **Output**: Combined environment audit and log scan
 - **Findings**: Detected 162 anomalies and nondeterminism issues
 
 ### 6. Run Comparison (`rldk compare-runs`)
 - **Status**: ✅ Working
-- **Test**: `rldk compare-runs test_artifacts/logs_clean test_artifacts/logs_doctored_kl_spike`
+- **Test**: `rldk compare-runs data/fixtures/test_artifacts/logs_clean data/fixtures/test_artifacts/logs_doctored_kl_spike`
 - **Output**: Generated run comparison report
 - **Findings**: Run A had 162 anomalies, Run B had 182 anomalies
 
 ### 7. Evaluation Suite (`rldk eval`)
 - **Status**: ✅ Working (after fixing numpy import)
-- **Test**: `rldk eval --run test_artifacts/logs_clean --suite quick`
+- **Test**: `rldk eval --run data/fixtures/test_artifacts/logs_clean --suite quick`
 - **Output**: Generated evaluation results with scores and confidence intervals
 - **Findings**: Successfully evaluated 6 metrics with statistical analysis
 

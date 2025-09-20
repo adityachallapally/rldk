@@ -40,7 +40,7 @@ TRAIN_COMMON=("python" "${ROOT_DIR}/scripts/fullscale_train_rl.py" "--max-steps"
 MONITOR_ALERTS_JSON="${ARTIFACT_DIR}/monitor_alerts.jsonl"
 MONITOR_ALERTS_TXT="${ARTIFACT_DIR}/monitor_alerts.txt"
 MONITOR_REPORT="${ARTIFACT_DIR}/monitor_report.json"
-python -m rldk.cli monitor --once "${RUN_JSON}" --rules "${ROOT_DIR}/rules/fullscale_rules.yaml" --alerts "${MONITOR_ALERTS_JSON}" --alerts-txt "${MONITOR_ALERTS_TXT}" --report "${MONITOR_REPORT}" | tee -a "${LOG_FILE}"
+python -m rldk.cli monitor --once "${RUN_JSON}" --rules "${ROOT_DIR}/configs/rules/fullscale_rules.yaml" --alerts "${MONITOR_ALERTS_JSON}" --alerts-txt "${MONITOR_ALERTS_TXT}" --report "${MONITOR_REPORT}" | tee -a "${LOG_FILE}"
 
 INGEST_OUTPUT="${ARTIFACT_DIR}/training_metrics.jsonl"
 python -m rldk.cli ingest "${RUN_JSON}" --output "${INGEST_OUTPUT}" | tee -a "${LOG_FILE}"

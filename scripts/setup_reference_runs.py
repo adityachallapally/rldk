@@ -3,8 +3,8 @@
 Setup script to create the missing reference runs for tests.
 
 This script creates the required reference runs that the test suite expects:
-- reference/runs/summarization/good
-- reference/runs/summarization/tokenizer_changed
+- var/runs/reference/summarization/good
+- var/runs/reference/summarization/tokenizer_changed
 
 It creates minimal but valid training logs that match the expected format.
 """
@@ -106,14 +106,14 @@ def create_training_log_entry(
 def create_reference_runs():
     """Create the required reference runs for testing."""
     # Create directories
-    good_run_dir = Path("reference/runs/summarization/good")
-    tokenizer_changed_dir = Path("reference/runs/summarization/tokenizer_changed")
+    good_run_dir = Path("var/runs/reference/summarization/good")
+    tokenizer_changed_dir = Path("var/runs/reference/summarization/tokenizer_changed")
 
     good_run_dir.mkdir(parents=True, exist_ok=True)
     tokenizer_changed_dir.mkdir(parents=True, exist_ok=True)
 
     # Create minimal manifest
-    datasets_dir = Path("reference/datasets")
+    datasets_dir = Path("data/benchmarks/reference_datasets")
     datasets_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = create_minimal_manifest(datasets_dir)
 
@@ -187,7 +187,7 @@ def main():
 
     if args.clean:
         # Clean existing runs
-        runs_dir = Path("reference/runs")
+        runs_dir = Path("var/runs/reference")
         if runs_dir.exists():
             import shutil
             shutil.rmtree(runs_dir)

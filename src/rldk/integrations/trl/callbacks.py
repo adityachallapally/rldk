@@ -27,7 +27,7 @@ except ImportError:
 
 # Import Event schema for proper JSONL emission
 try:
-    from ...io.event_schema import Event, create_event_from_row
+    from ...core.io import Event, create_event_from_row
     EVENT_SCHEMA_AVAILABLE = True
 except ImportError:
     EVENT_SCHEMA_AVAILABLE = False

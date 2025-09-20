@@ -31,11 +31,11 @@ import seaborn as sns
 
 # RLDK imports
 import rldk
-from rldk.determinism import check
-from rldk.forensics import ComprehensivePPOForensics
-from rldk.reward import health
-from rldk.tracking import ExperimentTracker, TrackingConfig
-from rldk.utils import set_global_seed
+from rldk.pipelines.determinism import check
+from rldk.evaluations.forensics import ComprehensivePPOForensics
+from rldk.evaluations.reward import health
+from rldk.monitoring.tracking import ExperimentTracker, TrackingConfig
+from rldk.core.utils import set_global_seed
 
 
 def main():
