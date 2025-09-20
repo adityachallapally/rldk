@@ -169,7 +169,7 @@ pip install rldk==0.1.0
 
 # Or install dependencies separately
 pip install torch>=2.1.0
-pip install transformers>=4.36.0
+pip install transformers>=4.45.0
 pip install rldk
 ```
 
