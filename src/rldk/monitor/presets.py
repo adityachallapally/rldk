@@ -49,6 +49,26 @@ RULE_PRESETS: Dict[str, RulePreset] = {
                     {"warn": {"msg": "Gradient norm {value:.2f} at step {step}"}},
                 ],
             },
+            {
+                "id": "ppo_kl_drift_detection",
+                "where": "name in (\"kl\", \"kl_mean\", \"ppo/policy/kl_mean\", \"train/kl\")",
+                "condition": "kl_drift_score > 0.15",
+                "window": {"size": 20, "kind": "rolling"},
+                "grace_steps": 10,
+                "cooldown_steps": 15,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "KL drift detected: score {kl_drift_score:.3f} at step {step}"
+                        }
+                    },
+                    {
+                        "stop": {
+                            "msg": "Stopping due to KL drift (score={kl_drift_score:.3f})"
+                        }
+                    },
+                ],
+            },
         ]
     },
     "ppo_strict": {
@@ -103,6 +123,22 @@ RULE_PRESETS: Dict[str, RulePreset] = {
                     {"warn": {"msg": "Reward plateau detected at {value:.3f}"}},
                 ],
             },
+            {
+                "id": "ppo_strict_kl_drift",
+                "where": "name in (\"kl\", \"kl_mean\", \"ppo/policy/kl_mean\", \"train/kl\")",
+                "condition": "kl_drift_score > 0.10",
+                "window": {"size": 15, "kind": "rolling"},
+                "grace_steps": 5,
+                "cooldown_steps": 10,
+                "actions": [
+                    {"warn": {"msg": "KL drift threshold exceeded: {kl_drift_score:.3f}"}},
+                    {
+                        "stop": {
+                            "msg": "Strict KL drift gate fired (score={kl_drift_score:.3f})"
+                        }
+                    },
+                ],
+            },
         ]
     },
     "dpo_basic": {
@@ -148,6 +184,41 @@ RULE_PRESETS: Dict[str, RulePreset] = {
                             "msg": "Reference policy drift: logprob {value:.2f}"
                         }
                     }
+                ],
+            },
+        ]
+    },
+    "kl_drift": {
+        "rules": [
+            {
+                "id": "kl_drift_early_warning",
+                "where": "name in (\"kl\", \"kl_mean\", \"ppo/policy/kl_mean\", \"train/kl\")",
+                "condition": "kl_drift_score > 0.08",
+                "window": {"size": 10, "kind": "rolling"},
+                "grace_steps": 5,
+                "cooldown_steps": 10,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Early KL drift warning: {kl_drift_score:.3f}"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "kl_drift_critical",
+                "where": "name in (\"kl\", \"kl_mean\", \"ppo/policy/kl_mean\", \"train/kl\")",
+                "condition": "kl_drift_score > 0.20",
+                "window": {"size": 5, "kind": "consecutive"},
+                "grace_steps": 3,
+                "cooldown_steps": 8,
+                "actions": [
+                    {"warn": {"msg": "Critical KL drift: {kl_drift_score:.3f}"}},
+                    {
+                        "stop": {
+                            "msg": "Emergency stop due to critical KL drift"
+                        }
+                    },
                 ],
             },
         ]

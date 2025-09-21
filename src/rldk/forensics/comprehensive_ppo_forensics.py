@@ -76,6 +76,10 @@ class ComprehensivePPOForensics:
         enable_kl_schedule_tracking: bool = True,
         enable_gradient_norms_analysis: bool = True,
         enable_advantage_statistics: bool = True,
+        enable_kl_drift_tracking: bool = True,
+        kl_drift_threshold: float = 0.15,
+        kl_drift_window_size: int = 100,
+        kl_drift_reference_period: int = 500,
     ):
         """Initialize comprehensive PPO forensics.
 
@@ -86,6 +90,10 @@ class ComprehensivePPOForensics:
             enable_kl_schedule_tracking: Enable KL schedule tracking
             enable_gradient_norms_analysis: Enable gradient norms analysis
             enable_advantage_statistics: Enable advantage statistics tracking
+            enable_kl_drift_tracking: Enable KL drift tracking and analysis
+            kl_drift_threshold: KL divergence threshold for drift detection
+            kl_drift_window_size: Rolling window size for drift calculations
+            kl_drift_reference_period: Number of steps used to build the reference distribution
         """
         self.kl_target = kl_target
         self.kl_target_tolerance = kl_target_tolerance
@@ -100,7 +108,11 @@ class ComprehensivePPOForensics:
             self.kl_schedule_tracker = KLScheduleTracker(
                 kl_target=kl_target,
                 kl_target_tolerance=kl_target_tolerance,
-                window_size=window_size
+                window_size=window_size,
+                drift_threshold=kl_drift_threshold,
+                drift_window_size=kl_drift_window_size,
+                reference_period=kl_drift_reference_period,
+                enable_drift_tracking=enable_kl_drift_tracking,
             )
 
         if enable_gradient_norms_analysis:
@@ -116,6 +128,10 @@ class ComprehensivePPOForensics:
         # Metrics storage
         self.comprehensive_metrics_history: List[ComprehensivePPOMetrics] = []
         self.current_metrics = ComprehensivePPOMetrics()
+
+        # Drift tracking configuration
+        self.enable_kl_drift_tracking = enable_kl_drift_tracking
+        self.kl_drift_threshold = kl_drift_threshold
 
         # Analysis results
         self.anomalies: List[Dict[str, Any]] = []
@@ -193,6 +209,11 @@ class ComprehensivePPOForensics:
             health_scores.append(self.current_metrics.kl_schedule_metrics.kl_health_score)
             health_scores.append(self.current_metrics.kl_schedule_metrics.schedule_health_score)
             stability_scores.append(self.current_metrics.kl_schedule_metrics.target_range_stability)
+            if self.enable_kl_drift_tracking:
+                drift_score = self.current_metrics.kl_schedule_metrics.kl_drift_score
+                health_scores.append(max(0.0, 1.0 - drift_score))
+                stability_scores.append(max(0.0, 1.0 - drift_score))
+                convergence_scores.append(max(0.0, 1.0 - drift_score))
 
         # Gradient norms health
         if self.current_metrics.gradient_norms_metrics:
@@ -254,7 +275,10 @@ class ComprehensivePPOForensics:
 
         # KL schedule analysis
         if self.kl_schedule_tracker:
-            analysis["trackers"]["kl_schedule"] = self.kl_schedule_tracker.get_summary()
+            kl_summary = self.kl_schedule_tracker.get_summary()
+            analysis["trackers"]["kl_schedule"] = kl_summary
+            if self.enable_kl_drift_tracking:
+                analysis["trackers"]["kl_drift"] = self.get_kl_drift_analysis()
 
         # Gradient norms analysis
         if self.gradient_norms_analyzer:
@@ -268,6 +292,31 @@ class ComprehensivePPOForensics:
         self.analysis_summary = analysis
 
         return analysis
+
+    def get_kl_drift_analysis(self) -> Dict[str, Any]:
+        """Summarize KL drift metrics for downstream consumers."""
+
+        if not self.kl_schedule_tracker or not self.enable_kl_drift_tracking:
+            return {}
+
+        summary = self.kl_schedule_tracker.get_summary()
+        anomalies = [
+            anomaly
+            for anomaly in summary.get("anomalies", [])
+            if anomaly.get("type", "").startswith("kl_drift")
+        ]
+
+        return {
+            "detected": summary.get("kl_drift_detected", False),
+            "score": summary.get("kl_drift_score", 0.0),
+            "trend": summary.get("kl_drift_trend", "stable"),
+            "divergence": summary.get("kl_drift_kl_divergence", 0.0),
+            "reference_mean": summary.get("kl_reference_mean", 0.0),
+            "reference_std": summary.get("kl_reference_std", 0.0),
+            "current_mean": summary.get("kl_current_mean", 0.0),
+            "current_std": summary.get("kl_current_std", 0.0),
+            "anomalies": anomalies,
+        }
 
     def scan_ppo_events_comprehensive(self, events: Iterator[Dict[str, Any]]) -> Dict[str, Any]:
         """Enhanced PPO scan with comprehensive tracking."""
@@ -374,4 +423,5 @@ class ComprehensivePPOForensics:
             "current_kl_coef": current.kl_coef,
             "current_reward_mean": current.reward_mean,
             "current_entropy": current.entropy,
+            "kl_drift": self.get_kl_drift_analysis() if self.enable_kl_drift_tracking else {},
         }

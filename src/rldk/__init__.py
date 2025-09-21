@@ -64,8 +64,14 @@ def _lazy_import_cards():
         generate_determinism_card,
         generate_drift_card,
         generate_reward_card,
+        generate_kl_drift_card,
     )
-    return generate_determinism_card, generate_drift_card, generate_reward_card
+    return (
+        generate_determinism_card,
+        generate_drift_card,
+        generate_reward_card,
+        generate_kl_drift_card,
+    )
 
 def _lazy_import_adapters():
     from .adapters import (
@@ -156,16 +162,20 @@ def audit_environment(*args, **kwargs):
     return audit_environment_func(*args, **kwargs)
 
 def generate_determinism_card(*args, **kwargs):
-    generate_determinism_card_func, _, _ = _lazy_import_cards()
+    generate_determinism_card_func, _, _, _ = _lazy_import_cards()
     return generate_determinism_card_func(*args, **kwargs)
 
 def generate_drift_card(*args, **kwargs):
-    _, generate_drift_card_func, _ = _lazy_import_cards()
+    _, generate_drift_card_func, _, _ = _lazy_import_cards()
     return generate_drift_card_func(*args, **kwargs)
 
 def generate_reward_card(*args, **kwargs):
-    _, _, generate_reward_card_func = _lazy_import_cards()
+    _, _, generate_reward_card_func, _ = _lazy_import_cards()
     return generate_reward_card_func(*args, **kwargs)
+
+def generate_kl_drift_card(*args, **kwargs):
+    _, _, _, generate_kl_drift_card_func = _lazy_import_cards()
+    return generate_kl_drift_card_func(*args, **kwargs)
 
 def write_json(*args, **kwargs):
     write_json_func, _, _, _, _, _ = _lazy_import_io()
@@ -340,6 +350,7 @@ __all__ = [
     "generate_determinism_card",
     "generate_drift_card",
     "generate_reward_card",
+    "generate_kl_drift_card",
 
     # Adapters
     "BaseAdapter",

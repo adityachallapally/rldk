@@ -1,10 +1,12 @@
 """Evaluation probes for different aspects of model performance."""
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 from scipy import stats
+
+from ..forensics.kl_schedule_tracker import KLScheduleTracker
 
 
 def evaluate_alignment(data: pd.DataFrame, seed: int = 42, **kwargs) -> Dict[str, Any]:
@@ -234,6 +236,100 @@ def evaluate_hallucination(
         "metrics": accuracy_metrics,
         "sample_size": len(data),
         "note": "Lower scores indicate better performance (less hallucination)",
+    }
+
+
+def evaluate_kl_drift(
+    data: pd.DataFrame,
+    **kwargs: Any,
+) -> Dict[str, Any]:
+    """Evaluate KL drift severity using the schedule tracker."""
+
+    if data.empty:
+        return {
+            "score": np.nan,
+            "drift_score": np.nan,
+            "detected": False,
+            "trend": "unknown",
+            "sample_size": 0,
+            "details": "No data available for KL drift evaluation",
+        }
+
+    kl_candidates: List[str] = [
+        kwargs.get("kl_column", "kl"),
+        "kl",
+        "kl_mean",
+        "ppo/policy/kl_mean",
+        "train/kl",
+    ]
+    step_candidates: List[str] = [kwargs.get("step_column", "step"), "global_step"]
+    coef_candidates: List[str] = [
+        kwargs.get("kl_coef_column", "kl_coef"),
+        "kl_coef",
+        "kl_coefficient",
+        "kl_coeff",
+        "ppo/policy/kl_coef",
+    ]
+
+    def _resolve_column(df: pd.DataFrame, candidates: List[str]) -> Optional[str]:
+        for candidate in candidates:
+            if candidate in df.columns:
+                return candidate
+        return None
+
+    step_col = _resolve_column(data, step_candidates)
+    kl_col = _resolve_column(data, kl_candidates)
+    if kl_col is None or step_col is None:
+        return {
+            "score": np.nan,
+            "drift_score": np.nan,
+            "detected": False,
+            "trend": "unknown",
+            "sample_size": len(data),
+            "details": "Required KL or step columns not found for drift evaluation",
+        }
+
+    coef_col = _resolve_column(data, coef_candidates)
+    sorted_data = data.sort_values(step_col)
+    median_kl = sorted_data[kl_col].dropna().median()
+    kl_target = float(median_kl) if not np.isnan(median_kl) else kwargs.get("kl_target", 0.1)
+
+    tracker = KLScheduleTracker(
+        kl_target=kl_target,
+        kl_target_tolerance=kwargs.get("kl_target_tolerance", 0.05),
+        window_size=kwargs.get("window_size", 200),
+        drift_threshold=kwargs.get("drift_threshold", 0.15),
+        drift_window_size=kwargs.get("drift_window_size", 100),
+        reference_period=kwargs.get("reference_period", 500),
+        enable_drift_tracking=True,
+    )
+
+    for _, row in sorted_data.iterrows():
+        kl_value = row.get(kl_col)
+        if pd.isna(kl_value):
+            continue
+        tracker.update(
+            int(row.get(step_col, 0)),
+            float(kl_value),
+            float(row.get(coef_col, 1.0)) if coef_col else 1.0,
+        )
+
+    summary = tracker.get_summary()
+    drift_score = summary.get("kl_drift_score", 0.0)
+    detected = summary.get("kl_drift_detected", False)
+    trend = summary.get("kl_drift_trend", "stable")
+
+    return {
+        "score": max(0.0, 1.0 - drift_score),
+        "drift_score": drift_score,
+        "detected": detected,
+        "trend": trend,
+        "reference_mean": summary.get("kl_reference_mean", 0.0),
+        "reference_std": summary.get("kl_reference_std", 0.0),
+        "current_mean": summary.get("kl_current_mean", 0.0),
+        "current_std": summary.get("kl_current_std", 0.0),
+        "sample_size": len(sorted_data),
+        "details": "KL drift evaluation using KLScheduleTracker",
     }
 
 
