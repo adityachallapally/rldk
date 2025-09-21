@@ -134,15 +134,17 @@ def generate_kl_drift_card(
     if "step" not in df.columns:
         df["step"] = np.arange(len(df))
 
-    kl_column = _select_column(df, ["kl", "kl_mean", "kl_schedule_current_kl"])
-    score_column = _select_column(
+    kl_column, kl_series = _select_column(
+        df, ["kl", "kl_mean", "kl_schedule_current_kl"]
+    )
+    score_column, score_series = _select_column(
         df,
         [
             "kl_drift_score",
             "kl_schedule_kl_drift_score",
         ],
     )
-    trend_column = _select_column(
+    trend_column, trend_series = _select_column(
         df,
         [
             "kl_drift_trend",
@@ -150,7 +152,7 @@ def generate_kl_drift_card(
         ],
         default_value="stable",
     )
-    divergence_column = _select_column(
+    divergence_column, divergence_series = _select_column(
         df,
         [
             "kl_drift_kl_divergence",
@@ -159,15 +161,21 @@ def generate_kl_drift_card(
         default_value=0.0,
     )
 
-    reference_series = df[kl_column].dropna().astype(float)
+    reference_series = kl_series.dropna().astype(float)
     reference_data = reference_series.iloc[:reference_period]
     current_data = reference_series.iloc[-min(len(reference_series), reference_period) :]
 
-    latest_row = df.iloc[-1]
-    latest_score = float(latest_row.get(score_column, 0.0))
-    latest_trend = str(latest_row.get(trend_column, "stable"))
-    latest_divergence = float(latest_row.get(divergence_column, 0.0))
-    drift_detected = bool(latest_row.get(_select_column(df, ["kl_drift_detected", "kl_schedule_kl_drift_detected"], default_value=False), False))
+    latest_score = float(score_series.iloc[-1]) if len(score_series) else 0.0
+    latest_trend = str(trend_series.iloc[-1]) if len(trend_series) else "stable"
+    latest_divergence = (
+        float(divergence_series.iloc[-1]) if len(divergence_series) else 0.0
+    )
+    _, detect_series = _select_column(
+        df,
+        ["kl_drift_detected", "kl_schedule_kl_drift_detected"],
+        default_value=False,
+    )
+    drift_detected = bool(detect_series.iloc[-1]) if len(detect_series) else False
 
     severity_thresholds = {
         "low": 0.08,
@@ -175,7 +183,9 @@ def generate_kl_drift_card(
         "high": 0.2,
     }
 
-    anomalies = _detect_kl_drift_anomalies(df, score_column, severity_thresholds)
+    anomalies = _detect_kl_drift_anomalies(
+        df["step"].to_numpy(), score_series, severity_thresholds
+    )
     recommendations = _generate_kl_drift_recommendations(latest_score, latest_trend)
 
     card_data: Dict[str, Any] = {
@@ -197,7 +207,13 @@ def generate_kl_drift_card(
             "current_mean": float(current_data.mean()) if len(current_data) else 0.0,
             "current_std": float(current_data.std()) if len(current_data) > 1 else 0.0,
         },
-        "timeline": df[["step", kl_column, score_column]].to_dict(orient="records"),
+        "timeline": pd.DataFrame(
+            {
+                "step": df["step"],
+                kl_column: kl_series,
+                score_column: score_series,
+            }
+        ).to_dict(orient="records"),
     }
 
     output_path = Path(output_dir or f"runs/{card_data['run_id']}/rldk_cards")
@@ -719,17 +735,22 @@ def _select_column(
     df: pd.DataFrame,
     candidates: Sequence[str],
     default_value: Optional[Any] = None,
-) -> str:
-    """Select the first available column from candidates, adding a default if needed."""
+) -> tuple[str, pd.Series]:
+    """Resolve a candidate column without mutating ``df``.
+
+    Returns the name of the selected column alongside a Series containing the
+    values. When no candidate exists and ``default_value`` is provided, a new
+    Series filled with the default is returned without altering ``df``.
+    """
 
     for candidate in candidates:
         if candidate in df.columns:
-            return candidate
+            return candidate, df[candidate]
 
     if default_value is not None:
         column_name = candidates[0]
-        df[column_name] = default_value
-        return column_name
+        default_series = pd.Series(default_value, index=df.index)
+        return column_name, default_series
 
     raise KeyError(
         f"None of the candidate columns {candidates} were found in the provided dataframe"
@@ -737,17 +758,17 @@ def _select_column(
 
 
 def _detect_kl_drift_anomalies(
-    df: pd.DataFrame,
-    score_column: str,
+    steps: np.ndarray,
+    scores: pd.Series,
     thresholds: Dict[str, float],
 ) -> List[Dict[str, Any]]:
     """Detect drift anomalies based on drift score thresholds."""
 
     anomalies: List[Dict[str, Any]] = []
-    steps = df["step"].to_numpy()
-    scores = df[score_column].fillna(0.0).to_numpy()
+    step_values = np.asarray(steps)
+    score_values = scores.fillna(0.0).to_numpy()
 
-    for idx, score in enumerate(scores):
+    for idx, score in enumerate(score_values):
         if score > thresholds["high"]:
             severity = "critical"
         elif score > thresholds["medium"]:
@@ -759,7 +780,7 @@ def _detect_kl_drift_anomalies(
 
         anomalies.append(
             {
-                "step": int(steps[idx]),
+                "step": int(step_values[idx]),
                 "score": float(score),
                 "severity": severity,
             }
