@@ -18,6 +18,7 @@ from rldk.bisect import bisect_commits
 from rldk.cards import (
     generate_determinism_card,
     generate_drift_card,
+    generate_kl_drift_card,
     generate_reward_card,
 )
 from rldk.config import settings
@@ -30,6 +31,7 @@ from rldk.evals.metrics import evaluate_bias, evaluate_throughput, evaluate_toxi
 from rldk.evals.suites import COMPREHENSIVE_SUITE, QUICK_SUITE, SAFETY_SUITE
 
 # Import forensics modules
+from rldk.forensics import ComprehensivePPOForensics
 from rldk.forensics.ckpt_diff import diff_checkpoints
 from rldk.forensics.env_audit import audit_environment
 from rldk.forensics.log_scan import scan_logs
@@ -917,6 +919,175 @@ def forensics_log_scan(
                 "Please report this issue with the full error message"
             ),
             err=True
+        )
+        raise typer.Exit(1)
+
+
+@forensics_app.command(name="kl-drift")
+def forensics_kl_drift(
+    run_path: str = typer.Argument(..., help="Path to training run metrics (file or directory)"),
+    output_dir: Optional[str] = typer.Option(
+        None,
+        "--output-dir",
+        help="Directory where the KL drift card should be saved",
+    ),
+    preset: Optional[str] = typer.Option(
+        None,
+        "--preset",
+        help="Field map preset for the metrics source (e.g. trl, accelerate)",
+    ),
+    field_map: Optional[str] = typer.Option(
+        None,
+        "--field-map",
+        help="JSON mapping from source column names to canonical names",
+    ),
+    step_col: str = typer.Option("step", "--step-col", help="Canonical step column"),
+    kl_col: str = typer.Option("kl", "--kl-col", help="Canonical KL column"),
+    kl_coef_col: str = typer.Option(
+        "kl_coef",
+        "--kl-coef-col",
+        help="Canonical KL coefficient column",
+    ),
+    drift_threshold: float = typer.Option(
+        0.15, "--drift-threshold", help="Threshold for declaring KL drift"
+    ),
+    drift_window_size: int = typer.Option(
+        100, "--drift-window-size", help="Rolling window size for drift analysis"
+    ),
+    reference_period: int = typer.Option(
+        500,
+        "--reference-period",
+        help="Number of initial steps to treat as the drift reference",
+    ),
+):
+    """Analyze KL drift for a single training run."""
+
+    def _resolve_column(df: pd.DataFrame, candidates: Sequence[str], label: str) -> str:
+        for candidate in candidates:
+            if candidate in df.columns:
+                return candidate
+        raise ValidationError(
+            f"Could not find a {label} column in the normalized data",
+            suggestion=(
+                "Use --field-map/--preset or provide the column via --kl-col/--kl-coef-col"
+            ),
+            error_code=f"MISSING_{label.upper()}_COLUMN",
+        )
+
+    try:
+        ensure_config_initialized()
+
+        try:
+            mapping = _combine_field_maps(preset, field_map)
+        except ValueError as exc:
+            typer.echo(f"Invalid field map: {exc}", err=True)
+            raise typer.Exit(1)
+
+        typer.echo(f"Loading training metrics from: {run_path}")
+        metrics_df = normalize_training_metrics_source(run_path, field_map=mapping)
+
+        if metrics_df.empty:
+            raise ValidationError(
+                "Normalized metrics data is empty",
+                suggestion="Ensure the run contains KL metrics and try again",
+                error_code="EMPTY_KL_DATA",
+            )
+
+        step_column = _resolve_column(metrics_df, [step_col, "global_step"], "step")
+        kl_column = _resolve_column(
+            metrics_df,
+            [kl_col, "kl", "kl_mean", "ppo/policy/kl_mean", "train/kl"],
+            "kl",
+        )
+        kl_coef_column = _resolve_column(
+            metrics_df,
+            [kl_coef_col, "kl_coef", "kl_coefficient", "kl_coeff", "ppo/policy/kl_coef"],
+            "kl coefficient",
+        )
+
+        metrics_df = metrics_df.sort_values(step_column)
+
+        median_kl = metrics_df[kl_column].dropna().median()
+        kl_target = float(median_kl) if not np.isnan(median_kl) else 0.1
+
+        forensics = ComprehensivePPOForensics(
+            enable_kl_drift_tracking=True,
+            kl_target=kl_target,
+            kl_target_tolerance=0.05,
+            window_size=max(200, drift_window_size),
+            enable_kl_schedule_tracking=True,
+            enable_gradient_norms_analysis=False,
+            enable_advantage_statistics=False,
+            kl_drift_threshold=drift_threshold,
+            kl_drift_window_size=drift_window_size,
+            kl_drift_reference_period=reference_period,
+        )
+
+        entropy_candidates = ["entropy", "entropy_mean", "ppo/policy/entropy"]
+        reward_candidates = ["reward", "reward_mean", "train/reward"]
+        reward_std_candidates = ["reward_std", "train/reward_std"]
+
+        def _maybe_get(series: pd.Series, options: Sequence[str], default: float = 0.0) -> float:
+            for option in options:
+                if option in series and pd.notna(series.get(option)):
+                    return float(series.get(option))
+            return default
+
+        for _, row in metrics_df.iterrows():
+            forensics.update(
+                step=int(row.get(step_column, 0)),
+                kl=float(row.get(kl_column, 0.0)),
+                kl_coef=float(row.get(kl_coef_column, 1.0)),
+                entropy=_maybe_get(row, entropy_candidates, 0.0),
+                reward_mean=_maybe_get(row, reward_candidates, 0.0),
+                reward_std=_maybe_get(row, reward_std_candidates, 0.0),
+            )
+
+        drift_analysis = forensics.get_kl_drift_analysis()
+        if not drift_analysis:
+            raise RuntimeError("KL drift analysis could not be computed from the provided data")
+
+        run_id = Path(run_path).stem
+        metrics_payload = [metric.to_dict() for metric in forensics.comprehensive_metrics_history]
+        card = generate_kl_drift_card(
+            metrics_payload,
+            output_dir=output_dir,
+            run_id=run_id,
+            reference_period=reference_period,
+        )
+
+        typer.echo("\nKL drift analysis summary:")
+        typer.echo(f"  Detected: {drift_analysis['detected']}")
+        typer.echo(f"  Drift score: {drift_analysis['score']:.3f}")
+        typer.echo(f"  Divergence: {drift_analysis['divergence']:.4f}")
+        typer.echo(f"  Trend: {drift_analysis['trend']}")
+
+        png_path = card.get("visualizations", {}).get("timeline")
+        if png_path:
+            typer.echo(f"\nKL drift card saved to: {png_path}")
+            json_path = Path(png_path).with_suffix(".json")
+            if json_path.exists():
+                typer.echo(f"JSON card: {json_path}")
+
+        if drift_analysis["detected"]:
+            typer.echo(
+                "\n⚠️  KL drift detected. Review the card for mitigation recommendations.",
+                err=True,
+            )
+
+    except ValidationError as exc:
+        typer.echo(format_error_message(exc), err=True)
+        raise typer.Exit(1)
+    except Exception as exc:
+        typer.echo(
+            format_structured_error_message(
+                "KL drift analysis failed",
+                run_path,
+                "Successful KL drift analysis",
+                str(exc),
+                "Verify the metrics source contains KL and KL coefficient columns",
+            ),
+            err=True,
         )
         raise typer.Exit(1)
 

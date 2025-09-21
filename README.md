@@ -56,7 +56,10 @@ forensics = ComprehensivePPOForensics(
     kl_target=0.1,
     enable_kl_schedule_tracking=True,
     enable_gradient_norms_analysis=True,
-    enable_advantage_statistics=True
+    enable_advantage_statistics=True,
+    enable_kl_drift_tracking=True,
+    kl_drift_threshold=0.15,
+    kl_drift_window_size=100,
 )
 
 # Update with training data
@@ -77,6 +80,10 @@ metrics = forensics.update(
 analysis = forensics.get_comprehensive_analysis()
 anomalies = forensics.get_anomalies()
 health_summary = forensics.get_health_summary()
+kl_drift = forensics.get_kl_drift_analysis()
+
+if kl_drift.get("detected"):
+    print(f"⚠️  KL drift detected with score {kl_drift['score']:.3f}")
 ```
 
 ### **Determinism Checking & Verification**
@@ -171,6 +178,8 @@ Pair either snippet with the ready-to-run `rules.yaml` in the repository root:
 
 ```bash
 rldk monitor --stream artifacts/run.jsonl --rules rules.yaml --pid <trainer_pid>
+# Dedicated KL drift monitoring preset
+rldk monitor --stream artifacts/run.jsonl --rules kl_drift
 ```
 
 Want the full walkthrough with alerts and auto-stop baked in? Run `make monitor-demo` to launch
@@ -179,7 +188,7 @@ Want the full walkthrough with alerts and auto-stop baked in? Run `make monitor-
 
 Key conveniences:
 
-- **Rule presets** – `ppo_safe`, `ppo_strict`, and `dpo_basic` cover common KL, reward, and gradient gates so you can start without writing YAML.
+- **Rule presets** – `ppo_safe`, `ppo_strict`, `kl_drift`, and `dpo_basic` cover common KL, drift, reward, and gradient gates so you can start without writing YAML.
 - **Field-map presets** – `--preset trl|accelerate|openrlhf` normalizes popular logging key conventions; combine with `--field-map` for custom tweaks.
 - **Directory tailing** – Passing a directory to `--stream` automatically follows the newest `*.jsonl` file and handles rotation.
 - **Environment hook** – Set `RLDK_METRICS_PATH` to auto-tail a metrics file without specifying `--stream`; piping JSONL to stdin also just works.
@@ -294,6 +303,7 @@ rldk track "my_experiment" --interactive
 # Forensics analysis
 rldk forensics env-audit ./my_training_run
 rldk forensics log-scan ./my_training_run
+rldk forensics kl-drift ./my_training_run
 rldk forensics diff-ckpt model_a.pt model_b.pt
 rldk forensics compare-runs run_a run_b
 rldk forensics doctor ./my_training_run

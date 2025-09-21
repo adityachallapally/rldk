@@ -3,11 +3,13 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
+from matplotlib.colors import ListedColormap
 
 from ..diff.diff import first_divergence_events
 from ..io.event_schema import Event
@@ -99,6 +101,168 @@ def generate_drift_card(
     # Generate and save PNG visualization
     png_path = output_path / "drift_card.png"
     _generate_drift_visualization(card_data, png_path)
+
+    return card_data
+
+
+def generate_kl_drift_card(
+    metrics: Sequence[Any],
+    output_dir: Optional[str] = None,
+    run_id: Optional[str] = None,
+    reference_period: int = 500,
+) -> Dict[str, Any]:
+    """Generate a dedicated KL drift analysis card."""
+
+    if metrics is None or len(metrics) == 0:
+        raise ValueError("metrics must contain at least one entry for KL drift analysis")
+
+    normalized_records: List[Dict[str, Any]] = []
+    for entry in metrics:
+        if hasattr(entry, "to_dict"):
+            normalized_records.append(entry.to_dict())
+        elif isinstance(entry, dict):
+            normalized_records.append(dict(entry))
+        else:
+            raise TypeError(
+                "metrics entries must be dictionaries or provide a to_dict() method"
+            )
+
+    df = pd.DataFrame(normalized_records)
+    if df.empty:
+        raise ValueError("metrics data frame is empty; cannot generate KL drift card")
+
+    if "step" not in df.columns:
+        df["step"] = np.arange(len(df))
+
+    kl_column, kl_series = _select_column(
+        df, ["kl", "kl_mean", "kl_schedule_current_kl"]
+    )
+    score_column, score_series = _select_column(
+        df,
+        [
+            "kl_drift_score",
+            "kl_schedule_kl_drift_score",
+        ],
+    )
+    trend_column, trend_series = _select_column(
+        df,
+        [
+            "kl_drift_trend",
+            "kl_schedule_kl_drift_trend",
+        ],
+        default_value="stable",
+    )
+    divergence_column, divergence_series = _select_column(
+        df,
+        [
+            "kl_drift_kl_divergence",
+            "kl_schedule_kl_drift_kl_divergence",
+        ],
+        default_value=0.0,
+    )
+
+    reference_series = kl_series.dropna().astype(float)
+    reference_data = reference_series.iloc[:reference_period]
+    current_data = reference_series.iloc[-min(len(reference_series), reference_period) :]
+
+    latest_score = float(score_series.iloc[-1]) if len(score_series) else 0.0
+    latest_trend = str(trend_series.iloc[-1]) if len(trend_series) else "stable"
+    latest_divergence = (
+        float(divergence_series.iloc[-1]) if len(divergence_series) else 0.0
+    )
+    _, detect_series = _select_column(
+        df,
+        ["kl_drift_detected", "kl_schedule_kl_drift_detected"],
+        default_value=False,
+    )
+    drift_detected = bool(detect_series.iloc[-1]) if len(detect_series) else False
+
+    severity_thresholds = {
+        "low": 0.08,
+        "medium": 0.15,
+        "high": 0.2,
+    }
+
+    anomalies = _detect_kl_drift_anomalies(
+        df["step"].to_numpy(), score_series, severity_thresholds
+    )
+    recommendations = _generate_kl_drift_recommendations(latest_score, latest_trend)
+
+    card_data: Dict[str, Any] = {
+        "version": "1.0",
+        "generated_at": datetime.now().isoformat(),
+        "run_id": run_id or "unknown",
+        "kl_drift": {
+            "latest_score": latest_score,
+            "latest_trend": latest_trend,
+            "latest_divergence": latest_divergence,
+            "detected": drift_detected,
+            "severity_thresholds": severity_thresholds,
+            "anomalies": anomalies,
+            "recommendations": recommendations,
+        },
+        "statistics": {
+            "reference_mean": float(reference_data.mean()) if len(reference_data) else 0.0,
+            "reference_std": float(reference_data.std()) if len(reference_data) > 1 else 0.0,
+            "current_mean": float(current_data.mean()) if len(current_data) else 0.0,
+            "current_std": float(current_data.std()) if len(current_data) > 1 else 0.0,
+        },
+        "timeline": pd.DataFrame(
+            {
+                "step": df["step"],
+                kl_column: kl_series,
+                score_column: score_series,
+            }
+        ).to_dict(orient="records"),
+    }
+
+    output_path = Path(output_dir or f"runs/{card_data['run_id']}/rldk_cards")
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    # Generate visualization
+    fig = plt.figure(figsize=(14, 10))
+    grid = fig.add_gridspec(3, 2)
+    ax_timeline = fig.add_subplot(grid[0, :])
+    ax_hist = fig.add_subplot(grid[1, 0])
+    ax_severity = fig.add_subplot(grid[1, 1])
+    ax_recommendations = fig.add_subplot(grid[2, :])
+
+    plot_kl_drift_timeline(df, score_column, kl_column, ax=ax_timeline)
+    plot_kl_distribution_comparison(reference_data, current_data, ax=ax_hist)
+    plot_kl_drift_severity(df, score_column, ax=ax_severity)
+
+    ax_recommendations.axis("off")
+    recommendations_text = "\n".join(f"• {rec}" for rec in recommendations)
+    ax_recommendations.text(
+        0.01,
+        0.98,
+        "KL Drift Analysis Summary\n\n" + recommendations_text,
+        va="top",
+        fontsize=12,
+        fontweight="bold",
+    )
+
+    fig.suptitle("KL Drift Analysis", fontsize=18, fontweight="bold")
+    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    # Save visualizations in multiple formats for export flexibility
+    png_path = output_path / "kl_drift_card.png"
+    svg_path = output_path / "kl_drift_card.svg"
+    pdf_path = output_path / "kl_drift_card.pdf"
+    fig.savefig(png_path, dpi=200)
+    fig.savefig(svg_path)
+    fig.savefig(pdf_path)
+    plt.close(fig)
+
+    card_data["visualizations"] = {
+        "timeline": str(png_path),
+        "timeline_svg": str(svg_path),
+        "timeline_pdf": str(pdf_path),
+    }
+
+    json_path = output_path / "kl_drift_card.json"
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(card_data, f, indent=2)
 
     return card_data
 
@@ -445,3 +609,204 @@ def _generate_drift_visualization(card_data: Dict[str, Any], output_path: Path) 
     plt.tight_layout()
     plt.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close()
+
+
+def plot_kl_drift_timeline(
+    df: pd.DataFrame,
+    score_column: str,
+    kl_column: str,
+    ax: Optional[Axes] = None,
+    severity_thresholds: Optional[Dict[str, float]] = None,
+) -> Axes:
+    """Plot KL values and drift scores over time."""
+
+    if ax is None:
+        _, ax = plt.subplots(figsize=(10, 4))
+
+    severity_thresholds = severity_thresholds or {"low": 0.08, "medium": 0.15, "high": 0.2}
+
+    steps = df["step"].to_numpy()
+    kl_values = df[kl_column].to_numpy()
+    scores = df[score_column].fillna(0.0).to_numpy()
+
+    ax.plot(steps, kl_values, label="KL", color="#1f77b4")
+    ax.set_ylabel("KL Divergence", color="#1f77b4")
+    ax.tick_params(axis="y", labelcolor="#1f77b4")
+
+    ax_score = ax.twinx()
+    ax_score.plot(steps, scores, label="Drift Score", color="#d62728", linestyle="--")
+    ax_score.set_ylabel("Drift Score", color="#d62728")
+    ax_score.set_ylim(0, max(1.0, scores.max() * 1.1))
+
+    for label, threshold in severity_thresholds.items():
+        if label == "low":
+            color = "#8bc34a"
+        elif label == "medium":
+            color = "#ffeb3b"
+        else:
+            color = "#ff5722"
+        ax_score.axhline(
+            threshold,
+            color=color,
+            linestyle=":" if label == "medium" else "-.",
+            linewidth=1.0,
+            alpha=0.7,
+        )
+
+    ax.set_title("KL Drift Timeline")
+    ax.set_xlabel("Step")
+    ax.legend(loc="upper left")
+    ax_score.legend(loc="upper right")
+
+    return ax
+
+
+def plot_kl_distribution_comparison(
+    reference_values: Sequence[float],
+    current_values: Sequence[float],
+    ax: Optional[Axes] = None,
+    bins: int = 30,
+) -> Axes:
+    """Plot histograms comparing reference and current KL distributions."""
+
+    if ax is None:
+        _, ax = plt.subplots(figsize=(6, 4))
+
+    reference_values = np.asarray(list(reference_values), dtype=float)
+    current_values = np.asarray(list(current_values), dtype=float)
+
+    if reference_values.size == 0 and current_values.size == 0:
+        ax.text(0.5, 0.5, "Insufficient data", ha="center", va="center")
+        return ax
+
+    ax.hist(
+        reference_values,
+        bins=bins,
+        alpha=0.6,
+        color="#4caf50",
+        label="Reference",
+        density=True,
+    )
+    ax.hist(
+        current_values,
+        bins=bins,
+        alpha=0.6,
+        color="#f44336",
+        label="Current",
+        density=True,
+    )
+
+    ax.set_title("KL Distribution Comparison")
+    ax.set_xlabel("KL Value")
+    ax.set_ylabel("Density")
+    ax.legend()
+
+    return ax
+
+
+def plot_kl_drift_severity(
+    df: pd.DataFrame,
+    score_column: str,
+    ax: Optional[Axes] = None,
+) -> Axes:
+    """Visualize drift severity over time using a heatmap."""
+
+    if ax is None:
+        _, ax = plt.subplots(figsize=(6, 4))
+
+    scores = df[score_column].fillna(0.0).to_numpy()
+    severity_matrix = scores[np.newaxis, :]
+    cmap = ListedColormap(["#4caf50", "#ffeb3b", "#ff9800", "#f44336"])
+
+    normalized_scores = np.clip(severity_matrix, 0.0, 1.0)
+    im = ax.imshow(normalized_scores, aspect="auto", cmap=cmap, vmin=0.0, vmax=1.0)
+
+    ax.set_title("KL Drift Severity Heatmap")
+    ax.set_xlabel("Step Index")
+    ax.set_yticks([])
+
+    cbar = plt.colorbar(im, ax=ax, orientation="vertical", fraction=0.046, pad=0.04)
+    cbar.set_label("Severity")
+
+    return ax
+
+
+def _select_column(
+    df: pd.DataFrame,
+    candidates: Sequence[str],
+    default_value: Optional[Any] = None,
+) -> tuple[str, pd.Series]:
+    """Resolve a candidate column without mutating ``df``.
+
+    Returns the name of the selected column alongside a Series containing the
+    values. When no candidate exists and ``default_value`` is provided, a new
+    Series filled with the default is returned without altering ``df``.
+    """
+
+    for candidate in candidates:
+        if candidate in df.columns:
+            return candidate, df[candidate]
+
+    if default_value is not None:
+        column_name = candidates[0]
+        default_series = pd.Series(default_value, index=df.index)
+        return column_name, default_series
+
+    raise KeyError(
+        f"None of the candidate columns {candidates} were found in the provided dataframe"
+    )
+
+
+def _detect_kl_drift_anomalies(
+    steps: np.ndarray,
+    scores: pd.Series,
+    thresholds: Dict[str, float],
+) -> List[Dict[str, Any]]:
+    """Detect drift anomalies based on drift score thresholds."""
+
+    anomalies: List[Dict[str, Any]] = []
+    step_values = np.asarray(steps)
+    score_values = scores.fillna(0.0).to_numpy()
+
+    for idx, score in enumerate(score_values):
+        if score > thresholds["high"]:
+            severity = "critical"
+        elif score > thresholds["medium"]:
+            severity = "warning"
+        elif score > thresholds["low"]:
+            severity = "notice"
+        else:
+            continue
+
+        anomalies.append(
+            {
+                "step": int(step_values[idx]),
+                "score": float(score),
+                "severity": severity,
+            }
+        )
+
+    return anomalies
+
+
+def _generate_kl_drift_recommendations(score: float, trend: str) -> List[str]:
+    """Generate recommendations based on drift severity and trend."""
+
+    recommendations = []
+
+    if score < 0.08:
+        recommendations.append("KL drift within safe bounds; continue monitoring")
+    elif score < 0.15:
+        recommendations.append("Monitor KL closely and prepare to adjust KL target or coefficients")
+    else:
+        recommendations.append("Investigate recent policy updates affecting KL divergence")
+        recommendations.append("Consider tightening KL controller parameters or reducing learning rate")
+
+    if trend == "increasing":
+        recommendations.append("Drift trend increasing – schedule immediate review of training dynamics")
+    elif trend == "decreasing":
+        recommendations.append("Drift severity decreasing – maintain mitigations and observe")
+    else:
+        recommendations.append("Drift trend stable – keep current monitoring cadence")
+
+    return recommendations
