@@ -34,20 +34,25 @@ def raise_on_failure(health_path: str) -> None:
     if not health_file.exists():
         print(f"Error: Health file not found at {health_path}", file=sys.stderr)
         sys.exit(1)
+        return  # For test mocking scenarios
 
+    health_data: Dict[str, Any] = {}
     try:
         with open(health_file) as f:
-            health_data: Dict[str, Any] = json.load(f)
+            health_data = json.load(f)
     except json.JSONDecodeError as e:
         print(f"Error: Invalid JSON in health file: {e}", file=sys.stderr)
         sys.exit(1)
+        return  # For test mocking scenarios
     except Exception as e:
         print(f"Error: Failed to read health file: {e}", file=sys.stderr)
         sys.exit(1)
+        return  # For test mocking scenarios
 
     if 'passed' not in health_data:
         print("Error: 'passed' field missing from health data", file=sys.stderr)
         sys.exit(1)
+        return  # For test mocking scenarios
 
     passed = health_data['passed']
     exit_code = get_exit_code(passed)
