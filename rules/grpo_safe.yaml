@@ -1,0 +1,69 @@
+rules:
+  - id: grpo_safe_kl_spike
+    where: name in ("kl", "kl_mean", "policy_kl", "grpo/kl_mean")
+    condition: value > 0.30
+    window:
+      size: 2
+      kind: consecutive
+    grace_steps: 12
+    cooldown_steps: 12
+    actions:
+      - warn:
+          msg: "GRPO KL spike {value:.3f} at step {step}"
+      - stop:
+          msg: "Halting due to GRPO KL {value:.3f}"
+  - id: grpo_safe_kl_coef_stall
+    where: name in ("kl_coef", "kl_coeff", "kl_coefficient", "beta")
+    condition: max(value) - min(value) < 0.003
+    window:
+      size: 20
+      kind: rolling
+    grace_steps: 25
+    cooldown_steps: 30
+    actions:
+      - warn:
+          msg: "KL coefficient stalled near {value:.4f}"
+  - id: grpo_safe_advantage_collapse
+    where: name in ("advantage_std", "adv_std", "advantage_stddev")
+    condition: mean(value) < 0.35
+    window:
+      size: 8
+      kind: rolling
+    grace_steps: 12
+    cooldown_steps: 18
+    actions:
+      - warn:
+          msg: "Advantage variance collapsing: std {value:.3f}"
+  - id: grpo_safe_acceptance_swings
+    where: name in ("acceptance_rate", "accept_rate", "acceptance")
+    condition: max(value) - min(value) > 0.4
+    window:
+      size: 12
+      kind: rolling
+    grace_steps: 12
+    cooldown_steps: 20
+    actions:
+      - warn:
+          msg: "Acceptance rate swing detected (latest {value:.2f})"
+  - id: grpo_safe_entropy_floor
+    where: name in ("entropy", "entropy_mean", "policy_entropy")
+    condition: mean(value) < 1.8
+    window:
+      size: 10
+      kind: rolling
+    grace_steps: 15
+    cooldown_steps: 20
+    actions:
+      - warn:
+          msg: "Entropy below floor: {value:.3f}"
+  - id: grpo_safe_reward_saturation
+    where: name in ("reward_mean", "reward", "group_reward_mean")
+    condition: max(value) - min(value) < 0.05
+    window:
+      size: 30
+      kind: rolling
+    grace_steps: 30
+    cooldown_steps: 30
+    actions:
+      - warn:
+          msg: "Reward trend saturated around {value:.3f}"
