@@ -45,14 +45,14 @@ class HealthAnalysisResult:
         }
 
         metrics_value = self.report.length_bias_metrics
+        metrics_dict: Dict[str, Any] = {}
         if isinstance(metrics_value, LengthBiasMetrics):
-            report_dict["length_bias_metrics"] = metrics_value.to_dict()
-        elif hasattr(metrics_value, "to_dict"):
-            report_dict["length_bias_metrics"] = metrics_value.to_dict()
+            metrics_dict = metrics_value.to_dict()
         elif isinstance(metrics_value, dict):
-            report_dict["length_bias_metrics"] = metrics_value
-        else:
-            report_dict["length_bias_metrics"] = {}
+            metrics_dict = metrics_value
+        elif metrics_value is not None and hasattr(metrics_value, "to_dict"):
+            metrics_dict = metrics_value.to_dict()  # type: ignore[assignment]
+        report_dict["length_bias_metrics"] = metrics_dict
 
         if (
             self.report.drift_metrics is not None

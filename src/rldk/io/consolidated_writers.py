@@ -1,7 +1,7 @@
 """Consolidated writers for all report types and data formats."""
 
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,13 +12,17 @@ from .unified_writer import UnifiedWriter
 from ..reward.length_bias import LengthBiasMetrics
 
 
-def _length_bias_metrics_to_dict(metrics: LengthBiasMetrics) -> Dict[str, Any]:
+def _length_bias_metrics_to_dict(
+    metrics: Optional[LengthBiasMetrics],
+) -> Dict[str, Any]:
+    if metrics is None:
+        return {}
     if isinstance(metrics, LengthBiasMetrics):
-        return metrics.to_dict()
-    if hasattr(metrics, "to_dict"):
         return metrics.to_dict()
     if isinstance(metrics, dict):
         return metrics
+    if hasattr(metrics, "to_dict"):
+        return metrics.to_dict()
     return {}
 
 
@@ -161,7 +165,14 @@ def _generate_reward_health_card_md(report) -> str:
     lines.append(f"- **Calibration Score:** {report.calibration_score:.3f}\n")
     lines.append(f"- **Shortcut Signals:** {len(report.shortcut_signals)}\n")
     lines.append(f"- **Label Leakage Risk:** {report.label_leakage_risk:.3f}\n")
-    severity = report.length_bias_metrics.bias_severity
+    metrics = report.length_bias_metrics
+    severity: Optional[float] = None
+    if isinstance(metrics, LengthBiasMetrics):
+        severity = metrics.bias_severity
+    elif isinstance(metrics, dict):
+        severity = metrics.get("bias_severity")
+    elif metrics is not None and hasattr(metrics, "bias_severity"):
+        severity = getattr(metrics, "bias_severity")
     severity_str = f"{severity:.3f}" if severity is not None else "N/A"
     lines.append(
         f"- **Length Bias Detected:** {'Yes' if report.length_bias_detected else 'No'}\n"

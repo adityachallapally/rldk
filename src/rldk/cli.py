@@ -2739,9 +2739,12 @@ def reward_health(
         try:
             run_data = normalize_training_metrics_source(run_path, field_map=mapping_dict)
         except TypeError as exc:
-            if "arg must be a list" not in str(exc) or not Path(run_path).is_dir():
+            if not Path(run_path).is_dir():
                 raise
-            run_data = _fallback_directory_load(Path(run_path), mapping_dict)
+            try:
+                run_data = _fallback_directory_load(Path(run_path), mapping_dict)
+            except Exception as load_exc:
+                raise exc from load_exc
 
         if run_data.empty:
             raise ValidationError(
@@ -2761,9 +2764,14 @@ def reward_health(
                     reference_path, field_map=mapping_dict
                 )
             except TypeError as exc:
-                if "arg must be a list" not in str(exc) or not Path(reference_path).is_dir():
+                if not Path(reference_path).is_dir():
                     raise
-                reference_data = _fallback_directory_load(Path(reference_path), mapping_dict)
+                try:
+                    reference_data = _fallback_directory_load(
+                        Path(reference_path), mapping_dict
+                    )
+                except Exception as load_exc:
+                    raise exc from load_exc
             if reference_data.empty:
                 raise ValidationError(
                     "Normalized reference data is empty",

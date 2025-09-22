@@ -337,6 +337,28 @@ def _prepare_length_bias_inputs(
             lengths = converted
             break
 
+    if responses is not None and len(responses) == 0:
+        responses = None
+
+    if lengths is not None and len(lengths) == 0:
+        lengths = None
+
+    if responses is not None and lengths is None:
+        inferred_lengths: List[Optional[float]] = []
+        has_valid_length = False
+        for value in responses:
+            if value is None:
+                inferred_lengths.append(None)
+                continue
+            try:
+                length_value = float(len(str(value)))
+            except Exception:
+                inferred_lengths.append(None)
+                continue
+            inferred_lengths.append(length_value)
+            has_valid_length = True
+        lengths = inferred_lengths if has_valid_length else None
+
     if responses is None and lengths is not None:
         # Ensure the detector receives a placeholder iterable with the correct length.
         responses = [""] * len(lengths)
@@ -347,9 +369,12 @@ def _prepare_length_bias_inputs(
                 "Response and length columns must have matching sample counts"
             )
 
-    if responses is not None and len(responses) == 0:
+        if all(length is None for length in lengths):
+            lengths = None
+
+    if (responses is None) != (lengths is None):
+        # If lengths could not be inferred, skip detection to avoid mismatched inputs.
         responses = None
-    if lengths is not None and len(lengths) == 0:
         lengths = None
 
     return responses, lengths
