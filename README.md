@@ -311,6 +311,7 @@ rldk forensics doctor ./my_training_run
 # Reward analysis
 rldk reward reward-drift model_a model_b --prompts prompts.jsonl
 rldk reward reward-health run --scores scores.jsonl --out ./reports
+rldk reward length-bias --run-path run.jsonl --response-col response_text --reward-col reward_mean --output-dir ./reports
 
 # Evaluation
 rldk evals evaluate data.jsonl --suite comprehensive --output results.json
