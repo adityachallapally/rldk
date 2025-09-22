@@ -6,7 +6,11 @@ import pytest
 
 from rldk.reward.calibration import analyze_calibration
 from rldk.reward.drift import detect_reward_drift
-from rldk.reward.health_analysis import RewardHealthReport, health
+from rldk.reward.health_analysis import (
+    OveroptimizationAnalysis,
+    RewardHealthReport,
+    health,
+)
 from rldk.reward.length_bias import LengthBiasMetrics
 
 
@@ -331,6 +335,7 @@ class TestRewardHealthReport:
             length_bias_detected=False,
             length_bias_metrics=LengthBiasMetrics(),
             length_bias_recommendations=[],
+            overoptimization=OveroptimizationAnalysis(),
         )
 
         assert report.passed is True
@@ -358,6 +363,7 @@ class TestRewardHealthReport:
             length_bias_detected=True,
             length_bias_metrics=LengthBiasMetrics(bias_severity=0.8),
             length_bias_recommendations=["Audit prompts for response length bias."],
+            overoptimization=OveroptimizationAnalysis(flagged=True),
         )
 
         assert report.passed is False

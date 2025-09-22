@@ -51,6 +51,7 @@ def test_reward_health_cli_normalizes_jsonl(tmp_path: Path, runner: CliRunner) -
 
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     assert "calibration_score" in summary
+    assert "overoptimization" in summary
 
 
 def test_reward_health_cli_missing_reward(tmp_path: Path, runner: CliRunner) -> None:

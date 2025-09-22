@@ -6,7 +6,11 @@ from typing import Any, Dict, Optional, Union
 import numpy as np
 import pandas as pd
 
-from ..reward.health_analysis import RewardHealthReport
+try:
+    from ..reward.health_analysis import OveroptimizationAnalysis, RewardHealthReport
+except ImportError:  # pragma: no cover - avoid circular import during module init
+    OveroptimizationAnalysis = None  # type: ignore[assignment]
+    RewardHealthReport = Any  # type: ignore[assignment]
 from ..reward.length_bias import LengthBiasMetrics
 from .unified_writer import UnifiedWriter
 
@@ -110,6 +114,24 @@ def write_reward_health_card(report: RewardHealthReport, output_dir: Path) -> No
         )
         f.write(f"- **Length Bias Severity:** {severity_str}\n\n")
 
+        overopt = getattr(report, "overoptimization", None)
+        if OveroptimizationAnalysis and isinstance(overopt, OveroptimizationAnalysis):
+            if overopt.warning:
+                f.write(f"- **Overoptimization Check:** ⚠️ {overopt.warning}\n\n")
+            else:
+                overopt_status = "Yes" if overopt.flagged else "No"
+                f.write(
+                    f"- **Overoptimization Flagged:** {overopt_status}\n"
+                )
+                if overopt.gold_metrics_available:
+                    f.write(
+                        f"- **Proxy vs Gold Δ:** {overopt.delta:.3f}\n\n"
+                    )
+                else:
+                    f.write("- **Proxy vs Gold Δ:** N/A (no gold metrics)\n\n")
+        else:
+            f.write("- **Overoptimization Check:** Not evaluated\n\n")
+
         # Detailed analysis sections
         if report.drift_detected:
             f.write("## 🔄 Reward Drift Analysis\n\n")
@@ -181,10 +203,10 @@ def write_reward_health_card(report: RewardHealthReport, output_dir: Path) -> No
             for signal in report.shortcut_signals:
                 f.write(f"- {signal}\n")
 
-            if report.shortcut_analysis:
-                f.write("\n### Shortcut Analysis\n\n")
-                for metric, correlation in report.shortcut_analysis.items():
-                    f.write(f"- **{metric}:** {correlation:.3f}\n")
+        if report.shortcut_analysis:
+            f.write("\n### Shortcut Analysis\n\n")
+            for metric, correlation in report.shortcut_analysis.items():
+                f.write(f"- **{metric}:** {correlation:.3f}\n")
 
         if report.label_leakage_risk > 0.3:
             f.write("## 🔒 Label Leakage Analysis\n\n")
@@ -193,6 +215,61 @@ def write_reward_health_card(report: RewardHealthReport, output_dir: Path) -> No
             f.write(
                 "The reward model may have access to training signals it shouldn't see.\n"
             )
+
+        if OveroptimizationAnalysis and isinstance(overopt, OveroptimizationAnalysis):
+            f.write("## 📉 Reward Overoptimization Watch\n\n")
+            if overopt.warning:
+                f.write(f"**Status:** ⚠️ {overopt.warning}\n\n")
+            else:
+                status_line = (
+                    "**Status:** 🚨 Potential overoptimization detected\n\n"
+                    if overopt.flagged
+                    else "**Status:** ✅ No overoptimization warning\n\n"
+                )
+                f.write(status_line)
+                if overopt.gold_metrics_available:
+                    f.write(
+                        f"- **Proxy Improvement:** {overopt.proxy_improvement:.3f}\n"
+                    )
+                    f.write(
+                        f"- **Gold Improvement:** {overopt.gold_improvement:.3f}\n"
+                    )
+                    f.write(f"- **Delta:** {overopt.delta:.3f}\n")
+                if overopt.correlation_trend:
+                    pearson = overopt.correlation_trend.get("pearson_delta")
+                    spearman = overopt.correlation_trend.get("spearman_delta")
+                    if pearson is not None or spearman is not None:
+                        f.write("- **Correlation Trend:**\n")
+                        if pearson is not None:
+                            f.write(
+                                f"  - Pearson Δ: {pearson:.3f}\n"
+                            )
+                        if spearman is not None:
+                            f.write(
+                                f"  - Spearman Δ: {spearman:.3f}\n"
+                            )
+                if overopt.kl_summary:
+                    kl_current = overopt.kl_summary.get("kl_current_mean")
+                    kl_target = overopt.kl_summary.get("kl_target")
+                    if kl_current is not None:
+                        f.write(
+                            f"- **Recent KL Mean:** {float(kl_current):.3f}\n"
+                        )
+                    if kl_target is not None:
+                        f.write(f"- **KL Target:** {float(kl_target):.3f}\n")
+                f.write(
+                    f"- **Detector Window:** {overopt.window_size} steps\n"
+                )
+                f.write(
+                    f"- **Delta Threshold:** {overopt.delta_threshold:.3f}\n"
+                )
+                f.write(
+                    f"- **Samples Evaluated:** {overopt.sample_size}\n"
+                )
+                if overopt.notes:
+                    f.write("\n### Notes\n\n")
+                    for note in overopt.notes:
+                        f.write(f"- {note}\n")
 
         length_metrics_dict = _length_bias_metrics_to_dict(report.length_bias_metrics)
         if report.length_bias_detected or length_metrics_dict or report.length_bias_recommendations:
@@ -294,6 +371,14 @@ def write_reward_health_summary(report: RewardHealthReport, output_dir: Path) ->
             report.length_bias_metrics
         ),
     }
+
+    overopt = getattr(report, "overoptimization", None)
+    if OveroptimizationAnalysis and isinstance(overopt, OveroptimizationAnalysis):
+        summary["overoptimization"] = overopt.to_dict()
+    elif hasattr(overopt, "to_dict"):
+        summary["overoptimization"] = overopt.to_dict()
+    else:
+        summary["overoptimization"] = {}
 
     # Add drift summary if available
     if report.drift_metrics is not None and not report.drift_metrics.empty:

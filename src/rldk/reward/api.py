@@ -10,7 +10,7 @@ import pandas as pd
 
 from ..ingest.training_metrics_normalizer import normalize_training_metrics
 from ..utils.error_handling import ValidationError
-from .health_analysis import RewardHealthReport, health
+from .health_analysis import OveroptimizationAnalysis, RewardHealthReport, health
 from .length_bias import LengthBiasMetrics
 
 TrainingMetricsInput = Union[pd.DataFrame, Sequence[Mapping[str, Any]], str, Path]
@@ -63,6 +63,14 @@ class HealthAnalysisResult:
         else:
             report_dict["drift_metrics"] = []
 
+        overopt = getattr(self.report, "overoptimization", None)
+        if isinstance(overopt, OveroptimizationAnalysis):
+            report_dict["overoptimization"] = overopt.to_dict()
+        elif hasattr(overopt, "to_dict"):
+            report_dict["overoptimization"] = overopt.to_dict()
+        else:
+            report_dict["overoptimization"] = {}
+
         return {
             "report": report_dict,
             "metrics": self.metrics.to_dict(orient="records"),
@@ -108,6 +116,11 @@ def reward_health(
     length_col: Optional[str] = None,
     threshold_length_bias: float = 0.4,
     enable_length_bias_detection: bool = True,
+    gold_metrics: Optional[TrainingMetricsInput] = None,
+    gold_metric_col: Optional[str] = None,
+    overoptimization_window: int = 100,
+    overoptimization_delta_threshold: float = 0.2,
+    overoptimization_min_samples: int = 100,
 ) -> HealthAnalysisResult:
     """Run reward health analysis with flexible input formats."""
 
@@ -135,6 +148,10 @@ def reward_health(
         _ensure_column_present(reference_metrics, step_col, "step")
         _ensure_column_present(reference_metrics, reward_col, "reward")
 
+    gold_metrics_df: Optional[pd.DataFrame] = None
+    if gold_metrics is not None:
+        gold_metrics_df = normalize_training_metrics(gold_metrics, field_map=field_map)
+
     report = health(
         run_data=run_metrics,
         reference_data=reference_metrics,
@@ -149,6 +166,11 @@ def reward_health(
         length_col=length_col,
         threshold_length_bias=threshold_length_bias,
         enable_length_bias_detection=enable_length_bias_detection,
+        gold_metrics=gold_metrics_df,
+        gold_metric_col=gold_metric_col,
+        overoptimization_window=overoptimization_window,
+        overoptimization_delta_threshold=overoptimization_delta_threshold,
+        overoptimization_min_samples=overoptimization_min_samples,
     )
 
     return HealthAnalysisResult(report=report, metrics=run_metrics, reference_metrics=reference_metrics)

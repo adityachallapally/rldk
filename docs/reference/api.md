@@ -328,6 +328,11 @@ The object returned by `reward_health` combines the underlying
   - `length_bias_detected`: Boolean flag indicating severity crossed the configured threshold
   - `length_bias_metrics`: Structured metrics (correlations, ODIN heuristics, quartiles)
   - `length_bias_recommendations`: Human-readable remediation tips from the detector
+- Overoptimization fields:
+  - `overoptimization.flagged`: True when proxy reward rises while gold metrics stagnate and KL is elevated
+  - `overoptimization.delta`: Difference between proxy and gold improvements across early/late windows
+  - `overoptimization.correlation_trend`: Pearson/Spearman deltas to monitor alignment drift
+  - `overoptimization.kl_summary`: Recent KL statistics pulled from PPO forensics hooks
 
 ### Evaluation Suites
 
@@ -583,6 +588,30 @@ class RewardHealthReport:
     length_bias_detected: bool
     length_bias_metrics: LengthBiasMetrics
     length_bias_recommendations: List[str]
+    overoptimization: OveroptimizationAnalysis
+```
+
+#### `OveroptimizationAnalysis`
+```python
+@dataclass
+class OveroptimizationAnalysis:
+    proxy_improvement: float
+    gold_improvement: float
+    delta: float
+    correlation_trend: Dict[str, Optional[float]]
+    kl_summary: Dict[str, Any]
+    flagged: bool
+    gold_metrics_available: bool
+    gold_regressed: bool
+    gold_stagnant: bool
+    kl_elevated: bool
+    correlation_declined: bool
+    warning: Optional[str]
+    notes: List[str]
+    window_size: int
+    delta_threshold: float
+    min_samples: int
+    sample_size: int
 ```
 
 #### `DivergenceReport`

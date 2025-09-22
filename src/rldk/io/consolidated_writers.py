@@ -11,6 +11,12 @@ from .consolidated_schemas import Event, MetricsSchema
 from .unified_writer import UnifiedWriter
 from ..reward.length_bias import LengthBiasMetrics
 
+try:
+    from ..reward.health_analysis import OveroptimizationAnalysis, RewardHealthReport
+except ImportError:  # pragma: no cover - avoid circular import during module init
+    OveroptimizationAnalysis = None  # type: ignore[assignment]
+    RewardHealthReport = Any  # type: ignore[assignment]
+
 
 def _length_bias_metrics_to_dict(
     metrics: Optional[LengthBiasMetrics],
@@ -179,6 +185,21 @@ def _generate_reward_health_card_md(report) -> str:
     )
     lines.append(f"- **Length Bias Severity:** {severity_str}\n")
 
+    overopt = getattr(report, "overoptimization", None)
+    if OveroptimizationAnalysis and isinstance(overopt, OveroptimizationAnalysis):
+        if overopt.warning:
+            lines.append(f"- **Overoptimization Check:** ⚠️ {overopt.warning}\n\n")
+        else:
+            lines.append(
+                f"- **Overoptimization Flagged:** {'Yes' if overopt.flagged else 'No'}\n"
+            )
+            if overopt.gold_metrics_available:
+                lines.append(f"- **Proxy vs Gold Δ:** {overopt.delta:.3f}\n\n")
+            else:
+                lines.append("- **Proxy vs Gold Δ:** N/A (no gold metrics)\n\n")
+    else:
+        lines.append("- **Overoptimization Check:** Not evaluated\n\n")
+
     # Detailed analysis sections
     if report.drift_detected:
         lines.append("## 🔄 Reward Drift Analysis\n")
@@ -262,6 +283,49 @@ def _generate_reward_health_card_md(report) -> str:
         lines.append(
             "The reward model may have access to training signals it shouldn't see.\n"
         )
+
+    if OveroptimizationAnalysis and isinstance(overopt, OveroptimizationAnalysis):
+        lines.append("## 📉 Reward Overoptimization Watch\n")
+        if overopt.warning:
+            lines.append(f"**Status:** ⚠️ {overopt.warning}\n\n")
+        else:
+            status_line = (
+                "**Status:** 🚨 Potential overoptimization detected\n\n"
+                if overopt.flagged
+                else "**Status:** ✅ No overoptimization warning\n\n"
+            )
+            lines.append(status_line)
+            if overopt.gold_metrics_available:
+                lines.append(
+                    f"- **Proxy Improvement:** {overopt.proxy_improvement:.3f}\n"
+                )
+                lines.append(
+                    f"- **Gold Improvement:** {overopt.gold_improvement:.3f}\n"
+                )
+                lines.append(f"- **Delta:** {overopt.delta:.3f}\n")
+            if overopt.correlation_trend:
+                pearson = overopt.correlation_trend.get("pearson_delta")
+                spearman = overopt.correlation_trend.get("spearman_delta")
+                if pearson is not None or spearman is not None:
+                    lines.append("- **Correlation Trend:**\n")
+                    if pearson is not None:
+                        lines.append(f"  - Pearson Δ: {pearson:.3f}\n")
+                    if spearman is not None:
+                        lines.append(f"  - Spearman Δ: {spearman:.3f}\n")
+            if overopt.kl_summary:
+                kl_current = overopt.kl_summary.get("kl_current_mean")
+                kl_target = overopt.kl_summary.get("kl_target")
+                if kl_current is not None:
+                    lines.append(f"- **Recent KL Mean:** {float(kl_current):.3f}\n")
+                if kl_target is not None:
+                    lines.append(f"- **KL Target:** {float(kl_target):.3f}\n")
+            lines.append(f"- **Detector Window:** {overopt.window_size} steps\n")
+            lines.append(f"- **Delta Threshold:** {overopt.delta_threshold:.3f}\n")
+            lines.append(f"- **Samples Evaluated:** {overopt.sample_size}\n")
+            if overopt.notes:
+                lines.append("\n### Notes\n")
+                for note in overopt.notes:
+                    lines.append(f"- {note}\n")
 
     length_metrics_dict = _length_bias_metrics_to_dict(report.length_bias_metrics)
     if report.length_bias_detected or length_metrics_dict or report.length_bias_recommendations:
@@ -356,6 +420,14 @@ def write_reward_health_summary(report, output_dir: Path) -> None:
             report.length_bias_metrics
         ),
     }
+
+    overopt = getattr(report, "overoptimization", None)
+    if OveroptimizationAnalysis and isinstance(overopt, OveroptimizationAnalysis):
+        summary["overoptimization"] = overopt.to_dict()
+    elif hasattr(overopt, "to_dict"):
+        summary["overoptimization"] = overopt.to_dict()
+    else:
+        summary["overoptimization"] = {}
 
     # Add drift summary if available
     if report.drift_metrics is not None and not report.drift_metrics.empty:

@@ -21,6 +21,7 @@ def _lazy_import_bisect():
 def _lazy_import_reward():
     from .reward import (
         HealthAnalysisResult,
+        OveroptimizationAnalysis,
         RewardHealthReport,
         LengthBiasDetector,
         LengthBiasMetrics,
@@ -37,6 +38,7 @@ def _lazy_import_reward():
         HealthAnalysisResult,
         LengthBiasDetector,
         LengthBiasMetrics,
+        OveroptimizationAnalysis,
     )
 
 def _lazy_import_evals():
@@ -143,12 +145,12 @@ def health(*args, **kwargs):
     return health_func(*args, **kwargs)
 
 def compare_models(*args, **kwargs):
-    _, _, compare_models_func, _, _, _, _ = _lazy_import_reward()
+    _, _, compare_models_func, *_ = _lazy_import_reward()
     return compare_models_func(*args, **kwargs)
 
 
 def reward_health(*args, **kwargs):
-    _, _, _, reward_health_func, _, _, _ = _lazy_import_reward()
+    _, _, _, reward_health_func, *_ = _lazy_import_reward()
     return reward_health_func(*args, **kwargs)
 
 def run(*args, **kwargs):
@@ -300,6 +302,7 @@ RewardHealthReport = _create_lazy_class('RewardHealthReport', _lazy_import_rewar
 HealthAnalysisResult = _create_lazy_class('HealthAnalysisResult', _lazy_import_reward, 4)
 LengthBiasDetector = _create_lazy_class('LengthBiasDetector', _lazy_import_reward, 5)
 LengthBiasMetrics = _create_lazy_class('LengthBiasMetrics', _lazy_import_reward, 6)
+OveroptimizationAnalysis = _create_lazy_class('OveroptimizationAnalysis', _lazy_import_reward, 7)
 EvalResult = _create_lazy_class('EvalResult', _lazy_import_evals, 1)
 ReplayReport = _create_lazy_class('ReplayReport', _lazy_import_replay, 1)
 ComprehensivePPOForensics = _create_lazy_class('ComprehensivePPOForensics', _lazy_import_forensics, 3)
@@ -335,6 +338,7 @@ __all__ = [
     "health",
     "reward_health",
     "RewardHealthReport",
+    "OveroptimizationAnalysis",
     "HealthAnalysisResult",
     "LengthBiasDetector",
     "LengthBiasMetrics",
