@@ -9,6 +9,7 @@ import pandas as pd
 from ..adapters import (
     CustomJSONLAdapter,
     FlexibleDataAdapter,
+    GRPOAdapter,
     OpenRLHFAdapter,
     TRLAdapter,
     WandBAdapter,
@@ -39,7 +40,7 @@ def ingest_runs(
 
     Args:
         source: Path to logs directory, file, or wandb:// URI
-        adapter_hint: Optional hint for adapter type ('trl', 'openrlhf', 'wandb', 'custom_jsonl', 'flexible')
+        adapter_hint: Optional hint for adapter type ('trl', 'openrlhf', 'wandb', 'custom_jsonl', 'grpo', 'flexible')
         field_map: Optional explicit mapping from canonical to actual field names
         config_file: Optional path to YAML/JSON config file with field mapping
         validation_mode: Validation strictness - 'strict', 'flexible', or 'lenient'
@@ -98,7 +99,7 @@ def ingest_runs(
             ) from e
 
     # Validate adapter type
-    valid_adapters = ["trl", "openrlhf", "wandb", "custom_jsonl", "flexible"]
+    valid_adapters = ["trl", "openrlhf", "wandb", "custom_jsonl", "grpo", "flexible"]
     if adapter_hint not in valid_adapters:
         raise ValidationError(
             f"Invalid adapter type: {adapter_hint}",
@@ -116,6 +117,8 @@ def ingest_runs(
             adapter = WandBAdapter(source)
         elif adapter_hint == "custom_jsonl":
             adapter = CustomJSONLAdapter(source)
+        elif adapter_hint == "grpo":
+            adapter = GRPOAdapter(source)
         elif adapter_hint == "flexible":
             adapter = FlexibleDataAdapter(
                 source,
@@ -206,7 +209,7 @@ def ingest_runs_to_events(
 
     Args:
         source: Path to logs directory, file, or wandb:// URI
-        adapter_hint: Optional hint for adapter type ('trl', 'openrlhf', 'wandb', 'custom_jsonl', 'flexible')
+        adapter_hint: Optional hint for adapter type ('trl', 'openrlhf', 'wandb', 'custom_jsonl', 'grpo', 'flexible')
         field_map: Optional explicit mapping from canonical to actual field names
         config_file: Optional path to YAML/JSON config file with field mapping
         validation_mode: Validation strictness - 'strict', 'flexible', or 'lenient'
@@ -264,6 +267,11 @@ def _detect_adapter_type(source: Union[str, Path]) -> str:
     openrlhf_adapter = OpenRLHFAdapter(source_path)
     if openrlhf_adapter.can_handle():
         return "openrlhf"
+
+    # Check for GRPO-specific patterns before falling back to flexible adapter
+    grpo_adapter = GRPOAdapter(source_path)
+    if grpo_adapter.can_handle():
+        return "grpo"
 
     # Default to flexible adapter for better field resolution
     return "flexible"
