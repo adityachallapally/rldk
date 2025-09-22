@@ -9,6 +9,7 @@ import pandas as pd
 from ..adapters import (
     CustomJSONLAdapter,
     FlexibleDataAdapter,
+    GRPOAdapter,
     OpenRLHFAdapter,
     TRLAdapter,
     WandBAdapter,
@@ -39,7 +40,7 @@ def ingest_runs(
 
     Args:
         source: Path to logs directory, file, or wandb:// URI
-        adapter_hint: Optional hint for adapter type ('trl', 'openrlhf', 'wandb', 'custom_jsonl', 'flexible')
+        adapter_hint: Optional hint for adapter type ('trl', 'openrlhf', 'wandb', 'custom_jsonl', 'grpo', 'flexible')
         field_map: Optional explicit mapping from canonical to actual field names
         config_file: Optional path to YAML/JSON config file with field mapping
         validation_mode: Validation strictness - 'strict', 'flexible', or 'lenient'
@@ -98,7 +99,7 @@ def ingest_runs(
             ) from e
 
     # Validate adapter type
-    valid_adapters = ["trl", "openrlhf", "wandb", "custom_jsonl", "flexible"]
+    valid_adapters = ["trl", "openrlhf", "wandb", "custom_jsonl", "grpo", "flexible"]
     if adapter_hint not in valid_adapters:
         raise ValidationError(
             f"Invalid adapter type: {adapter_hint}",
@@ -116,6 +117,8 @@ def ingest_runs(
             adapter = WandBAdapter(source)
         elif adapter_hint == "custom_jsonl":
             adapter = CustomJSONLAdapter(source)
+        elif adapter_hint == "grpo":
+            adapter = GRPOAdapter(source)
         elif adapter_hint == "flexible":
             adapter = FlexibleDataAdapter(
                 source,
@@ -206,7 +209,7 @@ def ingest_runs_to_events(
 
     Args:
         source: Path to logs directory, file, or wandb:// URI
-        adapter_hint: Optional hint for adapter type ('trl', 'openrlhf', 'wandb', 'custom_jsonl', 'flexible')
+        adapter_hint: Optional hint for adapter type ('trl', 'openrlhf', 'wandb', 'custom_jsonl', 'grpo', 'flexible')
         field_map: Optional explicit mapping from canonical to actual field names
         config_file: Optional path to YAML/JSON config file with field mapping
         validation_mode: Validation strictness - 'strict', 'flexible', or 'lenient'
@@ -265,6 +268,11 @@ def _detect_adapter_type(source: Union[str, Path]) -> str:
     if openrlhf_adapter.can_handle():
         return "openrlhf"
 
+    # Check for GRPO-specific patterns before falling back to flexible adapter
+    grpo_adapter = GRPOAdapter(source_path)
+    if grpo_adapter.can_handle():
+        return "grpo"
+
     # Default to flexible adapter for better field resolution
     return "flexible"
 
@@ -315,6 +323,29 @@ def _get_adapter_format_requirements(adapter_type: str) -> dict:
                 "wandb://team/project/run-2024-01-01-12-00-00"
             ],
             "suggestions": "Use the format: wandb://entity/project/run_id. Ensure you have WandB access and the run exists."
+        },
+        "grpo": {
+            "description": "GRPO training logs (run.jsonl files with GRPO metrics)",
+            "file_extensions": [".jsonl"],
+            "required_fields": ["step", "reward_mean", "kl", "entropy"],
+            "optional_fields": [
+                "reward_std",
+                "advantage_mean",
+                "advantage_std",
+                "grad_norm_policy",
+                "grad_norm_value",
+                "kl_coef",
+                "accept_rate",
+                "length",
+            ],
+            "examples": [
+                '{"step": 0, "reward_mean": 0.5, "kl": 0.1, "entropy": 0.8, "advantage_mean": 0.2}',
+                '{"step": 1, "reward_mean": 0.6, "kl": 0.12, "entropy": 0.82, "grad_norm_policy": 1.5}',
+            ],
+            "suggestions": (
+                "Provide run.jsonl files emitted by GRPO training. Each line should be a JSON object with GRPO metrics, "
+                "including reward_mean, kl, entropy, and optional extras like advantage statistics."
+            ),
         },
         "flexible": {
             "description": "Flexible adapter supporting multiple formats with automatic field resolution",
