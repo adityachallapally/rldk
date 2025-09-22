@@ -772,6 +772,7 @@ class MonitorEngine:
             last_step = cooldown_map.get(key)
             if last_step is not None and event.step < last_step:
                 cooldown_map.pop(key, None)
+                counts_map.pop(key, None)
                 buffer = deque()
                 buffer_map[key] = buffer
             if buffer is None:

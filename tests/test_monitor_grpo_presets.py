@@ -150,14 +150,36 @@ def test_grpo_safe_kl_spike_triggers_after_step_reset() -> None:
 
     assert 14 in fired_steps
 
-    # Step counter resets; cooldown state should be cleared and allow a new alert.
-    for step, value in ((4, 0.1), (5, 0.5), (6, 0.55)):
+    # Step counter resets; buffer and grace counters should restart.
+    post_reset_fired_steps: list[int] = []
+
+    for step, value in ((4, 0.5), (5, 0.55)):
         alerts = engine.process_event(make_event(step, value))
-        fired_steps.extend(
+        post_reset_fired_steps.extend(
             alert.event.step
             for alert in alerts
             if alert.rule_id == "grpo_safe_kl_spike"
         )
 
-    assert 5 not in fired_steps
-    assert 6 in fired_steps
+    # Insufficient post-reset events to satisfy grace period.
+    assert not post_reset_fired_steps
+
+    for step in range(6, 16):
+        alerts = engine.process_event(make_event(step, 0.1))
+        post_reset_fired_steps.extend(
+            alert.event.step
+            for alert in alerts
+            if alert.rule_id == "grpo_safe_kl_spike"
+        )
+
+    assert not post_reset_fired_steps
+
+    for step, value in ((16, 0.45), (17, 0.55)):
+        alerts = engine.process_event(make_event(step, value))
+        post_reset_fired_steps.extend(
+            alert.event.step
+            for alert in alerts
+            if alert.rule_id == "grpo_safe_kl_spike"
+        )
+
+    assert post_reset_fired_steps and set(post_reset_fired_steps) == {17}
