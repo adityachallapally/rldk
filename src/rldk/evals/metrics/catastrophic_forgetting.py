@@ -48,15 +48,73 @@ class BaselineSummary:
     def from_mapping(cls, payload: Mapping[str, Any]) -> "BaselineSummary":
         """Create a :class:`BaselineSummary` from a generic mapping."""
 
-        mean = payload.get("mean")
-        std = payload.get("std") or payload.get("stdev") or payload.get("stddev") or 0.0
-        count = payload.get("count") or payload.get("sample_count") or payload.get("n") or 0
-        timestamp = payload.get("timestamp") or payload.get("evaluated_at")
-
-        if mean is None:
+        mean_value = _extract_mapping_value(payload, ("mean", "score_mean", "avg", "average"))
+        if mean_value is None:
             raise ValueError("Baseline summary must include a mean score")
 
-        return cls(mean=float(mean), std=float(std), count=int(count), timestamp=timestamp)
+        try:
+            mean = float(mean_value)
+        except (TypeError, ValueError):
+            raise ValueError("Baseline mean must be numeric") from None
+
+        if np.isnan(mean):
+            raise ValueError("Baseline mean cannot be NaN")
+
+        std_value = _extract_mapping_value(payload, ("std", "stdev", "stddev"))
+        std = _coerce_float(std_value, default=0.0)
+
+        count_value = _extract_mapping_value(payload, ("count", "sample_count", "n"))
+        count = _coerce_int(count_value, default=0)
+
+        timestamp = _extract_mapping_value(payload, ("timestamp", "evaluated_at"))
+
+        return cls(mean=mean, std=std, count=count, timestamp=timestamp)
+
+
+def _extract_mapping_value(mapping: Mapping[str, Any], keys: Iterable[str]) -> Any:
+    """Return the first present value for the provided keys."""
+
+    for key in keys:
+        if key in mapping:
+            return mapping[key]
+    return None
+
+
+def _coerce_float(value: Any, *, default: float) -> float:
+    """Safely coerce a value to ``float`` while handling invalid inputs."""
+
+    if value is None:
+        return default
+
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return default
+
+    if np.isnan(result):
+        return default
+
+    return result
+
+
+def _coerce_int(value: Any, *, default: int) -> int:
+    """Safely coerce a value to ``int`` while handling invalid inputs."""
+
+    if value is None:
+        return default
+
+    try:
+        result = int(value)
+    except (TypeError, ValueError):
+        try:
+            result = int(float(value))
+        except (TypeError, ValueError):
+            return default
+
+    if result < 0:
+        return default
+
+    return result
 
 
 def _resolve_column(columns: Iterable[str], candidates: Iterable[str]) -> Optional[str]:
@@ -72,11 +130,14 @@ def _prepare_baselines(
     baseline_data: Any,
     task_column: Optional[str],
     overrides: Dict[str, Any],
+    warnings: Optional[List[str]] = None,
 ) -> Dict[str, BaselineSummary]:
     """Normalize baseline inputs into a mapping of task -> :class:`BaselineSummary`."""
 
     if baseline_data is None:
         return {}
+
+    warning_sink = warnings if warnings is not None else []
 
     if isinstance(baseline_data, Mapping):
         baselines: Dict[str, BaselineSummary] = {}
@@ -85,6 +146,8 @@ def _prepare_baselines(
                 baselines[str(task)] = BaselineSummary.from_mapping(payload)
             except (TypeError, ValueError) as exc:
                 logger.warning("Skipping malformed baseline summary for task '%s': %s", task, exc)
+                message = f"Skipping malformed baseline summary for task '{task}': {exc}"
+                warning_sink.append(message)
         return baselines
 
     if isinstance(baseline_data, pd.DataFrame):
@@ -95,9 +158,9 @@ def _prepare_baselines(
             )
 
         if baseline_task_column is None or baseline_task_column not in baseline_data.columns:
-            logger.warning(
-                "Baseline DataFrame does not include a recognizable task column; skipping baselines"
-            )
+            message = "Baseline DataFrame does not include a recognizable task column; skipping baselines"
+            logger.warning(message)
+            warning_sink.append(message)
             return {}
 
         mean_column = overrides.get("baseline_mean_column") or _resolve_column(
@@ -113,23 +176,45 @@ def _prepare_baselines(
             baseline_data.columns, ("timestamp", "evaluated_at", "updated_at")
         )
 
+        if mean_column is None:
+            message = "Baseline DataFrame does not include a mean column; skipping baselines"
+            logger.warning(message)
+            warning_sink.append(message)
+            return {}
+
         baselines: Dict[str, BaselineSummary] = {}
         for _, row in baseline_data.iterrows():
             task_identifier = str(row[baseline_task_column])
-            payload = {
-                "mean": row.get(mean_column, np.nan) if mean_column else np.nan,
-                "std": row.get(std_column, 0.0) if std_column else 0.0,
-                "count": row.get(count_column, 0) if count_column else 0,
-            }
+            mean_value = row.get(mean_column)
+            if pd.isna(mean_value):
+                message = (
+                    f"Skipping baseline summary for task '{task_identifier}' because the mean value is missing"
+                )
+                logger.warning(message)
+                warning_sink.append(message)
+                continue
+
+            payload: Dict[str, Any] = {"mean": mean_value}
+            if std_column and std_column in row and not pd.isna(row[std_column]):
+                payload["std"] = row[std_column]
+            if count_column and count_column in row and not pd.isna(row[count_column]):
+                payload["count"] = row[count_column]
             if timestamp_column:
-                payload["timestamp"] = row.get(timestamp_column)
+                timestamp_value = row.get(timestamp_column)
+                if not pd.isna(timestamp_value):
+                    payload["timestamp"] = timestamp_value
             try:
                 baselines[task_identifier] = BaselineSummary.from_mapping(payload)
             except (TypeError, ValueError) as exc:
                 logger.warning("Skipping malformed baseline summary for task '%s': %s", task_identifier, exc)
+                message = f"Skipping malformed baseline summary for task '{task_identifier}': {exc}"
+                warning_sink.append(message)
         return baselines
 
     logger.warning("Unsupported baseline data type '%s'; expected mapping or DataFrame", type(baseline_data))
+    warning_sink.append(
+        f"Unsupported baseline data type '{type(baseline_data)}'; expected mapping or DataFrame"
+    )
     return {}
 
 
@@ -205,6 +290,36 @@ def evaluate_catastrophic_forgetting(
     min_samples = min_samples if min_samples is not None else config.CATASTROPHIC_MIN_SAMPLES
     weighting_strategy = weighting_strategy or config.CATASTROPHIC_WEIGHTING_STRATEGY
 
+    default_regression_threshold = config.CATASTROPHIC_REGRESSION_THRESHOLD or -0.05
+    if default_regression_threshold > 0:
+        default_regression_threshold = -abs(default_regression_threshold)
+    if regression_threshold is None or not np.isfinite(regression_threshold):
+        message = "Regression threshold is undefined; using configuration default"
+        warnings.append(message)
+        logger.warning(message)
+        regression_threshold = default_regression_threshold
+
+    if regression_threshold == 0:
+        message = (
+            "Regression threshold of 0.0 is invalid; using configuration default"
+        )
+        warnings.append(message)
+        logger.warning(message)
+        regression_threshold = default_regression_threshold
+
+    if regression_threshold > 0:
+        sanitized_threshold = -abs(regression_threshold)
+        message = (
+            "Regression threshold should be negative; using "
+            f"{sanitized_threshold} instead"
+        )
+        warnings.append(message)
+        logger.warning(message)
+        regression_threshold = sanitized_threshold
+
+    if regression_threshold == 0:
+        regression_threshold = -0.01
+
     task_column = task_column or _resolve_column(data.columns, TASK_COLUMN_CANDIDATES)
     score_column = score_column or _resolve_column(data.columns, SCORE_COLUMN_CANDIDATES)
 
@@ -256,7 +371,7 @@ def evaluate_catastrophic_forgetting(
             },
         }
 
-    baselines = _prepare_baselines(baseline_summaries, task_column, baseline_overrides)
+    baselines = _prepare_baselines(baseline_summaries, task_column, baseline_overrides, warnings)
     if not baselines:
         warnings.append("No baseline summaries provided; catastrophic regression scoring may be incomplete")
         logger.warning(warnings[-1])
@@ -343,7 +458,18 @@ def evaluate_catastrophic_forgetting(
         if weighting_strategy == "sample_count":
             weight = float(sample_count)
         elif weighting_strategy == "baseline_count":
-            weight = float(baseline.count or sample_count)
+            baseline_count = baseline.count
+            if baseline_count is None:
+                weight = float(sample_count)
+            elif baseline_count <= 0:
+                logger.info(
+                    "Baseline count for task '%s' is non-positive (%s); using sample count weight",
+                    task_id,
+                    baseline_count,
+                )
+                weight = float(sample_count)
+            else:
+                weight = float(baseline_count)
         elif weighting_strategy == "custom" and task_weights:
             weight = float(task_weights.get(task_id, sample_count))
         else:
@@ -358,7 +484,11 @@ def evaluate_catastrophic_forgetting(
         elif delta_mean >= 0:
             normalized_score = 1.0
         else:
-            normalized_score = max(0.0, 1.0 + (delta_mean / abs(regression_threshold)))
+            denominator = abs(regression_threshold)
+            if denominator == 0:
+                normalized_score = 0.0
+            else:
+                normalized_score = max(0.0, 1.0 + (delta_mean / denominator))
 
         weighted_scores.append((weight, normalized_score))
 

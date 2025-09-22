@@ -89,3 +89,46 @@ def test_missing_baselines_reported_gracefully():
     assert np.isnan(result["score"])
     assert result["missing_baselines"] == ["task_b"]
     assert "task_b" in result["recommendations"][-1]
+
+
+def test_baseline_dataframe_with_nan_mean_is_skipped():
+    current = _make_dataframe(
+        scores_a=np.full(4, 0.82, dtype=float),
+        scores_b=np.full(4, 0.8, dtype=float),
+    )
+
+    baseline_df = pd.DataFrame(
+        {
+            "task": ["task_a", "task_b"],
+            "mean": [np.nan, 0.78],
+            "std": [0.02, 0.03],
+            "count": [30, 25],
+        }
+    )
+
+    result = evaluate_catastrophic_forgetting(current, baseline_summaries=baseline_df)
+
+    assert "task_a" in result["missing_baselines"]
+    assert any("mean value is missing" in warning for warning in result["warnings"])
+    assert result["metadata"]["baseline_available"]
+
+
+def test_zero_regression_threshold_falls_back_with_warning():
+    current = _make_dataframe(
+        scores_a=np.full(6, 0.82, dtype=float),
+        scores_b=np.full(6, 0.78, dtype=float),
+    )
+
+    baselines = {
+        "task_a": {"mean": 0.8, "std": 0.02, "count": 30},
+        "task_b": {"mean": 0.75, "std": 0.03, "count": 24},
+    }
+
+    result = evaluate_catastrophic_forgetting(
+        current,
+        baseline_summaries=baselines,
+        regression_threshold=0.0,
+    )
+
+    assert any("Regression threshold of 0.0" in warning for warning in result["warnings"])
+    assert result["metadata"]["regression_threshold"] < 0
