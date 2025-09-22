@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 import time
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -813,6 +814,11 @@ class ComprehensivePPOMonitor(TrainerCallback):
         # Metrics storage
         self.comprehensive_metrics_history: List[Dict[str, Any]] = []
 
+        # Response tracking for length-bias analysis
+        self._pending_response_payloads: List[Dict[str, Any]] = []
+        self._recent_response_fingerprints: deque[Tuple[Any, ...]] = deque(maxlen=512)
+        self._recent_response_fingerprint_set: set[Tuple[Any, ...]] = set()
+
         print(f"🔍 Comprehensive PPO Monitor initialized - Run ID: {self.run_id}")
         print(f"📊 KL Target: {kl_target}±{kl_target_tolerance}")
         print(f"📁 Output directory: {self.output_dir}")
@@ -825,6 +831,9 @@ class ComprehensivePPOMonitor(TrainerCallback):
         """Monitor PPO training at step end."""
         # Extract metrics from trainer state if available
         self._extract_metrics_from_state(state)
+
+        # Cache response payloads for length bias detection when available
+        self._queue_response_payloads(None, kwargs)
 
         # Log comprehensive metrics at intervals
         if state.global_step % self.log_interval == 0:
@@ -851,6 +860,13 @@ class ComprehensivePPOMonitor(TrainerCallback):
         advantage_min = logs.get('ppo/advantages/min', None)
         advantage_max = logs.get('ppo/advantages/max', None)
 
+        # Gather response payloads for length bias detection
+        self._queue_response_payloads(logs, kwargs)
+        response_payloads: Optional[List[Dict[str, Any]]] = None
+        if self._pending_response_payloads:
+            response_payloads = list(self._pending_response_payloads)
+            self._pending_response_payloads.clear()
+
         # Update comprehensive forensics
         comprehensive_metrics = self.forensics.update(
             step=step,
@@ -866,6 +882,7 @@ class ComprehensivePPOMonitor(TrainerCallback):
             advantage_std=advantage_std,
             advantage_min=advantage_min,
             advantage_max=advantage_max,
+            response_data=response_payloads,
         )
 
         # Store metrics
@@ -1019,6 +1036,286 @@ class ComprehensivePPOMonitor(TrainerCallback):
                     self.forensics.current_metrics.policy_value_grad_ratio = (
                         self.forensics.current_metrics.policy_grad_norm / self.forensics.current_metrics.value_grad_norm
                     )
+
+    def _queue_response_payloads(
+        self,
+        logs: Optional[Mapping[str, Any]],
+        callback_kwargs: Optional[Mapping[str, Any]],
+    ) -> None:
+        """Collect response payloads emitted by the PPO loop for length bias detection."""
+
+        if not getattr(self.forensics, "enable_length_bias_detection", False):
+            return
+
+        new_records = self._collect_response_payloads(logs, callback_kwargs)
+        for record in new_records:
+            fingerprint = self._fingerprint_response_record(record)
+            if not self._remember_response_fingerprint(fingerprint):
+                continue
+            self._pending_response_payloads.append(record)
+
+    def _collect_response_payloads(
+        self,
+        logs: Optional[Mapping[str, Any]],
+        callback_kwargs: Optional[Mapping[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Extract normalized response payloads from callback inputs."""
+
+        records: List[Dict[str, Any]] = []
+
+        def consume(source: Any) -> None:
+            if source is None:
+                return
+            if isinstance(source, Mapping):
+                records.extend(self._extract_records_from_mapping(source, consume))
+            elif isinstance(source, Sequence) and not isinstance(source, (str, bytes)):
+                for item in source:
+                    consume(item)
+
+        if callback_kwargs:
+            consume(callback_kwargs)
+        if logs:
+            consume(logs)
+
+        return records
+
+    def _extract_records_from_mapping(
+        self,
+        mapping: Mapping[str, Any],
+        consume: Any,
+    ) -> List[Dict[str, Any]]:
+        """Extract response records from a mapping and recurse into nested payloads."""
+
+        records = self._extract_batch_records(mapping)
+
+        single_record = self._extract_single_record(mapping)
+        if single_record:
+            records.append(single_record)
+
+        nested_keys = (
+            "response_data",
+            "responses",
+            "response_payloads",
+            "ppo_response_data",
+            "ppo_responses",
+            "ppo_response_payloads",
+            "samples",
+            "sample_batch",
+            "trajectories",
+            "episodes",
+            "rollouts",
+            "rollout_samples",
+            "ppo_rollouts",
+            "ppo_batch",
+            "batch",
+            "outputs",
+            "details",
+        )
+        for key in nested_keys:
+            nested = mapping.get(key)
+            if nested is not None and nested is not mapping:
+                consume(nested)
+
+        for value in mapping.values():
+            if value is mapping:
+                continue
+            if isinstance(value, Mapping):
+                consume(value)
+            elif isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+                consume(value)
+
+        return records
+
+    def _extract_batch_records(self, mapping: Mapping[str, Any]) -> List[Dict[str, Any]]:
+        """Extract response records from batch-style payloads."""
+
+        reward_seq = None
+        for key in ("rewards", "reward_scores", "scores", "returns"):
+            reward_seq = self._as_sequence(mapping.get(key))
+            if reward_seq:
+                break
+        if not reward_seq:
+            return []
+
+        response_seq = None
+        for key in ("responses", "response_texts", "response", "completions", "outputs"):
+            response_seq = self._as_sequence(mapping.get(key))
+            if response_seq:
+                break
+
+        length_seq = None
+        for key in (
+            "response_lengths",
+            "lengths",
+            "response_length",
+            "response_tokens",
+            "token_counts",
+            "tokens_out",
+            "output_lengths",
+            "output_tokens",
+        ):
+            length_seq = self._as_sequence(mapping.get(key))
+            if length_seq:
+                break
+
+        records: List[Dict[str, Any]] = []
+        for idx, reward_value in enumerate(reward_seq):
+            response_value = None
+            if response_seq and idx < len(response_seq):
+                response_value = response_seq[idx]
+            length_value = None
+            if length_seq and idx < len(length_seq):
+                length_value = length_seq[idx]
+
+            record = self._build_response_record(reward_value, response_value, length_value)
+            if record:
+                records.append(record)
+
+        return records
+
+    def _extract_single_record(self, mapping: Mapping[str, Any]) -> Optional[Dict[str, Any]]:
+        """Extract a single response record from scalar entries."""
+
+        reward_candidate = self._first_present(
+            mapping,
+            (
+                "reward",
+                "response_reward",
+                "reward_score",
+                "score",
+            ),
+        )
+        response_candidate = self._first_present(
+            mapping,
+            (
+                "response",
+                "response_text",
+                "completion",
+                "output",
+            ),
+        )
+        length_candidate = self._first_present(
+            mapping,
+            (
+                "length",
+                "response_length",
+                "response_tokens",
+                "tokens_out",
+                "output_length",
+            ),
+        )
+
+        if isinstance(response_candidate, Sequence) and not isinstance(response_candidate, (str, bytes)):
+            response_candidate = None
+        if isinstance(length_candidate, Sequence) and not isinstance(length_candidate, (str, bytes)):
+            length_candidate = None
+
+        return self._build_response_record(
+            reward_candidate,
+            response_candidate,
+            length_candidate,
+        )
+
+    def _build_response_record(
+        self,
+        reward: Any,
+        response: Any,
+        length: Any,
+    ) -> Optional[Dict[str, Any]]:
+        reward_value = self._to_float(reward)
+        if reward_value is None:
+            return None
+
+        record: Dict[str, Any] = {"reward": reward_value}
+
+        length_value = self._to_float(length)
+        if length_value is not None:
+            record["length"] = length_value
+
+        if response is not None:
+            record["response"] = str(response)
+
+        if "length" not in record and "response" not in record:
+            return None
+
+        return record
+
+    def _as_sequence(self, value: Any) -> Optional[List[Any]]:
+        if value is None or isinstance(value, (str, bytes)):
+            return None
+        if isinstance(value, Mapping):
+            return None
+        if hasattr(value, "detach") and hasattr(value, "cpu") and hasattr(value, "numpy"):
+            try:
+                value = value.detach().cpu().numpy()
+            except Exception:  # pragma: no cover - defensive
+                pass
+        if isinstance(value, np.ndarray):
+            return value.tolist()
+        if hasattr(value, "tolist"):
+            try:
+                candidate = value.tolist()
+                if isinstance(candidate, (list, tuple)):
+                    return list(candidate)
+            except Exception:  # pragma: no cover - defensive
+                pass
+        if isinstance(value, Sequence):
+            return list(value)
+        return None
+
+    def _to_float(self, value: Any) -> Optional[float]:
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            return float(value)
+        if isinstance(value, np.generic):
+            return float(value.item())
+        if hasattr(value, "item"):
+            try:
+                return float(value.item())
+            except Exception:  # pragma: no cover - defensive
+                pass
+        if hasattr(value, "detach") and hasattr(value, "cpu") and hasattr(value, "item"):
+            try:
+                return float(value.detach().cpu().item())
+            except Exception:  # pragma: no cover - defensive
+                pass
+        if isinstance(value, str):
+            try:
+                return float(value)
+            except ValueError:
+                return None
+        try:
+            return float(value)
+        except Exception:
+            return None
+
+    def _first_present(self, mapping: Mapping[str, Any], keys: Tuple[str, ...]) -> Any:
+        for key in keys:
+            if key in mapping:
+                value = mapping[key]
+                if value is not None:
+                    return value
+        return None
+
+    def _fingerprint_response_record(self, record: Mapping[str, Any]) -> Tuple[Any, ...]:
+        reward = record.get("reward")
+        length = record.get("length")
+        response = record.get("response")
+        reward_key = None if reward is None else round(float(reward), 6)
+        length_key = None if length is None else round(float(length), 3)
+        response_key = None if response is None else str(response)[:128]
+        return (reward_key, length_key, response_key)
+
+    def _remember_response_fingerprint(self, fingerprint: Tuple[Any, ...]) -> bool:
+        if fingerprint in self._recent_response_fingerprint_set:
+            return False
+        if len(self._recent_response_fingerprints) >= self._recent_response_fingerprints.maxlen:
+            oldest = self._recent_response_fingerprints.popleft()
+            self._recent_response_fingerprint_set.discard(oldest)
+        self._recent_response_fingerprints.append(fingerprint)
+        self._recent_response_fingerprint_set.add(fingerprint)
+        return True
 
     def _log_comprehensive_metrics(self):
         """Log comprehensive metrics at intervals."""

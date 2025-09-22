@@ -1,9 +1,15 @@
 import math
 from datetime import datetime
+from types import SimpleNamespace
 
 import pytest
 
-from src.rldk.forensics.comprehensive_ppo_forensics import ComprehensivePPOForensics
+from src.rldk.forensics.comprehensive_ppo_forensics import (
+    ComprehensivePPOForensics,
+    ComprehensivePPOMetrics,
+)
+from src.rldk.integrations.trl import monitors as trl_monitors
+from src.rldk.integrations.trl.monitors import ComprehensivePPOMonitor
 from src.rldk.monitor.engine import Event, MonitorEngine, load_rules
 from src.rldk.monitor.presets import get_rule_preset
 
@@ -18,6 +24,30 @@ def response_batch() -> list[dict[str, float | str]]:
         {"response": "mega", "length": 20, "reward": 0.85},
         {"response": "ultra", "length": 24, "reward": 1.05},
     ]
+
+
+class DummyForensics:
+    """Lightweight forensics stub for monitor interaction tests."""
+
+    def __init__(self) -> None:
+        self.enable_length_bias_detection = True
+        self.length_bias_threshold = 0.3
+        self.length_bias_corr_threshold = 0.2
+        self.current_metrics = ComprehensivePPOMetrics()
+        self.update_calls: list[dict[str, object]] = []
+
+    def update(self, **kwargs):  # type: ignore[no-untyped-def]
+        self.update_calls.append(kwargs)
+        return ComprehensivePPOMetrics()
+
+    def get_anomalies(self):  # type: ignore[no-untyped-def]
+        return []
+
+    def get_health_summary(self):  # type: ignore[no-untyped-def]
+        return {}
+
+    def save_analysis(self, *_args, **_kwargs):  # type: ignore[no-untyped-def]
+        return None
 
 
 def test_length_bias_detection_enabled(response_batch: list[dict[str, float | str]]) -> None:
@@ -92,6 +122,75 @@ def test_length_bias_rule_presets_register() -> None:
         "length_bias_corr_guard",
         "length_bias_rank_corr_guard",
     }
+
+
+def _make_dummy_state(step: int = 1) -> SimpleNamespace:
+    return SimpleNamespace(global_step=step)
+
+
+def _make_logs() -> dict[str, float]:
+    return {
+        "ppo/rewards/mean": 0.5,
+        "ppo/rewards/std": 0.1,
+        "ppo/policy/kl_mean": 0.05,
+        "ppo/policy/kl_coef": 1.0,
+        "ppo/policy/entropy": 1.2,
+    }
+
+
+def test_comprehensive_monitor_wires_response_payloads(
+    response_batch: list[dict[str, float | str]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(trl_monitors, "TRL_AVAILABLE", True)
+
+    monitor = ComprehensivePPOMonitor(enable_length_bias_detection=True, log_interval=1)
+    monitor.forensics = DummyForensics()
+
+    args = SimpleNamespace()
+    control = SimpleNamespace()
+    state = _make_dummy_state(1)
+
+    monitor.on_log(args, state, control, _make_logs(), response_data=response_batch)
+
+    assert monitor.forensics.update_calls, "Monitor did not invoke forensics update"
+    recorded = monitor.forensics.update_calls[-1]["response_data"]
+    assert isinstance(recorded, list)
+    assert len(recorded or []) == len(response_batch)
+    for record, original in zip(recorded or [], response_batch):
+        assert pytest.approx(float(original["reward"])) == record["reward"]
+        assert pytest.approx(float(original["length"])) == record.get("length")
+        assert record.get("response") == original["response"]
+
+
+def test_comprehensive_monitor_deduplicates_batch_payloads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(trl_monitors, "TRL_AVAILABLE", True)
+
+    monitor = ComprehensivePPOMonitor(enable_length_bias_detection=True, log_interval=1)
+    monitor.forensics = DummyForensics()
+
+    args = SimpleNamespace()
+    control = SimpleNamespace()
+    state = _make_dummy_state(2)
+
+    batch_payload = {
+        "responses": ["short", "long"],
+        "rewards": [0.2, 0.8],
+        "response_lengths": [4, 12],
+    }
+
+    monitor.on_step_end(args, state, control, batch=batch_payload)
+    monitor.on_log(args, state, control, _make_logs(), batch=batch_payload)
+
+    recorded = monitor.forensics.update_calls[-1]["response_data"]
+    assert isinstance(recorded, list)
+    assert len(recorded or []) == 2
+    assert recorded == [
+        {"reward": pytest.approx(0.2), "response": "short", "length": pytest.approx(4.0)},
+        {"reward": pytest.approx(0.8), "response": "long", "length": pytest.approx(12.0)},
+    ]
 
 
 def test_length_bias_preset_fires_alerts() -> None:
