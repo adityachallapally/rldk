@@ -116,3 +116,47 @@ def test_grpo_strict_preset_flags_strict_failures(
     assert "grpo_strict_kl_coef_stall" in fired
     assert "grpo_strict_reward_saturation" in fired
     assert expected_rule in fired
+
+
+def test_grpo_safe_kl_spike_triggers_after_step_reset() -> None:
+    preset = get_rule_preset("grpo_safe")
+    assert preset is not None
+    rules = load_rules(preset)
+    engine = MonitorEngine(rules, action_executor=_NoopExecutor())
+
+    def make_event(step: int, value: float) -> Event:
+        return Event(
+            time="2024-01-03T00:00:00Z",
+            step=step,
+            name="kl",
+            value=value,
+            run_id="step_reset",
+        )
+
+    fired_steps: list[int] = []
+
+    # Prime the rule to satisfy the configured grace period.
+    for step in range(1, 13):
+        engine.process_event(make_event(step, 0.1))
+
+    # First spike with monotonically increasing steps.
+    for step in (13, 14):
+        alerts = engine.process_event(make_event(step, 0.45))
+        fired_steps.extend(
+            alert.event.step
+            for alert in alerts
+            if alert.rule_id == "grpo_safe_kl_spike"
+        )
+
+    assert 14 in fired_steps
+
+    # Step counter resets; cooldown state should be cleared and allow a new alert.
+    for step, value in ((4, 0.1), (5, 0.5), (6, 0.55)):
+        alerts = engine.process_event(make_event(step, value))
+        fired_steps.extend(
+            alert.event.step
+            for alert in alerts
+            if alert.rule_id == "grpo_safe_kl_spike"
+        )
+
+    assert 6 in fired_steps
