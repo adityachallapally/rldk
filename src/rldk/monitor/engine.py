@@ -30,7 +30,7 @@ from typing import (
 
 import yaml
 
-from .presets import RULE_PRESETS, get_rule_preset
+from .presets import FIELD_MAP_PRESETS, RULE_PRESETS, get_field_map_preset, get_rule_preset
 from .regexes import create_line_parser
 
 logger = logging.getLogger(__name__)
@@ -38,6 +38,8 @@ logger = logging.getLogger(__name__)
 CANONICAL_FIELDS = {"time", "step", "name", "value", "run_id", "tags", "meta"}
 DEFAULT_WINDOW_KIND = "consecutive"
 AGGREGATOR_FUNCTIONS = {"mean", "max", "min", "any", "all", "sum", "count"}
+
+FieldMapSpec = Optional[Mapping[str, str] | str]
 
 DEFAULT_ACTION_MESSAGES: Dict[str, str] = {
     "warn": "{name} {value:.4f} at step {step} (rule {rule_id})",
@@ -405,7 +407,25 @@ def _canonical_time(value: Any) -> str:
     raise ValueError(f"Unsupported time value type: {type(value).__name__}")
 
 
-def _apply_field_map(event: Dict[str, Any], field_map: Optional[Dict[str, str]]) -> Dict[str, Any]:
+def _resolve_field_map(field_map: FieldMapSpec) -> Optional[Dict[str, str]]:
+    if field_map is None:
+        return None
+    if isinstance(field_map, dict):
+        return field_map
+    if isinstance(field_map, str):
+        preset = get_field_map_preset(field_map)
+        if preset is None:
+            available = ", ".join(sorted(FIELD_MAP_PRESETS))
+            raise ValueError(
+                f"Unknown field map preset '{field_map}'. Available presets: {available}"
+            )
+        return preset
+    if isinstance(field_map, Mapping):
+        return dict(field_map)
+    raise TypeError("field_map must be a mapping or preset name")
+
+
+def _apply_field_map(event: Dict[str, Any], field_map: Optional[Mapping[str, str]]) -> Dict[str, Any]:
     if not field_map:
         return dict(event)
     mapped: Dict[str, Any] = {}
@@ -415,8 +435,9 @@ def _apply_field_map(event: Dict[str, Any], field_map: Optional[Dict[str, str]])
     return mapped
 
 
-def canonicalize_event(payload: Dict[str, Any], field_map: Optional[Dict[str, str]] = None) -> Event:
-    mapped = _apply_field_map(payload, field_map)
+def canonicalize_event(payload: Dict[str, Any], field_map: FieldMapSpec = None) -> Event:
+    resolved_field_map = _resolve_field_map(field_map)
+    mapped = _apply_field_map(payload, resolved_field_map)
     missing = [field for field in ("time", "step", "name", "value") if field not in mapped]
     if missing:
         raise ValueError(f"Event missing required fields: {', '.join(missing)}")
@@ -450,7 +471,7 @@ def canonicalize_event(payload: Dict[str, Any], field_map: Optional[Dict[str, st
 
 def read_events_once(
     path: str | os.PathLike[str],
-    field_map: Optional[Dict[str, str]] = None,
+    field_map: FieldMapSpec = None,
     regex: Optional[str] = None,
 ) -> List[Event]:
     path_obj = Path(path)
@@ -474,6 +495,7 @@ def read_events_once(
 
         opener = _open_text
     parser = create_line_parser(regex) if regex else None
+    resolved_field_map = _resolve_field_map(field_map)
     events: List[Event] = []
     auto_step = 0
 
@@ -493,7 +515,7 @@ def read_events_once(
                 logger.warning("Failed to parse JSON event: %s", exc)
                 continue
             try:
-                events.append(canonicalize_event(payload, field_map))
+                events.append(canonicalize_event(payload, resolved_field_map))
             except ValueError as exc:
                 logger.warning("Skipping invalid event: %s", exc)
         else:
@@ -507,7 +529,7 @@ def read_events_once(
                 data.setdefault("time", _now_iso())
                 data.setdefault("step", _next_auto_step())
                 try:
-                    events.append(canonicalize_event(data, field_map))
+                    events.append(canonicalize_event(data, resolved_field_map))
                 except ValueError as exc:
                     logger.warning("Skipping invalid parsed event: %s", exc)
     return events
@@ -515,13 +537,14 @@ def read_events_once(
 
 def read_stream(
     path_or_stdin: str | os.PathLike[str],
-    field_map: Optional[Dict[str, str]] = None,
+    field_map: FieldMapSpec = None,
     regex: Optional[str] = None,
     poll_interval: float = 0.5,
 ) -> Iterator[Event]:
     """Yield canonical events from a stream, following file rotations."""
 
     parser = create_line_parser(regex) if regex else None
+    resolved_field_map = _resolve_field_map(field_map)
     auto_step = 0
 
     def _next_auto_step() -> int:
@@ -538,7 +561,7 @@ def read_stream(
                 logger.warning("Failed to parse JSON event: %s", exc)
                 return []
             try:
-                event = canonicalize_event(payload, field_map)
+                event = canonicalize_event(payload, resolved_field_map)
                 auto_step = max(auto_step, event.step)
                 return [event]
             except ValueError as exc:
@@ -555,7 +578,7 @@ def read_stream(
             data.setdefault("time", _now_iso())
             data.setdefault("step", _next_auto_step())
             try:
-                event = canonicalize_event(data, field_map)
+                event = canonicalize_event(data, resolved_field_map)
                 auto_step = max(auto_step, event.step)
                 events.append(event)
             except ValueError as exc:
