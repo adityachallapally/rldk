@@ -6,7 +6,7 @@ import pytest
 
 from src.rldk.io.reward_writers import write_reward_health_summary
 from src.rldk.io.consolidated_writers import write_reward_health_summary as consolidated_summary
-from src.rldk.reward.health_analysis import RewardHealthReport
+from src.rldk.reward.health_analysis import OveroptimizationAnalysis, RewardHealthReport
 from src.rldk.reward.length_bias import LengthBiasMetrics
 
 
@@ -19,6 +19,24 @@ def sample_report() -> RewardHealthReport:
         variance_explained=0.2,
         bias_severity=0.55,
         recommendations=["Review reward model prompts for length bias."],
+    )
+    overopt = OveroptimizationAnalysis(
+        proxy_improvement=0.35,
+        gold_improvement=0.05,
+        delta=0.30,
+        correlation_trend={"pearson_delta": -0.2, "spearman_delta": -0.1},
+        kl_summary={"kl_current_mean": 0.3, "kl_target": 0.1},
+        flagged=True,
+        gold_metrics_available=True,
+        gold_regressed=False,
+        gold_stagnant=True,
+        kl_elevated=True,
+        correlation_declined=True,
+        window_size=50,
+        delta_threshold=0.2,
+        min_samples=60,
+        sample_size=80,
+        notes=["Proxy reward diverging from gold benchmark"],
     )
     return RewardHealthReport(
         passed=False,
@@ -35,6 +53,7 @@ def sample_report() -> RewardHealthReport:
         length_bias_detected=True,
         length_bias_metrics=metrics,
         length_bias_recommendations=metrics.recommendations,
+        overoptimization=overopt,
     )
 
 
@@ -56,3 +75,5 @@ def test_reward_health_summary_serializes_length_bias(tmp_path: Path, sample_rep
     assert payload["length_bias_recommendations"] == [
         "Review reward model prompts for length bias."
     ]
+    assert payload["overoptimization"]["flagged"] is True
+    assert pytest.approx(payload["overoptimization"]["delta"], rel=1e-6) == 0.30

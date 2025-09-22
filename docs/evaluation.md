@@ -150,6 +150,36 @@ python -m rldk.evals.cli list-suites
 python -m rldk.evals.cli validate data.jsonl
 ```
 
+## Reward Model Overoptimization Detector
+
+The reward health toolkit now tracks **reward model overoptimization** by comparing proxy reward improvements to trusted "gold" metrics such as human evaluation scores or benchmark accuracy.
+
+### Providing Gold Metrics
+
+- **CLI**: supply a gold metrics table with `--gold` (or embed the column directly in the run data) and specify the column via `--gold-col`. Gold metrics should align on the training step column.
+- **API**: pass a pandas DataFrame or Series to `reward_health(..., gold_metrics=..., gold_metric_col="gold_metric")`. The helper auto-aligns by step and handles early/late window splits.
+
+### How Detection Works
+
+1. Compute early vs. late window means (default first/last 100 steps) for proxy reward and gold metrics.
+2. Calculate the delta (`proxy - gold`). If the delta exceeds the configurable threshold (default `0.2`) while gold metrics stagnate or regress, the detector activates.
+3. Track Pearson/Spearman correlation drift between proxy and gold metrics.
+4. Pull recent KL statistics from PPO forensics; sustained high KL combined with proxy/gold divergence is treated as a red flag.
+
+### Interpreting the Report
+
+- **Summary Card**: shows proxy/gold delta, correlation trend, KL snapshot, and whether overoptimization was flagged.
+- **JSON Summary**: `overoptimization` contains metrics, thresholds, and remediation notes.
+- **Warnings**: If no gold metrics are provided, the report records a warning instead of failing.
+
+### Tuning Thresholds
+
+- `--overopt-window`: change the size of the early/late comparison window.
+- `--overopt-delta-threshold`: tighten or relax the delta needed to warn.
+- `--overopt-min-samples`: require a minimum number of overlapping proxy/gold samples before analysis runs.
+
+Remediation tips include pausing reward optimization, revisiting KL controllers, and refreshing gold metric evaluations to realign the reward model.
+
 ### Programmatic Usage
 
 ```python

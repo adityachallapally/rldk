@@ -1637,6 +1637,11 @@ def reward_health_run(
     out: str = typer.Option(..., "--out", help="Output directory for reports"),
     adapter: Optional[str] = typer.Option(None, "--adapter", help="Adapter type for data ingestion (custom_jsonl, trl, openrlhf, wandb)"),
     gate: bool = typer.Option(False, "--gate", help="Enable CI gate mode with exit codes (0=pass, 1=warn, 2=fail). Use 'gate' subcommand for health.json-based gating."),
+    gold_scores: Optional[str] = typer.Option(None, "--gold-scores", help="Optional path to trusted gold metrics for overoptimization detection"),
+    gold_metric_col: Optional[str] = typer.Option(None, "--gold-metric-col", help="Column name containing gold metrics (in scores or gold dataset)"),
+    overopt_window: int = typer.Option(100, "--overopt-window", help="Window size (steps) for early/late delta comparison"),
+    overopt_delta_threshold: float = typer.Option(0.2, "--overopt-delta-threshold", help="Minimum proxy-minus-gold delta to trigger overoptimization warning"),
+    overopt_min_samples: int = typer.Option(100, "--overopt-min-samples", help="Minimum paired samples required for overoptimization detector"),
 ):
     """Run reward health analysis on scores data."""
     try:
@@ -1645,6 +1650,11 @@ def reward_health_run(
         # Ingest scores data
         typer.echo("Ingesting scores data...")
         scores_data = ingest_runs(scores, adapter_hint=adapter)
+
+        gold_data: Optional[pd.DataFrame] = None
+        if gold_scores:
+            typer.echo(f"Ingesting gold metrics from: {gold_scores}")
+            gold_data = ingest_runs(gold_scores, adapter_hint=adapter)
 
         # Load configuration (default or user-provided)
         if config:
@@ -1673,6 +1683,11 @@ def reward_health_run(
             threshold_calibration=threshold_calibration,
             threshold_shortcut=threshold_shortcut,
             threshold_leakage=threshold_leakage,
+            gold_metrics=gold_data,
+            gold_metric_col=gold_metric_col,
+            overoptimization_window=overopt_window,
+            overoptimization_delta_threshold=overopt_delta_threshold,
+            overoptimization_min_samples=overopt_min_samples,
         )
 
         # Generate reports
@@ -1681,10 +1696,15 @@ def reward_health_run(
 
         # Display results
         severity = health_report.length_bias_metrics.bias_severity
+        overopt = getattr(health_report, "overoptimization", None)
         if health_report.passed:
             typer.echo("\n✅ Reward health check passed")
             if severity is not None:
                 typer.echo(f"  Length bias severity: {severity:.3f}")
+            if overopt and getattr(overopt, "gold_metrics_available", False):
+                typer.echo(
+                    f"  Overoptimization delta: {getattr(overopt, 'delta', 0.0):.3f}"
+                )
             exit_code = 0
         else:
             typer.echo("\n🚨 Reward health issues detected")
@@ -1699,12 +1719,24 @@ def reward_health_run(
                 typer.echo(f"  - {len(health_report.shortcut_signals)} shortcut signals")
             if health_report.label_leakage_risk > threshold_leakage:
                 typer.echo(f"  - Label leakage risk: {health_report.label_leakage_risk:.3f}")
+            if overopt and getattr(overopt, "flagged", False):
+                typer.echo(
+                    f"  - Reward overoptimization suspected (delta {getattr(overopt, 'delta', 0.0):.3f})"
+                )
+            elif overopt and overopt.gold_metrics_available:
+                typer.echo(
+                    f"  - Overoptimization delta {getattr(overopt, 'delta', 0.0):.3f} (below threshold)"
+                )
+            elif overopt and overopt.warning:
+                typer.echo(f"  - Overoptimization check: {overopt.warning}")
 
             # Determine exit code based on severity
             critical_issues = 0
             if health_report.drift_detected:
                 critical_issues += 1
             if health_report.label_leakage_risk > threshold_leakage:
+                critical_issues += 1
+            if overopt and getattr(overopt, "flagged", False):
                 critical_issues += 1
 
             if critical_issues > 0:
@@ -2869,6 +2901,31 @@ def reward_health(
         "--enable-length-bias-detection/--disable-length-bias-detection",
         help="Toggle dedicated length bias detection",
     ),
+    gold_path: Optional[str] = typer.Option(
+        None,
+        "--gold",
+        help="Optional path to trusted gold metrics for overoptimization analysis",
+    ),
+    gold_metric_col: Optional[str] = typer.Option(
+        None,
+        "--gold-col",
+        help="Column containing gold metrics (in run or gold dataset)",
+    ),
+    overopt_window: int = typer.Option(
+        100,
+        "--overopt-window",
+        help="Window size (steps) used for early/late proxy vs gold comparison",
+    ),
+    overopt_delta_threshold: float = typer.Option(
+        0.2,
+        "--overopt-delta-threshold",
+        help="Minimum proxy-minus-gold delta to raise overoptimization flag",
+    ),
+    overopt_min_samples: int = typer.Option(
+        100,
+        "--overopt-min-samples",
+        help="Minimum paired samples required to evaluate overoptimization",
+    ),
     gate: bool = typer.Option(
         False, "--gate", help="Enable CI gate mode with exit codes (0=pass, 1=warn, 2=fail)"
     ),
@@ -2952,6 +3009,27 @@ def reward_health(
             _ensure_column_present(reference_data, step_col, "step")
             _ensure_column_present(reference_data, reward_col, "reward")
 
+        gold_data = None
+        if gold_path:
+            typer.echo("Normalizing gold metrics...")
+            try:
+                gold_data = normalize_training_metrics_source(
+                    gold_path, field_map=mapping_dict
+                )
+            except TypeError as exc:
+                if not Path(gold_path).is_dir():
+                    raise
+                try:
+                    gold_data = _fallback_directory_load(Path(gold_path), mapping_dict)
+                except Exception as load_exc:
+                    raise exc from load_exc
+            if gold_data.empty:
+                raise ValidationError(
+                    "Normalized gold metrics are empty",
+                    suggestion="Ensure the gold source contains the trusted metric column",
+                    error_code="EMPTY_GOLD_DATA",
+                )
+
         # Run reward health analysis
         typer.echo("Running reward health analysis...")
         health_report = health(
@@ -2968,6 +3046,11 @@ def reward_health(
             length_col=length_col,
             threshold_length_bias=threshold_length_bias,
             enable_length_bias_detection=enable_length_bias_detection,
+            gold_metrics=gold_data,
+            gold_metric_col=gold_metric_col,
+            overoptimization_window=overopt_window,
+            overoptimization_delta_threshold=overopt_delta_threshold,
+            overoptimization_min_samples=overopt_min_samples,
         )
 
         # Generate reports
@@ -2976,10 +3059,15 @@ def reward_health(
 
         # Display results
         severity = health_report.length_bias_metrics.bias_severity
+        overopt = getattr(health_report, "overoptimization", None)
         if health_report.passed:
             typer.echo("\n✅ Reward health check passed")
             if severity is not None:
                 typer.echo(f"  Length bias severity: {severity:.3f}")
+            if overopt and getattr(overopt, "gold_metrics_available", False):
+                typer.echo(
+                    f"  Overoptimization delta: {getattr(overopt, 'delta', 0.0):.3f}"
+                )
             exit_code = 0
         else:
             typer.echo("\n🚨 Reward health issues detected")
@@ -3002,6 +3090,16 @@ def reward_health(
                 typer.echo(
                     f"  - Label leakage risk: {health_report.label_leakage_risk:.3f}"
                 )
+            if overopt and getattr(overopt, "flagged", False):
+                typer.echo(
+                    f"  - Reward overoptimization suspected (delta {getattr(overopt, 'delta', 0.0):.3f})"
+                )
+            elif overopt and overopt.gold_metrics_available:
+                typer.echo(
+                    f"  - Overoptimization delta {getattr(overopt, 'delta', 0.0):.3f} (below threshold)"
+                )
+            elif overopt and overopt.warning:
+                typer.echo(f"  - Overoptimization check: {overopt.warning}")
             if health_report.length_bias_detected:
                 typer.echo(
                     f"  - Length bias severity {severity:.3f} exceeds threshold"
@@ -3018,6 +3116,8 @@ def reward_health(
             if health_report.drift_detected:
                 critical_issues += 1
             if health_report.label_leakage_risk > threshold_leakage:
+                critical_issues += 1
+            if overopt and getattr(overopt, "flagged", False):
                 critical_issues += 1
 
             if critical_issues > 0:

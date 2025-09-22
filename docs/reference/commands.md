@@ -190,6 +190,11 @@ rldk reward-health --run RUN_SOURCE [OPTIONS]
 - `--threshold-calibration`: Threshold for calibration quality (default: `0.7`)
 - `--threshold-shortcut`: Threshold for shortcut signal detection (default: `0.6`)
 - `--threshold-leakage`: Threshold for label leakage risk (default: `0.3`)
+- `--gold`: Optional path to trusted gold metrics for overoptimization checks
+- `--gold-col`: Column name containing trusted gold scores (in `--run` or `--gold` dataset)
+- `--overopt-window`: Window size for early/late proxy vs gold comparison (default: `100`)
+- `--overopt-delta-threshold`: Minimum proxy-minus-gold delta to raise an alert (default: `0.2`)
+- `--overopt-min-samples`: Minimum paired samples required for overoptimization detector (default: `100`)
 - `--gate`: Enable CI gate mode with exit codes (0=pass, 1=warn, 2=fail)
 
 **Examples:**

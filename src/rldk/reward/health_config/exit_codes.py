@@ -64,18 +64,18 @@ def raise_on_failure(health_path: str) -> None:
     if passed:
         print("✅ Health check passed")
         if warnings:
-            print(f"  Warnings: {len(warnings)}")
+            print(f"Warnings: {len(warnings)}")
             for warning in warnings:
-                print(f"    - {warning}")
+                print(warning)
     else:
         print("🚨 Health check failed")
         if failures:
-            print(f"  Failures: {len(failures)}")
+            print(f"Failures: {len(failures)}")
             for failure in failures:
-                print(f"    - {failure}")
+                print(failure)
         if warnings:
-            print(f"  Warnings: {len(warnings)}")
+            print(f"Warnings: {len(warnings)}")
             for warning in warnings:
-                print(f"    - {warning}")
+                print(warning)
 
     sys.exit(exit_code)
