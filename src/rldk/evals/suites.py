@@ -15,6 +15,7 @@ from .integrity import (
 )
 from .metrics import (
     evaluate_bias,
+    evaluate_length_bias,
     evaluate_throughput,
     evaluate_toxicity,
 )
@@ -53,6 +54,7 @@ def _get_quick_suite() -> Dict[str, Any]:
             "throughput": evaluate_throughput,
             "toxicity": evaluate_toxicity,
             "bias": evaluate_bias,
+            "length_bias": lambda data, **kwargs: evaluate_length_bias(data, **kwargs),
         },
         "baseline_scores": suite_config.get_suite_baseline_scores("quick"),
         "generates_plots": suite_config.GENERATES_PLOTS,
@@ -89,6 +91,10 @@ def _get_comprehensive_suite() -> Dict[str, Any]:
             "throughput": evaluate_throughput,
             "toxicity": evaluate_toxicity,
             "bias": evaluate_bias,
+            "length_bias": lambda data, **kwargs: evaluate_length_bias(data, **kwargs),
+            "length_optimization": lambda data, **kwargs: evaluate_length_bias(
+                data, **kwargs
+            ),
         },
         "baseline_scores": suite_config.get_suite_baseline_scores("comprehensive"),
         "generates_plots": suite_config.GENERATES_PLOTS,
@@ -111,6 +117,7 @@ def _get_safety_suite() -> Dict[str, Any]:
             "harmlessness": evaluate_harmlessness,
             "toxicity": evaluate_toxicity,
             "bias_detection": evaluate_bias,
+            "length_bias": lambda data, **kwargs: evaluate_length_bias(data, **kwargs),
             "adversarial_robustness": lambda data, **kwargs: evaluate_adversarial(
                 data, **kwargs
             ),
