@@ -298,12 +298,18 @@ from rldk import HealthAnalysisResult, reward_health
 analysis = reward_health(
     run_data=[{"step": 1, "reward_mean": 0.5}, {"step": 2, "reward_mean": 0.6}],
     reward_col="reward_mean",
+    response_col="response_text",  # Optional column with completions
+    length_col="tokens_out",       # Optional column with token counts
+    threshold_length_bias=0.3,
 )
 
 assert isinstance(analysis, HealthAnalysisResult)
 print(analysis.report.passed)
 print(analysis.metrics.head())
 summary = analysis.to_dict()
+# Dedicated length bias detector metrics
+print(analysis.report.length_bias_metrics.bias_severity)
+print(analysis.report.length_bias_recommendations)
 ```
 
 #### `HealthAnalysisResult`
@@ -315,6 +321,10 @@ The object returned by `reward_health` combines the underlying
 - `metrics`: Normalized training metrics DataFrame for the run
 - `reference_metrics`: Optional normalized reference DataFrame
 - `to_dict()`: JSON-ready summary for serialization or logging
+- Length bias fields:
+  - `length_bias_detected`: Boolean flag indicating severity crossed the configured threshold
+  - `length_bias_metrics`: Structured metrics (correlations, ODIN heuristics, quartiles)
+  - `length_bias_recommendations`: Human-readable remediation tips from the detector
 
 ### Evaluation Suites
 
@@ -558,11 +568,18 @@ class DeterminismReport:
 class RewardHealthReport:
     passed: bool
     drift_detected: bool
-    saturation_issues: List[Dict[str, Any]]
+    saturation_issues: List[str]
     calibration_score: float
-    shortcut_signals: List[Dict[str, Any]]
+    shortcut_signals: List[str]
     label_leakage_risk: float
-    drift_metrics: Optional[pd.DataFrame]
+    fixes: List[str]
+    drift_metrics: pd.DataFrame
+    calibration_details: Dict[str, Any]
+    shortcut_analysis: Dict[str, float]
+    saturation_analysis: Dict[str, Any]
+    length_bias_detected: bool
+    length_bias_metrics: LengthBiasMetrics
+    length_bias_recommendations: List[str]
 ```
 
 #### `DivergenceReport`

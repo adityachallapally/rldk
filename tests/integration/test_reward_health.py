@@ -7,6 +7,7 @@ import pytest
 from rldk.reward.calibration import analyze_calibration
 from rldk.reward.drift import detect_reward_drift
 from rldk.reward.health_analysis import RewardHealthReport, health
+from rldk.reward.length_bias import LengthBiasMetrics
 
 
 class TestRewardHealth:
@@ -53,6 +54,9 @@ class TestRewardHealth:
         assert hasattr(report, "shortcut_signals")
         assert hasattr(report, "label_leakage_risk")
         assert hasattr(report, "fixes")
+        assert hasattr(report, "length_bias_detected")
+        assert hasattr(report, "length_bias_metrics")
+        assert hasattr(report, "length_bias_recommendations")
 
     def test_health_with_reference_data(self):
         """Test reward health analysis with reference data."""
@@ -90,18 +94,22 @@ class TestRewardHealth:
         assert len(report.saturation_issues) > 0
         assert any("upper saturation" in issue for issue in report.saturation_issues)
 
-    def test_health_shortcut_detection(self):
-        """Test shortcut signal detection."""
-        # Create data with strong length correlation
-        shortcut_data = self.sample_data.copy()
-        shortcut_data["reward_mean"] = (
-            shortcut_data["tokens_out"] * 0.01
-        )  # Strong correlation
+    def test_health_length_bias_detection(self):
+        """Test dedicated length bias detection."""
+        correlated = self.sample_data.copy()
+        correlated["reward_mean"] = correlated["tokens_out"] * 0.02
 
-        report = health(shortcut_data, threshold_shortcut=0.5)
+        report = health(
+            correlated,
+            threshold_shortcut=0.5,
+            threshold_length_bias=0.2,
+        )
 
-        assert len(report.shortcut_signals) > 0
-        assert any("Length bias" in signal for signal in report.shortcut_signals)
+        assert report.length_bias_detected is True
+        assert report.length_bias_metrics.bias_severity is not None
+        assert any(
+            "Length bias" in signal for signal in report.shortcut_signals
+        )
 
     def test_health_label_leakage_detection(self):
         """Test label leakage detection."""
@@ -135,6 +143,7 @@ class TestRewardHealth:
             threshold_calibration=0.1,  # Very lenient
             threshold_shortcut=0.9,  # Very lenient
             threshold_leakage=0.9,  # Very lenient
+            threshold_length_bias=0.9,
         )
 
         # Lenient thresholds should result in fewer issues
@@ -155,6 +164,21 @@ class TestRewardHealth:
 
         assert isinstance(report, RewardHealthReport)
         # Should handle single row gracefully
+
+    def test_health_disable_length_bias(self):
+        """Ensure length bias detector can be disabled."""
+        correlated = self.sample_data.copy()
+        correlated["reward_mean"] = correlated["tokens_out"] * 0.02
+
+        report = health(
+            correlated,
+            enable_length_bias_detection=False,
+            threshold_length_bias=0.1,
+        )
+
+        assert report.length_bias_detected is False
+        assert report.length_bias_metrics.valid_sample_count == 0
+        assert not any("Length bias" in signal for signal in report.shortcut_signals)
 
 
 class TestCalibration:
@@ -304,6 +328,9 @@ class TestRewardHealthReport:
             calibration_details={},
             shortcut_analysis={},
             saturation_analysis={},
+            length_bias_detected=False,
+            length_bias_metrics=LengthBiasMetrics(),
+            length_bias_recommendations=[],
         )
 
         assert report.passed is True
@@ -328,6 +355,9 @@ class TestRewardHealthReport:
             calibration_details={"error": "Poor calibration"},
             shortcut_analysis={"length_correlation": 0.8},
             saturation_analysis={"upper_saturation_ratio": 0.9},
+            length_bias_detected=True,
+            length_bias_metrics=LengthBiasMetrics(bias_severity=0.8),
+            length_bias_recommendations=["Audit prompts for response length bias."],
         )
 
         assert report.passed is False

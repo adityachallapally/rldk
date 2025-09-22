@@ -173,6 +173,8 @@ threshold_saturation: 0.8
 threshold_calibration: 0.7
 threshold_shortcut: 0.6
 threshold_leakage: 0.3
+threshold_length_bias: 0.4
+enable_length_bias_detection: true
 ```
 
 ## Best Practices
@@ -199,6 +201,9 @@ You can disable detectors that aren't relevant for your use case:
 detectors:
   reward_length_correlation:
     enabled: false  # Disable if length bias is acceptable
+
+# Legacy switch to disable the dedicated detector
+enable_length_bias_detection: false
 ```
 
 ## Troubleshooting

@@ -52,6 +52,15 @@ def test_reward_health_accepts_list(base_metrics: pd.DataFrame, dataframe_result
     assert list_result.report.saturation_analysis == dataframe_result.report.saturation_analysis
     assert list_result.report.shortcut_analysis == dataframe_result.report.shortcut_analysis
     assert list_result.report.calibration_details == dataframe_result.report.calibration_details
+    assert (
+        list_result.report.length_bias_detected
+        == dataframe_result.report.length_bias_detected
+    )
+    assert (
+        list_result.report.length_bias_recommendations
+        == dataframe_result.report.length_bias_recommendations
+    )
+    assert list_result.report.length_bias_metrics.to_dict() == dataframe_result.report.length_bias_metrics.to_dict()
     assert list_result.reference_metrics is None
     if list_result.report.drift_metrics is None:
         assert dataframe_result.report.drift_metrics is None
@@ -101,6 +110,15 @@ def test_reward_health_accepts_jsonl(tmp_path: Path, base_metrics: pd.DataFrame,
     assert jsonl_result.report.saturation_analysis == dataframe_result.report.saturation_analysis
     assert jsonl_result.report.shortcut_analysis == dataframe_result.report.shortcut_analysis
     assert jsonl_result.report.calibration_details == dataframe_result.report.calibration_details
+    assert (
+        jsonl_result.report.length_bias_detected
+        == dataframe_result.report.length_bias_detected
+    )
+    assert (
+        jsonl_result.report.length_bias_recommendations
+        == dataframe_result.report.length_bias_recommendations
+    )
+    assert jsonl_result.report.length_bias_metrics.to_dict() == dataframe_result.report.length_bias_metrics.to_dict()
     assert jsonl_result.reference_metrics is None
     if jsonl_result.report.drift_metrics is None:
         assert dataframe_result.report.drift_metrics is None
@@ -108,3 +126,15 @@ def test_reward_health_accepts_jsonl(tmp_path: Path, base_metrics: pd.DataFrame,
         pd.testing.assert_frame_equal(
             jsonl_result.report.drift_metrics, dataframe_result.report.drift_metrics
         )
+
+
+def test_health_analysis_to_dict_includes_length_bias(
+    dataframe_result: HealthAnalysisResult,
+) -> None:
+    payload = dataframe_result.to_dict()
+    report = payload["report"]
+
+    assert "length_bias_detected" in report
+    assert "length_bias_metrics" in report
+    assert "length_bias_recommendations" in report
+    assert isinstance(report["length_bias_metrics"], dict)

@@ -36,6 +36,7 @@ from rldk.forensics.ckpt_diff import diff_checkpoints
 from rldk.forensics.env_audit import audit_environment
 from rldk.forensics.log_scan import scan_logs
 from rldk.ingest import ingest_runs, normalize_training_metrics_source
+from rldk.ingest.training_metrics_normalizer import normalize_training_metrics
 from rldk.io import (
     CkptDiffReportV1,
     DeterminismCardV1,
@@ -144,6 +145,32 @@ def _combine_field_maps(
     if custom_mapping:
         mapping.update(custom_mapping)
     return mapping or None
+
+
+def _fallback_directory_load(
+    directory: Path, field_map: Optional[Dict[str, str]]
+) -> pd.DataFrame:
+    typer.echo("Fallback: loading metrics table directly...")
+    candidates = sorted(directory.glob("*"))
+    table: Optional[pd.DataFrame] = None
+    for candidate in candidates:
+        suffix = candidate.suffix.lower()
+        try:
+            if suffix == ".csv":
+                table = pd.read_csv(candidate)
+            elif suffix == ".tsv":
+                table = pd.read_csv(candidate, sep="\t")
+            elif suffix == ".parquet":
+                table = pd.read_parquet(candidate)
+        except Exception:
+            continue
+        if table is not None:
+            break
+    if table is None:
+        raise TypeError(
+            "Unable to load metrics table from directory; no supported files found"
+        )
+    return normalize_training_metrics(table, field_map=field_map)
 
 
 def _normalize_signals_option(signals: Sequence[str]) -> List[str]:
@@ -1482,8 +1509,11 @@ def reward_health_run(
         generate_reward_health_report(health_report, out)
 
         # Display results
+        severity = health_report.length_bias_metrics.bias_severity
         if health_report.passed:
             typer.echo("\n✅ Reward health check passed")
+            if severity is not None:
+                typer.echo(f"  Length bias severity: {severity:.3f}")
             exit_code = 0
         else:
             typer.echo("\n🚨 Reward health issues detected")
@@ -2648,6 +2678,26 @@ def reward_health(
     threshold_leakage: float = typer.Option(
         0.3, "--threshold-leakage", help="Threshold for label leakage risk"
     ),
+    response_col: Optional[str] = typer.Option(
+        None,
+        "--response-col",
+        help="Column containing response text for length bias detection",
+    ),
+    length_col: Optional[str] = typer.Option(
+        None,
+        "--length-col",
+        help="Column containing response lengths or token counts",
+    ),
+    threshold_length_bias: float = typer.Option(
+        0.4,
+        "--threshold-length-bias",
+        help="Severity threshold for length bias detection",
+    ),
+    enable_length_bias_detection: bool = typer.Option(
+        True,
+        "--enable-length-bias-detection/--disable-length-bias-detection",
+        help="Toggle dedicated length bias detection",
+    ),
     gate: bool = typer.Option(
         False, "--gate", help="Enable CI gate mode with exit codes (0=pass, 1=warn, 2=fail)"
     ),
@@ -2686,7 +2736,12 @@ def reward_health(
 
         # Normalize run data
         typer.echo("Normalizing run data...")
-        run_data = normalize_training_metrics_source(run_path, field_map=mapping_dict)
+        try:
+            run_data = normalize_training_metrics_source(run_path, field_map=mapping_dict)
+        except TypeError as exc:
+            if "arg must be a list" not in str(exc) or not Path(run_path).is_dir():
+                raise
+            run_data = _fallback_directory_load(Path(run_path), mapping_dict)
 
         if run_data.empty:
             raise ValidationError(
@@ -2701,9 +2756,14 @@ def reward_health(
         reference_data = None
         if reference_path:
             typer.echo("Normalizing reference data...")
-            reference_data = normalize_training_metrics_source(
-                reference_path, field_map=mapping_dict
-            )
+            try:
+                reference_data = normalize_training_metrics_source(
+                    reference_path, field_map=mapping_dict
+                )
+            except TypeError as exc:
+                if "arg must be a list" not in str(exc) or not Path(reference_path).is_dir():
+                    raise
+                reference_data = _fallback_directory_load(Path(reference_path), mapping_dict)
             if reference_data.empty:
                 raise ValidationError(
                     "Normalized reference data is empty",
@@ -2725,6 +2785,10 @@ def reward_health(
             threshold_calibration=threshold_calibration,
             threshold_shortcut=threshold_shortcut,
             threshold_leakage=threshold_leakage,
+            response_col=response_col,
+            length_col=length_col,
+            threshold_length_bias=threshold_length_bias,
+            enable_length_bias_detection=enable_length_bias_detection,
         )
 
         # Generate reports
@@ -2732,8 +2796,11 @@ def reward_health(
         generate_reward_health_report(health_report, output_dir)
 
         # Display results
+        severity = health_report.length_bias_metrics.bias_severity
         if health_report.passed:
             typer.echo("\n✅ Reward health check passed")
+            if severity is not None:
+                typer.echo(f"  Length bias severity: {severity:.3f}")
             exit_code = 0
         else:
             typer.echo("\n🚨 Reward health issues detected")
@@ -2755,6 +2822,16 @@ def reward_health(
             if health_report.label_leakage_risk > threshold_leakage:
                 typer.echo(
                     f"  - Label leakage risk: {health_report.label_leakage_risk:.3f}"
+                )
+            if health_report.length_bias_detected:
+                typer.echo(
+                    f"  - Length bias severity {severity:.3f} exceeds threshold"
+                    if severity is not None
+                    else "  - Length bias detected"
+                )
+            elif severity is not None:
+                typer.echo(
+                    f"  - Length bias severity: {severity:.3f} (below threshold)"
                 )
 
             # Determine exit code based on severity

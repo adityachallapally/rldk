@@ -37,6 +37,7 @@ This document defines the public API contract for RLDK, including Python symbols
 - `RewardHealthReport`
   - Data class containing reward model health analysis results
   - Includes drift detection, saturation analysis, calibration metrics
+  - Provides dedicated length-bias metrics, severity scores, and remediation tips
 
 - `EvalResult`
   - Data class containing evaluation suite results

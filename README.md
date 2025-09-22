@@ -541,8 +541,11 @@ determinism_check = check(cmd="python train.py", replicas=5)
 health_result = reward_health(
     training_data,  # DataFrame, list of dicts, or path to JSONL/table logs
     reference_data,
+    response_col="response_text",
+    length_col="tokens_out",
 )
 print(health_result.report.passed)
+print(health_result.report.length_bias_metrics.bias_severity)
 ```
 
 ## 📊 **What You Get**
