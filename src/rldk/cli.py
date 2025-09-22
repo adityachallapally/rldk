@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -25,7 +26,12 @@ from rldk.config import settings
 from rldk.determinism.check import check
 from rldk.diff import compare_training_metrics_tables
 from rldk.evals import run
-from rldk.evals.metrics import evaluate_bias, evaluate_throughput, evaluate_toxicity
+from rldk.evals.metrics import (
+    evaluate_bias,
+    evaluate_length_bias,
+    evaluate_throughput,
+    evaluate_toxicity,
+)
 
 # Import evaluation modules
 from rldk.evals.suites import COMPREHENSIVE_SUITE, QUICK_SUITE, SAFETY_SUITE
@@ -200,6 +206,25 @@ def _parse_json_mapping(raw: Optional[str], field: str) -> Optional[Dict[str, An
     return data
 
 
+def _load_tokenizer_by_name(tokenizer_name: Optional[str]) -> Optional[Any]:
+    """Load a Hugging Face tokenizer if the optional dependency is available."""
+
+    if not tokenizer_name:
+        return None
+
+    try:
+        from transformers import AutoTokenizer  # type: ignore
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        raise RuntimeError(
+            "transformers is required for --tokenizer-name but is not installed"
+        ) from exc
+
+    try:
+        return AutoTokenizer.from_pretrained(tokenizer_name)
+    except Exception as exc:  # pragma: no cover - network/config errors
+        raise RuntimeError(f"Failed to load tokenizer '{tokenizer_name}': {exc}") from exc
+
+
 def _derive_alert_text_path(alerts_path: Optional[Path], override: Optional[Path]) -> Optional[Path]:
     if override is not None:
         return override
@@ -224,6 +249,14 @@ evals_app = typer.Typer(name="evals", help="Evaluation suite commands")
 app.add_typer(forensics_app, name="forensics")
 app.add_typer(reward_app, name="reward")
 app.add_typer(evals_app, name="evals")
+
+_MONITOR_RULES_HELP = "Path to a YAML rules file or preset name"
+if RULE_PRESETS:
+    _MONITOR_RULES_HELP += f" ({', '.join(sorted(RULE_PRESETS))})"
+_MONITOR_RULES_HELP += (
+    ". Use '--rules length-bias-gate' to enable the upcoming preset for reward "
+    "length bias monitoring."
+)
 
 @app.command(name="monitor")
 def monitor(
@@ -251,16 +284,7 @@ def monitor(
         "--from-mlflow",
         help="Stream metrics from an MLflow run ID using the active tracking URI.",
     ),
-    rules: str = typer.Option(
-        ...,
-        "--rules",
-        help=(
-            "Path to a YAML rules file or preset name"
-            f" ({', '.join(sorted(RULE_PRESETS))})"
-            if RULE_PRESETS
-            else "Path to a YAML rules file."
-        ),
-    ),
+    rules: str = typer.Option(..., "--rules", help=_MONITOR_RULES_HELP),
     report: Optional[Path] = typer.Option(
         None,
         "--report",
@@ -1453,6 +1477,152 @@ def reward_drift(
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(1)
 
+
+@reward_app.command(name="length-bias")
+def reward_length_bias(
+    run_path: str = typer.Option(
+        ..., "--run-path", "-r", help="Path to run metrics (file, directory, or wandb:// URI)"
+    ),
+    response_col: Optional[str] = typer.Option(
+        None,
+        "--response-col",
+        help="Column containing response text for length analysis",
+    ),
+    reward_col: Optional[str] = typer.Option(
+        None,
+        "--reward-col",
+        help="Column containing reward scores",
+    ),
+    length_col: Optional[str] = typer.Option(
+        None,
+        "--length-col",
+        help="Column containing token counts or response lengths",
+    ),
+    threshold: float = typer.Option(
+        0.35, "--threshold", help="Severity threshold for length bias detection"
+    ),
+    sample_size: Optional[int] = typer.Option(
+        None, "--sample-size", help="Optional sample size for evaluation"
+    ),
+    adapter: Optional[str] = typer.Option(
+        None, "--adapter", help="Adapter hint to use during ingestion"
+    ),
+    output_dir: Optional[Path] = typer.Option(
+        None, "--output-dir", help="Directory for JSON outputs"
+    ),
+    generate_card: bool = typer.Option(
+        False,
+        "--generate-card",
+        help="Write a summary card JSON alongside the detailed report",
+    ),
+    tokenizer_name: Optional[str] = typer.Option(
+        None,
+        "--tokenizer-name",
+        help="Optional Hugging Face tokenizer name for token counting",
+    ),
+    seed: Optional[int] = typer.Option(
+        None, "--seed", help="Random seed used when sampling rows"
+    ),
+) -> None:
+    """Run reward length bias analysis using evaluation helpers."""
+
+    ensure_config_initialized()
+    typer.echo(f"Loading run data from: {run_path}")
+
+    try:
+        run_data = ingest_runs(run_path, adapter_hint=adapter)
+    except (AdapterError, ValidationError) as exc:
+        typer.echo(f"Failed to ingest run data: {exc}", err=True)
+        raise typer.Exit(1)
+    except Exception as exc:  # pragma: no cover - defensive path
+        typer.echo(f"Unexpected ingestion error: {exc}", err=True)
+        raise typer.Exit(1)
+
+    if run_data.empty:
+        typer.echo("Ingested data is empty; cannot analyze length bias.", err=True)
+        raise typer.Exit(1)
+
+    try:
+        tokenizer = _load_tokenizer_by_name(tokenizer_name)
+    except RuntimeError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1)
+
+    try:
+        result = evaluate_length_bias(
+            run_data,
+            response_col=response_col,
+            reward_col=reward_col,
+            length_col=length_col,
+            threshold=threshold,
+            sample_size=sample_size,
+            seed=seed,
+            tokenizer=tokenizer,
+        )
+    except Exception as exc:
+        typer.echo(f"Length bias evaluation failed: {exc}", err=True)
+        raise typer.Exit(1)
+
+    severity = result.get("severity")
+    typer.echo("\nLength bias evaluation summary:")
+    typer.echo(f"  Responses analyzed: {result.get('response_count', 0)}")
+    typer.echo(f"  Valid samples: {result.get('num_samples', 0)}")
+    if severity is not None:
+        typer.echo(f"  Severity: {severity:.3f}")
+    typer.echo(f"  Score: {result.get('score', float('nan')):.3f}")
+    typer.echo(
+        f"  Passed threshold ({threshold}): {'yes' if result.get('passed') else 'no'}"
+    )
+
+    recommendations = result.get("recommendations") or []
+    if recommendations:
+        typer.echo("  Recommendations:")
+        for line in recommendations:
+            typer.echo(f"    - {line}")
+
+    json_summary = json.dumps(result, indent=2)
+    typer.echo("\nJSON report:")
+    typer.echo(json_summary)
+
+    report_path: Optional[Path] = None
+    card_path: Optional[Path] = None
+    if output_dir:
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        report_path = output_path / "length_bias_report.json"
+        write_json(result, report_path)
+        typer.echo(f"\nReport saved to: {report_path}")
+
+        if generate_card:
+            card = {
+                "version": "1.0",
+                "generated_at": datetime.utcnow().isoformat(),
+                "source": run_path,
+                "passed": result.get("passed"),
+                "score": result.get("score"),
+                "severity": severity,
+                "threshold": result.get("threshold"),
+                "recommendations": recommendations,
+                "metrics": result.get("metrics"),
+            }
+            card_path = output_path / "length_bias_card.json"
+            write_json(card, card_path)
+            typer.echo(f"Card saved to: {card_path}")
+    elif generate_card:
+        card = {
+            "version": "1.0",
+            "generated_at": datetime.utcnow().isoformat(),
+            "source": run_path,
+            "passed": result.get("passed"),
+            "score": result.get("score"),
+            "severity": severity,
+            "threshold": result.get("threshold"),
+            "recommendations": recommendations,
+            "metrics": result.get("metrics"),
+        }
+        card_path = Path("length_bias_card.json")
+        write_json(card, card_path)
+        typer.echo(f"\nCard saved to: {card_path}")
 
 # Create a sub-app for reward-health commands
 reward_health_app = typer.Typer(name="reward-health", help="Reward health analysis commands")
