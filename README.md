@@ -133,12 +133,16 @@ with seed_context(123):
 
 ### **Live JSONL Monitoring (Framework-Agnostic)**
 Observe any trainer in real time by streaming JSONL metrics into the `rldk monitor` CLI. Built-in rule presets and field-map presets
-make it a zero-code add-on for PPO, TRL, Accelerate, and OpenRLHF workflows.
+make it a zero-code add-on for PPO/GRPO, TRL, Accelerate, and OpenRLHF workflows.
 
 ```bash
 # Stream the demo loop directly into the monitor (no files required)
 python examples/minimal_streaming_loop.py \
   | rldk monitor --rules ppo_safe --preset trl --alerts artifacts/alerts.jsonl
+
+# Stream the GRPO minimal loop with GRPO guardrails
+python examples/grpo_minimal_loop.py \
+  | rldk monitor --rules grpo_safe --preset grpo --alerts artifacts/grpo_alerts.jsonl
 
 # Or point the monitor at a directory of JSONL files (tails the newest)
 rldk monitor --stream artifacts --rules ppo_strict --preset accelerate --pid <trainer_pid>
@@ -174,6 +178,10 @@ f.write(__import__("json").dumps({
 f.flush()
 ```
 
+Want a ready-made GRPO stream? `examples/grpo_minimal_loop.py` emits `kl`, `kl_coef`, `entropy`, `advantage_std`, and more via
+`EventWriter`. Pair it with `rldk monitor --stream artifacts/grpo_run.jsonl --rules grpo_safe --preset grpo` or simply run
+`make monitor-grpo` to launch the script, attach the monitor, and capture alerts plus a report automatically.
+
 Pair either snippet with the ready-to-run `rules.yaml` in the repository root:
 
 ```bash
@@ -184,17 +192,25 @@ rldk monitor --stream artifacts/run.jsonl --rules kl_drift
 
 Want the full walkthrough with alerts and auto-stop baked in? Run `make monitor-demo` to launch
 `examples/minimal_streaming_loop.py`, attach the monitor, and review the resulting `artifacts/alerts.jsonl` and
-`artifacts/report.json` files.
+`artifacts/report.json` files. Prefer GRPO metrics? `make monitor-grpo` runs the GRPO minimal loop, wires up `--preset grpo`
+with `--rules grpo_safe`, and records the alerts plus report under `artifacts/` for inspection.
 
 Key conveniences:
 
-- **Rule presets** – `ppo_safe`, `ppo_strict`, `kl_drift`, and `dpo_basic` cover common KL, drift, reward, and gradient gates so you can start without writing YAML.
-- **Field-map presets** – `--preset trl|accelerate|openrlhf` normalizes popular logging key conventions; combine with `--field-map` for custom tweaks.
+- **Rule presets** – `ppo_safe`, `ppo_strict`, `grpo_safe`, `grpo_strict`, `kl_drift`, and `dpo_basic` cover common KL, drift, reward, and gradient gates so you can start without writing YAML.
+- **Field-map presets** – `--preset grpo|trl|accelerate|openrlhf` normalizes popular logging key conventions; combine with `--field-map` for custom tweaks.
 - **Directory tailing** – Passing a directory to `--stream` automatically follows the newest `*.jsonl` file and handles rotation.
 - **Environment hook** – Set `RLDK_METRICS_PATH` to auto-tail a metrics file without specifying `--stream`; piping JSONL to stdin also just works.
 - **Ready-made emitter** – `examples/minimal_streaming_loop.py` shows how to emit canonical events and responds to monitor stop actions out of the box.
 - **Hosted run bridges** – `--from-wandb` and `--from-mlflow` follow remote projects with clear error messages and retry guards.
 - **Regex sniffing** – `--regex` (for example `--regex trl`) extracts metrics from stdout/stderr without changing your training loop.
+
+**Choosing a GRPO preset**
+
+- `grpo_safe` keeps wider guard bands and primarily warns unless the KL spike or variance collapse persists. Use it for established
+  runs where you want to observe drift but avoid premature stops.
+- `grpo_strict` lowers KL and entropy ceilings, adds stop actions to most rules, and reacts faster to unstable acceptance rates.
+  Reach for it when onboarding fresh policies or enforcing production guardrails.
 
 ### **Reward Model Health Analysis**
 Comprehensive reward model analysis and drift detection:

@@ -1,6 +1,6 @@
 # Makefile for RL Debug Kit Reference Suite
 
-.PHONY: help init lint test cli-smoke docs-serve reference\:cpu_smoke reference\:bisect_demo reference\:setup clean profile profile-check profile-train profile-dashboard profile-clean test-trl test-trl-unit test-trl-integration test-trl-slow golden-master-test monitor-demo
+.PHONY: help init lint test cli-smoke docs-serve reference\:cpu_smoke reference\:bisect_demo reference\:setup clean profile profile-check profile-train profile-dashboard profile-clean test-trl test-trl-unit test-trl-integration test-trl-slow golden-master-test monitor-demo monitor-grpo
 
 help:
 	@echo "RL Debug Kit Development Commands"
@@ -12,6 +12,7 @@ help:
 	@echo "  cli-smoke              - Run CLI smoke tests"
 	@echo "  docs-serve             - Serve documentation locally"
 	@echo "  monitor-demo           - Run the live monitoring demo with auto-stop"
+	@echo "  monitor-grpo           - Stream the GRPO loop with grpo_safe rules"
 	@echo ""
 	@echo "Reference Suite targets:"
 	@echo "  reference:setup        - Setup reference runs for testing"
@@ -115,8 +116,8 @@ docs-build:
 monitor-demo:
 	@echo "Running live monitoring demo..."
 	@set -eu; \
-		export PYTHONPATH="src$${PYTHONPATH:+:$${PYTHONPATH}}"; \
-		artifacts_dir=artifacts; \
+	        export PYTHONPATH="src$${PYTHONPATH:+:$${PYTHONPATH}}"; \
+	        artifacts_dir=artifacts; \
 		mkdir -p $$artifacts_dir; \
 		rm -f $$artifacts_dir/run.jsonl $$artifacts_dir/alerts.jsonl $$artifacts_dir/report.json $$artifacts_dir/demo_loop.log $$artifacts_dir/monitor.log; \
 		python examples/minimal_streaming_loop.py > $$artifacts_dir/demo_loop.log 2>&1 & \
@@ -136,9 +137,42 @@ monitor-demo:
 		cat $$artifacts_dir/monitor.log; \
 		echo "Alerts written to $$artifacts_dir/alerts.jsonl"; \
 		tail -n 5 $$artifacts_dir/alerts.jsonl 2>/dev/null || echo "No alerts recorded yet."; \
-		echo "Report available at $$artifacts_dir/report.json"; \
-		echo "Trainer stdout captured in $$artifacts_dir/demo_loop.log"; \
-		echo "✅ Monitor demo complete!"
+	        echo "Report available at $$artifacts_dir/report.json"; \
+	        echo "Trainer stdout captured in $$artifacts_dir/demo_loop.log"; \
+	        echo "✅ Monitor demo complete!"
+
+monitor-grpo:
+	@echo "Running GRPO monitoring demo..."
+	@set -eu; \
+	        export PYTHONPATH="src$${PYTHONPATH:+:$${PYTHONPATH}}"; \
+	        artifacts_dir=artifacts; \
+	        mkdir -p $$artifacts_dir; \
+	        grpo_stream=$$artifacts_dir/grpo_run.jsonl; \
+	        alerts_path=$$artifacts_dir/grpo_alerts.jsonl; \
+	        report_path=$$artifacts_dir/grpo_report.json; \
+	        loop_log=$$artifacts_dir/grpo_loop.log; \
+	        monitor_log=$$artifacts_dir/grpo_monitor.log; \
+	        rm -f $$grpo_stream $$alerts_path $$report_path $$loop_log $$monitor_log $$artifacts_dir/grpo_loop.pid; \
+	        python examples/grpo_minimal_loop.py > $$loop_log 2>&1 & \
+	        loop_pid=$$!; \
+	        echo $$loop_pid > $$artifacts_dir/grpo_loop.pid; \
+	        trap "kill -TERM $$loop_pid >/dev/null 2>&1 || true; wait $$loop_pid >/dev/null 2>&1 || true; rm -f $$artifacts_dir/grpo_loop.pid" EXIT; \
+	        sleep 1; \
+	        echo "Monitor attaching to PID $$loop_pid"; \
+	        if command -v rldk >/dev/null 2>&1; then \
+	                timeout 20s rldk monitor --stream $$grpo_stream --rules grpo_safe --preset grpo --pid $$loop_pid --alerts $$alerts_path --report $$report_path > $$monitor_log 2>&1 || true; \
+	        else \
+	                timeout 20s python -m rldk.cli monitor --stream $$grpo_stream --rules grpo_safe --preset grpo --pid $$loop_pid --alerts $$alerts_path --report $$report_path > $$monitor_log 2>&1 || true; \
+	        fi; \
+	        kill -TERM $$loop_pid >/dev/null 2>&1 || true; \
+	        wait $$loop_pid >/dev/null 2>&1 || true; \
+	        echo "Monitor output:"; \
+	        cat $$monitor_log; \
+	        echo "Alerts written to $$alerts_path"; \
+	        tail -n 5 $$alerts_path 2>/dev/null || echo "No alerts recorded yet."; \
+	        echo "Report available at $$report_path"; \
+	        echo "Trainer stdout captured in $$loop_log"; \
+	        echo "✅ GRPO monitor demo complete!"
 
 # Setup Reference Runs Target
 reference\:setup:

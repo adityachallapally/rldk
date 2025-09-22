@@ -297,7 +297,7 @@ def monitor(
             "Field map preset to normalize common trainer keys"
             f" ({', '.join(sorted(FIELD_MAP_PRESETS))})"
             if FIELD_MAP_PRESETS
-            else "Field map preset name (e.g. trl)."
+            else "Field map preset name (e.g. trl, grpo)."
         ),
     ),
     field_map: Optional[str] = typer.Option(
@@ -985,7 +985,7 @@ def forensics_kl_drift(
     preset: Optional[str] = typer.Option(
         None,
         "--preset",
-        help="Field map preset for the metrics source (e.g. trl, accelerate)",
+        help="Field map preset for the metrics source (e.g. trl, grpo, accelerate)",
     ),
     field_map: Optional[str] = typer.Option(
         None,
@@ -1978,7 +1978,7 @@ def evaluate(
             "Field map preset to normalize training metrics "
             f"({', '.join(sorted(FIELD_MAP_PRESETS))})"
             if FIELD_MAP_PRESETS
-            else "Field map preset name (e.g. trl)."
+            else "Field map preset name (e.g. trl, grpo)."
         ),
     ),
     field_map: Optional[str] = typer.Option(
@@ -2582,7 +2582,7 @@ def diff(
             "Field map preset to normalize training metrics"
             f" ({', '.join(sorted(FIELD_MAP_PRESETS))})"
             if FIELD_MAP_PRESETS
-            else "Field map preset name (e.g. trl)."
+            else "Field map preset name (e.g. trl, grpo)."
         ),
     ),
     field_map: Optional[str] = typer.Option(
@@ -2852,7 +2852,7 @@ def reward_health(
             "Field map preset to normalize training metrics"
             f" ({', '.join(sorted(FIELD_MAP_PRESETS))})"
             if FIELD_MAP_PRESETS
-            else "Field map preset name (e.g. trl)."
+            else "Field map preset name (e.g. trl, grpo)."
         ),
     ),
     field_map: Optional[str] = typer.Option(
@@ -3689,7 +3689,7 @@ def card(
             "Field map preset to normalize training metrics"
             f" ({', '.join(sorted(FIELD_MAP_PRESETS))})"
             if FIELD_MAP_PRESETS
-            else "Field map preset name (e.g. trl)."
+            else "Field map preset name (e.g. trl, grpo)."
         ),
     ),
     field_map: Optional[str] = typer.Option(
