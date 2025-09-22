@@ -193,7 +193,9 @@ forensics = ComprehensivePPOForensics(
     window_size=100,
     enable_kl_schedule_tracking=True,
     enable_gradient_norms_analysis=True,
-    enable_advantage_statistics=True
+    enable_advantage_statistics=True,
+    enable_length_bias_detection=True,
+    length_bias_threshold=0.35,
 )
 
 # Update with training data
@@ -219,6 +221,7 @@ metrics = forensics.update(
 analysis = forensics.get_comprehensive_analysis()
 anomalies = forensics.get_anomalies()
 health_summary = forensics.get_health_summary()
+length_bias = forensics.get_length_bias_analysis()
 forensics.save_analysis("analysis.json")
 ```
 

@@ -69,6 +69,51 @@ RULE_PRESETS: Dict[str, RulePreset] = {
                     },
                 ],
             },
+            {
+                "id": "ppo_length_bias_severity",
+                "where": "name == \"length_bias_score\"",
+                "condition": "value > meta.length_bias_threshold",
+                "window": {"size": 3, "kind": "consecutive"},
+                "grace_steps": 6,
+                "cooldown_steps": 12,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Length bias severity {value:.3f} exceeds threshold"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "ppo_length_bias_corr",
+                "where": "name == \"length_reward_correlation_abs\"",
+                "condition": "value > meta.length_bias_corr_threshold",
+                "window": {"size": 6, "kind": "rolling"},
+                "grace_steps": 8,
+                "cooldown_steps": 12,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Absolute Pearson corr {value:.3f} with length"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "ppo_length_bias_rank_corr",
+                "where": "name == \"length_reward_spearman_abs\"",
+                "condition": "value > meta.length_bias_corr_threshold",
+                "window": {"size": 6, "kind": "rolling"},
+                "grace_steps": 8,
+                "cooldown_steps": 12,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Absolute Spearman corr {value:.3f} with length"
+                        }
+                    }
+                ],
+            },
         ]
     },
     "ppo_strict": {
@@ -137,6 +182,56 @@ RULE_PRESETS: Dict[str, RulePreset] = {
                             "msg": "Strict KL drift gate fired (score={kl_drift_score:.3f})"
                         }
                     },
+                ],
+            },
+            {
+                "id": "ppo_strict_length_bias_severity",
+                "where": "name == \"length_bias_score\"",
+                "condition": "value > meta.length_bias_threshold",
+                "window": {"size": 2, "kind": "consecutive"},
+                "grace_steps": 4,
+                "cooldown_steps": 10,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Strict length bias guard fired: {value:.3f}"
+                        }
+                    },
+                    {
+                        "stop": {
+                            "msg": "Stopping run due to persistent length bias"
+                        }
+                    },
+                ],
+            },
+            {
+                "id": "ppo_strict_length_bias_corr",
+                "where": "name == \"length_reward_correlation_abs\"",
+                "condition": "value > meta.length_bias_corr_threshold",
+                "window": {"size": 4, "kind": "rolling"},
+                "grace_steps": 6,
+                "cooldown_steps": 10,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Length bias correlation {value:.3f} exceeded strict guard"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "ppo_strict_length_bias_rank_corr",
+                "where": "name == \"length_reward_spearman_abs\"",
+                "condition": "value > meta.length_bias_corr_threshold",
+                "window": {"size": 4, "kind": "rolling"},
+                "grace_steps": 6,
+                "cooldown_steps": 10,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Rank correlation {value:.3f} indicates reward-length coupling"
+                        }
+                    }
                 ],
             },
         ]
@@ -219,6 +314,60 @@ RULE_PRESETS: Dict[str, RulePreset] = {
                             "msg": "Emergency stop due to critical KL drift"
                         }
                     },
+                ],
+            },
+        ]
+    },
+    "length_bias": {
+        "rules": [
+            {
+                "id": "length_bias_severity_gate",
+                "where": "name == \"length_bias_score\"",
+                "condition": "value > meta.length_bias_threshold",
+                "window": {"size": 3, "kind": "consecutive"},
+                "grace_steps": 5,
+                "cooldown_steps": 12,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Length bias severity {value:.3f} exceeds configured guard"
+                        }
+                    },
+                    {
+                        "stop": {
+                            "msg": "Halting run: length bias severity over limit"
+                        }
+                    },
+                ],
+            },
+            {
+                "id": "length_bias_corr_guard",
+                "where": "name == \"length_reward_correlation_abs\"",
+                "condition": "value > meta.length_bias_corr_threshold",
+                "window": {"size": 5, "kind": "rolling"},
+                "grace_steps": 6,
+                "cooldown_steps": 10,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Absolute Pearson correlation {value:.3f} with response length"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "length_bias_rank_corr_guard",
+                "where": "name == \"length_reward_spearman_abs\"",
+                "condition": "value > meta.length_bias_corr_threshold",
+                "window": {"size": 5, "kind": "rolling"},
+                "grace_steps": 6,
+                "cooldown_steps": 10,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Absolute Spearman correlation {value:.3f} with response length"
+                        }
+                    }
                 ],
             },
         ]

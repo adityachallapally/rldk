@@ -1,10 +1,12 @@
 """Comprehensive PPO forensics with advanced tracking and analysis."""
 
+from __future__ import annotations
+
 import copy
 import json
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence
 
 import numpy as np
 
@@ -15,6 +17,7 @@ from .advantage_statistics_tracker import (
 from .gradient_norms_analyzer import GradientNormsAnalyzer, GradientNormsMetrics
 from .kl_schedule_tracker import KLScheduleMetrics, KLScheduleTracker
 from .ppo_scan import scan_ppo_events
+from ..reward.length_bias import LengthBiasDetector, LengthBiasMetrics
 
 
 @dataclass
@@ -39,6 +42,18 @@ class ComprehensivePPOMetrics:
     training_stability_score: float = 1.0
     convergence_quality_score: float = 1.0
 
+    # Length bias metrics
+    length_bias_score: Optional[float] = None
+    length_reward_correlation: Optional[float] = None
+    length_reward_spearman: Optional[float] = None
+    length_reward_correlation_abs: Optional[float] = None
+    length_reward_spearman_abs: Optional[float] = None
+    mean_response_length: Optional[float] = None
+    length_bias_detected: bool = False
+    length_bias_threshold: Optional[float] = None
+    length_bias_corr_threshold: Optional[float] = None
+    length_bias_metrics: Optional[LengthBiasMetrics] = None
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         result = {
@@ -52,6 +67,23 @@ class ComprehensivePPOMetrics:
             "training_stability_score": self.training_stability_score,
             "convergence_quality_score": self.convergence_quality_score,
         }
+
+        result.update(
+            {
+                "length_bias_score": self.length_bias_score,
+                "length_reward_correlation": self.length_reward_correlation,
+                "length_reward_spearman": self.length_reward_spearman,
+                "length_reward_correlation_abs": self.length_reward_correlation_abs,
+                "length_reward_spearman_abs": self.length_reward_spearman_abs,
+                "mean_response_length": self.mean_response_length,
+                "length_bias_detected": self.length_bias_detected,
+                "length_bias_threshold": self.length_bias_threshold,
+                "length_bias_corr_threshold": self.length_bias_corr_threshold,
+            }
+        )
+
+        if self.length_bias_metrics:
+            result["length_bias_metrics"] = self.length_bias_metrics.to_dict()
 
         if self.kl_schedule_metrics:
             result.update({f"kl_schedule_{k}": v for k, v in self.kl_schedule_metrics.to_dict().items()})
@@ -80,6 +112,9 @@ class ComprehensivePPOForensics:
         kl_drift_threshold: float = 0.15,
         kl_drift_window_size: int = 100,
         kl_drift_reference_period: int = 500,
+        enable_length_bias_detection: bool = True,
+        length_bias_threshold: float = 0.35,
+        response_data: Optional[Sequence[Mapping[str, Any]]] = None,
     ):
         """Initialize comprehensive PPO forensics.
 
@@ -94,6 +129,9 @@ class ComprehensivePPOForensics:
             kl_drift_threshold: KL divergence threshold for drift detection
             kl_drift_window_size: Rolling window size for drift calculations
             kl_drift_reference_period: Number of steps used to build the reference distribution
+            enable_length_bias_detection: Toggle length bias detector integration
+            length_bias_threshold: Threshold applied to detector severity scores
+            response_data: Optional initial response/reward records for the detector
         """
         self.kl_target = kl_target
         self.kl_target_tolerance = kl_target_tolerance
@@ -133,6 +171,31 @@ class ComprehensivePPOForensics:
         self.enable_kl_drift_tracking = enable_kl_drift_tracking
         self.kl_drift_threshold = kl_drift_threshold
 
+        # Length bias detection configuration
+        self.enable_length_bias_detection = enable_length_bias_detection
+        self.length_bias_threshold = length_bias_threshold
+        self.length_bias_corr_threshold = max(0.2, min(0.6, length_bias_threshold + 0.05))
+        self._length_bias_detector: Optional[LengthBiasDetector] = (
+            LengthBiasDetector() if enable_length_bias_detection else None
+        )
+        self._length_bias_metrics_cache: LengthBiasMetrics = LengthBiasMetrics()
+        self._length_bias_analysis_cache: Dict[str, Any] = {
+            "enabled": enable_length_bias_detection,
+            "detected": False,
+            "threshold": length_bias_threshold,
+            "corr_threshold": self.length_bias_corr_threshold,
+            "metrics": self._length_bias_metrics_cache.to_dict(),
+            "recommendations": [],
+            "sample_count": 0,
+        }
+        self._response_records: List[Dict[str, Any]] = []
+        self._length_bias_dirty: bool = False
+        if response_data and enable_length_bias_detection:
+            self._ingest_response_batch(response_data)
+            self._update_length_bias_metrics()
+        elif enable_length_bias_detection:
+            self._apply_length_bias_metrics()
+
         # Analysis results
         self.anomalies: List[Dict[str, Any]] = []
         self.analysis_summary: Dict[str, Any] = {}
@@ -141,6 +204,7 @@ class ComprehensivePPOForensics:
         print(f"   KL Schedule Tracking: {enable_kl_schedule_tracking}")
         print(f"   Gradient Norms Analysis: {enable_gradient_norms_analysis}")
         print(f"   Advantage Statistics: {enable_advantage_statistics}")
+        print(f"   Length Bias Detection: {enable_length_bias_detection}")
 
     def update(
         self,
@@ -159,6 +223,10 @@ class ComprehensivePPOForensics:
         advantage_max: Optional[float] = None,
         advantage_median: Optional[float] = None,
         advantage_samples: Optional[List[float]] = None,
+        response_data: Optional[Sequence[Mapping[str, Any]]] = None,
+        response_length: Optional[float] = None,
+        response_text: Optional[str] = None,
+        response_reward: Optional[float] = None,
     ) -> ComprehensivePPOMetrics:
         """Update forensics with new training data."""
         # Update basic metrics
@@ -189,6 +257,34 @@ class ComprehensivePPOForensics:
             )
             self.current_metrics.advantage_statistics_metrics = advantage_metrics
 
+        # Update length bias detector
+        if self.enable_length_bias_detection and self._length_bias_detector:
+            batch: List[Mapping[str, Any]] = []
+            if response_data:
+                if isinstance(response_data, Mapping):
+                    batch.append(response_data)
+                else:
+                    batch.extend(response_data)
+            single_record: Dict[str, Any] = {}
+            if response_reward is not None:
+                single_record["reward"] = response_reward
+            if response_length is not None:
+                single_record["length"] = response_length
+            if response_text is not None:
+                single_record["response"] = response_text
+            if single_record.get("reward") is not None and (
+                single_record.get("length") is not None or single_record.get("response")
+            ):
+                batch.append(single_record)
+            if batch:
+                self._ingest_response_batch(batch)
+            if self._length_bias_dirty:
+                self._update_length_bias_metrics()
+            else:
+                self._apply_length_bias_metrics()
+        else:
+            self._reset_length_bias_metrics()
+
         # Calculate overall health scores
         self._calculate_overall_health_scores()
 
@@ -197,6 +293,15 @@ class ComprehensivePPOForensics:
         self.comprehensive_metrics_history.append(metrics_copy)
 
         return metrics_copy
+
+    def get_length_bias_analysis(self) -> Dict[str, Any]:
+        """Return cached length bias detector output."""
+
+        if not self.enable_length_bias_detection or not self._length_bias_detector:
+            return {}
+        if self._length_bias_dirty:
+            self._update_length_bias_metrics()
+        return copy.deepcopy(self._length_bias_analysis_cache)
 
     def _calculate_overall_health_scores(self):
         """Calculate overall health scores from all trackers."""
@@ -288,6 +393,9 @@ class ComprehensivePPOForensics:
         if self.advantage_statistics_tracker:
             analysis["trackers"]["advantage_statistics"] = self.advantage_statistics_tracker.get_summary()
 
+        if self.enable_length_bias_detection and self._length_bias_detector:
+            analysis["trackers"]["length_bias"] = self.get_length_bias_analysis()
+
         # Store analysis summary
         self.analysis_summary = analysis
 
@@ -350,6 +458,11 @@ class ComprehensivePPOForensics:
             advantage_max = event.get("advantage_max", event.get("adv_max", None))
             advantage_median = event.get("advantage_median", event.get("adv_median", None))
 
+            response_payload = event.get("response_data")
+            response_length = event.get("response_length", event.get("response_tokens", None))
+            response_text = event.get("response_text", event.get("response", None))
+            response_reward = event.get("response_reward", event.get("sample_reward", None))
+
             # Update comprehensive forensics
             self.update(
                 step=step,
@@ -366,6 +479,10 @@ class ComprehensivePPOForensics:
                 advantage_min=advantage_min,
                 advantage_max=advantage_max,
                 advantage_median=advantage_median,
+                response_data=response_payload,
+                response_length=response_length,
+                response_text=response_text,
+                response_reward=response_reward,
             )
 
         # Get comprehensive analysis
@@ -379,6 +496,142 @@ class ComprehensivePPOForensics:
         }
 
         return enhanced_scan
+
+    def _ingest_response_batch(
+        self, payloads: Sequence[Mapping[str, Any]] | Iterable[Mapping[str, Any]]
+    ) -> None:
+        """Normalize response payloads for incremental length bias detection."""
+
+        added = False
+        for payload in payloads:
+            if not isinstance(payload, Mapping):
+                continue
+            reward = payload.get("reward")
+            if reward is None:
+                continue
+            response = payload.get("response") or payload.get("response_text")
+            length = (
+                payload.get("length")
+                if payload.get("length") is not None
+                else payload.get("response_length")
+            )
+            record: Dict[str, Any] = {"reward": float(reward)}
+            if response is not None:
+                record["response"] = str(response)
+            if length is not None:
+                try:
+                    record["length"] = float(length)
+                except (TypeError, ValueError):
+                    record["length"] = None
+            if "response" not in record and record.get("length") is None:
+                continue
+            self._response_records.append(record)
+            added = True
+        if added:
+            self._length_bias_dirty = True
+
+    def _reset_length_bias_metrics(self) -> None:
+        """Clear length bias metrics when the detector is disabled."""
+
+        self.current_metrics.length_bias_score = None
+        self.current_metrics.length_reward_correlation = None
+        self.current_metrics.length_reward_spearman = None
+        self.current_metrics.length_reward_correlation_abs = None
+        self.current_metrics.length_reward_spearman_abs = None
+        self.current_metrics.mean_response_length = None
+        self.current_metrics.length_bias_detected = False
+        self.current_metrics.length_bias_threshold = None
+        self.current_metrics.length_bias_corr_threshold = None
+        self.current_metrics.length_bias_metrics = None
+
+    def _apply_length_bias_metrics(self) -> None:
+        """Mirror cached detector metrics onto the current metrics."""
+
+        if not self.enable_length_bias_detection:
+            self._reset_length_bias_metrics()
+            return
+
+        metrics = self._length_bias_metrics_cache
+        severity = metrics.bias_severity
+        detected = (
+            bool(metrics.valid_sample_count)
+            and severity is not None
+            and severity >= self.length_bias_threshold
+        )
+        self._length_bias_analysis_cache.update(
+            {
+                "detected": detected,
+                "threshold": self.length_bias_threshold,
+                "corr_threshold": self.length_bias_corr_threshold,
+                "metrics": metrics.to_dict(),
+                "recommendations": list(metrics.recommendations),
+                "sample_count": metrics.valid_sample_count,
+            }
+        )
+
+        self.current_metrics.length_bias_score = severity
+        self.current_metrics.length_reward_correlation = metrics.pearson_correlation
+        self.current_metrics.length_reward_spearman = metrics.spearman_correlation
+        self.current_metrics.length_reward_correlation_abs = (
+            abs(metrics.pearson_correlation) if metrics.pearson_correlation is not None else None
+        )
+        self.current_metrics.length_reward_spearman_abs = (
+            abs(metrics.spearman_correlation)
+            if metrics.spearman_correlation is not None
+            else None
+        )
+        self.current_metrics.mean_response_length = metrics.mean_length
+        self.current_metrics.length_bias_detected = detected
+        self.current_metrics.length_bias_threshold = self.length_bias_threshold
+        self.current_metrics.length_bias_corr_threshold = self.length_bias_corr_threshold
+        self.current_metrics.length_bias_metrics = metrics
+
+    def _update_length_bias_metrics(self) -> None:
+        """Recompute cached length bias metrics when new samples arrive."""
+
+        if not self.enable_length_bias_detection or not self._length_bias_detector:
+            self._reset_length_bias_metrics()
+            self._length_bias_dirty = False
+            return
+
+        if not self._response_records:
+            self._length_bias_metrics_cache = LengthBiasMetrics()
+            self._length_bias_dirty = False
+            self._apply_length_bias_metrics()
+            return
+
+        responses: List[str] = []
+        rewards: List[float] = []
+        lengths: List[Optional[float]] = []
+        include_lengths = False
+        for record in self._response_records:
+            responses.append(record.get("response", ""))
+            rewards.append(float(record["reward"]))
+            length_value = record.get("length")
+            if length_value is not None:
+                include_lengths = True
+                lengths.append(float(length_value))
+            else:
+                lengths.append(None)
+
+        length_inputs: Optional[List[Optional[float]]] = None
+        if include_lengths:
+            normalized_lengths: List[Optional[float]] = []
+            for value in lengths:
+                if value is None:
+                    normalized_lengths.append(None)
+                else:
+                    normalized_lengths.append(float(value))
+            length_inputs = normalized_lengths
+
+        metrics = self._length_bias_detector.analyze_length_bias(
+            responses,
+            rewards,
+            lengths=length_inputs,
+        )
+        self._length_bias_metrics_cache = metrics
+        self._length_bias_dirty = False
+        self._apply_length_bias_metrics()
 
     def save_analysis(self, output_path: str):
         """Save comprehensive analysis to file."""
@@ -424,4 +677,7 @@ class ComprehensivePPOForensics:
             "current_reward_mean": current.reward_mean,
             "current_entropy": current.entropy,
             "kl_drift": self.get_kl_drift_analysis() if self.enable_kl_drift_tracking else {},
+            "length_bias": self.get_length_bias_analysis()
+            if self.enable_length_bias_detection and self._length_bias_detector
+            else {},
         }

@@ -209,7 +209,9 @@ forensics = ComprehensivePPOForensics(
     kl_target_tolerance=0.05,
     enable_kl_schedule_tracking=True,
     enable_gradient_norms_analysis=True,
-    enable_advantage_statistics=True
+    enable_advantage_statistics=True,
+    enable_length_bias_detection=True,
+    length_bias_threshold=0.35,
 )
 
 # Update with training data
@@ -229,6 +231,7 @@ metrics = forensics.update(
 # Get analysis
 analysis = forensics.get_comprehensive_analysis()
 health_summary = forensics.get_health_summary()
+length_bias = forensics.get_length_bias_analysis()
 anomalies = forensics.get_anomalies()
 ```
 
@@ -242,7 +245,9 @@ monitor = ComprehensivePPOMonitor(
     kl_target=0.1,
     enable_kl_schedule_tracking=True,
     enable_gradient_norms_analysis=True,
-    enable_advantage_statistics=True
+    enable_advantage_statistics=True,
+    enable_length_bias_detection=True,
+    length_bias_threshold=0.35,
 )
 
 # Add to trainer callbacks (TRL v0.22.2+ API)
