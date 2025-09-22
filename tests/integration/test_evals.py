@@ -308,10 +308,11 @@ class TestEvaluationSuites:
         assert quick_result.sample_size > 0
         assert len(quick_result.scores) > 0
 
-        # Verify that throughput, toxicity, and bias evaluations succeeded
+        # Verify that throughput, toxicity, bias, and catastrophic forgetting evaluations succeeded
         assert "throughput" in quick_result.scores
         assert "toxicity" in quick_result.scores
         assert "bias" in quick_result.scores
+        assert "catastrophic_forgetting" in quick_result.scores
 
         # Test comprehensive suite
         comprehensive_result = run(self.sample_data, suite="comprehensive", seed=42)
@@ -320,8 +321,18 @@ class TestEvaluationSuites:
         assert len(comprehensive_result.scores) > 0
 
         # Verify that all metrics are present
-        expected_metrics = ["throughput", "toxicity", "bias", "alignment", "helpfulness",
-                           "harmlessness", "hallucination", "reward_alignment", "kl_divergence"]
+        expected_metrics = [
+            "throughput",
+            "toxicity",
+            "bias",
+            "alignment",
+            "helpfulness",
+            "harmlessness",
+            "hallucination",
+            "reward_alignment",
+            "kl_divergence",
+            "catastrophic_forgetting",
+        ]
         for metric in expected_metrics:
             assert metric in comprehensive_result.scores
 

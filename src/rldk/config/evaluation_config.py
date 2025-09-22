@@ -103,6 +103,12 @@ class EvaluationConfig:
     # Bootstrap confidence level
     BOOTSTRAP_CONFIDENCE_LEVEL: float = 0.95
 
+    # Catastrophic forgetting thresholds
+    CATASTROPHIC_REGRESSION_THRESHOLD: float = -0.05
+    CATASTROPHIC_REGRESSION_Z_THRESHOLD: float = -2.0
+    CATASTROPHIC_MIN_SAMPLES: int = 5
+    CATASTROPHIC_WEIGHTING_STRATEGY: str = "baseline_count"
+
     def __post_init__(self):
         """Initialize default values for mutable fields."""
         if self.PERCENTILES is None:

@@ -16,6 +16,8 @@ This document describes the data requirements for RL Debug Kit evaluation suites
 | `reward` | numeric | Reward signal for the output | `reward_mean`, `score`, `value` | `0.85` |
 | `kl_to_ref` | numeric | KL divergence to reference model | `kl`, `kl_divergence`, `kl_mean` | `0.12` |
 | `events` | object | Event logs for detailed analysis | `event_logs`, `logs`, `events_raw` | `[{"event_type": "token_generated", "timestamp": "2024-01-01T00:00:00Z", "token_count": 10}]` |
+| `task` | text | Benchmark or task identifier used for regression analysis | `task_id`, `benchmark`, `dataset`, `evaluation_name` | `"gsm8k"` |
+| `score` | numeric | Evaluation score for the associated task sample | `metric`, `metric_value`, `accuracy`, `reward`, `reward_mean` | `0.78` |
 
 ## What Happens if a Column is Missing
 

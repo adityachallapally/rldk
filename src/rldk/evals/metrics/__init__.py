@@ -1,6 +1,7 @@
 """Core evaluation metrics for RL Debug Kit."""
 
 from .bias import evaluate_bias
+from .catastrophic_forgetting import evaluate_catastrophic_forgetting
 from .length_bias import (
     evaluate_length_bias,
     length_bias_score_from_metrics,
@@ -106,6 +107,7 @@ __all__ = [
     "evaluate_throughput",
     "evaluate_toxicity",
     "evaluate_bias",
+    "evaluate_catastrophic_forgetting",
     "evaluate_length_bias",
     "length_bias_score_from_metrics",
     "prepare_length_bias_inputs",
