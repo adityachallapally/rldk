@@ -22,12 +22,22 @@ def _lazy_import_reward():
     from .reward import (
         HealthAnalysisResult,
         RewardHealthReport,
+        LengthBiasDetector,
+        LengthBiasMetrics,
         compare_models,
         health,
         reward_health,
     )
 
-    return health, RewardHealthReport, compare_models, reward_health, HealthAnalysisResult
+    return (
+        health,
+        RewardHealthReport,
+        compare_models,
+        reward_health,
+        HealthAnalysisResult,
+        LengthBiasDetector,
+        LengthBiasMetrics,
+    )
 
 def _lazy_import_evals():
     from .evals import EvalResult, run
@@ -133,12 +143,12 @@ def health(*args, **kwargs):
     return health_func(*args, **kwargs)
 
 def compare_models(*args, **kwargs):
-    _, _, compare_models_func, _, _ = _lazy_import_reward()
+    _, _, compare_models_func, _, _, _, _ = _lazy_import_reward()
     return compare_models_func(*args, **kwargs)
 
 
 def reward_health(*args, **kwargs):
-    _, _, _, reward_health_func, _ = _lazy_import_reward()
+    _, _, _, reward_health_func, _, _, _ = _lazy_import_reward()
     return reward_health_func(*args, **kwargs)
 
 def run(*args, **kwargs):
@@ -288,6 +298,8 @@ DeterminismReport = _create_lazy_class('DeterminismReport', _lazy_import_determi
 BisectResult = _create_lazy_class('BisectResult', _lazy_import_bisect, 1)
 RewardHealthReport = _create_lazy_class('RewardHealthReport', _lazy_import_reward, 1)
 HealthAnalysisResult = _create_lazy_class('HealthAnalysisResult', _lazy_import_reward, 4)
+LengthBiasDetector = _create_lazy_class('LengthBiasDetector', _lazy_import_reward, 5)
+LengthBiasMetrics = _create_lazy_class('LengthBiasMetrics', _lazy_import_reward, 6)
 EvalResult = _create_lazy_class('EvalResult', _lazy_import_evals, 1)
 ReplayReport = _create_lazy_class('ReplayReport', _lazy_import_replay, 1)
 ComprehensivePPOForensics = _create_lazy_class('ComprehensivePPOForensics', _lazy_import_forensics, 3)
@@ -324,6 +336,8 @@ __all__ = [
     "reward_health",
     "RewardHealthReport",
     "HealthAnalysisResult",
+    "LengthBiasDetector",
+    "LengthBiasMetrics",
     "compare_models",
     "run",
     "EvalResult",
