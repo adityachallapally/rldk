@@ -9,6 +9,177 @@ FieldMapPreset = Dict[str, str]
 
 
 RULE_PRESETS: Dict[str, RulePreset] = {
+    "grpo_safe": {
+        "rules": [
+            {
+                "id": "grpo_safe_kl_spike",
+                "where": "name in (\"kl\", \"kl_mean\", \"policy_kl\", \"grpo/kl_mean\")",
+                "condition": "value > 0.30",
+                "window": {"size": 2, "kind": "consecutive"},
+                "grace_steps": 12,
+                "cooldown_steps": 12,
+                "actions": [
+                    {"warn": {"msg": "GRPO KL spike {value:.3f} at step {step}"}},
+                    {"stop": {"msg": "Halting due to GRPO KL {value:.3f}"}},
+                ],
+            },
+            {
+                "id": "grpo_safe_kl_coef_stall",
+                "where": "name in (\"kl_coef\", \"kl_coeff\", \"kl_coefficient\", \"beta\")",
+                "condition": "max(value) - min(value) < 0.003",
+                "window": {"size": 20, "kind": "rolling"},
+                "grace_steps": 25,
+                "cooldown_steps": 30,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "KL coefficient stalled near {value:.4f}"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "grpo_safe_advantage_collapse",
+                "where": "name in (\"advantage_std\", \"adv_std\", \"advantage_stddev\")",
+                "condition": "mean(value) < 0.35",
+                "window": {"size": 8, "kind": "rolling"},
+                "grace_steps": 12,
+                "cooldown_steps": 18,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Advantage variance collapsing: std {value:.3f}"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "grpo_safe_acceptance_swings",
+                "where": "name in (\"acceptance_rate\", \"accept_rate\", \"acceptance\")",
+                "condition": "max(value) - min(value) > 0.4",
+                "window": {"size": 12, "kind": "rolling"},
+                "grace_steps": 12,
+                "cooldown_steps": 20,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Acceptance rate swing detected (latest {value:.2f})"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "grpo_safe_entropy_floor",
+                "where": "name in (\"entropy\", \"entropy_mean\", \"policy_entropy\")",
+                "condition": "mean(value) < 1.8",
+                "window": {"size": 10, "kind": "rolling"},
+                "grace_steps": 15,
+                "cooldown_steps": 20,
+                "actions": [
+                    {"warn": {"msg": "Entropy below floor: {value:.3f}"}},
+                ],
+            },
+            {
+                "id": "grpo_safe_reward_saturation",
+                "where": "name in (\"reward_mean\", \"reward\", \"group_reward_mean\")",
+                "condition": "max(value) - min(value) < 0.05",
+                "window": {"size": 30, "kind": "rolling"},
+                "grace_steps": 30,
+                "cooldown_steps": 30,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Reward trend saturated around {value:.3f}"
+                        }
+                    }
+                ],
+            },
+        ]
+    },
+    "grpo_strict": {
+        "rules": [
+            {
+                "id": "grpo_strict_kl_spike",
+                "where": "name in (\"kl\", \"kl_mean\", \"policy_kl\", \"grpo/kl_mean\")",
+                "condition": "value > 0.22",
+                "window": {"size": 2, "kind": "consecutive"},
+                "grace_steps": 8,
+                "cooldown_steps": 10,
+                "actions": [
+                    {"warn": {"msg": "Strict GRPO KL guard tripped at {value:.3f}"}},
+                    {"stop": {"msg": "Stopping due to GRPO KL {value:.3f}"}},
+                ],
+            },
+            {
+                "id": "grpo_strict_kl_coef_stall",
+                "where": "name in (\"kl_coef\", \"kl_coeff\", \"kl_coefficient\", \"beta\")",
+                "condition": "max(value) - min(value) < 0.002",
+                "window": {"size": 15, "kind": "rolling"},
+                "grace_steps": 18,
+                "cooldown_steps": 25,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "KL coefficient flatlined near {value:.4f}"
+                        }
+                    },
+                    {
+                        "stop": {
+                            "msg": "Strict KL coefficient stall detected"
+                        }
+                    },
+                ],
+            },
+            {
+                "id": "grpo_strict_advantage_collapse",
+                "where": "name in (\"advantage_std\", \"adv_std\", \"advantage_stddev\")",
+                "condition": "mean(value) < 0.6",
+                "window": {"size": 6, "kind": "rolling"},
+                "grace_steps": 8,
+                "cooldown_steps": 14,
+                "actions": [
+                    {"warn": {"msg": "Advantage std collapsed to {value:.3f}"}},
+                    {"stop": {"msg": "Stopping due to advantage variance collapse"}},
+                ],
+            },
+            {
+                "id": "grpo_strict_acceptance_swings",
+                "where": "name in (\"acceptance_rate\", \"accept_rate\", \"acceptance\")",
+                "condition": "max(value) - min(value) > 0.3",
+                "window": {"size": 10, "kind": "rolling"},
+                "grace_steps": 10,
+                "cooldown_steps": 18,
+                "actions": [
+                    {"warn": {"msg": "Acceptance rate unstable (latest {value:.2f})"}},
+                    {"stop": {"msg": "Stopping due to acceptance-rate instability"}},
+                ],
+            },
+            {
+                "id": "grpo_strict_entropy_floor",
+                "where": "name in (\"entropy\", \"entropy_mean\", \"policy_entropy\")",
+                "condition": "mean(value) < 1.95",
+                "window": {"size": 8, "kind": "rolling"},
+                "grace_steps": 10,
+                "cooldown_steps": 15,
+                "actions": [
+                    {"warn": {"msg": "Entropy breached strict floor at {value:.3f}"}},
+                    {"stop": {"msg": "Stopping due to entropy collapse"}},
+                ],
+            },
+            {
+                "id": "grpo_strict_reward_saturation",
+                "where": "name in (\"reward_mean\", \"reward\", \"group_reward_mean\")",
+                "condition": "max(value) - min(value) < 0.02",
+                "window": {"size": 25, "kind": "rolling"},
+                "grace_steps": 25,
+                "cooldown_steps": 25,
+                "actions": [
+                    {"warn": {"msg": "Rewards saturated around {value:.3f}"}},
+                    {"stop": {"msg": "Stopping due to saturated rewards"}},
+                ],
+            },
+        ]
+    },
     "ppo_safe": {
         "rules": [
             {
@@ -376,6 +547,64 @@ RULE_PRESETS: Dict[str, RulePreset] = {
 
 
 FIELD_MAP_PRESETS: Dict[str, FieldMapPreset] = {
+    "grpo": {
+        "timestamp": "time",
+        "time": "time",
+        "wall_time": "time",
+        "global_step": "step",
+        "trainer_step": "step",
+        "step": "step",
+        "iteration": "step",
+        "epoch_step": "step",
+        "reward": "reward_mean",
+        "reward_mean": "reward_mean",
+        "normalized_reward_mean": "reward_mean",
+        "group_reward_mean": "reward_mean",
+        "reward_avg": "reward_mean",
+        "reward_std": "reward_std",
+        "reward_stddev": "reward_std",
+        "group_reward_std": "reward_std",
+        "kl": "kl",
+        "kl_mean": "kl",
+        "policy_kl": "kl",
+        "kl_avg": "kl",
+        "kl_value": "kl",
+        "kl_divergence": "kl",
+        "kl_coef": "kl_coef",
+        "kl_coeff": "kl_coef",
+        "kl_coefficient": "kl_coef",
+        "kl_beta": "kl_coef",
+        "beta": "kl_coef",
+        "entropy": "entropy",
+        "entropy_mean": "entropy",
+        "policy_entropy": "entropy",
+        "advantage_mean": "advantage_mean",
+        "adv_mean": "advantage_mean",
+        "normalized_advantage_mean": "advantage_mean",
+        "advantage_std": "advantage_std",
+        "adv_std": "advantage_std",
+        "advantage_stddev": "advantage_std",
+        "policy_grad_norm": "grad_norm_policy",
+        "pi_grad_norm": "grad_norm_policy",
+        "actor_grad_norm": "grad_norm_policy",
+        "grad_norm_policy": "grad_norm_policy",
+        "value_grad_norm": "grad_norm_value",
+        "critic_grad_norm": "grad_norm_value",
+        "grad_norm_value": "grad_norm_value",
+        "acceptance_rate": "acceptance_rate",
+        "accept_rate": "acceptance_rate",
+        "acceptance": "acceptance_rate",
+        "policy_acceptance_rate": "acceptance_rate",
+        "run": "run_id",
+        "run_id": "run_id",
+        "seed": "seed",
+        "phase": "phase",
+        "training_phase": "phase",
+        "tags": "tags",
+        "metadata": "meta",
+        "meta": "meta",
+        "context": "meta",
+    },
     "trl": {
         "timestamp": "time",
         "time": "time",
