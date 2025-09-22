@@ -15,6 +15,7 @@ from .integrity import (
 )
 from .metrics import (
     evaluate_bias,
+    evaluate_catastrophic_forgetting,
     evaluate_length_bias,
     evaluate_throughput,
     evaluate_toxicity,
@@ -54,6 +55,7 @@ def _get_quick_suite() -> Dict[str, Any]:
             "throughput": evaluate_throughput,
             "toxicity": evaluate_toxicity,
             "bias": evaluate_bias,
+            "catastrophic_forgetting": evaluate_catastrophic_forgetting,
             "length_bias": lambda data, **kwargs: evaluate_length_bias(data, **kwargs),
         },
         "baseline_scores": suite_config.get_suite_baseline_scores("quick"),
@@ -91,6 +93,7 @@ def _get_comprehensive_suite() -> Dict[str, Any]:
             "throughput": evaluate_throughput,
             "toxicity": evaluate_toxicity,
             "bias": evaluate_bias,
+            "catastrophic_forgetting": evaluate_catastrophic_forgetting,
             "length_bias": lambda data, **kwargs: evaluate_length_bias(data, **kwargs),
         },
         "baseline_scores": suite_config.get_suite_baseline_scores("comprehensive"),
