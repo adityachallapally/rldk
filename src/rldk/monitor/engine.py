@@ -767,6 +767,13 @@ class MonitorEngine:
             key = _metric_key(event)
             buffer_map = self._buffers[rule.id]
             buffer = buffer_map.get(key)
+            counts_map = self._counts[rule.id]
+            cooldown_map = self._cooldowns[rule.id]
+            last_step = cooldown_map.get(key)
+            if last_step is not None and event.step < last_step:
+                cooldown_map.pop(key, None)
+                buffer = deque()
+                buffer_map[key] = buffer
             if buffer is None:
                 buffer = deque()
                 buffer_map[key] = buffer
@@ -777,17 +784,14 @@ class MonitorEngine:
             else:
                 while len(buffer) > rule.window_size:
                     buffer.popleft()
-            self._counts[rule.id][key] += 1
+            counts_map[key] += 1
             if len(buffer) < rule.window_size:
                 continue
-            if self._counts[rule.id][key] < max(rule.grace_steps, 0):
+            if counts_map[key] < max(rule.grace_steps, 0):
                 continue
-            cooldown_map = self._cooldowns[rule.id]
             last_step = cooldown_map.get(key)
             if last_step is not None:
-                if event.step < last_step:
-                    cooldown_map.pop(key, None)
-                elif event.step <= last_step + max(rule.cooldown_steps, 0):
+                if event.step <= last_step + max(rule.cooldown_steps, 0):
                     continue
             window_snapshot = tuple(buffer)
             try:

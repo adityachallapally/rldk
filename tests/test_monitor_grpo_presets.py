@@ -159,4 +159,5 @@ def test_grpo_safe_kl_spike_triggers_after_step_reset() -> None:
             if alert.rule_id == "grpo_safe_kl_spike"
         )
 
+    assert 5 not in fired_steps
     assert 6 in fired_steps
