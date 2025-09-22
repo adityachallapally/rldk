@@ -154,7 +154,8 @@ forensics = ComprehensivePPOForensics(
     kl_target=0.1,
     enable_kl_schedule_tracking=True,
     enable_gradient_norms_analysis=True,
-    enable_advantage_statistics=True
+    enable_advantage_statistics=True,
+    enable_length_bias_detection=True,
 )
 
 # Process each step
@@ -169,7 +170,8 @@ for _, row in df.iterrows():
         policy_grad_norm=1.2,
         value_grad_norm=0.8,
         advantage_mean=0.1,
-        advantage_std=0.5
+        advantage_std=0.5,
+        response_data=[{"response": "step" + str(row['step']), "reward": row['reward_mean']}],
     )
 
 # Get analysis results

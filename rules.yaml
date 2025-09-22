@@ -1,3 +1,5 @@
+# Example monitoring rules. For length bias detection with dynamic thresholds,
+# use the built-in preset: `rldk monitor --rules length_bias`.
 rules:
   - id: stop_on_high_kl
     where: name == "kl"

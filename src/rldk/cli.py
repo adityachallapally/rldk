@@ -1072,6 +1072,7 @@ def forensics_kl_drift(
             kl_drift_threshold=drift_threshold,
             kl_drift_window_size=drift_window_size,
             kl_drift_reference_period=reference_period,
+            enable_length_bias_detection=False,
         )
 
         entropy_candidates = ["entropy", "entropy_mean", "ppo/policy/entropy"]

@@ -123,6 +123,19 @@ emits a warning and terminates the process specified with `--pid`.
 
 Mix and match these patterns with presets via `rldk monitor --rules ppo_safe` or your custom YAML.
 
+### New: length bias preset
+
+The `length_bias` preset watches for reward hacking driven by response length. It consumes the
+`length_bias_score`, `length_reward_correlation_abs`, and `length_reward_spearman_abs` metrics emitted
+by the comprehensive PPO forensics pipeline. When the configured thresholds (surfaced via the event
+metadata) are exceeded, the preset first warns and then halts persistent length-driven optimization.
+Enable it alongside PPO presets to stay ahead of length bias regressions during reward modeling or
+online PPO runs:
+
+```bash
+rldk monitor --rules ppo_safe --rules length_bias --stream artifacts/run.jsonl
+```
+
 ## Fullscale remediation hints
 
 The fullscale acceptance run reuses the following guardrails from

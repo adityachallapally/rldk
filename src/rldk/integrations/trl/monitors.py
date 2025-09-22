@@ -764,6 +764,8 @@ class ComprehensivePPOMonitor(TrainerCallback):
         enable_kl_schedule_tracking: bool = True,
         enable_gradient_norms_analysis: bool = True,
         enable_advantage_statistics: bool = True,
+        enable_length_bias_detection: bool = True,
+        length_bias_threshold: float = 0.35,
         log_interval: int = 10,
         run_id: Optional[str] = None,
     ):
@@ -776,6 +778,8 @@ class ComprehensivePPOMonitor(TrainerCallback):
             enable_kl_schedule_tracking: Enable KL schedule tracking
             enable_gradient_norms_analysis: Enable gradient norms analysis
             enable_advantage_statistics: Enable advantage statistics tracking
+            enable_length_bias_detection: Enable length bias detection on collected responses
+            length_bias_threshold: Threshold used for severity-driven alerts
             log_interval: Steps between detailed logging
             run_id: Unique identifier for this run
         """
@@ -802,6 +806,8 @@ class ComprehensivePPOMonitor(TrainerCallback):
             enable_kl_schedule_tracking=enable_kl_schedule_tracking,
             enable_gradient_norms_analysis=enable_gradient_norms_analysis,
             enable_advantage_statistics=enable_advantage_statistics,
+            enable_length_bias_detection=enable_length_bias_detection,
+            length_bias_threshold=length_bias_threshold,
         )
 
         # Metrics storage
@@ -810,6 +816,10 @@ class ComprehensivePPOMonitor(TrainerCallback):
         print(f"🔍 Comprehensive PPO Monitor initialized - Run ID: {self.run_id}")
         print(f"📊 KL Target: {kl_target}±{kl_target_tolerance}")
         print(f"📁 Output directory: {self.output_dir}")
+        if enable_length_bias_detection:
+            print(
+                f"📏 Length bias threshold: {length_bias_threshold:.3f}"
+            )
 
     def on_step_end(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
         """Monitor PPO training at step end."""
@@ -1020,6 +1030,16 @@ class ComprehensivePPOMonitor(TrainerCallback):
         print(f"   Convergence Quality: {current_metrics.convergence_quality_score:.3f}")
         print(f"   KL: {current_metrics.kl:.4f}, KL Coef: {current_metrics.kl_coef:.4f}")
         print(f"   Reward: {current_metrics.reward_mean:.4f}±{current_metrics.reward_std:.4f}")
+
+        if (
+            current_metrics.length_bias_score is not None
+            and current_metrics.length_bias_threshold is not None
+        ):
+            print(
+                "   Length bias: "
+                f"{current_metrics.length_bias_score:.3f}"
+                f" (threshold={current_metrics.length_bias_threshold:.3f})"
+            )
 
         # Log tracker-specific metrics
         if current_metrics.kl_schedule_metrics:
