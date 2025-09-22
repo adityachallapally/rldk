@@ -86,7 +86,8 @@ class GRPOAdapter(BaseAdapter):
                     data = json.loads(line)
                     if not isinstance(data, dict):
                         continue
-                    return self._REQUIRED_KEYS.issubset(data)
+                    if self._REQUIRED_KEYS.issubset(data):
+                        return True
         except (OSError, json.JSONDecodeError):
             return False
         return False
@@ -107,8 +108,12 @@ class GRPOAdapter(BaseAdapter):
                     if not isinstance(data, dict):
                         continue
 
+                    step_value = data.get("step")
+                    if step_value is None:
+                        step_value = line_number - 1
+
                     record: Dict[str, Any] = {
-                        "step": data.get("step", line_number - 1),
+                        "step": step_value,
                         "phase": data.get("phase") or "train",
                         "reward_mean": data.get("reward_mean"),
                         "reward_std": data.get("reward_std"),

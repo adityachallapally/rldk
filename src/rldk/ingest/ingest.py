@@ -324,6 +324,29 @@ def _get_adapter_format_requirements(adapter_type: str) -> dict:
             ],
             "suggestions": "Use the format: wandb://entity/project/run_id. Ensure you have WandB access and the run exists."
         },
+        "grpo": {
+            "description": "GRPO training logs (run.jsonl files with GRPO metrics)",
+            "file_extensions": [".jsonl"],
+            "required_fields": ["step", "reward_mean", "kl", "entropy"],
+            "optional_fields": [
+                "reward_std",
+                "advantage_mean",
+                "advantage_std",
+                "grad_norm_policy",
+                "grad_norm_value",
+                "kl_coef",
+                "accept_rate",
+                "length",
+            ],
+            "examples": [
+                '{"step": 0, "reward_mean": 0.5, "kl": 0.1, "entropy": 0.8, "advantage_mean": 0.2}',
+                '{"step": 1, "reward_mean": 0.6, "kl": 0.12, "entropy": 0.82, "grad_norm_policy": 1.5}',
+            ],
+            "suggestions": (
+                "Provide run.jsonl files emitted by GRPO training. Each line should be a JSON object with GRPO metrics, "
+                "including reward_mean, kl, entropy, and optional extras like advantage statistics."
+            ),
+        },
         "flexible": {
             "description": "Flexible adapter supporting multiple formats with automatic field resolution",
             "file_extensions": [".jsonl", ".json", ".csv", ".parquet"],
