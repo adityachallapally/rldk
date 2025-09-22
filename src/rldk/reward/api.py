@@ -11,6 +11,7 @@ import pandas as pd
 from ..ingest.training_metrics_normalizer import normalize_training_metrics
 from ..utils.error_handling import ValidationError
 from .health_analysis import RewardHealthReport, health
+from .length_bias import LengthBiasMetrics
 
 TrainingMetricsInput = Union[pd.DataFrame, Sequence[Mapping[str, Any]], str, Path]
 
@@ -37,7 +38,21 @@ class HealthAnalysisResult:
             "saturation_analysis": self.report.saturation_analysis,
             "shortcut_analysis": self.report.shortcut_analysis,
             "calibration_details": self.report.calibration_details,
+            "length_bias_detected": self.report.length_bias_detected,
+            "length_bias_recommendations": list(
+                self.report.length_bias_recommendations
+            ),
         }
+
+        metrics_value = self.report.length_bias_metrics
+        metrics_dict: Dict[str, Any] = {}
+        if isinstance(metrics_value, LengthBiasMetrics):
+            metrics_dict = metrics_value.to_dict()
+        elif isinstance(metrics_value, dict):
+            metrics_dict = metrics_value
+        elif metrics_value is not None and hasattr(metrics_value, "to_dict"):
+            metrics_dict = metrics_value.to_dict()  # type: ignore[assignment]
+        report_dict["length_bias_metrics"] = metrics_dict
 
         if (
             self.report.drift_metrics is not None
@@ -89,6 +104,10 @@ def reward_health(
     threshold_calibration: float = 0.7,
     threshold_shortcut: float = 0.6,
     threshold_leakage: float = 0.3,
+    response_col: Optional[str] = None,
+    length_col: Optional[str] = None,
+    threshold_length_bias: float = 0.4,
+    enable_length_bias_detection: bool = True,
 ) -> HealthAnalysisResult:
     """Run reward health analysis with flexible input formats."""
 
@@ -126,6 +145,10 @@ def reward_health(
         threshold_calibration=threshold_calibration,
         threshold_shortcut=threshold_shortcut,
         threshold_leakage=threshold_leakage,
+        response_col=response_col,
+        length_col=length_col,
+        threshold_length_bias=threshold_length_bias,
+        enable_length_bias_detection=enable_length_bias_detection,
     )
 
     return HealthAnalysisResult(report=report, metrics=run_metrics, reference_metrics=reference_metrics)

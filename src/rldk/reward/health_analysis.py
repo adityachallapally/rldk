@@ -1,13 +1,14 @@
 """Main reward health checking functionality."""
 
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
 from .calibration import analyze_calibration
 from .drift import detect_reward_drift
+from .length_bias import LengthBiasDetector, LengthBiasMetrics
 
 
 @dataclass
@@ -25,6 +26,9 @@ class RewardHealthReport:
     calibration_details: Dict[str, Any]
     shortcut_analysis: Dict[str, float]
     saturation_analysis: Dict[str, Any]
+    length_bias_detected: bool = False
+    length_bias_metrics: LengthBiasMetrics = field(default_factory=LengthBiasMetrics)
+    length_bias_recommendations: List[str] = field(default_factory=list)
 
 
 def health(
@@ -37,6 +41,10 @@ def health(
     threshold_calibration: float = 0.7,
     threshold_shortcut: float = 0.6,
     threshold_leakage: float = 0.3,
+    response_col: Optional[str] = None,
+    length_col: Optional[str] = None,
+    threshold_length_bias: float = 0.4,
+    enable_length_bias_detection: bool = True,
 ) -> RewardHealthReport:
     """
     Analyze reward model health and detect pathologies.
@@ -51,6 +59,10 @@ def health(
         threshold_calibration: Threshold for calibration quality
         threshold_shortcut: Threshold for shortcut signal detection
         threshold_leakage: Threshold for label leakage risk
+        response_col: Optional column containing response text
+        length_col: Optional column containing precomputed response lengths
+        threshold_length_bias: Threshold on length bias severity for failures
+        enable_length_bias_detection: Toggle for length bias detector
 
     Returns:
         RewardHealthReport with comprehensive analysis
@@ -114,6 +126,46 @@ def health(
         issues.extend(shortcut_signals)
         fixes.append("Remove or balance shortcut features from training data")
 
+    # 4b. Detect length bias using dedicated detector
+    length_bias_detected = False
+    length_bias_metrics = LengthBiasMetrics()
+    length_bias_recommendations: List[str] = []
+    if enable_length_bias_detection:
+        responses, lengths = _prepare_length_bias_inputs(
+            run_data, response_col, length_col
+        )
+        if responses is not None or lengths is not None:
+            detector = LengthBiasDetector()
+            rewards = run_data[reward_col].tolist()
+            response_inputs: Iterable[Any]
+            if responses is None:
+                response_inputs = [""] * len(rewards)
+            else:
+                response_inputs = responses
+            metrics = detector.analyze_length_bias(
+                response_inputs,
+                rewards,
+                lengths,
+            )
+            length_bias_metrics = metrics
+            length_bias_recommendations = list(metrics.recommendations)
+            severity = metrics.bias_severity or 0.0
+            if severity >= threshold_length_bias:
+                length_bias_detected = True
+                message = f"Length bias detected (severity {severity:.2f})"
+                issues.append(message)
+                shortcut_signals.append(message)
+            for recommendation in metrics.recommendations:
+                if recommendation and recommendation not in fixes:
+                    fixes.append(recommendation)
+        else:
+            skip_message = (
+                "Length bias detection skipped: no response or length data available."
+            )
+            length_bias_recommendations = [skip_message]
+            if skip_message not in fixes:
+                fixes.append(skip_message)
+
     # 5. Detect label leakage
     label_leakage_risk = _detect_label_leakage(run_data, reward_col, threshold_leakage)
     if label_leakage_risk > threshold_leakage:
@@ -135,6 +187,9 @@ def health(
         calibration_details=calibration_details,
         shortcut_analysis=shortcut_analysis,
         saturation_analysis=saturation_analysis,
+        length_bias_detected=length_bias_detected,
+        length_bias_metrics=length_bias_metrics,
+        length_bias_recommendations=length_bias_recommendations,
     )
 
 
@@ -192,17 +247,8 @@ def _detect_shortcut_signals(
     issues = []
     analysis = {}
 
-    # Check for length bias
-    if "tokens_out" in run_data.columns:
-        try:
-            length_corr = np.corrcoef(run_data["tokens_out"], run_data[reward_col])[0, 1]
-            if not np.isnan(length_corr):
-                analysis["length_correlation"] = float(length_corr)
-                if abs(length_corr) > threshold:
-                    issues.append(f"Length bias detected: correlation {length_corr:.3f}")
-        except (ValueError, np.linalg.LinAlgError):
-            # Correlation cannot be computed (e.g., constant values)
-            pass
+    # Length bias detection is handled by LengthBiasDetector in ``health``.
+    # Avoid duplicating alerts here so we can control severity thresholds in one place.
 
     # Check for repetition bias
     if "repetition_penalty" in run_data.columns:
@@ -244,6 +290,94 @@ def _detect_shortcut_signals(
             pass
 
     return issues, analysis
+
+
+def _prepare_length_bias_inputs(
+    run_data: pd.DataFrame,
+    response_col: Optional[str],
+    length_col: Optional[str],
+) -> Tuple[Optional[List[Any]], Optional[List[Optional[float]]]]:
+    """Collect response text and length information for length-bias analysis."""
+
+    responses: Optional[List[Any]] = None
+    lengths: Optional[List[Optional[float]]] = None
+
+    candidate_response_cols: Tuple[Optional[str], ...] = (
+        response_col,
+        "response_text",
+        "response",
+        "completion",
+        "output_text",
+    )
+    for column in candidate_response_cols:
+        if column and column in run_data.columns:
+            responses = run_data[column].tolist()
+            break
+
+    candidate_length_cols: Tuple[Optional[str], ...] = (
+        length_col,
+        "response_length",
+        "response_tokens",
+        "tokens_out",
+        "token_count",
+        "length",
+    )
+    for column in candidate_length_cols:
+        if column and column in run_data.columns:
+            raw_values = run_data[column].tolist()
+            converted: List[Optional[float]] = []
+            for value in raw_values:
+                if value is None:
+                    converted.append(None)
+                else:
+                    try:
+                        converted.append(float(value))
+                    except (TypeError, ValueError):
+                        converted.append(None)
+            lengths = converted
+            break
+
+    if responses is not None and len(responses) == 0:
+        responses = None
+
+    if lengths is not None and len(lengths) == 0:
+        lengths = None
+
+    if responses is not None and lengths is None:
+        inferred_lengths: List[Optional[float]] = []
+        has_valid_length = False
+        for value in responses:
+            if value is None:
+                inferred_lengths.append(None)
+                continue
+            try:
+                length_value = float(len(str(value)))
+            except Exception:
+                inferred_lengths.append(None)
+                continue
+            inferred_lengths.append(length_value)
+            has_valid_length = True
+        lengths = inferred_lengths if has_valid_length else None
+
+    if responses is None and lengths is not None:
+        # Ensure the detector receives a placeholder iterable with the correct length.
+        responses = [""] * len(lengths)
+
+    if responses is not None and lengths is not None:
+        if len(responses) != len(lengths):
+            raise ValueError(
+                "Response and length columns must have matching sample counts"
+            )
+
+        if all(length is None for length in lengths):
+            lengths = None
+
+    if (responses is None) != (lengths is None):
+        # If lengths could not be inferred, skip detection to avoid mismatched inputs.
+        responses = None
+        lengths = None
+
+    return responses, lengths
 
 
 def _detect_label_leakage(

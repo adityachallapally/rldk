@@ -143,6 +143,8 @@ def get_legacy_thresholds(config: Dict[str, Any]) -> Dict[str, float]:
         'threshold_calibration': config.get('threshold_calibration', 0.7),
         'threshold_shortcut': config.get('threshold_shortcut', 0.6),
         'threshold_leakage': config.get('threshold_leakage', 0.3),
+        'threshold_length_bias': config.get('threshold_length_bias', 0.4),
+        'enable_length_bias_detection': config.get('enable_length_bias_detection', True),
     }
 
 

@@ -1,12 +1,13 @@
 """Report writers for reward health analysis."""
 
 from pathlib import Path
-from typing import Union
+from typing import Any, Dict, Optional, Union
 
 import numpy as np
 import pandas as pd
 
 from ..reward.health_analysis import RewardHealthReport
+from ..reward.length_bias import LengthBiasMetrics
 from .unified_writer import UnifiedWriter
 
 
@@ -40,6 +41,34 @@ def _json_serialize(obj):
         return obj
 
 
+def _length_bias_metrics_to_dict(
+    metrics: Optional[LengthBiasMetrics],
+) -> Dict[str, Any]:
+    if metrics is None:
+        return {}
+    if isinstance(metrics, LengthBiasMetrics):
+        return metrics.to_dict()
+    if isinstance(metrics, dict):
+        return metrics
+    if hasattr(metrics, "to_dict"):
+        return metrics.to_dict()
+    return {}
+
+
+def _format_optional_value(value: Any) -> str:
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
+    if isinstance(value, (int, np.integer)):
+        return str(int(value))
+    if isinstance(value, (float, np.floating)):
+        if np.isnan(value):
+            return "N/A"
+        return f"{float(value):.3f}"
+    if value is None:
+        return "N/A"
+    return str(value)
+
+
 def write_reward_health_card(report: RewardHealthReport, output_dir: Path) -> None:
     """Write reward health card to markdown file."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -67,6 +96,19 @@ def write_reward_health_card(report: RewardHealthReport, output_dir: Path) -> No
         f.write(f"- **Calibration Score:** {report.calibration_score:.3f}\n")
         f.write(f"- **Shortcut Signals:** {len(report.shortcut_signals)}\n")
         f.write(f"- **Label Leakage Risk:** {report.label_leakage_risk:.3f}\n\n")
+        metrics = report.length_bias_metrics
+        severity: Optional[float] = None
+        if isinstance(metrics, LengthBiasMetrics):
+            severity = metrics.bias_severity
+        elif isinstance(metrics, dict):
+            severity = metrics.get("bias_severity")
+        elif metrics is not None and hasattr(metrics, "bias_severity"):
+            severity = getattr(metrics, "bias_severity")
+        severity_str = f"{severity:.3f}" if severity is not None else "N/A"
+        f.write(
+            f"- **Length Bias Detected:** {'Yes' if report.length_bias_detected else 'No'}\n"
+        )
+        f.write(f"- **Length Bias Severity:** {severity_str}\n\n")
 
         # Detailed analysis sections
         if report.drift_detected:
@@ -152,6 +194,60 @@ def write_reward_health_card(report: RewardHealthReport, output_dir: Path) -> No
                 "The reward model may have access to training signals it shouldn't see.\n"
             )
 
+        length_metrics_dict = _length_bias_metrics_to_dict(report.length_bias_metrics)
+        if report.length_bias_detected or length_metrics_dict or report.length_bias_recommendations:
+            f.write("## 🧵 Length Bias Analysis\n\n")
+            status_line = (
+                "**Status:** 🚨 Length bias detected\n\n"
+                if report.length_bias_detected
+                else "**Status:** ✅ No significant length bias detected\n\n"
+            )
+            f.write(status_line)
+
+            if length_metrics_dict:
+                f.write("### Key Metrics\n\n")
+                key_fields = {
+                    "Valid Samples": length_metrics_dict.get("valid_sample_count"),
+                    "Pearson Correlation": length_metrics_dict.get(
+                        "pearson_correlation"
+                    ),
+                    "Spearman Correlation": length_metrics_dict.get(
+                        "spearman_correlation"
+                    ),
+                    "Variance Explained": length_metrics_dict.get(
+                        "variance_explained"
+                    ),
+                    "Bias Severity": length_metrics_dict.get("bias_severity"),
+                    "ODIN Reward per Token": length_metrics_dict.get(
+                        "odin_reward_per_token"
+                    ),
+                    "ODIN Optimization Flag": length_metrics_dict.get(
+                        "odin_optimization_flag"
+                    ),
+                }
+                for label, value in key_fields.items():
+                    formatted = _format_optional_value(value)
+                    f.write(f"- **{label}:** {formatted}\n")
+
+                quartiles = length_metrics_dict.get("quartile_metrics") or {}
+                if quartiles:
+                    f.write("\n### Quartile Summary\n\n")
+                    f.write("| Quartile | Length Range | Mean Reward | Count |\n")
+                    f.write("|----------|--------------|-------------|-------|\n")
+                    for name, values in quartiles.items():
+                        length_min = _format_optional_value(values.get("length_min"))
+                        length_max = _format_optional_value(values.get("length_max"))
+                        reward_mean = _format_optional_value(values.get("mean_reward"))
+                        count = _format_optional_value(values.get("count"))
+                        f.write(
+                            f"| {name.upper()} | {length_min} - {length_max} | {reward_mean} | {count} |\n"
+                        )
+
+            if report.length_bias_recommendations:
+                f.write("\n### Recommendations\n\n")
+                for recommendation in report.length_bias_recommendations:
+                    f.write(f"- {recommendation}\n")
+
         # Recommended fixes
         if report.fixes:
             f.write("## 🔧 Recommended Fixes\n\n")
@@ -192,6 +288,11 @@ def write_reward_health_summary(report: RewardHealthReport, output_dir: Path) ->
         "fixes": report.fixes,
         "saturation_analysis": report.saturation_analysis,
         "shortcut_analysis": report.shortcut_analysis,
+        "length_bias_detected": report.length_bias_detected,
+        "length_bias_recommendations": report.length_bias_recommendations,
+        "length_bias_metrics": _length_bias_metrics_to_dict(
+            report.length_bias_metrics
+        ),
     }
 
     # Add drift summary if available

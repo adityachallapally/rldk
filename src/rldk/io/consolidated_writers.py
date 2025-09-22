@@ -1,7 +1,7 @@
 """Consolidated writers for all report types and data formats."""
 
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,6 +9,35 @@ import pandas as pd
 
 from .consolidated_schemas import Event, MetricsSchema
 from .unified_writer import UnifiedWriter
+from ..reward.length_bias import LengthBiasMetrics
+
+
+def _length_bias_metrics_to_dict(
+    metrics: Optional[LengthBiasMetrics],
+) -> Dict[str, Any]:
+    if metrics is None:
+        return {}
+    if isinstance(metrics, LengthBiasMetrics):
+        return metrics.to_dict()
+    if isinstance(metrics, dict):
+        return metrics
+    if hasattr(metrics, "to_dict"):
+        return metrics.to_dict()
+    return {}
+
+
+def _format_optional_value(value: Any) -> str:
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
+    if isinstance(value, (int, np.integer)):
+        return str(int(value))
+    if isinstance(value, (float, np.floating)):
+        if np.isnan(value):
+            return "N/A"
+        return f"{float(value):.3f}"
+    if value is None:
+        return "N/A"
+    return str(value)
 
 
 def write_drift_card(drift_data: Dict[str, Any], output_dir: Union[str, Path]) -> None:
@@ -136,6 +165,19 @@ def _generate_reward_health_card_md(report) -> str:
     lines.append(f"- **Calibration Score:** {report.calibration_score:.3f}\n")
     lines.append(f"- **Shortcut Signals:** {len(report.shortcut_signals)}\n")
     lines.append(f"- **Label Leakage Risk:** {report.label_leakage_risk:.3f}\n")
+    metrics = report.length_bias_metrics
+    severity: Optional[float] = None
+    if isinstance(metrics, LengthBiasMetrics):
+        severity = metrics.bias_severity
+    elif isinstance(metrics, dict):
+        severity = metrics.get("bias_severity")
+    elif metrics is not None and hasattr(metrics, "bias_severity"):
+        severity = getattr(metrics, "bias_severity")
+    severity_str = f"{severity:.3f}" if severity is not None else "N/A"
+    lines.append(
+        f"- **Length Bias Detected:** {'Yes' if report.length_bias_detected else 'No'}\n"
+    )
+    lines.append(f"- **Length Bias Severity:** {severity_str}\n")
 
     # Detailed analysis sections
     if report.drift_detected:
@@ -221,6 +263,53 @@ def _generate_reward_health_card_md(report) -> str:
             "The reward model may have access to training signals it shouldn't see.\n"
         )
 
+    length_metrics_dict = _length_bias_metrics_to_dict(report.length_bias_metrics)
+    if report.length_bias_detected or length_metrics_dict or report.length_bias_recommendations:
+        lines.append("## 🧵 Length Bias Analysis\n")
+        status_line = (
+            "**Status:** 🚨 Length bias detected\n"
+            if report.length_bias_detected
+            else "**Status:** ✅ No significant length bias detected\n"
+        )
+        lines.append(status_line)
+
+        if length_metrics_dict:
+            lines.append("### Key Metrics\n")
+            key_fields = {
+                "Valid Samples": length_metrics_dict.get("valid_sample_count"),
+                "Pearson Correlation": length_metrics_dict.get("pearson_correlation"),
+                "Spearman Correlation": length_metrics_dict.get("spearman_correlation"),
+                "Variance Explained": length_metrics_dict.get("variance_explained"),
+                "Bias Severity": length_metrics_dict.get("bias_severity"),
+                "ODIN Reward per Token": length_metrics_dict.get(
+                    "odin_reward_per_token"
+                ),
+                "ODIN Optimization Flag": length_metrics_dict.get(
+                    "odin_optimization_flag"
+                ),
+            }
+            for label, value in key_fields.items():
+                lines.append(f"- **{label}:** {_format_optional_value(value)}\n")
+
+            quartiles = length_metrics_dict.get("quartile_metrics") or {}
+            if quartiles:
+                lines.append("\n### Quartile Summary\n")
+                lines.append("| Quartile | Length Range | Mean Reward | Count |\n")
+                lines.append("|----------|--------------|-------------|-------|\n")
+                for name, values in quartiles.items():
+                    length_min = _format_optional_value(values.get("length_min"))
+                    length_max = _format_optional_value(values.get("length_max"))
+                    reward_mean = _format_optional_value(values.get("mean_reward"))
+                    count = _format_optional_value(values.get("count"))
+                    lines.append(
+                        f"| {name.upper()} | {length_min} - {length_max} | {reward_mean} | {count} |\n"
+                    )
+
+        if report.length_bias_recommendations:
+            lines.append("\n### Recommendations\n")
+            for recommendation in report.length_bias_recommendations:
+                lines.append(f"- {recommendation}\n")
+
     # Recommended fixes
     if report.fixes:
         lines.append("## 🔧 Recommended Fixes\n")
@@ -261,6 +350,11 @@ def write_reward_health_summary(report, output_dir: Path) -> None:
         "fixes": report.fixes,
         "saturation_analysis": report.saturation_analysis,
         "shortcut_analysis": report.shortcut_analysis,
+        "length_bias_detected": report.length_bias_detected,
+        "length_bias_recommendations": report.length_bias_recommendations,
+        "length_bias_metrics": _length_bias_metrics_to_dict(
+            report.length_bias_metrics
+        ),
     }
 
     # Add drift summary if available

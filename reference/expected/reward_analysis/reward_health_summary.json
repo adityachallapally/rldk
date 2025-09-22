@@ -13,6 +13,8 @@
     "zero_ratio": 0.0
   },
   "shortcut_analysis": {
-    "length_correlation": NaN
-  }
+  },
+  "length_bias_detected": false,
+  "length_bias_recommendations": [],
+  "length_bias_metrics": {}
 }

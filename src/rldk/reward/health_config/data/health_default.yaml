@@ -44,3 +44,5 @@ threshold_saturation: 0.8
 threshold_calibration: 0.7
 threshold_shortcut: 0.6
 threshold_leakage: 0.3
+threshold_length_bias: 0.4
+enable_length_bias_detection: true
