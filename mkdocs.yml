@@ -137,6 +137,8 @@ nav:
     - Core API: reference/api.md
   - CLI Reference:
     - Commands: reference/commands.md
+  - Guides:
+    - Length Bias Trust Card: guides/length_bias.md
 
 # Extra
 extra:

@@ -4,11 +4,12 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 
 from ..io.event_schema import Event
 
@@ -683,3 +684,423 @@ def _generate_reward_visualization(
     plt.tight_layout()
     plt.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close()
+
+
+def _sanitize_length_bias_series(
+    responses: Sequence[Any],
+    rewards: Sequence[Any],
+    lengths: Optional[Sequence[Optional[Any]]],
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Return aligned numpy arrays for response lengths and rewards."""
+
+    if len(responses) != len(rewards):
+        raise ValueError(
+            "Responses and rewards must be the same length for card visualizations"
+        )
+
+    reward_values: List[float] = []
+    for value in rewards:
+        if value is None:
+            reward_values.append(np.nan)
+            continue
+        try:
+            reward_values.append(float(value))
+        except (TypeError, ValueError):
+            reward_values.append(np.nan)
+
+    if lengths is None:
+        length_values = [float(len(str(resp))) if resp is not None else np.nan for resp in responses]
+    else:
+        if len(lengths) != len(responses):
+            raise ValueError(
+                "Length sequence must match the number of responses for card visualizations"
+            )
+        length_values = []
+        for value in lengths:
+            if value is None:
+                length_values.append(np.nan)
+                continue
+            try:
+                length_values.append(float(value))
+            except (TypeError, ValueError):
+                length_values.append(np.nan)
+
+    return np.asarray(length_values, dtype=float), np.asarray(reward_values, dtype=float)
+
+
+def plot_length_reward_correlation(
+    ax: "plt.Axes",
+    length_array: np.ndarray,
+    reward_array: np.ndarray,
+    metrics: Dict[str, Any],
+) -> None:
+    """Scatter plot highlighting correlation between response length and reward."""
+
+    sns.set_theme(style="whitegrid", context="notebook")
+
+    valid_mask = (~np.isnan(length_array)) & (~np.isnan(reward_array))
+
+    if valid_mask.sum() < 3:
+        ax.text(
+            0.5,
+            0.5,
+            "Insufficient data\nfor correlation plot",
+            ha="center",
+            va="center",
+            fontsize=11,
+        )
+        ax.set_axis_off()
+        return
+
+    data = pd.DataFrame(
+        {
+            "Length": length_array[valid_mask],
+            "Reward": reward_array[valid_mask],
+        }
+    )
+
+    sns.regplot(
+        data=data,
+        x="Length",
+        y="Reward",
+        ax=ax,
+        scatter_kws={"alpha": 0.45, "s": 32},
+        line_kws={"color": "#1f77b4", "linewidth": 1.5},
+    )
+    ax.set_title("Length vs Reward", fontsize=12, fontweight="bold")
+    ax.set_xlabel("Response length (tokens or characters)")
+    ax.set_ylabel("Reward score")
+
+    annotations: List[str] = []
+    pearson = metrics.get("pearson_correlation")
+    if pearson is not None:
+        annotations.append(f"Pearson: {pearson:.2f}")
+    spearman = metrics.get("spearman_correlation")
+    if spearman is not None:
+        annotations.append(f"Spearman: {spearman:.2f}")
+    severity = metrics.get("bias_severity")
+    if severity is not None:
+        annotations.append(f"Severity: {severity:.2f}")
+
+    if annotations:
+        ax.text(
+            0.02,
+            0.98,
+            "\n".join(annotations),
+            ha="left",
+            va="top",
+            transform=ax.transAxes,
+            fontsize=9,
+            bbox={"facecolor": "white", "alpha": 0.8, "boxstyle": "round,pad=0.3"},
+        )
+
+
+def plot_length_quartile_analysis(
+    ax: "plt.Axes", metrics: Dict[str, Any]
+) -> None:
+    """Visualize reward differences across response length quartiles."""
+
+    sns.set_theme(style="whitegrid", context="notebook")
+
+    quartiles = metrics.get("quartile_metrics") or {}
+    if not quartiles:
+        ax.text(
+            0.5,
+            0.5,
+            "Quartile statistics\nnot available",
+            ha="center",
+            va="center",
+            fontsize=11,
+        )
+        ax.set_axis_off()
+        return
+
+    quartile_df = pd.DataFrame.from_dict(quartiles, orient="index")
+    if "mean_reward" not in quartile_df.columns:
+        ax.text(
+            0.5,
+            0.5,
+            "Quartile reward means\nmissing",
+            ha="center",
+            va="center",
+            fontsize=11,
+        )
+        ax.set_axis_off()
+        return
+
+    quartile_df = quartile_df.reset_index().rename(columns={"index": "quartile"})
+    quartile_df["quartile"] = quartile_df["quartile"].str.upper()
+    quartile_df = quartile_df.dropna(subset=["mean_reward"])
+
+    if quartile_df.empty:
+        ax.text(
+            0.5,
+            0.5,
+            "Quartile reward means\nmissing",
+            ha="center",
+            va="center",
+            fontsize=11,
+        )
+        ax.set_axis_off()
+        return
+
+    sns.barplot(
+        data=quartile_df,
+        x="quartile",
+        y="mean_reward",
+        ax=ax,
+        palette="viridis",
+    )
+    ax.set_title("Reward by Length Quartile", fontsize=12, fontweight="bold")
+    ax.set_xlabel("Length quartile")
+    ax.set_ylabel("Mean reward")
+
+    variance = metrics.get("variance_explained")
+    if variance is not None:
+        ax.text(
+            0.98,
+            0.02,
+            f"Variance explained: {variance:.2%}",
+            ha="right",
+            va="bottom",
+            transform=ax.transAxes,
+            fontsize=9,
+        )
+
+
+def plot_odin_metrics(ax: "plt.Axes", metrics: Dict[str, Any]) -> None:
+    """Plot ODIN-inspired efficiency heuristics."""
+
+    sns.set_theme(style="whitegrid", context="notebook")
+
+    odin_reward = metrics.get("odin_reward_per_token")
+    odin_efficiency = metrics.get("odin_efficiency")
+    values = {
+        "Reward/token": odin_reward,
+        "Efficiency": odin_efficiency,
+    }
+    filtered = {k: v for k, v in values.items() if v is not None}
+
+    if not filtered:
+        ax.text(
+            0.5,
+            0.5,
+            "ODIN metrics\nnot available",
+            ha="center",
+            va="center",
+            fontsize=11,
+        )
+        ax.set_axis_off()
+        return
+
+    ax.barh(list(filtered.keys()), list(filtered.values()), color="#6baed6")
+    ax.set_title("ODIN Efficiency", fontsize=12, fontweight="bold")
+    ax.set_xlabel("Value")
+
+    flag = bool(metrics.get("odin_optimization_flag", False))
+    ax.text(
+        0.02,
+        0.02,
+        f"Optimization flag: {'Yes' if flag else 'No'}",
+        ha="left",
+        va="bottom",
+        transform=ax.transAxes,
+        fontsize=9,
+        bbox={"facecolor": "white", "alpha": 0.8, "boxstyle": "round,pad=0.3"},
+    )
+
+
+def plot_length_bias_timeline(
+    ax: "plt.Axes",
+    length_array: np.ndarray,
+    reward_array: np.ndarray,
+    severity: Optional[float] = None,
+) -> None:
+    """Plot reward timeline with length context to highlight bias drift."""
+
+    sns.set_theme(style="whitegrid", context="notebook")
+
+    valid_mask = (~np.isnan(length_array)) & (~np.isnan(reward_array))
+
+    if valid_mask.sum() == 0:
+        ax.text(
+            0.5,
+            0.5,
+            "No reward timeline\navailable",
+            ha="center",
+            va="center",
+            fontsize=11,
+        )
+        ax.set_axis_off()
+        return
+
+    df = pd.DataFrame(
+        {
+            "Index": np.arange(valid_mask.sum()),
+            "Reward": reward_array[valid_mask],
+            "Length": length_array[valid_mask],
+        }
+    )
+
+    if df["Length"].nunique() > 4:
+        try:
+            df["LengthBin"] = pd.qcut(
+                df["Length"], q=4, labels=["Q1", "Q2", "Q3", "Q4"], duplicates="drop"
+            )
+            hue = "LengthBin"
+        except ValueError:
+            hue = None
+    else:
+        hue = None
+
+    if hue:
+        sns.scatterplot(data=df, x="Index", y="Reward", hue=hue, palette="viridis", ax=ax, s=32)
+    else:
+        sns.scatterplot(data=df, x="Index", y="Reward", hue="Length", palette="viridis", ax=ax, s=32, legend=False)
+
+    window = max(5, int(len(df) * 0.1))
+    if len(df) >= window:
+        rolling = df["Reward"].rolling(window=window, min_periods=max(3, window // 2)).mean()
+        ax.plot(df["Index"], rolling, color="#ff7f0e", linewidth=1.5, label=f"Rolling mean ({window})")
+        ax.legend(loc="upper left", fontsize=8)
+
+    ax.set_title("Reward timeline", fontsize=12, fontweight="bold")
+    ax.set_xlabel("Sample index")
+    ax.set_ylabel("Reward score")
+
+    if severity is not None:
+        ax.text(
+            0.98,
+            0.02,
+            f"Severity: {severity:.2f}",
+            ha="right",
+            va="bottom",
+            transform=ax.transAxes,
+            fontsize=9,
+        )
+
+
+def _normalize_run_identifier(run_id: Optional[str]) -> str:
+    if not run_id:
+        return "unknown"
+    sanitized = "".join(
+        ch if ch.isalnum() or ch in {"-", "_", "."} else "_" for ch in str(run_id)
+    ).strip("_")
+    return sanitized or "unknown"
+
+
+def _json_ready(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {k: _json_ready(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_json_ready(item) for item in obj]
+    if hasattr(obj, "item"):
+        try:
+            return obj.item()
+        except Exception:  # pragma: no cover - defensive
+            return str(obj)
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    return obj
+
+
+def _generate_length_bias_visualization(
+    card_data: Dict[str, Any],
+    output_path: Path,
+    responses: Sequence[Any],
+    rewards: Sequence[Any],
+    lengths: Optional[Sequence[Optional[Any]]],
+) -> None:
+    """Render the length bias trust card visualization."""
+
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    fig.suptitle(
+        f"Length Bias Card - {card_data['run_id']}", fontsize=16, fontweight="bold"
+    )
+
+    metrics = card_data.get("metrics", {})
+    severity = card_data.get("severity")
+
+    length_array, reward_array = _sanitize_length_bias_series(responses, rewards, lengths)
+
+    plot_length_reward_correlation(axes[0, 0], length_array, reward_array, metrics)
+    plot_length_quartile_analysis(axes[0, 1], metrics)
+    plot_odin_metrics(axes[1, 0], metrics)
+    plot_length_bias_timeline(axes[1, 1], length_array, reward_array, severity)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+
+def generate_length_bias_card(
+    result: Dict[str, Any],
+    *,
+    responses: Sequence[Any],
+    rewards: Sequence[Any],
+    lengths: Optional[Sequence[Optional[Any]]] = None,
+    run_id: Optional[str] = None,
+    source: Optional[str] = None,
+    output_dir: Optional[str] = None,
+) -> Tuple[Dict[str, Any], Path]:
+    """Generate a dedicated trust card summarizing reward length bias analysis."""
+
+    normalized_run_id = _normalize_run_identifier(run_id)
+    base_output = (
+        Path(output_dir)
+        if output_dir is not None
+        else Path(f"runs/{normalized_run_id}/rldk_cards/length_bias")
+    )
+    base_output.mkdir(parents=True, exist_ok=True)
+
+    resolved_lengths, resolved_rewards = _sanitize_length_bias_series(
+        responses, rewards, lengths
+    )
+
+    metrics = result.get("metrics", {})
+    metrics_safe = _json_ready(metrics)
+    severity = result.get("severity")
+    score = result.get("score")
+    threshold = result.get("threshold")
+
+    card_data: Dict[str, Any] = {
+        "version": "1.0",
+        "generated_at": datetime.utcnow().isoformat(),
+        "run_id": normalized_run_id,
+        "source": source,
+        "passed": bool(result.get("passed", False)),
+        "score": float(score) if score is not None else None,
+        "severity": float(severity) if severity is not None else None,
+        "threshold": float(threshold) if threshold is not None else None,
+        "response_count": int(result.get("response_count", len(responses))),
+        "valid_samples": int(result.get("num_samples", np.count_nonzero(~np.isnan(resolved_rewards)))),
+        "recommendations": result.get("recommendations", []),
+        "details": {
+            "optimization_patterns": metrics_safe.get("optimization_patterns", []),
+            "bias_severity": metrics_safe.get("bias_severity"),
+            "pearson_correlation": metrics_safe.get("pearson_correlation"),
+            "spearman_correlation": metrics_safe.get("spearman_correlation"),
+            "odin_efficiency": metrics_safe.get("odin_efficiency"),
+        },
+        "metrics": metrics_safe,
+    }
+
+    json_path = base_output / "length_bias_card.json"
+    with open(json_path, "w", encoding="utf-8") as fp:
+        json.dump(card_data, fp, indent=2, default=_json_ready)
+
+    png_path = base_output / "length_bias_card.png"
+    _generate_length_bias_visualization(
+        card_data,
+        png_path,
+        responses,
+        rewards,
+        lengths,
+    )
+
+    card_data["artifacts"] = {
+        "json": str(json_path),
+        "png": str(png_path),
+    }
+
+    return card_data, base_output

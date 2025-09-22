@@ -357,7 +357,7 @@ rldk card reward run_a
 ### **Comprehensive Analysis**
 - **Health scoring** - Overall training health, stability, and convergence quality metrics
 - **Statistical evaluation** - Multiple evaluation suites (quick, comprehensive, safety) with confidence intervals
-- **Card generation** - Visual trust cards for determinism, drift, and reward analysis
+- **Card generation** - Visual trust cards for determinism, drift, length bias, and reward analysis
 - **Data ingestion** - Support for TRL, OpenRLHF, WandB, and custom JSONL formats
 - **Seeded replay** - Exact reproduction of training runs with tolerance-based verification
 
@@ -575,7 +575,7 @@ print(health_result.report.length_bias_metrics.bias_severity)
 - ✅ **Evaluation suites** - Multiple test suites (quick, comprehensive, safety) with statistical analysis
 - ✅ **Regression detection** - Git bisect integration for finding problematic commits
 - ✅ **Health analysis** - Overall training health, stability, and convergence quality metrics
-- ✅ **Card generation** - Visual trust cards for determinism, drift, and reward analysis
+- ✅ **Card generation** - Visual trust cards for determinism, drift, length bias, and reward analysis
 
 ### **Data Ingestion & Integration**
 - ✅ **Multi-framework support** - TRL, OpenRLHF, WandB, and custom JSONL adapters
@@ -1009,7 +1009,7 @@ df = wandb_adapter.load()
 - ✅ **Seeded replay** - Exact reproduction of training runs
 - ✅ **Data ingestion** - Support for TRL, OpenRLHF, WandB, and custom formats
 - ✅ **CLI interface** - Comprehensive command-line tools
-- ✅ **Card generation** - Visual trust cards for analysis results
+- ✅ **Card generation** - Visual trust cards for analysis results (determinism, drift, length bias, reward)
 - ✅ **Git bisect integration** - Regression detection and debugging
 
 ### **Integration Support (Available Now)**
