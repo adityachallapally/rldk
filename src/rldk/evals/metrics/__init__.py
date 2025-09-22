@@ -1,6 +1,12 @@
 """Core evaluation metrics for RL Debug Kit."""
 
 from .bias import evaluate_bias
+from .length_bias import (
+    evaluate_length_bias,
+    length_bias_score_from_metrics,
+    prepare_length_bias_inputs,
+    resolve_length_bias_columns,
+)
 from .throughput import evaluate_throughput
 from .toxicity import evaluate_toxicity
 from .utils import calculate_confidence_intervals, calculate_effect_sizes
@@ -100,6 +106,10 @@ __all__ = [
     "evaluate_throughput",
     "evaluate_toxicity",
     "evaluate_bias",
+    "evaluate_length_bias",
+    "length_bias_score_from_metrics",
+    "prepare_length_bias_inputs",
+    "resolve_length_bias_columns",
     "calculate_confidence_intervals",
     "calculate_effect_sizes",
     "calculate_kl_divergence",
