@@ -80,6 +80,7 @@ class TrackingConfig:
             self.experiment_id = str(uuid.uuid4())
 
         # Ensure output directory exists
+        self.output_dir = Path(self.output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Set default dataset cache dir
@@ -89,9 +90,13 @@ class TrackingConfig:
                 self.dataset_cache_dir = Path(cache_dir_env)
             else:
                 self.dataset_cache_dir = self.output_dir / "dataset_cache"
+        else:
+            self.dataset_cache_dir = Path(self.dataset_cache_dir)
 
         self.dataset_cache_dir.mkdir(parents=True, exist_ok=True)
 
         # Set default git repo path
         if self.git_repo_path is None:
             self.git_repo_path = Path.cwd()
+        else:
+            self.git_repo_path = Path(self.git_repo_path)

@@ -42,6 +42,25 @@ class TestTrackingConfig:
         assert config.enable_dataset_tracking is True
         assert config.enable_model_tracking is True
 
+    def test_config_accepts_string_paths(self, tmp_path):
+        """Test that string paths are converted to Path instances."""
+        output_dir = tmp_path / "run_output"
+        dataset_cache_dir = tmp_path / "cache_dir"
+        git_repo_path = tmp_path
+
+        config = TrackingConfig(
+            experiment_name="string_path_experiment",
+            output_dir=str(output_dir),
+            dataset_cache_dir=str(dataset_cache_dir),
+            git_repo_path=str(git_repo_path),
+        )
+
+        assert config.output_dir == output_dir
+        assert config.dataset_cache_dir == dataset_cache_dir
+        assert config.git_repo_path == git_repo_path
+        assert output_dir.exists()
+        assert dataset_cache_dir.exists()
+
     def test_config_defaults(self):
         """Test config default values."""
         config = TrackingConfig(experiment_name="test")
