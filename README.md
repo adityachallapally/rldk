@@ -198,6 +198,7 @@ with `--rules grpo_safe`, and records the alerts plus report under `artifacts/` 
 Key conveniences:
 
 - **Rule presets** – `ppo_safe`, `ppo_strict`, `grpo_safe`, `grpo_strict`, `kl_drift`, and `dpo_basic` cover common KL, drift, reward, and gradient gates so you can start without writing YAML.
+  - The GRPO presets now watch `grad_norm_policy` / `grad_norm_value` directly, warning once policy gradients rise above ~8.0 (6.5 in strict mode) or when the policy/value ratio derived from the latest gradient pair exceeds roughly 4.5 (3.5 strict). Tune these ceilings with `--set-rule grpo_safe_policy_grad_spike.condition="value > <new_threshold>"` or adjust the ratio guard with `--set-rule grpo_safe_grad_ratio_imbalance.condition="..."` if your trainer uses a different normalization scheme. Ensure both gradients are logged so the monitor can attach `policy_over_value` / `value_over_policy` metadata and compute the ratio.
 - **Field-map presets** – `--preset grpo|trl|accelerate|openrlhf` normalizes popular logging key conventions; combine with `--field-map` for custom tweaks.
 - **Directory tailing** – Passing a directory to `--stream` automatically follows the newest `*.jsonl` file and handles rotation.
 - **Environment hook** – Set `RLDK_METRICS_PATH` to auto-tail a metrics file without specifying `--stream`; piping JSONL to stdin also just works.

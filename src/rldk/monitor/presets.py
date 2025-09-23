@@ -69,6 +69,36 @@ RULE_PRESETS: Dict[str, RulePreset] = {
                 ],
             },
             {
+                "id": "grpo_safe_policy_grad_spike",
+                "where": "name == \"grad_norm_policy\"",
+                "condition": "value > 8.0",
+                "window": {"size": 2, "kind": "consecutive"},
+                "grace_steps": 6,
+                "cooldown_steps": 18,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Policy gradient norm spiking: {value:.2f}"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "grpo_safe_grad_ratio_imbalance",
+                "where": "name in (\"grad_norm_policy\", \"grad_norm_value\")",
+                "condition": "('policy_over_value' in meta and meta['policy_over_value'] > 4.5) or ('value_over_policy' in meta and meta['value_over_policy'] > 4.5)",
+                "window": {"size": 1, "kind": "consecutive"},
+                "grace_steps": 6,
+                "cooldown_steps": 24,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Policy/value gradient imbalance detected; guard ratio > 4.5 (latest {value:.2f})"
+                        }
+                    }
+                ],
+            },
+            {
                 "id": "grpo_safe_entropy_floor",
                 "where": "name in (\"entropy\", \"entropy_mean\", \"policy_entropy\")",
                 "condition": "mean(value) < 1.8",
@@ -282,6 +312,38 @@ RULE_PRESETS: Dict[str, RulePreset] = {
                 "actions": [
                     {"warn": {"msg": "Acceptance rate unstable (latest {value:.2f})"}},
                     {"stop": {"msg": "Stopping due to acceptance-rate instability"}},
+                ],
+            },
+            {
+                "id": "grpo_strict_policy_grad_spike",
+                "where": "name == \"grad_norm_policy\"",
+                "condition": "value > 6.5",
+                "window": {"size": 2, "kind": "consecutive"},
+                "grace_steps": 5,
+                "cooldown_steps": 16,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Strict policy gradient ceiling breached: {value:.2f}"
+                        }
+                    },
+                    {"stop": {"msg": "Stopping due to runaway policy gradients"}},
+                ],
+            },
+            {
+                "id": "grpo_strict_grad_ratio_imbalance",
+                "where": "name in (\"grad_norm_policy\", \"grad_norm_value\")",
+                "condition": "('policy_over_value' in meta and meta['policy_over_value'] > 3.5) or ('value_over_policy' in meta and meta['value_over_policy'] > 3.5)",
+                "window": {"size": 1, "kind": "consecutive"},
+                "grace_steps": 5,
+                "cooldown_steps": 20,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Strict gradient ratio imbalance detected; guard ratio > 3.5 (latest {value:.2f})"
+                        }
+                    },
+                    {"stop": {"msg": "Stopping due to gradient imbalance"}},
                 ],
             },
             {
