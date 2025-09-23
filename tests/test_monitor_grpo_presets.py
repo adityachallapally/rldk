@@ -9,7 +9,7 @@ from typing import Iterable, Sequence
 import pytest
 
 from rldk.monitor import Alert, ActionExecutor, Event, MonitorEngine, load_rules
-from rldk.monitor.presets import get_rule_preset
+from rldk.monitor.presets import get_field_map_preset, get_rule_preset
 
 _FIXTURE_PATH = Path("test_artifacts/logs_grpo/seed_1/run.jsonl")
 
@@ -29,23 +29,47 @@ class _NoopExecutor(ActionExecutor):
         )
 
 
-def _iter_fixture_events(metric_names: Sequence[str]) -> Iterable[Event]:
+def _iter_fixture_events(
+    metric_names: Sequence[str],
+    *,
+    field_map: dict[str, str] | None = None,
+    extra_metrics: dict[str, Sequence[float]] | None = None,
+) -> Iterable[Event]:
     with _FIXTURE_PATH.open() as handle:
+        last_step = 0
         for line in handle:
             payload = json.loads(line)
             step = int(payload["step"])
+            last_step = max(last_step, step)
             timestamp = "2024-01-01T00:00:00Z"
             for metric in metric_names:
                 value = payload.get(metric)
                 if value is None:
                     continue
+                canonical = field_map.get(metric, metric) if field_map else metric
                 yield Event(
                     time=timestamp,
                     step=step,
-                    name=metric,
+                    name=canonical,
                     value=float(value),
                     run_id="seed_1",
                 )
+    if not extra_metrics:
+        return
+
+    timestamp = "2024-01-02T00:00:00Z"
+    current_step = last_step
+    for metric, values in extra_metrics.items():
+        canonical = field_map.get(metric, metric) if field_map else metric
+        for value in values:
+            current_step += 1
+            yield Event(
+                time=timestamp,
+                step=current_step,
+                name=canonical,
+                value=float(value),
+                run_id="seed_1",
+            )
 
 
 def _drain_events(engine: MonitorEngine, events: Iterable[Event]) -> set[str]:
@@ -63,11 +87,77 @@ def test_grpo_safe_preset_triggers_on_fixture_anomalies() -> None:
     engine = MonitorEngine(rules, action_executor=_NoopExecutor())
 
     metrics = ["kl", "kl_coef", "reward_mean"]
-    fired = _drain_events(engine, _iter_fixture_events(metrics))
+    field_map = get_field_map_preset("grpo") or {}
+    extra_metrics = {
+        "diversity/pass_at_1": [
+            0.42,
+            0.4,
+            0.35,
+            0.28,
+            0.24,
+            0.22,
+            0.21,
+            0.2,
+            0.19,
+            0.18,
+            0.17,
+            0.16,
+        ],
+        "distinct_4": [
+            0.24,
+            0.2,
+            0.16,
+            0.12,
+            0.1,
+            0.09,
+            0.08,
+            0.07,
+            0.06,
+            0.05,
+            0.045,
+            0.04,
+        ],
+        "self_bleu": [
+            0.72,
+            0.75,
+            0.8,
+            0.86,
+            0.9,
+            0.92,
+            0.93,
+            0.94,
+            0.95,
+            0.952,
+        ],
+        "output_entropy": [
+            1.6,
+            1.48,
+            1.4,
+            1.32,
+            1.24,
+            1.18,
+            1.14,
+            1.1,
+            1.05,
+            1.0,
+        ],
+    }
+    fired = _drain_events(
+        engine,
+        _iter_fixture_events(
+            metrics,
+            field_map=field_map,
+            extra_metrics=extra_metrics,
+        ),
+    )
 
     assert "grpo_safe_kl_spike" in fired
     assert "grpo_safe_kl_coef_stall" in fired
     assert "grpo_safe_reward_saturation" in fired
+    assert "grpo_safe_diversity_pass_floor" in fired
+    assert "grpo_safe_diversity_distinct_collapse" in fired
+    assert "grpo_safe_self_bleu_spike" in fired
+    assert "grpo_safe_output_entropy_floor" in fired
 
 
 @pytest.mark.parametrize(
@@ -87,6 +177,37 @@ def test_grpo_safe_preset_triggers_on_fixture_anomalies() -> None:
             "acceptance_rate",
             [0.5, 0.55, 0.58, 0.6, 0.62, 0.1, 0.85, 0.12, 0.8, 0.15],
             "grpo_strict_acceptance_swings",
+        ),
+        (
+            "diversity_pass_at_1",
+            [
+                0.42,
+                0.38,
+                0.34,
+                0.3,
+                0.27,
+                0.24,
+                0.22,
+                0.21,
+                0.2,
+                0.19,
+            ],
+            "grpo_strict_diversity_pass_floor",
+        ),
+        (
+            "diversity_distinct_4",
+            [0.26, 0.22, 0.2, 0.18, 0.15, 0.13, 0.12, 0.1, 0.08],
+            "grpo_strict_diversity_distinct_collapse",
+        ),
+        (
+            "diversity_self_bleu",
+            [0.7, 0.75, 0.8, 0.85, 0.87, 0.89, 0.9, 0.91, 0.92],
+            "grpo_strict_self_bleu_spike",
+        ),
+        (
+            "diversity_output_entropy",
+            [1.55, 1.5, 1.46, 1.42, 1.36, 1.3, 1.24, 1.18, 1.12],
+            "grpo_strict_output_entropy_floor",
         ),
     ],
 )
