@@ -2,13 +2,13 @@
   "comparison_summary": {
     "baseline": {
       "status": "completed",
-      "training_time": 1.5030255317687988,
+      "training_time": 1.503138542175293,
       "issues_detected": 0,
       "early_stopping": false
     },
     "rldk_monitored": {
       "status": "early_stopped",
-      "training_time": 0.5013017654418945,
+      "training_time": 0.5013952255249023,
       "issues_detected": 4,
       "early_stopping": true
     }
@@ -16,7 +16,7 @@
   "value_demonstration": {
     "detection_advantage": true,
     "early_warning_system": true,
-    "monitoring_overhead": -1.0017237663269043,
+    "monitoring_overhead": -1.0017433166503906,
     "reliability_improvement": false
   },
   "detailed_analysis": {
