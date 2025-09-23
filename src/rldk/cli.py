@@ -6,7 +6,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
 import numpy as np
 import pandas as pd
@@ -177,6 +177,92 @@ def _fallback_directory_load(
             "Unable to load metrics table from directory; no supported files found"
         )
     return normalize_training_metrics(table, field_map=field_map)
+
+
+_GOLD_FILE_CANDIDATES: Tuple[str, ...] = (
+    "gold_scores.jsonl",
+    "gold_metrics.jsonl",
+    "gold.jsonl",
+    "trusted_scores.jsonl",
+    "trusted_metrics.jsonl",
+    "eval_scores.jsonl",
+)
+
+_GOLD_DIR_HINTS: Tuple[str, ...] = (
+    "eval",
+    "evals",
+    "evaluation",
+    "evaluations",
+    "metrics",
+    "reports",
+    "analysis",
+    "analyzers",
+    "reward_model_eval",
+)
+
+_GOLD_COLUMN_CANDIDATES: Tuple[str, ...] = (
+    "gold_metric",
+    "gold_score",
+    "trusted_score",
+    "eval_score",
+    "benchmark_score",
+)
+
+
+def _auto_detect_gold_artifact(source: str) -> Optional[Path]:
+    base_path = Path(source)
+    if not base_path.exists():
+        return None
+
+    search_queue: List[Path] = []
+    if base_path.is_file():
+        search_queue.append(base_path.parent)
+    else:
+        search_queue.append(base_path)
+
+    visited: Set[Path] = set()
+
+    while search_queue:
+        current = search_queue.pop(0)
+        if current in visited:
+            continue
+        visited.add(current)
+
+        index_path = current / "index.json"
+        if index_path.exists():
+            try:
+                index_data = json.loads(index_path.read_text())
+                file_entries = index_data.get("files", [])
+                for entry in file_entries:
+                    if not isinstance(entry, str):
+                        continue
+                    if "gold" not in entry.lower():
+                        continue
+                    candidate = current / entry
+                    if candidate.exists() and candidate.is_file():
+                        return candidate
+            except json.JSONDecodeError:
+                pass
+
+        for filename in _GOLD_FILE_CANDIDATES:
+            candidate = current / filename
+            if candidate.exists() and candidate.is_file():
+                return candidate
+
+        for match in sorted(current.glob("*gold*.jsonl")):
+            if match.is_file():
+                return match
+
+        for subdir in _GOLD_DIR_HINTS:
+            candidate_dir = current / subdir
+            if candidate_dir.exists() and candidate_dir.is_dir() and candidate_dir not in visited:
+                search_queue.append(candidate_dir)
+
+    return None
+
+
+def _dataframe_has_gold_metrics(df: pd.DataFrame) -> bool:
+    return any(column in df.columns for column in _GOLD_COLUMN_CANDIDATES)
 
 
 def _normalize_signals_option(signals: Sequence[str]) -> List[str]:
@@ -1639,6 +1725,11 @@ def reward_health_run(
     gate: bool = typer.Option(False, "--gate", help="Enable CI gate mode with exit codes (0=pass, 1=warn, 2=fail). Use 'gate' subcommand for health.json-based gating."),
     gold_scores: Optional[str] = typer.Option(None, "--gold-scores", help="Optional path to trusted gold metrics for overoptimization detection"),
     gold_metric_col: Optional[str] = typer.Option(None, "--gold-metric-col", help="Column name containing gold metrics (in scores or gold dataset)"),
+    auto_gold: bool = typer.Option(
+        False,
+        "--auto-gold",
+        help="Automatically discover trusted gold metrics from the run directory when available",
+    ),
     overopt_window: int = typer.Option(100, "--overopt-window", help="Window size (steps) for early/late delta comparison"),
     overopt_delta_threshold: float = typer.Option(0.2, "--overopt-delta-threshold", help="Minimum proxy-minus-gold delta to trigger overoptimization warning"),
     overopt_min_samples: int = typer.Option(100, "--overopt-min-samples", help="Minimum paired samples required for overoptimization detector"),
@@ -1652,9 +1743,30 @@ def reward_health_run(
         scores_data = ingest_runs(scores, adapter_hint=adapter)
 
         gold_data: Optional[pd.DataFrame] = None
+        if gold_scores and auto_gold:
+            typer.echo(
+                "⚠️  --gold-scores provided; ignoring --auto-gold discovery.", err=True
+            )
+            auto_gold = False
+
         if gold_scores:
             typer.echo(f"Ingesting gold metrics from: {gold_scores}")
             gold_data = ingest_runs(gold_scores, adapter_hint=adapter)
+        elif auto_gold:
+            if _dataframe_has_gold_metrics(scores_data):
+                typer.echo(
+                    "Auto-gold: detected trusted metric column in scores data; reusing embedded gold metrics."
+                )
+            else:
+                auto_gold_path = _auto_detect_gold_artifact(scores)
+                if auto_gold_path is not None:
+                    typer.echo(f"Auto-detected gold metrics at: {auto_gold_path}")
+                    gold_data = ingest_runs(str(auto_gold_path), adapter_hint=adapter)
+                else:
+                    typer.echo(
+                        "⚠️  Auto gold enabled but no gold metrics were discovered alongside the run; continuing without gold metrics.",
+                        err=True,
+                    )
 
         # Load configuration (default or user-provided)
         if config:
@@ -2836,6 +2948,9 @@ def bisect(
         raise typer.Exit(1)
 
 
+app.command(name="determinism")(check_determinism_cmd)
+
+
 @app.command(name="reward-health")
 def reward_health(
     run_path: str = typer.Option(..., "--run", "-r", help="Path to training run data"),
@@ -2910,6 +3025,11 @@ def reward_health(
         None,
         "--gold-col",
         help="Column containing gold metrics (in run or gold dataset)",
+    ),
+    auto_gold: bool = typer.Option(
+        False,
+        "--auto-gold",
+        help="Automatically discover trusted gold metrics alongside the run artifacts",
     ),
     overopt_window: int = typer.Option(
         100,
@@ -3010,6 +3130,10 @@ def reward_health(
             _ensure_column_present(reference_data, reward_col, "reward")
 
         gold_data = None
+        if gold_path and auto_gold:
+            typer.echo("⚠️  --gold provided; ignoring --auto-gold discovery.", err=True)
+            auto_gold = False
+
         if gold_path:
             typer.echo("Normalizing gold metrics...")
             try:
@@ -3029,6 +3153,39 @@ def reward_health(
                     suggestion="Ensure the gold source contains the trusted metric column",
                     error_code="EMPTY_GOLD_DATA",
                 )
+        elif auto_gold:
+            if _dataframe_has_gold_metrics(run_data):
+                typer.echo(
+                    "Auto-gold: detected trusted metric column in normalized run data; using embedded gold metrics."
+                )
+            else:
+                auto_gold_source = _auto_detect_gold_artifact(run_path)
+                if auto_gold_source is not None:
+                    typer.echo(f"Auto-detected gold metrics at: {auto_gold_source}")
+                    try:
+                        gold_data = normalize_training_metrics_source(
+                            auto_gold_source, field_map=mapping_dict
+                        )
+                    except TypeError as exc:
+                        if not Path(auto_gold_source).is_dir():
+                            raise
+                        try:
+                            gold_data = _fallback_directory_load(
+                                Path(auto_gold_source), mapping_dict
+                            )
+                        except Exception as load_exc:
+                            raise exc from load_exc
+                    if gold_data is not None and gold_data.empty:
+                        typer.echo(
+                            "⚠️  Auto-detected gold metrics are empty; continuing without gold metrics.",
+                            err=True,
+                        )
+                        gold_data = None
+                else:
+                    typer.echo(
+                        "⚠️  Auto gold enabled but no gold metrics were discovered alongside the run; continuing without gold metrics.",
+                        err=True,
+                    )
 
         # Run reward health analysis
         typer.echo("Running reward health analysis...")

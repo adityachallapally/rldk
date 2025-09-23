@@ -115,6 +115,13 @@ class TestSeedManagement:
             assert os.environ.get('PYTHONHASHSEED') == '42'
             assert os.environ.get('CUDA_LAUNCH_BLOCKING') == '1'
             assert os.environ.get('OMP_NUM_THREADS') == '1'
+            assert os.environ.get('TOKENIZERS_PARALLELISM') == 'false'
+            assert os.environ.get('CUDNN_DETERMINISTIC') == 'true'
+            assert os.environ.get('CUDNN_BENCHMARK') == 'false'
+            assert os.environ.get('TF_DETERMINISTIC_OPS') == '1'
+            assert os.environ.get('TF_CUDNN_DETERMINISTIC') == '1'
+            assert os.environ.get('TF_ENABLE_ONEDNN_OPTS') == '0'
+            assert os.environ.get('CUBLAS_WORKSPACE_CONFIG') == ':4096:8'
 
     def test_validate_seed_consistency(self):
         """Test validating seed consistency."""

@@ -230,15 +230,22 @@ class SeedManager:
         # Set tokenizers parallelism to false for determinism
         os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
+        # Enforce deterministic kernel selection across popular accelerator stacks
+        os.environ['CUDNN_DETERMINISTIC'] = 'true'
+        os.environ['CUDNN_BENCHMARK'] = 'false'
+        os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+        os.environ['TF_DETERMINISTIC_OPS'] = '1'
+        os.environ['TF_CUDNN_DETERMINISTIC'] = '1'
+        os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
         # Set OMP threads for consistent parallel behavior
         os.environ['OMP_NUM_THREADS'] = '1'
 
         # Set MKL threads for consistent behavior
         os.environ['MKL_NUM_THREADS'] = '1'
 
-        # Set CUDA launch blocking for debugging (optional)
-        if TORCH_AVAILABLE and torch.cuda.is_available():
-            os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+        # Set CUDA launch blocking to promote synchronous kernel execution
+        os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 
 # Global seed manager instance
@@ -363,6 +370,28 @@ def set_reproducible_environment(seed: Optional[int] = None):
 
     # Set environment variables
     _global_seed_manager.set_environment_variables(actual_seed)
+
+    if TORCH_AVAILABLE:
+        try:
+            torch.use_deterministic_algorithms(True)
+        except (AttributeError, RuntimeError):  # pragma: no cover - older torch versions
+            pass
+
+        try:
+            torch.backends.cudnn.allow_tf32 = False
+        except AttributeError:  # pragma: no cover - backend missing
+            pass
+
+        try:
+            torch.backends.cuda.matmul.allow_tf32 = False
+        except AttributeError:  # pragma: no cover - backend missing
+            pass
+
+        if hasattr(torch, "set_float32_matmul_precision"):
+            try:
+                torch.set_float32_matmul_precision("high")
+            except Exception:  # pragma: no cover - defensive guard
+                pass
 
     return actual_seed
 
