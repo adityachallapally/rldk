@@ -133,6 +133,7 @@ nav:
     - Quick Start: getting-started/quickstart.md
     - Live Monitor Rules Cookbook: getting-started/monitor_rules_cookbook.md
     - Monitor Screencast Script: getting-started/monitor_screencast.md
+    - GRPO Reward Health & Determinism: getting-started/grpo_reward_health.md
   - API Reference:
     - Core API: reference/api.md
   - CLI Reference:

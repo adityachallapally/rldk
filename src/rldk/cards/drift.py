@@ -1,6 +1,7 @@
 """Drift card generation for comparing RL training runs."""
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
@@ -188,9 +189,11 @@ def generate_kl_drift_card(
     )
     recommendations = _generate_kl_drift_recommendations(latest_score, latest_trend)
 
+    generated_at = datetime.now()
+
     card_data: Dict[str, Any] = {
         "version": "1.0",
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": generated_at.isoformat(),
         "run_id": run_id or "unknown",
         "kl_drift": {
             "latest_score": latest_score,
@@ -219,6 +222,10 @@ def generate_kl_drift_card(
     output_path = Path(output_dir or f"runs/{card_data['run_id']}/rldk_cards")
     output_path.mkdir(parents=True, exist_ok=True)
 
+    timestamp = generated_at.strftime("%Y%m%d-%H%M%S")
+    safe_run_id = re.sub(r"[^A-Za-z0-9_.-]", "_", card_data["run_id"])
+    base_name = f"{safe_run_id}_{timestamp}_kl_drift_card"
+
     # Generate visualization
     fig = plt.figure(figsize=(14, 10))
     grid = fig.add_gridspec(3, 2)
@@ -246,9 +253,9 @@ def generate_kl_drift_card(
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
     # Save visualizations in multiple formats for export flexibility
-    png_path = output_path / "kl_drift_card.png"
-    svg_path = output_path / "kl_drift_card.svg"
-    pdf_path = output_path / "kl_drift_card.pdf"
+    png_path = output_path / f"{base_name}.png"
+    svg_path = output_path / f"{base_name}.svg"
+    pdf_path = output_path / f"{base_name}.pdf"
     fig.savefig(png_path, dpi=200)
     fig.savefig(svg_path)
     fig.savefig(pdf_path)
@@ -260,7 +267,7 @@ def generate_kl_drift_card(
         "timeline_pdf": str(pdf_path),
     }
 
-    json_path = output_path / "kl_drift_card.json"
+    json_path = output_path / f"{base_name}.json"
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(card_data, f, indent=2)
 
