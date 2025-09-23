@@ -14,23 +14,35 @@ def _create_fake_wandb_module() -> ModuleType:
     fake_wandb.run = None
     fake_wandb.runs = []
 
+    class _RunSummary:
+        def update(self, data):
+            fake_wandb.summary_updates.append(data)
+
+    class _Run(SimpleNamespace):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.summary = _RunSummary()
+
+        def log(self, data):
+            fake_wandb.logged_data.append(data)
+
     def init(**kwargs):
         fake_wandb.init_calls += 1
-        run = SimpleNamespace(**kwargs)
+        run = _Run(**kwargs)
         fake_wandb.runs.append(run)
         fake_wandb.run = run
         return run
 
-    def log(data):
-        fake_wandb.logged_data.append(data)
+    def _global_log(_data):  # pragma: no cover - should never be called
+        raise AssertionError("global wandb.log should not be used")
 
-    class FakeSummary:
-        def update(self, data):
-            fake_wandb.summary_updates.append(data)
+    class _GlobalSummary:  # pragma: no cover - should never be used
+        def update(self, _data):
+            raise AssertionError("global wandb.summary.update should not be used")
 
     fake_wandb.init = init
-    fake_wandb.log = log
-    fake_wandb.summary = FakeSummary()
+    fake_wandb.log = _global_log
+    fake_wandb.summary = _GlobalSummary()
 
     return fake_wandb
 

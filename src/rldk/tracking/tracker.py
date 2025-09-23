@@ -630,19 +630,18 @@ class ExperimentTracker:
                 return
 
             if wandb_run is None:
-                wandb_run = getattr(wandb, "run", None)
-
-            if wandb_run is None:
                 logger.warning("Skipping wandb logging because initialization did not succeed")
                 return
 
             self._wandb_run = wandb_run
 
+        run = self._wandb_run
+
         try:
-            wandb.log(self.tracking_data["metadata"])
+            run.log(self.tracking_data["metadata"])
 
             summary = self.get_tracking_summary()
-            wandb.summary.update(summary)
+            run.summary.update(summary)
         except Exception as log_error:
             logger.warning("Failed to save to wandb: %s", log_error)
 
