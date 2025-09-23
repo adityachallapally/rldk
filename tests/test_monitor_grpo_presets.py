@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Iterable, Sequence, Tuple
 
 import pytest
 
@@ -78,6 +78,49 @@ def _drain_events(engine: MonitorEngine, events: Iterable[Event]) -> set[str]:
         for alert in engine.process_event(event):
             fired.add(alert.rule_id)
     return fired
+
+
+def _gradient_events(
+    pairs: Sequence[Tuple[str, float]],
+    *,
+    start_step: int,
+    run_id: str,
+    timestamp: str = "2024-01-02T00:00:00Z",
+) -> list[Event]:
+    events: list[Event] = []
+    step = start_step
+    last_policy: float | None = None
+    last_value: float | None = None
+    for name, value in pairs:
+        step += 1
+        meta: dict[str, float] = {}
+        if name == "grad_norm_policy":
+            if last_value is not None:
+                ratio = float(value / (last_value + 1e-6))
+                inverse_ratio = float(last_value / (value + 1e-6))
+                meta["value_grad_norm"] = float(last_value)
+                meta["policy_over_value"] = ratio
+                meta["value_over_policy"] = inverse_ratio
+            last_policy = float(value)
+        elif name == "grad_norm_value":
+            if last_policy is not None:
+                ratio = float(last_policy / (value + 1e-6))
+                inverse_ratio = float(value / (last_policy + 1e-6))
+                meta["policy_grad_norm"] = float(last_policy)
+                meta["policy_over_value"] = ratio
+                meta["value_over_policy"] = inverse_ratio
+            last_value = float(value)
+        events.append(
+            Event(
+                time=timestamp,
+                step=step,
+                name=name,
+                value=float(value),
+                run_id=run_id,
+                meta=meta,
+            )
+        )
+    return events
 
 
 def _reward_health_events(total_steps: int = 140) -> list[Event]:
@@ -199,6 +242,30 @@ def test_grpo_safe_preset_triggers_on_fixture_anomalies() -> None:
         ),
     )
 
+    gradient_sequence = [
+        ("grad_norm_policy", 2.8),
+        ("grad_norm_value", 2.5),
+        ("grad_norm_policy", 3.1),
+        ("grad_norm_value", 2.4),
+        ("grad_norm_policy", 3.0),
+        ("grad_norm_value", 2.3),
+        ("grad_norm_policy", 8.6),
+        ("grad_norm_policy", 8.9),
+        ("grad_norm_value", 2.0),
+        ("grad_norm_policy", 9.3),
+        ("grad_norm_value", 0.35),
+    ]
+    fired.update(
+        _drain_events(
+            engine,
+            _gradient_events(
+                gradient_sequence,
+                start_step=2000,
+                run_id="seed_1",
+            ),
+        )
+    )
+
     assert "grpo_safe_kl_spike" in fired
     assert "grpo_safe_kl_coef_stall" in fired
     assert "grpo_safe_reward_saturation" in fired
@@ -206,6 +273,8 @@ def test_grpo_safe_preset_triggers_on_fixture_anomalies() -> None:
     assert "grpo_safe_diversity_distinct_collapse" in fired
     assert "grpo_safe_self_bleu_spike" in fired
     assert "grpo_safe_output_entropy_floor" in fired
+    assert "grpo_safe_policy_grad_spike" in fired
+    assert "grpo_safe_grad_ratio_imbalance" in fired
 
 
 @pytest.mark.parametrize(
@@ -281,10 +350,31 @@ def test_grpo_strict_preset_flags_strict_failures(
         for alert in engine.process_event(event):
             fired.add(alert.rule_id)
 
+    gradient_sequence = [
+        ("grad_norm_policy", 2.6),
+        ("grad_norm_value", 2.3),
+        ("grad_norm_policy", 2.9),
+        ("grad_norm_value", 2.2),
+        ("grad_norm_policy", 6.7),
+        ("grad_norm_policy", 6.9),
+        ("grad_norm_value", 1.8),
+        ("grad_norm_policy", 7.2),
+        ("grad_norm_value", 0.55),
+    ]
+    for event in _gradient_events(
+        gradient_sequence,
+        start_step=2500,
+        run_id="seed_1",
+    ):
+        for alert in engine.process_event(event):
+            fired.add(alert.rule_id)
+
     assert "grpo_strict_kl_spike" in fired
     assert "grpo_strict_kl_coef_stall" in fired
     assert "grpo_strict_reward_saturation" in fired
     assert expected_rule in fired
+    assert "grpo_strict_policy_grad_spike" in fired
+    assert "grpo_strict_grad_ratio_imbalance" in fired
 
 
 def test_grpo_safe_kl_spike_triggers_after_step_reset() -> None:

@@ -108,12 +108,19 @@ def main() -> int:
         f"{os.getpid()}' to watch the built-in GRPO guards.",
         flush=True,
     )
+    print(
+        "Policy/value gradient norms are logged each step so the GRPO presets can warn or halt "
+        "when they spike or fall out of balance.",
+        flush=True,
+    )
     print("Press Ctrl+C to stop or allow an RLDK monitor stop action to terminate the loop.", flush=True)
 
     rng = random.Random(314)
     max_steps = 320
     start_time = time.time()
     kl_coef = 0.03
+    last_policy_grad: float | None = None
+    last_value_grad: float | None = None
 
     with EventWriter(log_path) as writer:
         for step in range(1, max_steps + 1):
@@ -123,12 +130,38 @@ def main() -> int:
             kl_coef, metrics = _generate_metrics(step, rng, kl_coef)
 
             for name, value in metrics:
+                meta = {"source": "grpo_minimal_loop", "preset": "grpo"}
+                if name == "grad_norm_policy":
+                    if last_value_grad is not None:
+                        ratio = float(value / (last_value_grad + 1e-6))
+                        inverse_ratio = float(last_value_grad / (value + 1e-6))
+                        meta.update(
+                            {
+                                "value_grad_norm": float(last_value_grad),
+                                "policy_over_value": ratio,
+                                "value_over_policy": inverse_ratio,
+                            }
+                        )
+                    last_policy_grad = float(value)
+                elif name == "grad_norm_value":
+                    if last_policy_grad is not None:
+                        ratio = float(last_policy_grad / (value + 1e-6))
+                        inverse_ratio = float(value / (last_policy_grad + 1e-6))
+                        meta.update(
+                            {
+                                "policy_grad_norm": float(last_policy_grad),
+                                "policy_over_value": ratio,
+                                "value_over_policy": inverse_ratio,
+                            }
+                        )
+                    last_value_grad = float(value)
+
                 event = writer.log(
                     step=step,
                     name=name,
                     value=float(value),
                     tags={"trainer": "grpo_demo"},
-                    meta={"source": "grpo_minimal_loop", "preset": "grpo"},
+                    meta=meta,
                 )
                 sys.stdout.write(json.dumps(event) + "\n")
                 sys.stdout.flush()
