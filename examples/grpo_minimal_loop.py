@@ -56,6 +56,20 @@ def _generate_metrics(
         reward_mean = 0.44 + 0.12 * (1 - math.exp(-step / 55.0)) + rng.uniform(-0.012, 0.012)
     reward_std = 0.12 + 0.02 * math.cos(step / 8.5) + rng.uniform(-0.012, 0.012)
 
+    diversity_pass_at_1 = max(
+        0.12,
+        0.7 - 0.0017 * step + rng.uniform(-0.045, 0.045),
+    )
+    if step > 220:
+        diversity_pass_at_1 = max(0.1, diversity_pass_at_1 - 0.12)
+
+    distinct_4 = max(0.05, 0.32 - 0.0013 * step + rng.uniform(-0.02, 0.02))
+    self_bleu = min(0.96, 0.6 + 0.0018 * step + rng.uniform(-0.035, 0.035))
+    if step > 200:
+        self_bleu = min(0.97, self_bleu + 0.05)
+
+    output_entropy = max(0.9, 1.85 - 0.0036 * step + rng.uniform(-0.05, 0.05))
+
     grad_norm_policy = 2.1 + 0.013 * step + rng.uniform(-0.35, 0.35)
     grad_norm_value = 1.6 + 0.009 * step + rng.uniform(-0.25, 0.25)
 
@@ -68,6 +82,10 @@ def _generate_metrics(
         ("acceptance_rate", acceptance_rate),
         ("reward_mean", reward_mean),
         ("reward_std", reward_std),
+        ("diversity/pass_at_1", diversity_pass_at_1),
+        ("distinct_4", distinct_4),
+        ("self_bleu", self_bleu),
+        ("output_entropy", output_entropy),
         ("grad_norm_policy", grad_norm_policy),
         ("grad_norm_value", grad_norm_value),
     )

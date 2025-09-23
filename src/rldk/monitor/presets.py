@@ -80,6 +80,66 @@ RULE_PRESETS: Dict[str, RulePreset] = {
                 ],
             },
             {
+                "id": "grpo_safe_diversity_pass_floor",
+                "where": "name == \"diversity_pass_at_1\"",
+                "condition": "mean(value) < 0.24",
+                "window": {"size": 10, "kind": "rolling"},
+                "grace_steps": 12,
+                "cooldown_steps": 18,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Pass@1 diversity collapsing: mean {value:.3f}"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "grpo_safe_diversity_distinct_collapse",
+                "where": "name == \"diversity_distinct_4\"",
+                "condition": "mean(value) < 0.10",
+                "window": {"size": 8, "kind": "rolling"},
+                "grace_steps": 10,
+                "cooldown_steps": 15,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Distinct-4 diversity eroding: mean {value:.3f}"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "grpo_safe_self_bleu_spike",
+                "where": "name == \"diversity_self_bleu\"",
+                "condition": "mean(value) > 0.90",
+                "window": {"size": 8, "kind": "rolling"},
+                "grace_steps": 10,
+                "cooldown_steps": 15,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Self-BLEU spike indicates mode collapse: mean {value:.3f}"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "grpo_safe_output_entropy_floor",
+                "where": "name == \"diversity_output_entropy\"",
+                "condition": "mean(value) < 1.20",
+                "window": {"size": 8, "kind": "rolling"},
+                "grace_steps": 10,
+                "cooldown_steps": 15,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Output entropy collapsing: mean {value:.3f}"
+                        }
+                    }
+                ],
+            },
+            {
                 "id": "grpo_safe_reward_saturation",
                 "where": "name in (\"reward_mean\", \"reward\", \"group_reward_mean\")",
                 "condition": "max(value) - min(value) < 0.05",
@@ -164,6 +224,86 @@ RULE_PRESETS: Dict[str, RulePreset] = {
                 "actions": [
                     {"warn": {"msg": "Entropy breached strict floor at {value:.3f}"}},
                     {"stop": {"msg": "Stopping due to entropy collapse"}},
+                ],
+            },
+            {
+                "id": "grpo_strict_diversity_pass_floor",
+                "where": "name == \"diversity_pass_at_1\"",
+                "condition": "mean(value) < 0.32",
+                "window": {"size": 8, "kind": "rolling"},
+                "grace_steps": 8,
+                "cooldown_steps": 14,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Strict pass@1 diversity floor breached: mean {value:.3f}"
+                        }
+                    },
+                    {
+                        "stop": {
+                            "msg": "Stopping due to collapsing pass@1 diversity"
+                        }
+                    },
+                ],
+            },
+            {
+                "id": "grpo_strict_diversity_distinct_collapse",
+                "where": "name == \"diversity_distinct_4\"",
+                "condition": "mean(value) < 0.16",
+                "window": {"size": 6, "kind": "rolling"},
+                "grace_steps": 8,
+                "cooldown_steps": 12,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Strict distinct-4 diversity collapse: mean {value:.3f}"
+                        }
+                    },
+                    {
+                        "stop": {
+                            "msg": "Stopping due to distinct-4 collapse"
+                        }
+                    },
+                ],
+            },
+            {
+                "id": "grpo_strict_self_bleu_spike",
+                "where": "name == \"diversity_self_bleu\"",
+                "condition": "mean(value) > 0.82",
+                "window": {"size": 8, "kind": "rolling"},
+                "grace_steps": 8,
+                "cooldown_steps": 12,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Strict self-BLEU spike detected: mean {value:.3f}"
+                        }
+                    },
+                    {
+                        "stop": {
+                            "msg": "Stopping due to self-BLEU spike"
+                        }
+                    },
+                ],
+            },
+            {
+                "id": "grpo_strict_output_entropy_floor",
+                "where": "name == \"diversity_output_entropy\"",
+                "condition": "mean(value) < 1.35",
+                "window": {"size": 6, "kind": "rolling"},
+                "grace_steps": 8,
+                "cooldown_steps": 12,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Strict output entropy floor breached: mean {value:.3f}"
+                        }
+                    },
+                    {
+                        "stop": {
+                            "msg": "Stopping due to output entropy collapse"
+                        }
+                    },
                 ],
             },
             {
@@ -595,6 +735,20 @@ FIELD_MAP_PRESETS: Dict[str, FieldMapPreset] = {
         "accept_rate": "acceptance_rate",
         "acceptance": "acceptance_rate",
         "policy_acceptance_rate": "acceptance_rate",
+        "diversity/pass_at_1": "diversity_pass_at_1",
+        "diversity_pass_at_1": "diversity_pass_at_1",
+        "pass_at_1": "diversity_pass_at_1",
+        "pass@1": "diversity_pass_at_1",
+        "diversity/distinct_4": "diversity_distinct_4",
+        "diversity_distinct_4": "diversity_distinct_4",
+        "distinct_4": "diversity_distinct_4",
+        "diversity/self_bleu": "diversity_self_bleu",
+        "diversity_self_bleu": "diversity_self_bleu",
+        "self_bleu": "diversity_self_bleu",
+        "diversity/output_entropy": "diversity_output_entropy",
+        "diversity_output_entropy": "diversity_output_entropy",
+        "output_entropy": "diversity_output_entropy",
+        "response_entropy": "diversity_output_entropy",
         "run": "run_id",
         "run_id": "run_id",
         "seed": "seed",
