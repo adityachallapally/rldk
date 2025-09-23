@@ -154,11 +154,7 @@ def run_kl_drift_cards(base_dir: Path, runs: Sequence[RunMetadata]) -> Dict[str,
     cards_dir = base_dir / "cards"
     cards_dir.mkdir(parents=True, exist_ok=True)
     drift_results: Dict[str, dict] = {}
-    processed_algorithms: Set[str] = set()
     for run in runs:
-        if run.algorithm in processed_algorithms:
-            continue
-        processed_algorithms.add(run.algorithm)
         output_dir = cards_dir / run.run_name / "kl_drift"
         output_dir.mkdir(parents=True, exist_ok=True)
         source_path = run.run_file if run.run_file.exists() else run.run_dir
@@ -298,11 +294,12 @@ def run_compare_runs(base_dir: Path, pairs: Dict[Tuple[str, str, int], Dict[str,
     compare_dir = base_dir / "cards"
     compare_dir.mkdir(parents=True, exist_ok=True)
     results: Dict[str, dict] = {}
-    comparison_path = Path("rldk_reports/run_comparison.json")
     for key, pair in pairs.items():
         if "ppo" not in pair or "grpo" not in pair:
             continue
         tag = slugify("compare", key[0], key[1], f"seed{key[2]}")
+        workspace_dir = compare_dir / tag / "compare_runs"
+        workspace_dir.mkdir(parents=True, exist_ok=True)
         cmd = [
             sys.executable,
             "-m",
@@ -313,13 +310,13 @@ def run_compare_runs(base_dir: Path, pairs: Dict[Tuple[str, str, int], Dict[str,
             str(pair["grpo"].run_dir),
         ]
         try:
-            run_cli(cmd)
+            run_cli(cmd, cwd=workspace_dir)
         except subprocess.CalledProcessError as exc:
             print(f"⚠️  Run comparison failed for {tag}: {exc}")
             continue
+        comparison_path = workspace_dir / "rldk_reports" / "run_comparison.json"
         if comparison_path.exists():
-            dest = compare_dir / f"{tag}_run_comparison.json"
-            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest = workspace_dir / f"{tag}_run_comparison.json"
             dest.write_text(comparison_path.read_text(encoding="utf-8"), encoding="utf-8")
             try:
                 results[tag] = json.loads(dest.read_text(encoding="utf-8"))
@@ -456,14 +453,24 @@ def run_diff_and_divergence(base_dir: Path, pairs: Dict[Tuple[str, str, int], Di
                 diff_reports[tag] = json.loads(report_path.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 pass
-        df_ppo = normalize_training_metrics_source(str(run_a_path))
-        df_grpo = normalize_training_metrics_source(str(run_b_path))
-        report = first_divergence(
-            df_ppo,
-            df_grpo,
-            signals=["kl", "reward", "entropy"],
-            output_dir=str(diff_dir),
-        )
+        if not diff_succeeded:
+            continue
+        try:
+            df_ppo = normalize_training_metrics_source(str(run_a_path))
+            df_grpo = normalize_training_metrics_source(str(run_b_path))
+        except Exception as exc:
+            print(f"⚠️  Failed to normalize runs for {tag}: {exc}")
+            continue
+        try:
+            report = first_divergence(
+                df_ppo,
+                df_grpo,
+                signals=["kl", "reward", "entropy"],
+                output_dir=str(diff_dir),
+            )
+        except Exception as exc:
+            print(f"⚠️  First divergence analysis failed for {tag}: {exc}")
+            continue
         divergence_reports[tag] = {
             "diverged": report.diverged,
             "first_step": report.first_step,
@@ -662,7 +669,8 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
     runs = discover_runs(base_dir)
     if not runs:
-        raise SystemExit("No runs discovered; ensure training scripts were executed first.")
+        print("⚠️  No runs discovered; skipping report generation.")
+        return
 
     _, categories = aggregate_alerts(base_dir, runs)
     aggregate_monitor_reports(base_dir, runs)

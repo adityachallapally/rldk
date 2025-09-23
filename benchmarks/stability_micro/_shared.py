@@ -155,8 +155,8 @@ class TrainingSample:
     grad_norm: float
     kl_coef: float
     length_bias_score: float
-    length_reward_corr: float
-    length_reward_spearman: float
+    length_reward_correlation_abs: float
+    length_reward_spearman_abs: float
     response_quality: float
     safety_score: float
     toxicity_score: float
@@ -181,8 +181,8 @@ class TrainingSample:
             "grad_norm": self.grad_norm,
             "kl_coef": self.kl_coef,
             "length_bias_score": self.length_bias_score,
-            "length_reward_correlation_abs": self.length_reward_corr,
-            "length_reward_spearman_abs": self.length_reward_spearman,
+            "length_reward_correlation_abs": self.length_reward_correlation_abs,
+            "length_reward_spearman_abs": self.length_reward_spearman_abs,
             "response_quality": self.response_quality,
             "safety_score": self.safety_score,
             "toxicity_score": self.toxicity_score,

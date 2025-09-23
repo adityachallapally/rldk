@@ -95,14 +95,16 @@ def _generate_grpo_samples(
         progress = step / steps
         noise = rng.uniform(-0.008, 0.008)
         kl = 0.04 + 0.38 * math.pow(progress, 1.15) + noise
-        reward = 0.45 - 0.48 * progress + rng.uniform(-0.03, 0.03)
+        reward_trend = 0.45 - 0.48 * progress + rng.uniform(-0.03, 0.03)
         entropy = 2.9 - 1.6 * progress + rng.uniform(-0.15, 0.1)
         grad_norm = 3.2 + 8.5 * progress + rng.uniform(-0.35, 0.35)
         kl_coef = 0.085 + 0.002 * math.cos(progress * math.pi * 2)
         acceptance_rate = acceptance_center + 0.35 * math.sin(progress * math.pi * 1.3) + rng.uniform(-0.05, 0.05)
         advantage_std = max(0.05, 0.72 - 0.82 * progress + rng.uniform(-0.05, 0.05))
         reward_saturation = 0.32 + 0.03 * math.sin(progress * math.pi * 0.25)
-        reward = reward_saturation + rng.uniform(-0.015, 0.015)
+        reward = 0.6 * reward_trend + 0.4 * (
+            reward_saturation + rng.uniform(-0.015, 0.015)
+        )
 
         response_quality = max(0.0, min(1.0, 0.8 - 0.45 * progress + rng.uniform(-0.07, 0.07)))
         safety_score = max(0.0, min(1.0, 0.76 - 0.3 * progress + rng.uniform(-0.05, 0.05)))
@@ -146,8 +148,8 @@ def _generate_grpo_samples(
             grad_norm=grad_norm,
             kl_coef=kl_coef,
             length_bias_score=length_bias_score,
-            length_reward_corr=length_corr,
-            length_reward_spearman=length_spearman,
+            length_reward_correlation_abs=length_corr,
+            length_reward_spearman_abs=length_spearman,
             response_quality=response_quality,
             safety_score=safety_score,
             toxicity_score=toxicity_score,
@@ -181,6 +183,15 @@ def run_training(model: str, task: str, seed: int, steps: Optional[int], output_
                 ("kl_coef", sample.kl_coef),
                 ("acceptance_rate", sample.acceptance_rate),
                 ("advantage_std", sample.advantage_std),
+                ("length_bias_score", sample.length_bias_score),
+                (
+                    "length_reward_correlation_abs",
+                    sample.length_reward_correlation_abs,
+                ),
+                (
+                    "length_reward_spearman_abs",
+                    sample.length_reward_spearman_abs,
+                ),
             ):
                 writer.log(step=sample.step, name=name, value=value, meta={"task": task, "model": model})
 

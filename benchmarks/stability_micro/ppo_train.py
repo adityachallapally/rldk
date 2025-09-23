@@ -120,8 +120,8 @@ def _generate_samples(
             grad_norm=grad_norm,
             kl_coef=kl_coef,
             length_bias_score=length_bias_score,
-            length_reward_corr=length_corr,
-            length_reward_spearman=length_spearman,
+            length_reward_correlation_abs=length_corr,
+            length_reward_spearman_abs=length_spearman,
             response_quality=response_quality,
             safety_score=safety_score,
             toxicity_score=toxicity_score,
@@ -152,8 +152,14 @@ def run_training(model: str, task: str, seed: int, steps: Optional[int], output_
                 ("kl_coef", sample.kl_coef),
                 ("entropy", sample.entropy),
                 ("length_bias_score", sample.length_bias_score),
-                ("length_reward_correlation_abs", sample.length_reward_corr),
-                ("length_reward_spearman_abs", sample.length_reward_spearman),
+                (
+                    "length_reward_correlation_abs",
+                    sample.length_reward_correlation_abs,
+                ),
+                (
+                    "length_reward_spearman_abs",
+                    sample.length_reward_spearman_abs,
+                ),
             ):
                 writer.log(step=sample.step, name=name, value=value, meta={"task": task, "model": model})
 
