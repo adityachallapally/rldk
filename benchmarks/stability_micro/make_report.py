@@ -362,12 +362,13 @@ def run_evaluations(runs: Sequence[RunMetadata]) -> Dict[str, dict]:
 
 
 def run_determinism_checks(base_dir: Path, runs: Sequence[RunMetadata]) -> Dict[str, dict]:
-    by_algo_task: Dict[Tuple[str, str], RunMetadata] = {}
+    by_algo_task_model_seed: Dict[Tuple[str, str, str, int], RunMetadata] = {}
     for run in runs:
-        by_algo_task.setdefault((run.algorithm, run.task), run)
+        key = (run.algorithm, run.task, run.model, run.seed)
+        by_algo_task_model_seed.setdefault(key, run)
     results: Dict[str, dict] = {}
-    for (algorithm, task), run in sorted(by_algo_task.items()):
-        output_dir = base_dir / "determinism" / f"{algorithm}_{task}"
+    for (algorithm, task, model, seed), run in sorted(by_algo_task_model_seed.items()):
+        output_dir = base_dir / "determinism" / slugify(algorithm, task, model, f"seed{seed}")
         output_dir.mkdir(parents=True, exist_ok=True)
         train_script = REPO_ROOT / "benchmarks" / "stability_micro" / f"{algorithm}_train.py"
         command = shlex.join(
@@ -375,11 +376,11 @@ def run_determinism_checks(base_dir: Path, runs: Sequence[RunMetadata]) -> Dict[
                 sys.executable,
                 str(train_script),
                 "--model",
-                run.model,
+                model,
                 "--task",
                 task,
                 "--seed",
-                str(run.seed),
+                str(seed),
             ]
         )
         cmd = [
@@ -406,7 +407,8 @@ def run_determinism_checks(base_dir: Path, runs: Sequence[RunMetadata]) -> Dict[
         card_path = output_dir / "determinism_card.json"
         if card_path.exists():
             try:
-                results[f"{algorithm}_{task}"] = json.loads(card_path.read_text(encoding="utf-8"))
+                key_name = slugify(algorithm, task, model, f"seed{seed}")
+                results[key_name] = json.loads(card_path.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 continue
     return results
