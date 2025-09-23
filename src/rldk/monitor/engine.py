@@ -56,6 +56,30 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def _sanitize_for_meta(value: Any) -> Any:
+    """Convert analysis outputs into JSON-serializable values."""
+
+    if isinstance(value, bool) or value is None:
+        return value
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, pd.Series):
+        return [_sanitize_for_meta(item) for item in value.tolist()]
+    if isinstance(value, pd.DataFrame):
+        return {
+            key: [_sanitize_for_meta(item) for item in series]
+            for key, series in value.to_dict(orient="list").items()
+        }
+    if isinstance(value, dict):
+        return {key: _sanitize_for_meta(val) for key, val in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_sanitize_for_meta(item) for item in value]
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return str(value)
+
+
 class SafeExpression:
     """Compile and evaluate a restricted Python expression."""
 
@@ -921,31 +945,6 @@ class AlertWriter:
             line = f"{alert.timestamp} {alert.summary()}"
             with self._text_path.open("a", encoding="utf-8") as handle:
                 handle.write(line + "\n")
-
-
-def _sanitize_for_meta(value: Any) -> Any:
-    """Convert analysis outputs into JSON-serializable values."""
-
-    if isinstance(value, bool) or value is None:
-        return value
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, pd.Series):
-        return [_sanitize_for_meta(item) for item in value.tolist()]
-    if isinstance(value, pd.DataFrame):
-        return {
-            key: [_sanitize_for_meta(item) for item in series]
-            for key, series in value.to_dict(orient="list").items()
-        }
-    if isinstance(value, dict):
-        return {key: _sanitize_for_meta(val) for key, val in value.items()}
-    if isinstance(value, (list, tuple, set)):
-        return [_sanitize_for_meta(item) for item in value]
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return str(value)
-
 
 class _RewardHealthMonitor:
     """Aggregate recent events and synthesize reward health alerts."""
