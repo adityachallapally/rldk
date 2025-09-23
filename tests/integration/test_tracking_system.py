@@ -452,6 +452,9 @@ class TestExperimentTracker:
             tracker = ExperimentTracker(config)
             tracker.start_experiment()
 
+            # Finish to ensure final state is persisted
+            tracker.finish_experiment()
+
             # Check that files are created
             json_files = list(Path(temp_dir).glob("*.json"))
             yaml_files = list(Path(temp_dir).glob("*.yaml"))
@@ -466,6 +469,13 @@ class TestExperimentTracker:
             assert latest_json.exists()
             assert latest_yaml.exists()
 
+            # Check canonical files for compatibility with standalone scripts
+            canonical_json = Path(temp_dir) / "experiment.json"
+            canonical_yaml = Path(temp_dir) / "experiment.yaml"
+
+            assert canonical_json.exists()
+            assert canonical_yaml.exists()
+
             # Check file contents
             with open(latest_json) as f:
                 data = json.load(f)
@@ -473,6 +483,11 @@ class TestExperimentTracker:
                 assert "environment" in data
                 assert "git" in data
                 assert "seeds" in data
+
+            with open(canonical_json) as f:
+                canonical_data = json.load(f)
+                assert canonical_data["experiment_name"] == "test_experiment"
+                assert canonical_data["models"] == data["models"]
 
     def test_default_wandb_configuration(self):
         """Test that W&B is enabled by default."""

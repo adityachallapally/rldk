@@ -571,6 +571,11 @@ class ExperimentTracker:
             with open(latest_json_path, 'w') as f:
                 json.dump(self.tracking_data, f, indent=2, default=str)
 
+            # Save canonical filename for easy access by external tools
+            canonical_json_path = self.output_dir / "experiment.json"
+            with open(canonical_json_path, 'w') as f:
+                json.dump(self.tracking_data, f, indent=2, default=str)
+
         if self.config.save_to_yaml:
             yaml_path = self.output_dir / f"{self.experiment_name}_{timestamp}.yaml"
             with open(yaml_path, 'w') as f:
@@ -579,6 +584,11 @@ class ExperimentTracker:
             # Also save a latest version
             latest_yaml_path = self.output_dir / f"{self.experiment_name}_latest.yaml"
             with open(latest_yaml_path, 'w') as f:
+                yaml.dump(self.tracking_data, f, default_flow_style=False)
+
+            # Save canonical filename for easy access by external tools
+            canonical_yaml_path = self.output_dir / "experiment.yaml"
+            with open(canonical_yaml_path, 'w') as f:
                 yaml.dump(self.tracking_data, f, default_flow_style=False)
 
         # Save to Weights & Biases if enabled
