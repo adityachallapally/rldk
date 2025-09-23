@@ -1,6 +1,6 @@
 # Makefile for RL Debug Kit Reference Suite
 
-.PHONY: help init lint test cli-smoke docs-serve reference\:cpu_smoke reference\:bisect_demo reference\:setup clean profile profile-check profile-train profile-dashboard profile-clean test-trl test-trl-unit test-trl-integration test-trl-slow golden-master-test monitor-demo monitor-grpo
+.PHONY: help init lint test cli-smoke docs-serve reference\:cpu_smoke reference\:bisect_demo reference\:setup clean profile profile-check profile-train profile-dashboard profile-clean test-trl test-trl-unit test-trl-integration test-trl-slow golden-master-test monitor-demo monitor-grpo bench-stability
 
 help:
 	@echo "RL Debug Kit Development Commands"
@@ -13,6 +13,7 @@ help:
 	@echo "  docs-serve             - Serve documentation locally"
 	@echo "  monitor-demo           - Run the live monitoring demo with auto-stop"
 	@echo "  monitor-grpo           - Stream the GRPO loop with grpo_safe rules"
+	@echo "  bench-stability        - Run the stability micro-benchmark end-to-end"
 	@echo ""
 	@echo "Reference Suite targets:"
 	@echo "  reference:setup        - Setup reference runs for testing"
@@ -42,6 +43,7 @@ help:
 	@echo "  make golden-master-test"
 	@echo "  make profile"
 	@echo "  make profile-train"
+	@echo "  make bench-stability"
 
 # Development targets
 init:
@@ -173,6 +175,10 @@ monitor-grpo:
 	        echo "Report available at $$report_path"; \
 	        echo "Trainer stdout captured in $$loop_log"; \
 	        echo "✅ GRPO monitor demo complete!"
+
+bench-stability:
+	@echo "Running stability micro-benchmark..."
+	bash benchmarks/stability_micro/run_all.sh
 
 # Setup Reference Runs Target
 reference\:setup:
