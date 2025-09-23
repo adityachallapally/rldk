@@ -12,11 +12,14 @@ def _create_fake_wandb_module() -> ModuleType:
     fake_wandb.logged_data = []
     fake_wandb.summary_updates = []
     fake_wandb.run = None
+    fake_wandb.runs = []
 
     def init(**kwargs):
         fake_wandb.init_calls += 1
-        fake_wandb.run = SimpleNamespace(**kwargs)
-        return fake_wandb.run
+        run = SimpleNamespace(**kwargs)
+        fake_wandb.runs.append(run)
+        fake_wandb.run = run
+        return run
 
     def log(data):
         fake_wandb.logged_data.append(data)
@@ -35,8 +38,6 @@ def _create_fake_wandb_module() -> ModuleType:
 def test_wandb_guard_non_interactive(monkeypatch, tmp_path):
     tracker_module = importlib.import_module("rldk.tracking.tracker")
     tracker_module = importlib.reload(tracker_module)
-
-    monkeypatch.setattr(tracker_module, "_WANDB_RUN_INITIALIZED", False, raising=False)
 
     monkeypatch.delenv("WANDB_MODE", raising=False)
     monkeypatch.delenv("WANDB_SILENT", raising=False)
@@ -58,11 +59,12 @@ def test_wandb_guard_non_interactive(monkeypatch, tmp_path):
 
     tracker._save_to_wandb()
 
-    assert os.environ["WANDB_MODE"] == "disabled"
+    assert os.environ["WANDB_MODE"] == "offline"
     assert os.environ["WANDB_SILENT"] == "true"
     assert fake_wandb.init_calls == 1
     assert fake_wandb.logged_data
     assert fake_wandb.summary_updates
+    assert tracker._wandb_run is fake_wandb.runs[0]
 
     first_run = fake_wandb.run
 
@@ -73,4 +75,46 @@ def test_wandb_guard_non_interactive(monkeypatch, tmp_path):
     assert fake_wandb.run is first_run
     assert len(fake_wandb.logged_data) >= 2
     assert len(fake_wandb.summary_updates) >= 2
+
+
+def test_wandb_guard_allows_multiple_trackers(monkeypatch, tmp_path):
+    tracker_module = importlib.import_module("rldk.tracking.tracker")
+    tracker_module = importlib.reload(tracker_module)
+
+    monkeypatch.setenv("RLDK_NON_INTERACTIVE", "1")
+
+    fake_wandb = _create_fake_wandb_module()
+    monkeypatch.setitem(sys.modules, "wandb", fake_wandb)
+
+    config_one = tracker_module.TrackingConfig(
+        experiment_name="wandb_guard_test_one",
+        output_dir=tmp_path,
+        save_to_json=False,
+        save_to_yaml=False,
+        save_to_wandb=True,
+    )
+
+    tracker_one = tracker_module.ExperimentTracker(config_one)
+    tracker_one.add_metadata("example", "value")
+    tracker_one._save_to_wandb()
+
+    assert fake_wandb.init_calls == 1
+    first_run = tracker_one._wandb_run
+
+    config_two = tracker_module.TrackingConfig(
+        experiment_name="wandb_guard_test_two",
+        output_dir=tmp_path,
+        save_to_json=False,
+        save_to_yaml=False,
+        save_to_wandb=True,
+    )
+
+    tracker_two = tracker_module.ExperimentTracker(config_two)
+    tracker_two.add_metadata("example", "value")
+    tracker_two._save_to_wandb()
+
+    assert fake_wandb.init_calls == 2
+    assert tracker_two._wandb_run is not None
+    assert tracker_two._wandb_run is not first_run
+    assert tracker_one._wandb_run is first_run
 

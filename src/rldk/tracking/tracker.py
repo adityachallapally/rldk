@@ -24,9 +24,6 @@ from .seed_tracker import SeedTracker
 logger = logging.getLogger(__name__)
 
 
-_WANDB_RUN_INITIALIZED = False
-
-
 class ExperimentTracker:
     """Main experiment tracker that coordinates all tracking components."""
 
@@ -61,6 +58,9 @@ class ExperimentTracker:
 
         # Create output directory
         self.output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Lazily created wandb run reused across saves for this tracker instance
+        self._wandb_run = None
 
     async def start_experiment_async(self, progress_callback=None) -> Dict[str, Any]:
         """Async version of start_experiment with progress indicators and graceful degradation."""
@@ -596,52 +596,55 @@ class ExperimentTracker:
 
     def _save_to_wandb(self) -> None:
         """Save tracking data to Weights & Biases."""
-        global _WANDB_RUN_INITIALIZED
-
         flag_value = os.environ.get("RLDK_NON_INTERACTIVE", "").strip().lower()
         non_interactive_flag = flag_value in {"1", "true", "yes", "on"}
         stdin_isatty = getattr(sys.stdin, "isatty", lambda: False)
         is_non_interactive = non_interactive_flag or not stdin_isatty()
 
         if is_non_interactive:
-            os.environ.setdefault("WANDB_MODE", "disabled")
+            os.environ.setdefault("WANDB_MODE", "offline")
             os.environ.setdefault("WANDB_SILENT", "true")
 
         try:
             import wandb
+        except ImportError:
+            logger.warning("wandb not available, skipping wandb logging")
+            return
+        except Exception as import_error:
+            logger.warning("Failed to import wandb: %s", import_error)
+            return
 
-            if wandb.run and not _WANDB_RUN_INITIALIZED:
-                _WANDB_RUN_INITIALIZED = True
+        if self._wandb_run is None:
+            try:
+                wandb_run = wandb.init(
+                    project=self.config.wandb_project or "rldk-experiments",
+                    name=self.experiment_name,
+                    id=self.experiment_id,
+                    tags=self.tracking_data["tags"],
+                    notes=self.tracking_data["notes"],
+                    config=self.tracking_data["config"],
+                    reinit=True,
+                )
+            except Exception as init_error:
+                logger.warning("Failed to initialize wandb run: %s", init_error)
+                return
 
-            if not _WANDB_RUN_INITIALIZED:
-                try:
-                    wandb_run = wandb.init(
-                        project=self.config.wandb_project or "rldk-experiments",
-                        name=self.experiment_name,
-                        id=self.experiment_id,
-                        tags=self.tracking_data["tags"],
-                        notes=self.tracking_data["notes"],
-                        config=self.tracking_data["config"]
-                    )
-                    if wandb_run or wandb.run:
-                        _WANDB_RUN_INITIALIZED = True
-                except Exception as init_error:
-                    logger.warning("Failed to initialize wandb run: %s", init_error)
-                    return
+            if wandb_run is None:
+                wandb_run = getattr(wandb, "run", None)
 
-            if not _WANDB_RUN_INITIALIZED:
+            if wandb_run is None:
                 logger.warning("Skipping wandb logging because initialization did not succeed")
                 return
 
+            self._wandb_run = wandb_run
+
+        try:
             wandb.log(self.tracking_data["metadata"])
 
             summary = self.get_tracking_summary()
             wandb.summary.update(summary)
-
-        except ImportError:
-            logger.warning("wandb not available, skipping wandb logging")
-        except Exception as e:
-            logger.warning("Failed to save to wandb: %s", e)
+        except Exception as log_error:
+            logger.warning("Failed to save to wandb: %s", log_error)
 
     def _serialize_config(self) -> Dict[str, Any]:
         """Serialize config to dictionary."""
