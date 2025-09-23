@@ -13,6 +13,7 @@ import json
 import os
 import sys
 import tempfile
+import types
 import uuid
 from dataclasses import dataclass, field
 
@@ -23,10 +24,27 @@ from typing import Any, Dict, List, Optional, Union
 
 
 # Mock the external dependencies BEFORE any imports
+class MockNDArray(list):
+    def __init__(self, data, dtype="float32"):
+        super().__init__(data)
+        self._data = list(data)
+        self.shape = (len(self._data),)
+        self.dtype = dtype
+        self.nbytes = len(self._data)
+
+    def tolist(self):
+        return list(self._data)
+
+
 class MockNumpy:
+    __spec__ = types.SimpleNamespace(name="numpy", loader=None, submodule_search_locations=[])
+    __path__ = []
+
     def __init__(self):
         self.__version__ = "1.21.0"
         self.random = MockRandom()
+        self.ndarray = MockNDArray
+        self.uint32 = "uint32"
 
     def randn(self, *args):
         return [0.1, 0.2, 0.3]
@@ -34,31 +52,36 @@ class MockNumpy:
     def choice(self, n, size, replace=False):
         return list(range(min(size, n)))
 
-    def array(self, data):
-        return data
+    def array(self, data, dtype="float32"):
+        return MockNDArray(data, dtype=dtype)
 
     def __getattr__(self, name):
         return lambda *args, **kwargs: None
 
 class MockRandom:
     def __init__(self):
-        pass
+        self._state = ("MT19937", MockNDArray([0]), 0, 0, 0)
 
     def seed(self, seed):
+        return True
+
+    def get_state(self):
+        return self._state
+
+    def set_state(self, state):
+        self._state = state
         return True
 
     def __getattr__(self, name):
         return lambda *args, **kwargs: None
 
 class MockPandas:
+    __spec__ = types.SimpleNamespace(name="pandas", loader=None)
+
     def __init__(self):
         self.__version__ = "1.3.0"
-
-    def DataFrame(self, data):
-        return MockDataFrame(data)
-
-    def Series(self, data):
-        return MockSeries(data)
+        self.DataFrame = MockDataFrame
+        self.Series = MockSeries
 
 class MockDataFrame:
     def __init__(self, data):
@@ -72,14 +95,28 @@ class MockDataFrame:
     def to_string(self):
         return "mock dataframe"
 
+
+class MockSeries(list):
+    def __init__(self, data):
+        super().__init__(data)
+        self.data = data
+
+    def tolist(self):
+        return list(self.data)
+
 class MockTorch:
+    __spec__ = types.SimpleNamespace(name="torch", loader=None, submodule_search_locations=[])
+    __path__ = []
+
     def __init__(self):
         self.__version__ = "1.12.0"
         self.uint8 = "uint8"
         self.nn = MockNN()
+        self.utils = types.SimpleNamespace(data=types.SimpleNamespace(Dataset=MockTorchDataset))
+        self.cuda = MockCuda()
 
-    def tensor(self, data, dtype=None):
-        return MockTensor(data, dtype)
+    def tensor(self, data, dtype=None, device=None, requires_grad=False):
+        return MockTensor(data, dtype=dtype, device=device, requires_grad=requires_grad)
 
     def randn(self, *args):
         return MockTensor([0.1, 0.2, 0.3] * (args[0] if args else 1))
@@ -95,13 +132,33 @@ class MockTorch:
     def manual_seed(self, seed):
         return True
 
-    def cuda(self):
-        return MockCuda()
-
     def __getattr__(self, name):
-        if name == 'cuda':
-            return MockCuda()
         return lambda *args, **kwargs: None
+
+
+class MockDatasets:
+    __spec__ = types.SimpleNamespace(name="datasets", loader=None)
+
+    class Dataset:
+        pass
+
+    class DatasetDict(dict):
+        pass
+
+
+class MockTorchDataset:
+    pass
+
+
+class MockTransformers:
+    __spec__ = types.SimpleNamespace(name="transformers", loader=None)
+
+    class PreTrainedModel:
+        pass
+
+    class PreTrainedTokenizer:
+        pass
+
 
 class MockNN:
     def __init__(self):
@@ -117,16 +174,46 @@ class MockModule:
     def __getattr__(self, name):
         return lambda *args, **kwargs: None
 
+class MockDevice:
+    def __init__(self, device_type: str = "cpu"):
+        self.type = device_type or "cpu"
+
+    def __str__(self):
+        return self.type
+
+
 class MockTensor:
-    def __init__(self, data, dtype=None):
+    def __init__(self, data, dtype=None, device=None, requires_grad: bool = False):
         self.data = data
         self.dtype = dtype or "float32"
+        self.requires_grad = requires_grad
+        device_type = device.type if isinstance(device, MockDevice) else device
+        self.device = MockDevice(device_type or "cpu")
+        if isinstance(self.data, list):
+            self.shape = (len(self.data),)
+        else:
+            self.shape = ()
 
     def detach(self):
         return self
 
-    def cpu(self):
+    def detach_(self):
         return self
+
+    def cpu(self):
+        self.device = MockDevice("cpu")
+        return self
+
+    def to(self, device=None, dtype=None):
+        if device is not None:
+            device_type = device.type if isinstance(device, MockDevice) else device
+            self.device = MockDevice(device_type or "cpu")
+        if dtype is not None:
+            self.dtype = dtype
+        return self
+
+    def size(self):
+        return self.shape
 
     def numpy(self):
         return self.data  # Return as-is for simplicity
@@ -142,11 +229,39 @@ class MockTensor:
             return len(self.data)
         return 1
 
+    def tolist(self):
+        if isinstance(self.data, list):
+            return list(self.data)
+        return [self.data]
+
+    def clone(self):
+        if isinstance(self.data, list):
+            data_copy = list(self.data)
+        else:
+            data_copy = self.data
+        return MockTensor(data_copy, dtype=self.dtype, device=self.device, requires_grad=self.requires_grad)
+
+    def requires_grad_(self, requires_grad: bool = True):
+        self.requires_grad = requires_grad
+        return self
+
+    def __iter__(self):
+        if isinstance(self.data, list):
+            return iter(self.data)
+        return iter([self.data])
+
     def __getitem__(self, key):
-        return MockTensor(self.data[key] if isinstance(self.data, list) else self.data)
+        if isinstance(self.data, list):
+            return MockTensor(self.data[key], dtype=self.dtype, device=self.device, requires_grad=self.requires_grad)
+        return MockTensor(self.data, dtype=self.dtype, device=self.device, requires_grad=self.requires_grad)
 
     def __len__(self):
-        return len(self.data) if isinstance(self.data, list) else 1
+        if isinstance(self.data, list):
+            return len(self.data)
+        return 1
+
+    def __repr__(self):
+        return f"MockTensor(data={self.data}, dtype={self.dtype}, device={self.device}, requires_grad={self.requires_grad})"
 
 class MockCuda:
     def is_available(self):
@@ -173,6 +288,15 @@ class MockCuda:
 sys.modules['numpy'] = MockNumpy()
 sys.modules['pandas'] = MockPandas()
 sys.modules['torch'] = MockTorch()
+sys.modules['datasets'] = MockDatasets()
+sys.modules['transformers'] = MockTransformers()
+mock_torch_utils = types.ModuleType("torch.utils")
+mock_torch_utils_data = types.ModuleType("torch.utils.data")
+mock_torch_utils_data.Dataset = MockTorchDataset
+mock_torch_utils.data = mock_torch_utils_data
+sys.modules['torch.utils'] = mock_torch_utils
+sys.modules['torch.utils.data'] = mock_torch_utils_data
+sys.modules['numpy.typing'] = types.ModuleType("numpy.typing")
 
 # Import our tracking system
 from src.rldk.tracking import DatasetTracker, ModelTracker, SeedTracker
@@ -218,11 +342,25 @@ def test_model_checksum_determinism():
         def __init__(self):
             # Simulate a large model with many parameters
             self.parameters_count = 150000000  # 150M parameters (triggers sampling)
+            self._parameters = [MockTensor([0.1] * 1000000, requires_grad=True) for _ in range(10)]
 
         def parameters(self):
             # Mock parameters generator
-            for i in range(10):
-                yield MockTensor([0.1] * 1000000)  # 1M parameters per "layer"
+            for param in self._parameters:
+                yield param
+
+        def named_parameters(self):
+            for idx, param in enumerate(self._parameters):
+                yield (f"layer_{idx}", param)
+
+        def modules(self):
+            return [self]
+
+        def named_modules(self):
+            return [("layer", self)]
+
+        def children(self):
+            return []
 
         def __repr__(self):
             return "LargeModel(parameters=150000000)"
@@ -243,10 +381,24 @@ def test_model_checksum_determinism():
     class DifferentModel:
         def __init__(self):
             self.parameters_count = 150000000
+            self._parameters = [MockTensor([0.2] * 1000000, requires_grad=True) for _ in range(10)]
 
         def parameters(self):
-            for i in range(10):
-                yield MockTensor([0.2] * 1000000)  # Different weights
+            for param in self._parameters:
+                yield param
+
+        def named_parameters(self):
+            for idx, param in enumerate(self._parameters):
+                yield (f"layer_{idx}", param)
+
+        def modules(self):
+            return [self]
+
+        def named_modules(self):
+            return [("layer", self)]
+
+        def children(self):
+            return []
 
         def __repr__(self):
             return "DifferentModel(parameters=150000000)"
