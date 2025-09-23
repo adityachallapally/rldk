@@ -3,6 +3,8 @@
 import json
 import logging
 import os
+import re
+import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -19,6 +21,7 @@ from rldk.bisect import bisect_commits
 from rldk.cards import (
     generate_determinism_card,
     generate_drift_card,
+    generate_length_bias_card,
     generate_kl_drift_card,
     generate_reward_card,
 )
@@ -31,6 +34,7 @@ from rldk.evals.metrics import (
     evaluate_length_bias,
     evaluate_throughput,
     evaluate_toxicity,
+    prepare_length_bias_inputs,
 )
 
 # Import evaluation modules
@@ -1479,6 +1483,73 @@ def reward_drift(
         raise typer.Exit(1)
 
 
+def _infer_length_bias_run_id(data: pd.DataFrame, source: Optional[str]) -> str:
+    """Infer a stable run identifier for card artifact locations."""
+
+    candidate_columns = (
+        "run_id",
+        "run",
+        "runid",
+        "run_name",
+        "experiment_id",
+        "name",
+        "model_id",
+    )
+    for column in candidate_columns:
+        if column in data.columns:
+            series = data[column].dropna()
+            if not series.empty:
+                value = str(series.iloc[0])
+                break
+    else:
+        candidate = str(source).rstrip("/") if source else ""
+        if candidate:
+            segments = re.split(r"[/\\]", candidate)
+            value = next((seg for seg in reversed(segments) if seg), candidate)
+        else:
+            value = "unknown"
+
+    sanitized = re.sub(r"[^A-Za-z0-9._-]", "_", value).strip("_")
+    return sanitized or "unknown"
+
+
+def _resolve_card_lengths(
+    responses: Sequence[Any],
+    lengths: Optional[Sequence[Optional[float]]],
+    tokenizer: Optional[Any],
+) -> List[Optional[float]]:
+    """Resolve explicit length values for card visualization purposes."""
+
+    if lengths is not None:
+        return [float(val) if val is not None else None for val in lengths]
+
+    resolved: List[Optional[float]] = []
+    for response in responses:
+        if response is None:
+            resolved.append(None)
+            continue
+
+        if tokenizer is not None:
+            try:
+                if hasattr(tokenizer, "encode"):
+                    tokens = tokenizer.encode(str(response))
+                else:
+                    tokens = tokenizer(str(response))
+                    if isinstance(tokens, dict) and "input_ids" in tokens:
+                        tokens = tokens["input_ids"]
+                    elif hasattr(tokens, "input_ids"):
+                        tokens = tokens.input_ids
+                if isinstance(tokens, (list, tuple, np.ndarray)):
+                    resolved.append(float(len(tokens)))
+                    continue
+            except Exception:  # pragma: no cover - best-effort tokenization
+                pass
+
+        resolved.append(float(len(str(response))))
+
+    return resolved
+
+
 @reward_app.command(name="length-bias")
 def reward_length_bias(
     run_path: str = typer.Option(
@@ -1549,14 +1620,31 @@ def reward_length_bias(
         typer.echo(str(exc), err=True)
         raise typer.Exit(1)
 
+    working_data = run_data
+    if sample_size is not None and sample_size < len(working_data):
+        working_data = working_data.sample(n=sample_size, random_state=seed).reset_index(
+            drop=True
+        )
+
+    try:
+        responses, reward_values, explicit_lengths = prepare_length_bias_inputs(
+            working_data,
+            response_col=response_col,
+            reward_col=reward_col,
+            length_col=length_col,
+        )
+    except Exception as exc:
+        typer.echo(f"Unable to prepare length bias inputs: {exc}", err=True)
+        raise typer.Exit(1)
+
     try:
         result = evaluate_length_bias(
-            run_data,
+            working_data,
             response_col=response_col,
             reward_col=reward_col,
             length_col=length_col,
             threshold=threshold,
-            sample_size=sample_size,
+            sample_size=None,
             seed=seed,
             tokenizer=tokenizer,
         )
@@ -1586,7 +1674,32 @@ def reward_length_bias(
     typer.echo(json_summary)
 
     report_path: Optional[Path] = None
-    card_path: Optional[Path] = None
+    card_data: Optional[Dict[str, Any]] = None
+    card_output_dir: Optional[Path] = None
+
+    if generate_card:
+        card_run_id = _infer_length_bias_run_id(working_data, run_path)
+        card_lengths = _resolve_card_lengths(responses, explicit_lengths, tokenizer)
+        try:
+            card_data, card_output_dir = generate_length_bias_card(
+                result,
+                responses=responses,
+                rewards=reward_values,
+                lengths=card_lengths,
+                run_id=card_run_id,
+                source=run_path,
+            )
+            typer.echo(
+                f"\nCard saved to: {card_output_dir / 'length_bias_card.json'}"
+            )
+            typer.echo(
+                f"Card image saved to: {card_output_dir / 'length_bias_card.png'}"
+            )
+        except Exception as exc:
+            typer.echo(f"Failed to generate trust card: {exc}", err=True)
+            card_data = None
+            card_output_dir = None
+
     if output_dir:
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
@@ -1594,36 +1707,20 @@ def reward_length_bias(
         write_json(result, report_path)
         typer.echo(f"\nReport saved to: {report_path}")
 
-        if generate_card:
-            card = {
-                "version": "1.0",
-                "generated_at": datetime.utcnow().isoformat(),
-                "source": run_path,
-                "passed": result.get("passed"),
-                "score": result.get("score"),
-                "severity": severity,
-                "threshold": result.get("threshold"),
-                "recommendations": recommendations,
-                "metrics": result.get("metrics"),
-            }
-            card_path = output_path / "length_bias_card.json"
-            write_json(card, card_path)
-            typer.echo(f"Card saved to: {card_path}")
-    elif generate_card:
-        card = {
-            "version": "1.0",
-            "generated_at": datetime.utcnow().isoformat(),
-            "source": run_path,
-            "passed": result.get("passed"),
-            "score": result.get("score"),
-            "severity": severity,
-            "threshold": result.get("threshold"),
-            "recommendations": recommendations,
-            "metrics": result.get("metrics"),
-        }
-        card_path = Path("length_bias_card.json")
-        write_json(card, card_path)
-        typer.echo(f"\nCard saved to: {card_path}")
+        if card_data and card_output_dir:
+            target_card_json = output_path / "length_bias_card.json"
+            target_card_png = output_path / "length_bias_card.png"
+            write_json(card_data, target_card_json)
+            typer.echo(f"Card copied to: {target_card_json}")
+
+            png_source = (
+                Path(card_data["artifacts"]["png"])
+                if isinstance(card_data.get("artifacts"), dict)
+                else None
+            )
+            if png_source and png_source.exists():
+                shutil.copy2(png_source, target_card_png)
+                typer.echo(f"Card image copied to: {target_card_png}")
 
 # Create a sub-app for reward-health commands
 reward_health_app = typer.Typer(name="reward-health", help="Reward health analysis commands")

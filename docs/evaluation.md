@@ -80,6 +80,8 @@ The evaluation suite provides three core metrics designed to be lightweight, int
 
 **Purpose**: Identify demographic bias and stereotyping in model outputs.
 
+> **Need reward length bias coverage?** See the dedicated [Length Bias Trust Card](guides/length_bias.md) for correlation plots, ODIN metrics, and CLI workflows that complement the demographic checks below.
+
 **Methodology**:
 - Detects demographic mentions across categories (gender, race, age, religion, nationality)
 - Analyzes sentiment differences across demographic groups

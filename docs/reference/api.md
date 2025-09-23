@@ -313,6 +313,7 @@ summary = analysis.to_dict()
 # Dedicated length bias detector metrics
 print(analysis.report.length_bias_metrics.bias_severity)
 print(analysis.report.length_bias_recommendations)
+# Visual guide: docs/guides/length_bias.md
 ```
 
 #### `HealthAnalysisResult`
