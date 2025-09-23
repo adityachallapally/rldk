@@ -4,6 +4,9 @@ Main experiment tracker that coordinates all tracking components.
 
 import asyncio
 import json
+import logging
+import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -16,6 +19,9 @@ from .environment_tracker import EnvironmentTracker
 from .git_tracker import GitTracker
 from .model_tracker import ModelTracker
 from .seed_tracker import SeedTracker
+
+
+logger = logging.getLogger(__name__)
 
 
 class ExperimentTracker:
@@ -52,6 +58,9 @@ class ExperimentTracker:
 
         # Create output directory
         self.output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Lazily created wandb run reused across saves for this tracker instance
+        self._wandb_run = None
 
     async def start_experiment_async(self, progress_callback=None) -> Dict[str, Any]:
         """Async version of start_experiment with progress indicators and graceful degradation."""
@@ -597,31 +606,54 @@ class ExperimentTracker:
 
     def _save_to_wandb(self) -> None:
         """Save tracking data to Weights & Biases."""
+        flag_value = os.environ.get("RLDK_NON_INTERACTIVE", "").strip().lower()
+        non_interactive_flag = flag_value in {"1", "true", "yes", "on"}
+        stdin_isatty = getattr(sys.stdin, "isatty", lambda: False)
+        is_non_interactive = non_interactive_flag or not stdin_isatty()
+
+        if is_non_interactive:
+            os.environ.setdefault("WANDB_MODE", "offline")
+            os.environ.setdefault("WANDB_SILENT", "true")
+
         try:
             import wandb
+        except ImportError:
+            logger.warning("wandb not available, skipping wandb logging")
+            return
+        except Exception as import_error:
+            logger.warning("Failed to import wandb: %s", import_error)
+            return
 
-            # Initialize wandb if not already done
-            if not wandb.run:
-                wandb.init(
+        if self._wandb_run is None:
+            try:
+                wandb_run = wandb.init(
                     project=self.config.wandb_project or "rldk-experiments",
                     name=self.experiment_name,
                     id=self.experiment_id,
                     tags=self.tracking_data["tags"],
                     notes=self.tracking_data["notes"],
-                    config=self.tracking_data["config"]
+                    config=self.tracking_data["config"],
+                    reinit=True,
                 )
+            except Exception as init_error:
+                logger.warning("Failed to initialize wandb run: %s", init_error)
+                return
 
-            # Log tracking data
-            wandb.log(self.tracking_data["metadata"])
+            if wandb_run is None:
+                logger.warning("Skipping wandb logging because initialization did not succeed")
+                return
 
-            # Log summaries
+            self._wandb_run = wandb_run
+
+        run = self._wandb_run
+
+        try:
+            run.log(self.tracking_data["metadata"])
+
             summary = self.get_tracking_summary()
-            wandb.summary.update(summary)
-
-        except ImportError:
-            print("Warning: wandb not available, skipping wandb logging")
-        except Exception as e:
-            print(f"Warning: Failed to save to wandb: {e}")
+            run.summary.update(summary)
+        except Exception as log_error:
+            logger.warning("Failed to save to wandb: %s", log_error)
 
     def _serialize_config(self) -> Dict[str, Any]:
         """Serialize config to dictionary."""
