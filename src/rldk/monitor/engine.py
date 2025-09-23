@@ -923,6 +923,30 @@ class AlertWriter:
                 handle.write(line + "\n")
 
 
+def _sanitize_for_meta(value: Any) -> Any:
+    """Convert analysis outputs into JSON-serializable values."""
+
+    if isinstance(value, bool) or value is None:
+        return value
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, pd.Series):
+        return [_sanitize_for_meta(item) for item in value.tolist()]
+    if isinstance(value, pd.DataFrame):
+        return {
+            key: [_sanitize_for_meta(item) for item in series]
+            for key, series in value.to_dict(orient="list").items()
+        }
+    if isinstance(value, dict):
+        return {key: _sanitize_for_meta(val) for key, val in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_sanitize_for_meta(item) for item in value]
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return str(value)
+
+
 class _RewardHealthMonitor:
     """Aggregate recent events and synthesize reward health alerts."""
 
@@ -1046,7 +1070,7 @@ class _RewardHealthMonitor:
                 )
             )
 
-        if report.label_leakage_risk > 0.3:
+        if report.label_leakage_risk >= 0.3:
             meta = dict(base_meta)
             meta["risk"] = float(report.label_leakage_risk)
             synthetic_events.append(
@@ -1798,26 +1822,3 @@ __all__ = [
     "read_events_once",
     "read_stream",
 ]
-def _sanitize_for_meta(value: Any) -> Any:
-    """Convert analysis outputs into JSON-serializable values."""
-
-    if isinstance(value, bool) or value is None:
-        return value
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, pd.Series):
-        return [_sanitize_for_meta(item) for item in value.tolist()]
-    if isinstance(value, pd.DataFrame):
-        return {
-            key: [_sanitize_for_meta(item) for item in series]
-            for key, series in value.to_dict(orient="list").items()
-        }
-    if isinstance(value, dict):
-        return {key: _sanitize_for_meta(val) for key, val in value.items()}
-    if isinstance(value, (list, tuple, set)):
-        return [_sanitize_for_meta(item) for item in value]
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return str(value)
-
