@@ -35,7 +35,6 @@ try:
     from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer
     TRL_AVAILABLE = True
 except ImportError:
-    print("TRL not available. Install with: pip install trl")
     TRL_AVAILABLE = False
 
 
@@ -110,9 +109,14 @@ def create_problematic_dataset():
     })
 
 
-def run_baseline_training(model_name: str, output_dir: str) -> Dict[str, Any]:
-    """Run baseline training without RLDK monitoring - simulated for demonstration."""
-    print("🔄 Running BASELINE training (no RLDK monitoring)")
+def simulate_baseline_training(model_name: str, output_dir: str) -> Dict[str, Any]:
+    """Simulate baseline training without RLDK monitoring for demonstration purposes.
+    
+    This function generates synthetic training logs that represent typical problematic
+    training patterns that would go undetected without monitoring systems like RLDK.
+    All metrics are artificially generated for demonstration purposes.
+    """
+    print("🔄 SIMULATING BASELINE training (no RLDK monitoring)")
     print("=" * 60)
     
     baseline_dir = os.path.join(output_dir, "baseline")
@@ -120,8 +124,8 @@ def run_baseline_training(model_name: str, output_dir: str) -> Dict[str, Any]:
     
     start_time = time.time()
     
-    print("📦 Loading model and tokenizer...")
-    print("🎯 Starting baseline training simulation...")
+    print("📦 Simulating model loading and tokenizer setup...")
+    print("🎭 Generating synthetic baseline training metrics...")
     
     simulated_logs = []
     for step in range(15):
@@ -149,8 +153,8 @@ def run_baseline_training(model_name: str, output_dir: str) -> Dict[str, Any]:
     with open(os.path.join(baseline_dir, "training_logs.json"), 'w') as f:
         json.dump(simulated_logs, f, indent=2)
     
-    print(f"✅ Baseline training completed in {training_time:.2f}s")
-    print("⚠️  No monitoring system detected the gradual degradation in training metrics")
+    print(f"✅ Baseline simulation completed in {training_time:.2f}s")
+    print("⚠️  No monitoring system would detect this gradual degradation in real training")
     
     return {
         "status": "completed",
@@ -169,9 +173,14 @@ def run_baseline_training(model_name: str, output_dir: str) -> Dict[str, Any]:
     }
 
 
-def run_rldk_training(model_name: str, output_dir: str) -> Dict[str, Any]:
-    """Run training with full RLDK monitoring and detection - simulated for demonstration."""
-    print("🚀 Running RLDK-MONITORED training")
+def simulate_rldk_training(model_name: str, output_dir: str) -> Dict[str, Any]:
+    """Simulate training with full RLDK monitoring and detection for demonstration.
+    
+    This function generates the same synthetic training patterns as the baseline but
+    demonstrates how RLDK would detect issues and trigger early stopping. All alerts
+    and early stopping logic are artificially generated to show RLDK's capabilities.
+    """
+    print("🚀 SIMULATING RLDK-MONITORED training")
     print("=" * 60)
     
     rldk_dir = os.path.join(output_dir, "rldk_monitored")
@@ -199,8 +208,8 @@ def run_rldk_training(model_name: str, output_dir: str) -> Dict[str, Any]:
     
     start_time = time.time()
     
-    print("📦 Loading model and tokenizer...")
-    print("🎯 RLDK: Training started")
+    print("📦 Simulating model loading and tokenizer setup...")
+    print("🎭 RLDK: Generating synthetic training with monitoring...")
     
     # Simulate the same problematic training but with RLDK detection
     detected_alerts = []
@@ -266,7 +275,8 @@ def run_rldk_training(model_name: str, output_dir: str) -> Dict[str, Any]:
             print(f"🚨 ALERT: Gradient spike detected at step {step}")
         
         if len(detected_alerts) >= 4:
-            print(f"🛑 RLDK: Early stopping triggered at step {step} due to multiple alerts")
+            print(f"🛑 RLDK: Simulated early stopping at step {step} due to multiple alerts")
+            print("   (In real scenarios, this would prevent actual model degradation)")
             break
         
         if step % 3 == 0:
@@ -287,8 +297,8 @@ def run_rldk_training(model_name: str, output_dir: str) -> Dict[str, Any]:
         for alert in detected_alerts:
             f.write(json.dumps(alert) + '\n')
     
-    print(f"✅ RLDK training completed in {training_time:.2f}s")
-    print(f"🔍 RLDK detected {len(detected_alerts)} issues and {'triggered early stopping' if early_stopping else 'completed normally'}")
+    print(f"✅ RLDK simulation completed in {training_time:.2f}s")
+    print(f"🔍 RLDK would detect {len(detected_alerts)} issues and {'trigger early stopping' if early_stopping else 'complete normally'} in real training")
     
     return {
         "status": "completed" if not early_stopping else "early_stopped",
@@ -337,14 +347,20 @@ def generate_comparison_report(baseline_results: Dict, rldk_results: Dict, outpu
     with open(os.path.join(output_dir, "value_comparison_report.json"), 'w') as f:
         json.dump(report, f, indent=2)
     
-    markdown_report = f"""# RLDK Value Demonstration Results
+    markdown_report = f"""# RLDK Value Demonstration Results (SIMULATION)
 
+This benchmark demonstrates RLDK's potential value by comparing **simulated** training scenarios with and without monitoring. All training data, metrics, and alerts are artificially generated to showcase RLDK's detection capabilities in a controlled environment.
 
-This benchmark demonstrates RLDK's value by comparing identical training runs with and without monitoring.
+⚠️ **IMPORTANT DISCLAIMER**: This is a simulation using synthetic data. All training metrics, alerts, and early stopping behavior are artificially generated for demonstration purposes.
+
+- **Model Context**: GPT-2 architecture (simulation reference)
+- **Training Scenario**: Synthetic problematic training patterns in both scenarios
+- **Configuration**: Simulated PPO training with artificial metric degradation
+
 
 - **Status**: {baseline_results['status']}
 - **Training Time**: {baseline_results['training_time']:.2f}s
-- **Issues Detected**: {baseline_results['issues_detected']}
+- **Issues Detected**: {baseline_results['issues_detected']} (no monitoring system)
 - **Early Stopping**: {baseline_results['early_stopping']}
 
 - **Status**: {rldk_results['status']}
@@ -353,31 +369,42 @@ This benchmark demonstrates RLDK's value by comparing identical training runs wi
 - **Early Stopping**: {rldk_results['early_stopping']}
 
 
-**RLDK detected {rldk_results['issues_detected']} issues vs {baseline_results['issues_detected']} in baseline**
-- RLDK's monitoring system identified training anomalies that would go unnoticed
-- Early detection prevents wasted compute and failed training runs
+**RLDK would detect {rldk_results['issues_detected']} issues vs {baseline_results['issues_detected']} in baseline**
+- RLDK's monitoring system would identify training anomalies that go completely unnoticed
+- Real-time detection would enable intervention before problems compound
+- Simulated alerts: KL divergence spikes, reward instability, entropy collapse, gradient spikes
 
-**Early stopping triggered: {rldk_results['early_stopping']}**
-- RLDK can halt problematic training before completion
-- Saves compute resources and prevents model degradation
+**Early stopping would be triggered: {rldk_results['early_stopping']}**
+- RLDK would intelligently halt problematic training before completion
+- Would prevent further model degradation and wasted compute
+- Would save {baseline_results['training_time'] - rldk_results['training_time']:.1f}s of unnecessary training time in this scenario
 
 **Additional time cost: {rldk_results['training_time'] - baseline_results['training_time']:.2f}s**
 - Minimal overhead for comprehensive monitoring
 - Cost is negligible compared to failed training runs
 
 **Training success rate improved with RLDK monitoring**
-- Baseline: {baseline_results['status']}
-- RLDK: {rldk_results['status']}
+- Baseline: {baseline_results['status']} (issues hidden)
+- RLDK: {rldk_results['status']} (issues detected and addressed)
 
 
-RLDK provides significant value by:
-1. **Detecting issues early** before they cause obvious metric divergence
-2. **Preventing wasted compute** through early stopping of problematic runs
-3. **Improving training reliability** with minimal overhead
-4. **Providing actionable insights** for debugging and optimization
+{chr(10).join([f"- **{alert.get('alert_type', 'Unknown')}**: {alert.get('message', 'No message')}" for alert in rldk_results.get('rldk_alerts', [])[:5]])}
 
-The monitoring capabilities justify the minimal overhead by preventing much larger costs from failed training runs.
-"""
+
+RLDK would provide significant concrete value by:
+
+1. **🎯 Early Detection**: Would identify {rldk_results['issues_detected']} critical issues before they caused obvious metric divergence
+2. **💰 Cost Savings**: Would prevent wasted compute through intelligent early stopping
+3. **🔧 Actionable Insights**: Would provide specific alerts and debugging recommendations
+4. **🛡️ Training Safety**: Continuous monitoring would prevent silent failures
+5. **⚡ Faster Debugging**: Real-time alerts would enable immediate intervention
+
+
+This **simulated demonstration** shows how RLDK's monitoring capabilities could provide substantial value in real training scenarios. The simulation demonstrates detection of {rldk_results['issues_detected']} training issues that would go unnoticed without monitoring, potentially saving significant compute resources and debugging time.
+
+**Note**: This simulation uses artificial data to demonstrate RLDK's capabilities. For real-world validation, actual model training with RLDK monitoring would be required.
+
+**The monitoring capabilities would justify minimal overhead by preventing much larger costs from failed training runs and providing actionable insights for optimization.**"""
     
     with open(os.path.join(output_dir, "VALUE_DEMONSTRATION.md"), 'w') as f:
         f.write(markdown_report)
@@ -386,35 +413,35 @@ The monitoring capabilities justify the minimal overhead by preventing much larg
 
 
 def main():
-    """Run the complete value demonstration benchmark."""
-    if not TRL_AVAILABLE:
-        print("❌ TRL not available - cannot run value demonstration")
-        return False
-    
-    print("🎯 RLDK Value Demonstration Benchmark")
+    """Run the complete value demonstration benchmark (simulation)."""
+    print("🎯 RLDK Value Demonstration Benchmark (SIMULATION)")
     print("=" * 60)
-    print("This benchmark compares training with and without RLDK monitoring")
-    print("to demonstrate the value RLDK provides in real training scenarios.")
+    print("This benchmark SIMULATES training scenarios with and without RLDK monitoring")
+    print("to demonstrate the value RLDK provides through realistic training patterns.")
+    print()
+    print("⚠️  IMPORTANT: This is a SIMULATION using synthetic training data")
+    print("   All training metrics, alerts, and early stopping are artificially generated")
+    print("   to demonstrate RLDK's detection capabilities in a controlled environment.")
     print()
     
-    model_name = "gpt2"  # Real GPT-2 model (124M parameters) for meaningful demonstration
+    model_name = "gpt2"  # Model name for simulation context
     output_dir = "./artifacts/value_demonstration"
     os.makedirs(output_dir, exist_ok=True)
     
-    print(f"📦 Using model: {model_name} (Real GPT-2 - 124M parameters)")
+    print(f"📦 Simulating scenarios for: {model_name} (GPT-2 architecture)")
     print(f"📁 Output directory: {output_dir}")
-    print("⚠️  This demonstration uses real models and intentionally problematic configurations")
-    print("   to trigger RLDK detectors and show concrete value.")
+    print("🎭 This demonstration uses SIMULATED problematic training patterns")
+    print("   to show how RLDK detectors would respond in real scenarios.")
     print()
     
-    print("Phase 1: Baseline Training (No RLDK)")
-    baseline_results = run_baseline_training(model_name, output_dir)
-    print(f"✅ Baseline completed: {baseline_results['status']}")
+    print("Phase 1: Baseline Training Simulation (No RLDK)")
+    baseline_results = simulate_baseline_training(model_name, output_dir)
+    print(f"✅ Baseline simulation completed: {baseline_results['status']}")
     print()
     
-    print("Phase 2: RLDK-Monitored Training")
-    rldk_results = run_rldk_training(model_name, output_dir)
-    print(f"✅ RLDK training completed: {rldk_results['status']}")
+    print("Phase 2: RLDK-Monitored Training Simulation")
+    rldk_results = simulate_rldk_training(model_name, output_dir)
+    print(f"✅ RLDK simulation completed: {rldk_results['status']}")
     print()
     
     print("Phase 3: Generating Comparison Report")
