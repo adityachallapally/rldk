@@ -80,6 +80,54 @@ def _drain_events(engine: MonitorEngine, events: Iterable[Event]) -> set[str]:
     return fired
 
 
+def _reward_health_events(total_steps: int = 140) -> list[Event]:
+    run_id = "reward_health"
+    timestamp = "2024-02-01T00:00:00Z"
+    events: list[Event] = []
+    for step in range(1, total_steps + 1):
+        progress = step / total_steps
+        gold_value = 0.6 - 0.2 * progress
+        reward_value = 0.1 + 0.9 * progress
+        kl_value = 0.22 + 0.08 * progress
+        events.append(
+            Event(
+                time=timestamp,
+                step=step,
+                name="gold_metric",
+                value=float(gold_value),
+                run_id=run_id,
+            )
+        )
+        events.append(
+            Event(
+                time=timestamp,
+                step=step,
+                name="reward_mean",
+                value=float(reward_value),
+                run_id=run_id,
+            )
+        )
+        events.append(
+            Event(
+                time=timestamp,
+                step=step,
+                name="kl",
+                value=float(kl_value),
+                run_id=run_id,
+            )
+        )
+        events.append(
+            Event(
+                time=timestamp,
+                step=step,
+                name="epoch",
+                value=float(step),
+                run_id=run_id,
+            )
+        )
+    return events
+
+
 def test_grpo_safe_preset_triggers_on_fixture_anomalies() -> None:
     preset = get_rule_preset("grpo_safe")
     assert preset is not None
@@ -304,3 +352,32 @@ def test_grpo_safe_kl_spike_triggers_after_step_reset() -> None:
         )
 
     assert post_reset_fired_steps and set(post_reset_fired_steps) == {17}
+
+
+def test_reward_health_presets_emit_synthetic_alerts() -> None:
+    safe_preset = get_rule_preset("grpo_safe")
+    strict_preset = get_rule_preset("grpo_strict")
+    assert safe_preset is not None
+    assert strict_preset is not None
+
+    safe_engine = MonitorEngine(
+        load_rules(safe_preset),
+        action_executor=_NoopExecutor(),
+        reward_health_window=120,
+    )
+    strict_engine = MonitorEngine(
+        load_rules(strict_preset),
+        action_executor=_NoopExecutor(),
+        reward_health_window=120,
+    )
+
+    events = _reward_health_events(total_steps=140)
+
+    safe_fired = _drain_events(safe_engine, events)
+    strict_fired = _drain_events(strict_engine, events)
+
+    assert "grpo_safe_reward_health_overoptimization" in safe_fired
+    assert "grpo_safe_reward_health_label_leakage" in safe_fired
+
+    assert "grpo_strict_reward_health_overoptimization" in strict_fired
+    assert "grpo_strict_reward_health_label_leakage" in strict_fired

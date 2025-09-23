@@ -413,6 +413,14 @@ def monitor(
         help="Optional path for human-readable alert summaries.",
         dir_okay=False,
     ),
+    reward_health_window: Optional[int] = typer.Option(
+        None,
+        "--reward-health-window",
+        help=(
+            "Number of recent steps to batch for reward health checks. "
+            "Provide a positive value to enable synthetic reward health alerts."
+        ),
+    ),
     kill_timeout_sec: float = typer.Option(
         5.0,
         "--kill-timeout-sec",
@@ -474,7 +482,14 @@ def monitor(
         http_timeout_sec=http_timeout_sec,
         retries=retries,
     )
-    engine = MonitorEngine(rule_defs, action_executor=dispatcher)
+    if reward_health_window is not None and reward_health_window <= 0:
+        reward_health_window = None
+
+    engine = MonitorEngine(
+        rule_defs,
+        action_executor=dispatcher,
+        reward_health_window=reward_health_window,
+    )
     alerts_text_path = _derive_alert_text_path(alerts, alerts_txt)
     alert_writer = AlertWriter(alerts, alerts_text_path)
 

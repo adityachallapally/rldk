@@ -154,6 +154,76 @@ RULE_PRESETS: Dict[str, RulePreset] = {
                     }
                 ],
             },
+            {
+                "id": "grpo_safe_reward_health_drift",
+                "where": "name == \"reward_health.drift_flag\"",
+                "condition": "value >= 1",
+                "window": {"size": 1, "kind": "consecutive"},
+                "cooldown_steps": 200,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Reward health detected drift in recent window"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "grpo_safe_reward_health_saturation",
+                "where": "name == \"reward_health.saturation_flag\"",
+                "condition": "value >= 1",
+                "window": {"size": 1, "kind": "consecutive"},
+                "cooldown_steps": 120,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Reward health saturation issues detected ({value:.0f} alerts)"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "grpo_safe_reward_health_shortcuts",
+                "where": "name == \"reward_health.shortcut_flag\"",
+                "condition": "value >= 1",
+                "window": {"size": 1, "kind": "consecutive"},
+                "cooldown_steps": 120,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Reward health shortcut signals detected ({value:.0f})"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "grpo_safe_reward_health_label_leakage",
+                "where": "name == \"reward_health.label_leakage_risk\"",
+                "condition": "value >= 0.3",
+                "window": {"size": 1, "kind": "consecutive"},
+                "cooldown_steps": 200,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Reward health label leakage risk {value:.2f}"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "grpo_safe_reward_health_overoptimization",
+                "where": "name == \"reward_health.overoptimization_flag\"",
+                "condition": "value >= 0",
+                "window": {"size": 1, "kind": "consecutive"},
+                "cooldown_steps": 200,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Reward health overoptimization suspected (Δ={value:.3f})"
+                        }
+                    }
+                ],
+            },
         ]
     },
     "grpo_strict": {
@@ -316,6 +386,86 @@ RULE_PRESETS: Dict[str, RulePreset] = {
                 "actions": [
                     {"warn": {"msg": "Rewards saturated around {value:.3f}"}},
                     {"stop": {"msg": "Stopping due to saturated rewards"}},
+                ],
+            },
+            {
+                "id": "grpo_strict_reward_health_drift",
+                "where": "name == \"reward_health.drift_flag\"",
+                "condition": "value >= 1",
+                "window": {"size": 1, "kind": "consecutive"},
+                "cooldown_steps": 200,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Reward health detected drift in strict preset window"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "grpo_strict_reward_health_saturation",
+                "where": "name == \"reward_health.saturation_flag\"",
+                "condition": "value >= 1",
+                "window": {"size": 1, "kind": "consecutive"},
+                "cooldown_steps": 120,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Reward health saturation trip count {value:.0f}"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "grpo_strict_reward_health_shortcuts",
+                "where": "name == \"reward_health.shortcut_flag\"",
+                "condition": "value >= 1",
+                "window": {"size": 1, "kind": "consecutive"},
+                "cooldown_steps": 120,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Reward health shortcut signals detected ({value:.0f})"
+                        }
+                    }
+                ],
+            },
+            {
+                "id": "grpo_strict_reward_health_label_leakage",
+                "where": "name == \"reward_health.label_leakage_risk\"",
+                "condition": "value >= 0.3",
+                "window": {"size": 1, "kind": "consecutive"},
+                "cooldown_steps": 200,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Reward health label leakage risk {value:.2f}"
+                        }
+                    },
+                    {
+                        "stop": {
+                            "msg": "Stopping due to reward health label leakage risk {value:.2f}"
+                        }
+                    },
+                ],
+            },
+            {
+                "id": "grpo_strict_reward_health_overoptimization",
+                "where": "name == \"reward_health.overoptimization_flag\"",
+                "condition": "value >= 0",
+                "window": {"size": 1, "kind": "consecutive"},
+                "cooldown_steps": 200,
+                "actions": [
+                    {
+                        "warn": {
+                            "msg": "Reward health overoptimization suspected (Δ={value:.3f})"
+                        }
+                    },
+                    {
+                        "stop": {
+                            "msg": "Stopping due to reward health overoptimization signal"
+                        }
+                    },
                 ],
             },
         ]

@@ -10,7 +10,7 @@ import subprocess
 import time
 import urllib.error
 import urllib.request
-from collections import defaultdict, deque
+from collections import OrderedDict, defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,9 +29,11 @@ from typing import (
 )
 
 import yaml
+import pandas as pd
 
 from .presets import FIELD_MAP_PRESETS, RULE_PRESETS, get_field_map_preset, get_rule_preset
 from .regexes import create_line_parser
+from rldk.reward import health as reward_health_function
 
 logger = logging.getLogger(__name__)
 
@@ -743,6 +745,8 @@ class MonitorEngine:
         self,
         rules: Sequence[RuleDefinition],
         action_executor: Optional["ActionExecutor"] = None,
+        *,
+        reward_health_window: Optional[int] = None,
     ):
         if not rules:
             raise ValueError("MonitorEngine requires at least one rule")
@@ -753,9 +757,16 @@ class MonitorEngine:
         self._stats: Dict[str, RuleStats] = defaultdict(RuleStats)
         self._alerts: List[Alert] = []
         self._executor: ActionExecutor = action_executor or SimpleActionExecutor()
+        self._reward_health_monitor = None
+        if reward_health_window and reward_health_window > 0:
+            self._reward_health_monitor = _RewardHealthMonitor(reward_health_window)
 
     def process_event(
-        self, event: Event, *, executor: Optional["ActionExecutor"] = None
+        self,
+        event: Event,
+        *,
+        executor: Optional["ActionExecutor"] = None,
+        _allow_reward_health: bool = True,
     ) -> List[Alert]:
         fired_alerts: List[Alert] = []
         action_executor = executor or self._executor
@@ -835,6 +846,16 @@ class MonitorEngine:
                 for alert in alerts_for_rule:
                     fired_alerts.append(alert)
                     self._alerts.append(alert)
+        if _allow_reward_health and self._reward_health_monitor is not None:
+            synthetic_events = self._reward_health_monitor.update(event)
+            for synthetic_event in synthetic_events:
+                fired_alerts.extend(
+                    self.process_event(
+                        synthetic_event,
+                        executor=action_executor,
+                        _allow_reward_health=False,
+                    )
+                )
         return fired_alerts
 
     def _record_stats(self, rule_id: str, event: Event, alert: Optional[Alert]) -> None:
@@ -900,6 +921,168 @@ class AlertWriter:
             line = f"{alert.timestamp} {alert.summary()}"
             with self._text_path.open("a", encoding="utf-8") as handle:
                 handle.write(line + "\n")
+
+
+class _RewardHealthMonitor:
+    """Aggregate recent events and synthesize reward health alerts."""
+
+    _REWARD_METRICS = {
+        "reward_mean",
+        "reward",
+        "group_reward_mean",
+        "normalized_reward_mean",
+    }
+
+    def __init__(self, window_size: int) -> None:
+        self._window_size = max(int(window_size), 1)
+        self._buffers: Dict[str, "OrderedDict[int, Dict[str, Any]]"] = defaultdict(OrderedDict)
+        self._last_step_evaluated: Dict[str, int] = defaultdict(lambda: -1)
+
+    def update(self, event: Event) -> List[Event]:
+        key = event.run_id or "__default__"
+        buffer = self._buffers[key]
+        row = buffer.get(event.step)
+        if row is None:
+            row = {"step": event.step}
+            buffer[event.step] = row
+        row[event.name] = event.value
+        row.setdefault("time", event.time)
+
+        # Re-establish ordering by step to handle out-of-order updates gracefully.
+        self._buffers[key] = OrderedDict(sorted(buffer.items()))
+        buffer = self._buffers[key]
+
+        while len(buffer) > self._window_size:
+            buffer.popitem(last=False)
+
+        if event.name not in self._REWARD_METRICS:
+            return []
+
+        if event.step <= self._last_step_evaluated[key]:
+            return []
+
+        if len(buffer) < min(self._window_size, 8):
+            return []
+
+        df = pd.DataFrame(buffer.values()).copy()
+        if df.empty or "step" not in df.columns:
+            return []
+
+        df = df.sort_values("step").dropna(subset=["step"])
+        if df.empty:
+            return []
+
+        df["step"] = df["step"].astype(int)
+
+        reward_col = "reward_mean"
+        if reward_col not in df.columns:
+            fallback = next(
+                (
+                    col
+                    for col in ("group_reward_mean", "normalized_reward_mean", "reward")
+                    if col in df.columns
+                ),
+                None,
+            )
+            if fallback:
+                df = df.rename(columns={fallback: reward_col})
+
+        if reward_col not in df.columns:
+            return []
+
+        df = df.dropna(subset=[reward_col])
+        if len(df) < min(self._window_size, 8):
+            return []
+
+        self._last_step_evaluated[key] = event.step
+
+        try:
+            report = reward_health_function(df, reward_col=reward_col, step_col="step")
+        except Exception as exc:  # pragma: no cover - defensive guard
+            logger.debug("Reward health analysis failed: %s", exc)
+            return []
+
+        base_meta = {
+            "analysis_window": len(df),
+            "latest_step": int(df["step"].iloc[-1]),
+            "reward_column": reward_col,
+        }
+
+        synthetic_events: List[Event] = []
+
+        if report.drift_detected:
+            meta = dict(base_meta)
+            if not report.drift_metrics.empty:
+                meta["drift_metrics"] = _sanitize_for_meta(report.drift_metrics)
+            synthetic_events.append(
+                self._build_event(event, "reward_health.drift_flag", 1.0, meta)
+            )
+
+        if report.saturation_issues:
+            meta = dict(base_meta)
+            meta["issues"] = list(report.saturation_issues)
+            if report.saturation_analysis:
+                meta["analysis"] = _sanitize_for_meta(report.saturation_analysis)
+            synthetic_events.append(
+                self._build_event(
+                    event,
+                    "reward_health.saturation_flag",
+                    float(len(report.saturation_issues)),
+                    meta,
+                )
+            )
+
+        if report.shortcut_signals:
+            meta = dict(base_meta)
+            meta["signals"] = list(report.shortcut_signals)
+            if report.shortcut_analysis:
+                meta["analysis"] = _sanitize_for_meta(report.shortcut_analysis)
+            synthetic_events.append(
+                self._build_event(
+                    event,
+                    "reward_health.shortcut_flag",
+                    float(len(report.shortcut_signals)),
+                    meta,
+                )
+            )
+
+        if report.label_leakage_risk > 0.3:
+            meta = dict(base_meta)
+            meta["risk"] = float(report.label_leakage_risk)
+            synthetic_events.append(
+                self._build_event(
+                    event,
+                    "reward_health.label_leakage_risk",
+                    float(report.label_leakage_risk),
+                    meta,
+                )
+            )
+
+        overopt = getattr(report, "overoptimization", None)
+        if overopt and overopt.flagged:
+            meta = dict(base_meta)
+            meta["details"] = _sanitize_for_meta(overopt.to_dict())
+            synthetic_events.append(
+                self._build_event(
+                    event,
+                    "reward_health.overoptimization_flag",
+                    float(overopt.delta),
+                    meta,
+                )
+            )
+
+        return synthetic_events
+
+    @staticmethod
+    def _build_event(source: Event, name: str, value: float, meta: Mapping[str, Any]) -> Event:
+        return Event(
+            time=source.time,
+            step=source.step,
+            name=name,
+            value=float(value),
+            run_id=source.run_id,
+            meta={"reward_health": _sanitize_for_meta(dict(meta))},
+        )
 
 
 class _AttrDict(dict):
@@ -1615,3 +1798,26 @@ __all__ = [
     "read_events_once",
     "read_stream",
 ]
+def _sanitize_for_meta(value: Any) -> Any:
+    """Convert analysis outputs into JSON-serializable values."""
+
+    if isinstance(value, bool) or value is None:
+        return value
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, pd.Series):
+        return [_sanitize_for_meta(item) for item in value.tolist()]
+    if isinstance(value, pd.DataFrame):
+        return {
+            key: [_sanitize_for_meta(item) for item in series]
+            for key, series in value.to_dict(orient="list").items()
+        }
+    if isinstance(value, dict):
+        return {key: _sanitize_for_meta(val) for key, val in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_sanitize_for_meta(item) for item in value]
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return str(value)
+
