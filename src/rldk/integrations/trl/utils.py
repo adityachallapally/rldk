@@ -2,9 +2,16 @@
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
+import warnings
+
 from packaging import version
 from packaging.version import InvalidVersion
 from transformers import AutoTokenizer, GenerationConfig
+
+try:  # pragma: no cover - torch is an optional dependency for some integrations
+    import torch
+except ImportError:  # pragma: no cover - keep working when torch is absent
+    torch = None  # type: ignore[assignment]
 
 try:
     from trl import AutoModelForCausalLMWithValueHead
@@ -15,7 +22,133 @@ except ImportError:
 
 if TYPE_CHECKING:  # pragma: no cover - imports for type checkers only
     from datasets import Dataset
-    from trl import PPOConfig, PPOTrainer
+    from trl import GRPOConfig, PPOConfig, PPOTrainer
+
+
+def _accelerator_available() -> bool:
+    """Return ``True`` when a CUDA or MPS accelerator is available."""
+
+    if torch is None:
+        return False
+
+    try:
+        if torch.cuda.is_available():
+            return True
+    except Exception:  # pragma: no cover - defensive fallback
+        pass
+
+    try:
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return True
+    except Exception:  # pragma: no cover - defensive fallback
+        pass
+
+    try:
+        if hasattr(torch, "xpu") and torch.xpu.is_available():
+            return True
+    except Exception:  # pragma: no cover - defensive fallback
+        pass
+
+    return False
+
+
+def _bf16_supported() -> bool:
+    """Return ``True`` if the current hardware stack supports bfloat16 precision."""
+
+    try:
+        from transformers.utils import is_torch_bf16_cpu_available, is_torch_bf16_gpu_available
+    except ImportError:  # pragma: no cover - transformers < 4.32
+        pass
+    else:
+        for checker in (is_torch_bf16_gpu_available, is_torch_bf16_cpu_available):
+            try:
+                if checker():
+                    return True
+            except Exception:  # pragma: no cover - defensive fallback
+                continue
+
+    if torch is None:
+        return False
+
+    try:
+        if torch.cuda.is_available():
+            major, _ = torch.cuda.get_device_capability()  # type: ignore[attr-defined]
+            return major >= 8
+    except Exception:  # pragma: no cover - defensive fallback
+        pass
+
+    return False
+
+
+def _apply_precision_fallbacks(config_kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    """Disable unsupported half-precision settings when running without accelerator support."""
+
+    updated_kwargs = dict(config_kwargs)
+
+    accelerator_available = _accelerator_available()
+
+    if not accelerator_available:
+        if updated_kwargs.get("fp16"):
+            warnings.warn(
+                "Disabling fp16 because no GPU/MPS accelerator is available.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+        updated_kwargs["fp16"] = False
+
+        if torch is not None:
+            dtype = updated_kwargs.get("torch_dtype")
+            if dtype in {"float16", "half", getattr(torch, "float16", "float16")}:
+                updated_kwargs["torch_dtype"] = getattr(torch, "float32", None)
+
+    if not _bf16_supported():
+        if updated_kwargs.get("bf16"):
+            warnings.warn(
+                "Disabling bf16 because the current hardware does not support it.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+        updated_kwargs["bf16"] = False
+
+        if torch is not None:
+            dtype = updated_kwargs.get("torch_dtype")
+            if dtype in {"bfloat16", "bf16", getattr(torch, "bfloat16", "bfloat16")}:
+                updated_kwargs["torch_dtype"] = getattr(torch, "float32", None)
+
+    return updated_kwargs
+
+
+def create_grpo_config(**config_kwargs: Any) -> "GRPOConfig":
+    """Create a :class:`trl.GRPOConfig` with safe CPU defaults.
+
+    When running on machines without accelerator support, TRL's default GRPO configuration
+    enables ``bf16`` which immediately raises ``ValueError`` during initialization. This
+    helper mirrors the standard constructor while disabling unsupported precision modes so
+    training can proceed on CPU-only hosts.
+
+    Args:
+        **config_kwargs: Keyword arguments forwarded to :class:`trl.GRPOConfig`.
+
+    Returns:
+        A ``GRPOConfig`` instance with precision flags adjusted for the current hardware.
+
+    Raises:
+        ImportError: If TRL or ``GRPOConfig`` are unavailable in the environment.
+    """
+
+    if not TRL_AVAILABLE:
+        raise ImportError("TRL is required for create_grpo_config. Install with: pip install trl")
+
+    try:
+        from trl import GRPOConfig  # type: ignore
+    except ImportError as exc:  # pragma: no cover - older TRL releases
+        raise ImportError(
+            "GRPOConfig is not available in the installed TRL version. "
+            "Upgrade with: pip install --upgrade trl"
+        ) from exc
+
+    safe_kwargs = _apply_precision_fallbacks(config_kwargs)
+    return GRPOConfig(**safe_kwargs)
 
 
 def fix_generation_config(

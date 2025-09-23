@@ -92,6 +92,26 @@ class TestPPOConfig:
         assert config.max_grad_norm == 0.5
 
 
+class TestGRPOConfig:
+    """Test GRPO configuration helpers."""
+
+    def test_grpo_config_cpu_fallback(self):
+        """Ensure GRPOConfig defaults disable unsupported precision on CPU."""
+
+        try:
+            from rldk.integrations.trl import create_grpo_config
+        except ImportError:
+            pytest.skip("GRPOConfig helper unavailable")
+
+        try:
+            config = create_grpo_config()
+        except ImportError:
+            pytest.skip("GRPOConfig not available in this TRL version")
+
+        assert config.bf16 is False
+        assert config.fp16 is False
+
+
 class TestMockedModels:
     """Test TRL functionality with mocked models."""
 
