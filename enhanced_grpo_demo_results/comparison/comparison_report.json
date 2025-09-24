@@ -1,0 +1,34 @@
+{
+  "demonstration_type": "Enhanced Real GRPO Training with RLDK Monitoring",
+  "model_used": "distilgpt2",
+  "training_steps": 50,
+  "sessions": {
+    "baseline": {
+      "monitoring_active": false,
+      "alerts_triggered": 0,
+      "final_kl": 0.215766792019305,
+      "final_reward": 0.6687390499793284,
+      "final_entropy": 1.5258778775730675
+    },
+    "monitored": {
+      "monitoring_active": true,
+      "alerts_triggered": 0,
+      "final_kl": 0.5222454164057855,
+      "final_reward": 0.6456046969187105,
+      "final_entropy": 0.7727609427027287
+    }
+  },
+  "rldk_detection_capabilities": {
+    "monitoring_enabled": true,
+    "alerts_detected": false,
+    "detection_difference": 0,
+    "rules_used": "grpo_safe preset with KL spike, entropy floor, advantage collapse, acceptance swings, and reward saturation detection",
+    "alert_details": []
+  },
+  "evidence_of_monitoring": {
+    "baseline_alerts": 0,
+    "monitored_alerts": 0,
+    "monitoring_effectiveness": "No anomalies detected in this run",
+    "total_alerts": 0
+  }
+}

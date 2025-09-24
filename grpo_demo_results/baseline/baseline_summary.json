@@ -1,0 +1,20 @@
+{
+  "session_type": "baseline",
+  "model": "distilgpt2",
+  "steps": 50,
+  "final_metrics": {
+    "step": 50,
+    "kl": 0.18682269968488868,
+    "kl_coef": 0.10037091776802151,
+    "reward_mean": 0.6422272085558544,
+    "reward_std": 0.15107915322408505,
+    "entropy": 1.4625680394156708,
+    "advantage_mean": -0.005287786592941136,
+    "advantage_std": 0.23258881130361383,
+    "acceptance_rate": 0.3240352690652365,
+    "grad_norm_policy": 5.031913942726045,
+    "grad_norm_value": 3.3555267651083063
+  },
+  "alerts_triggered": 0,
+  "monitoring_active": false
+}
