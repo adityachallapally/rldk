@@ -1,0 +1,30 @@
+[
+  {
+    "step": 3,
+    "alert_type": "kl_divergence_spike",
+    "severity": "HIGH",
+    "message": "KL divergence (0.110) exceeded threshold (0.08)",
+    "recommendation": "Consider reducing learning rate or adjusting KL penalty"
+  },
+  {
+    "step": 4,
+    "alert_type": "kl_divergence_spike",
+    "severity": "HIGH",
+    "message": "KL divergence (0.130) exceeded threshold (0.08)",
+    "recommendation": "Consider reducing learning rate or adjusting KL penalty"
+  },
+  {
+    "step": 5,
+    "alert_type": "kl_divergence_spike",
+    "severity": "HIGH",
+    "message": "KL divergence (0.150) exceeded threshold (0.08)",
+    "recommendation": "Consider reducing learning rate or adjusting KL penalty"
+  },
+  {
+    "step": 5,
+    "alert_type": "reward_instability",
+    "severity": "MEDIUM",
+    "message": "Reward variance (0.450) indicates training instability",
+    "recommendation": "Check reward model calibration and data quality"
+  }
+]

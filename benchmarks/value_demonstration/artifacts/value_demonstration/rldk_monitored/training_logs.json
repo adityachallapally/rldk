@@ -1,0 +1,74 @@
+[
+  {
+    "step": 0,
+    "ppo/rewards/mean": 0.5,
+    "ppo/rewards/std": 0.2,
+    "ppo/policy/kl_mean": 0.05,
+    "ppo/policy/entropy": 2.0,
+    "ppo/policy/clipfrac": 0.1,
+    "ppo/val/value_loss": 0.3,
+    "learning_rate": 0.0001,
+    "grad_norm": 0.5,
+    "train_loss": 2.5
+  },
+  {
+    "step": 1,
+    "ppo/rewards/mean": 0.48,
+    "ppo/rewards/std": 0.25,
+    "ppo/policy/kl_mean": 0.07,
+    "ppo/policy/entropy": 1.85,
+    "ppo/policy/clipfrac": 0.13,
+    "ppo/val/value_loss": 0.32,
+    "learning_rate": 0.0001,
+    "grad_norm": 0.6,
+    "train_loss": 2.6
+  },
+  {
+    "step": 2,
+    "ppo/rewards/mean": 0.46,
+    "ppo/rewards/std": 0.30000000000000004,
+    "ppo/policy/kl_mean": 0.09,
+    "ppo/policy/entropy": 1.7,
+    "ppo/policy/clipfrac": 0.16,
+    "ppo/val/value_loss": 0.33999999999999997,
+    "learning_rate": 0.0001,
+    "grad_norm": 0.7,
+    "train_loss": 2.7
+  },
+  {
+    "step": 3,
+    "ppo/rewards/mean": 0.44,
+    "ppo/rewards/std": 0.35000000000000003,
+    "ppo/policy/kl_mean": 0.11,
+    "ppo/policy/entropy": 1.55,
+    "ppo/policy/clipfrac": 0.19,
+    "ppo/val/value_loss": 0.36,
+    "learning_rate": 0.0001,
+    "grad_norm": 0.8,
+    "train_loss": 2.8
+  },
+  {
+    "step": 4,
+    "ppo/rewards/mean": 0.42,
+    "ppo/rewards/std": 0.4,
+    "ppo/policy/kl_mean": 0.13,
+    "ppo/policy/entropy": 1.4,
+    "ppo/policy/clipfrac": 0.22,
+    "ppo/val/value_loss": 0.38,
+    "learning_rate": 0.0001,
+    "grad_norm": 0.9,
+    "train_loss": 2.9
+  },
+  {
+    "step": 5,
+    "ppo/rewards/mean": 0.4,
+    "ppo/rewards/std": 0.45,
+    "ppo/policy/kl_mean": 0.15000000000000002,
+    "ppo/policy/entropy": 1.25,
+    "ppo/policy/clipfrac": 0.25,
+    "ppo/val/value_loss": 0.4,
+    "learning_rate": 0.0001,
+    "grad_norm": 1.0,
+    "train_loss": 3.0
+  }
+]
