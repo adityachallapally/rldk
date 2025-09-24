@@ -9,8 +9,8 @@ import tempfile
 import numpy as np
 from pathlib import Path
 
-# Add the src directory to the path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+import _path_setup  # noqa: F401
+
 
 def test_data_ingestion():
     """Test data ingestion from different sources"""

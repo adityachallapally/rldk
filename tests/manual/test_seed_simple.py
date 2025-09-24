@@ -3,11 +3,6 @@
 Simple test for seed roundtrip functionality.
 """
 
-import os
-import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
-
 import random
 import tempfile
 
@@ -15,6 +10,7 @@ import numpy as np
 import torch
 
 # Direct import to avoid full module dependencies
+import _path_setup  # noqa: F401
 from rldk.tracking.seed_tracker import SeedTracker
 
 

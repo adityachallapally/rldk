@@ -3,6 +3,7 @@
 Standalone test for field resolver functionality without module dependencies.
 """
 
+import _path_setup  # noqa: F401
 import difflib
 import logging
 from typing import Dict, List, Optional, Set

@@ -7,9 +7,29 @@ import re
 from typing import Any, Dict, List
 
 import pytest
-from hypothesis import assume, given
-from hypothesis import strategies as st
-from hypothesis.strategies import booleans, dictionaries, floats, integers, text
+
+try:  # pragma: no cover - optional dependency handling
+    from hypothesis import assume, given
+    from hypothesis import strategies as st
+    from hypothesis.strategies import (
+        booleans,
+        dictionaries,
+        floats,
+        integers,
+        text,
+    )
+    HYPOTHESIS_AVAILABLE = True
+except ModuleNotFoundError:  # pragma: no cover - environment dependent
+    HYPOTHESIS_AVAILABLE = False
+
+
+pytestmark = pytest.mark.skipif(
+    not HYPOTHESIS_AVAILABLE,
+    reason="hypothesis package is not installed",
+)
+
+if not HYPOTHESIS_AVAILABLE:  # pragma: no cover - optional dependency handling
+    pytest.skip("hypothesis package is not installed", allow_module_level=True)
 
 
 class TestLogParsing:

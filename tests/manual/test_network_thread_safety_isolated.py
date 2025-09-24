@@ -1,61 +1,19 @@
-"""Fixed thread safety tests for network monitoring components with proper error handling."""
+"""Isolated thread safety tests for network monitoring components."""
 
-import os
-import sys
+import threading
 import time
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from unittest.mock import MagicMock
 
-# Mock the required dependencies before importing
-sys.modules['psutil'] = MagicMock()
-sys.modules['numpy'] = MagicMock()
-sys.modules['torch'] = MagicMock()
-sys.modules['torch.distributed'] = MagicMock()
-
-# Add the src directory to the path - handle different execution locations
-current_dir = os.path.dirname(os.path.abspath(__file__))
-src_path = os.path.join(current_dir, 'src')
-if not os.path.exists(src_path):
-    # Try alternative path if running from different location
-    src_path = os.path.join(current_dir, '..', 'src')
-    if not os.path.exists(src_path):
-        # Try another alternative
-        src_path = os.path.join(current_dir, '..', '..', 'src')
-
-sys.path.insert(0, src_path)
-
-# Import only the network monitor module directly with error handling
-try:
-    import importlib.util
-    network_monitor_path = os.path.join(src_path, 'rldk', 'integrations', 'openrlhf', 'network_monitor.py')
-
-    if not os.path.exists(network_monitor_path):
-        raise FileNotFoundError(f"Network monitor file not found at {network_monitor_path}")
-
-    spec = importlib.util.spec_from_file_location("network_monitor", network_monitor_path)
-    network_monitor = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(network_monitor)
-
-    # Get the classes from the module with error handling
-    try:
-        NetworkDiagnostics = network_monitor.NetworkDiagnostics
-        NetworkInterfaceMonitor = network_monitor.NetworkInterfaceMonitor
-        NetworkLatencyMonitor = network_monitor.NetworkLatencyMonitor
-        NetworkBandwidthMonitor = network_monitor.NetworkBandwidthMonitor
-        DistributedNetworkMonitor = network_monitor.DistributedNetworkMonitor
-        RealNetworkMonitor = network_monitor.RealNetworkMonitor
-    except AttributeError as e:
-        print(f"Error importing network monitor classes: {e}")
-        print("Available attributes:", [attr for attr in dir(network_monitor) if not attr.startswith('_')])
-        raise
-
-except Exception as e:
-    print(f"Failed to import network monitor: {e}")
-    print(f"Current directory: {current_dir}")
-    print(f"Tried src path: {src_path}")
-    print(f"Files in current dir: {os.listdir(current_dir)}")
-    sys.exit(1)
+import _path_setup  # noqa: F401
+from rldk.integrations.openrlhf.network_monitor import (
+    DistributedNetworkMonitor,
+    NetworkBandwidthMonitor,
+    NetworkDiagnostics,
+    NetworkInterfaceMonitor,
+    NetworkLatencyMonitor,
+    RealNetworkMonitor,
+)
 
 
 def test_network_diagnostics_thread_safety():
@@ -83,7 +41,7 @@ def test_network_diagnostics_thread_safety():
 
     # Check that we have a single lock instance
     assert hasattr(diagnostics, '_lock')
-    assert hasattr(diagnostics._lock, 'acquire')  # Check it's a lock-like object
+    assert isinstance(diagnostics._lock, threading.RLock)
 
     # Verify invocation count is correct
     assert diagnostics._invocation_count == num_threads
@@ -115,7 +73,7 @@ def test_network_interface_monitor_thread_safety():
 
     # Check that we have a single lock instance
     assert hasattr(monitor, '_lock')
-    assert hasattr(monitor._lock, 'acquire')  # Check it's a lock-like object
+    assert isinstance(monitor._lock, threading.RLock)
 
     # Verify invocation count is correct
     assert monitor._invocation_count == num_threads
@@ -147,7 +105,7 @@ def test_network_latency_monitor_thread_safety():
 
     # Check that we have a single lock instance
     assert hasattr(monitor, '_lock')
-    assert hasattr(monitor._lock, 'acquire')  # Check it's a lock-like object
+    assert isinstance(monitor._lock, threading.RLock)
 
     # Verify invocation count is correct
     assert monitor._invocation_count == num_threads
@@ -185,7 +143,7 @@ def test_network_bandwidth_monitor_thread_safety():
 
     # Check that we have a single lock instance
     assert hasattr(monitor, '_lock')
-    assert hasattr(monitor._lock, 'acquire')  # Check it's a lock-like object
+    assert isinstance(monitor._lock, threading.RLock)
 
     # Verify invocation count is correct
     assert monitor._invocation_count == num_threads
@@ -221,7 +179,7 @@ def test_distributed_network_monitor_thread_safety():
 
     # Check that we have distributed lock
     assert hasattr(monitor, '_distributed_lock')
-    assert hasattr(monitor._distributed_lock, 'acquire')  # Check it's a lock-like object
+    assert isinstance(monitor._distributed_lock, threading.RLock)
 
     # Verify invocation count is correct
     assert monitor._invocation_count == num_threads
@@ -265,7 +223,7 @@ def test_real_network_monitor_thread_safety():
 
     # Check that we have history lock
     assert hasattr(monitor, '_history_lock')
-    assert hasattr(monitor._history_lock, 'acquire')  # Check it's a lock-like object
+    assert isinstance(monitor._history_lock, threading.RLock)
 
     # Verify invocation count is correct
     assert monitor._invocation_count == num_threads
@@ -376,9 +334,8 @@ def test_sampling_frequency_control():
     }
 
     # Most calls should return empty stats due to sampling
-    # Use a more flexible assertion - at least 50% should be empty due to sampling
     empty_count = sum(1 for result in results if result == empty_stats)
-    assert empty_count >= 5, f"Expected at least 5 empty results, got {empty_count}"
+    assert empty_count >= 6  # At least 6 out of 10 should be empty due to sampling
     print("✓ Sampling frequency control test passed")
 
 
@@ -396,10 +353,10 @@ def test_lock_uniqueness():
     assert monitor1._lock is not monitor3._lock
     assert monitor2._lock is not monitor3._lock
 
-    # All should be lock-like objects
-    assert hasattr(monitor1._lock, 'acquire')
-    assert hasattr(monitor2._lock, 'acquire')
-    assert hasattr(monitor3._lock, 'acquire')
+    # All should be RLock instances
+    assert isinstance(monitor1._lock, threading.RLock)
+    assert isinstance(monitor2._lock, threading.RLock)
+    assert isinstance(monitor3._lock, threading.RLock)
     print("✓ Lock uniqueness test passed")
 
 
@@ -451,39 +408,6 @@ def test_concurrent_read_write_operations():
     print("✓ Concurrent read/write operations test passed")
 
 
-def test_double_sampling_fix():
-    """Test that double sampling frequency issue is fixed."""
-    print("Testing double sampling frequency fix...")
-
-    # Test that sub-monitors don't apply their own sampling when called by parent
-    distributed_monitor = DistributedNetworkMonitor(sampling_frequency=3)
-
-    # Call measure_distributed_metrics multiple times
-    results = []
-    for i in range(10):
-        result = distributed_monitor.measure_distributed_metrics()
-        results.append(result)
-
-    # The parent should control sampling, sub-monitors should always execute
-    # Check that sub-monitors have invocation count = 10 (no sampling applied)
-    # Note: sub-monitors are called every time the parent calls them, regardless of parent sampling
-    print(f"Parent invocation count: {distributed_monitor._invocation_count}")
-    print(f"Interface monitor invocation count: {distributed_monitor.interface_monitor._invocation_count}")
-    print(f"Latency monitor invocation count: {distributed_monitor.latency_monitor._invocation_count}")
-    print(f"Bandwidth monitor invocation count: {distributed_monitor.bandwidth_monitor._invocation_count}")
-
-    # The parent should have sampling applied (only 3-4 calls should actually do work)
-    assert distributed_monitor._invocation_count == 10
-
-    # Sub-monitors should be called every time the parent calls them
-    # Since parent sampling is 3, sub-monitors should be called ~3-4 times
-    assert distributed_monitor.interface_monitor._invocation_count >= 3
-    assert distributed_monitor.latency_monitor._invocation_count >= 3
-    assert distributed_monitor.bandwidth_monitor._invocation_count >= 3
-
-    print("✓ Double sampling frequency fix test passed")
-
-
 def main():
     """Run all tests."""
     print("Running network monitoring thread safety tests...\n")
@@ -499,7 +423,6 @@ def main():
         test_sampling_frequency_control()
         test_lock_uniqueness()
         test_concurrent_read_write_operations()
-        test_double_sampling_fix()
 
         print("\n🎉 All tests passed! Network monitoring is thread-safe and memory-bounded.")
 

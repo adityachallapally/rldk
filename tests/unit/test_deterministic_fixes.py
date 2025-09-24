@@ -16,6 +16,7 @@ import tempfile
 import types
 import uuid
 from dataclasses import dataclass, field
+from unittest.mock import patch
 
 # import numpy as np  # Will be mocked
 from datetime import datetime
@@ -45,6 +46,7 @@ class MockNumpy:
         self.random = MockRandom()
         self.ndarray = MockNDArray
         self.uint32 = "uint32"
+        self.bool_ = bool
 
     def randn(self, *args):
         return [0.1, 0.2, 0.3]
@@ -285,21 +287,23 @@ class MockCuda:
         return True
 
 # Mock the modules BEFORE any imports
-sys.modules['numpy'] = MockNumpy()
-sys.modules['pandas'] = MockPandas()
-sys.modules['torch'] = MockTorch()
-sys.modules['datasets'] = MockDatasets()
-sys.modules['transformers'] = MockTransformers()
 mock_torch_utils = types.ModuleType("torch.utils")
 mock_torch_utils_data = types.ModuleType("torch.utils.data")
 mock_torch_utils_data.Dataset = MockTorchDataset
 mock_torch_utils.data = mock_torch_utils_data
-sys.modules['torch.utils'] = mock_torch_utils
-sys.modules['torch.utils.data'] = mock_torch_utils_data
-sys.modules['numpy.typing'] = types.ModuleType("numpy.typing")
+patched_modules = {
+    'numpy': MockNumpy(),
+    'pandas': MockPandas(),
+    'torch': MockTorch(),
+    'datasets': MockDatasets(),
+    'transformers': MockTransformers(),
+    'torch.utils': mock_torch_utils,
+    'torch.utils.data': mock_torch_utils_data,
+    'numpy.typing': types.ModuleType("numpy.typing"),
+}
 
-# Import our tracking system
-from src.rldk.tracking import DatasetTracker, ModelTracker, SeedTracker
+with patch.dict(sys.modules, patched_modules):
+    from src.rldk.tracking import DatasetTracker, ModelTracker, SeedTracker
 
 
 def test_dataset_checksum_determinism():

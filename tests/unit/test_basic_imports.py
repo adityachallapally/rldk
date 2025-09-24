@@ -3,6 +3,7 @@
 
 import os
 import sys
+from unittest.mock import MagicMock, patch
 
 # Add the src directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src', 'rldk', 'integrations', 'openrlhf'))
@@ -41,24 +42,21 @@ def test_distributed_imports():
     """Test distributed module imports."""
     try:
         # Mock psutil for testing
-        import sys
-        from unittest.mock import MagicMock
-
         # Create a mock psutil module
         mock_psutil = MagicMock()
         mock_net_io = MagicMock()
         mock_net_io.bytes_sent = 1000
         mock_net_io.bytes_recv = 2000
         mock_psutil.net_io_counters.return_value = mock_net_io
-        sys.modules['psutil'] = mock_psutil
 
-        # Now try to import the distributed module
-        from distributed import NetworkMonitor
-        print("✅ NetworkMonitor imported successfully")
+        with patch.dict(sys.modules, {'psutil': mock_psutil}):
+            # Now try to import the distributed module
+            from distributed import NetworkMonitor
+            print("✅ NetworkMonitor imported successfully")
 
-        # Test creating an instance
-        NetworkMonitor()
-        print("✅ NetworkMonitor instance created successfully")
+            # Test creating an instance
+            NetworkMonitor()
+            print("✅ NetworkMonitor instance created successfully")
 
         return True
 
@@ -73,28 +71,25 @@ def test_dashboard_imports():
     """Test dashboard module imports."""
     try:
         # Mock required modules
-        import sys
-        from unittest.mock import MagicMock
-
         # Mock Flask
         mock_flask = MagicMock()
-        sys.modules['flask'] = mock_flask
-
         # Mock plotly
         mock_plotly = MagicMock()
-        sys.modules['plotly'] = mock_plotly
-
         # Mock numpy
         mock_numpy = MagicMock()
-        sys.modules['numpy'] = mock_numpy
-
         # Mock pandas
         mock_pandas = MagicMock()
-        sys.modules['pandas'] = mock_pandas
+        patched_modules = {
+            'flask': mock_flask,
+            'plotly': mock_plotly,
+            'numpy': mock_numpy,
+            'pandas': mock_pandas,
+        }
 
-        # Now try to import the dashboard module
-        from dashboard import OpenRLHFDashboard
-        print("✅ OpenRLHFDashboard imported successfully")
+        with patch.dict(sys.modules, patched_modules):
+            # Now try to import the dashboard module
+            from dashboard import OpenRLHFDashboard
+            print("✅ OpenRLHFDashboard imported successfully")
 
         return True
 

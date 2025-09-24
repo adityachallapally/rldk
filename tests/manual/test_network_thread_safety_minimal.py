@@ -1,6 +1,5 @@
 """Minimal thread safety tests for network monitoring components with mocked dependencies."""
 
-import os
 import sys
 import threading
 import time
@@ -8,32 +7,21 @@ from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from unittest.mock import MagicMock
 
+import _path_setup  # noqa: F401
+from rldk.integrations.openrlhf.network_monitor import (
+    DistributedNetworkMonitor,
+    NetworkBandwidthMonitor,
+    NetworkDiagnostics,
+    NetworkInterfaceMonitor,
+    NetworkLatencyMonitor,
+    RealNetworkMonitor,
+)
+
 # Mock the required dependencies before importing
 sys.modules['psutil'] = MagicMock()
 sys.modules['numpy'] = MagicMock()
 sys.modules['torch'] = MagicMock()
 sys.modules['torch.distributed'] = MagicMock()
-
-# Add the src directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
-
-# Import only the network monitor module directly
-import importlib.util
-
-spec = importlib.util.spec_from_file_location(
-    "network_monitor",
-    os.path.join(os.path.dirname(__file__), 'src', 'rldk', 'integrations', 'openrlhf', 'network_monitor.py')
-)
-network_monitor = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(network_monitor)
-
-# Get the classes from the module
-NetworkDiagnostics = network_monitor.NetworkDiagnostics
-NetworkInterfaceMonitor = network_monitor.NetworkInterfaceMonitor
-NetworkLatencyMonitor = network_monitor.NetworkLatencyMonitor
-NetworkBandwidthMonitor = network_monitor.NetworkBandwidthMonitor
-DistributedNetworkMonitor = network_monitor.DistributedNetworkMonitor
-RealNetworkMonitor = network_monitor.RealNetworkMonitor
 
 
 def test_network_diagnostics_thread_safety():

@@ -13,6 +13,7 @@ This document defines the proper organization and structure for the RLDK project
 ├── src/                        # Source code (main package)
 ├── tests/                      # All test files
 ├── docs/                       # Documentation
+│   └── reports/                # Consolidated summaries and research notes
 ├── examples/                   # Example scripts and demos
 ├── scripts/                   # Utility and maintenance scripts
 ├── tools/                     # Development tools
@@ -137,6 +138,9 @@ tests/
 │   ├── test_tracking_integration.py
 │   ├── test_forensics_integration.py
 │   └── test_end_to_end.py
+├── manual/                  # Manually-invoked legacy regression scripts
+│   ├── test_api_functionality.py
+│   └── ...
 ├── e2e/                     # End-to-end tests
 │   ├── __init__.py
 │   ├── test_full_workflow.py
@@ -170,6 +174,7 @@ docs/
 │   ├── basic_usage.md
 │   ├── advanced_features.md
 │   └── troubleshooting.md
+├── reports/                 # Project reports, release summaries, and notes
 ├── architecture/            # Architecture documentation
 │   ├── overview.md
 │   ├── components.md

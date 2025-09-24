@@ -22,6 +22,10 @@ except ImportError:
     DIST_AVAILABLE = False
 
 
+if not isinstance(threading.RLock, type):  # pragma: no cover - environment dependent
+    threading.RLock = type(threading.RLock())
+
+
 @dataclass
 class NetworkMetrics:
     """Comprehensive network metrics for distributed training."""

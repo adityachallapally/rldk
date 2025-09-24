@@ -823,6 +823,7 @@ def evaluate_efficiency(data: pd.DataFrame, config: Optional[EvaluationConfig] =
         "details": f"Efficiency evaluation based on {len(efficiency_metrics)} metrics" if efficiency_metrics else "No efficiency metrics could be computed",
         "method": "computational_and_convergence_analysis",
         "metrics": efficiency_metrics,
+        "efficiency_metrics": {name: float(score) for name, score in efficiency_metrics},
         "sample_size": len(data),
     }
 
@@ -1181,6 +1182,7 @@ def evaluate_speed(data: pd.DataFrame, config: Optional[EvaluationConfig] = None
         "details": f"Speed evaluation based on {len(speed_metrics)} metrics" if speed_metrics else "No speed metrics could be computed",
         "method": "inference_and_training_analysis",
         "metrics": speed_metrics,
+        "speed_metrics": {name: float(score) for name, score in speed_metrics},
         "sample_size": len(data),
     }
 

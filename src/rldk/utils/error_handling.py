@@ -1,12 +1,18 @@
 """Error handling utilities for RLDK."""
 
 import logging
+import logging
 import time
 import traceback
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
+
+try:  # pragma: no cover - optional dependency
+    from .validation import validate_wandb_uri
+except ImportError:  # pragma: no cover - optional dependency missing
+    validate_wandb_uri = None  # type: ignore[assignment]
 
 
 class RLDKError(Exception):
@@ -68,7 +74,7 @@ def log_error_with_context(error: Exception, context: str, logger: Optional[logg
     logger.debug(f"Full traceback:\n{traceback.format_exc()}")
 
 
-def sanitize_path(path: Union[str, Path], base_path: Optional[Path] = None) -> Path:
+def sanitize_path(path: Union[str, Path, None], base_path: Optional[Path] = None) -> Path:
     """Sanitize a path to prevent path traversal attacks.
 
     Args:
@@ -81,6 +87,13 @@ def sanitize_path(path: Union[str, Path], base_path: Optional[Path] = None) -> P
     Raises:
         ValidationError: If path contains traversal attempts or is invalid
     """
+    if path is None or (isinstance(path, str) and not path.strip()):
+        raise ValidationError(
+            f"Invalid path format: {path}",
+            suggestion="Please provide a valid file or directory path",
+            error_code="INVALID_PATH",
+        )
+
     # Always check for obvious traversal attempts before resolving
     if '..' in Path(path).parts:
         raise ValidationError(
@@ -207,7 +220,12 @@ def with_retry(max_retries: int = 3, delay: float = 1.0, backoff: float = 2.0):
     return decorator
 
 
-# with_timeout moved to rldk.utils.runtime
+def with_timeout(timeout_seconds: float):
+    """Lazily resolve the runtime timeout decorator to avoid circular imports."""
+
+    from .runtime import with_timeout as runtime_with_timeout
+
+    return runtime_with_timeout(timeout_seconds)
 
 
 def handle_graceful_degradation(operation_name: str, fallback_value: Any = None):
@@ -231,9 +249,14 @@ def validate_adapter_source(source: Union[str, Path], expected_formats: List[str
 
     # Handle remote URIs (like WandB) separately
     if source_str.startswith("wandb://"):
-        # Validate WandB URI format
+        if validate_wandb_uri is None:
+            raise ValidationError(
+                "WandB support is not available in this installation.",
+                suggestion="Install optional WandB dependencies to enable URI validation",
+                error_code="WANDB_VALIDATION_UNAVAILABLE",
+            )
+
         try:
-            from .validation import validate_wandb_uri
             validate_wandb_uri(source_str)
             return  # WandB URI is valid
         except ValidationError:

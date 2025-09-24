@@ -104,7 +104,6 @@ The demo successfully generates:
 
 - `rldk_reports/divergence_report.json` - First divergence detection
 - `rldk_reports/ckpt_diff.json` - Parameter comparison summary
-- `rldk_reports/ckpt_diff.png` - Visual parameter differences
 - `rldk_reports/determinism_card.json` - Environment audit results
 - `rldk_reports/ppo_scan.json` - PPO anomaly detection
 - `rldk_reports/reward_drift.json` - Reward model drift analysis

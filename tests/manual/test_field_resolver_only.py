@@ -3,10 +3,7 @@
 Simple test script to validate field resolver implementation without pandas dependency.
 """
 
-import sys
-
-# Add src to path
-sys.path.insert(0, '/workspace/src')
+import _path_setup  # noqa: F401
 
 def test_field_resolver():
     """Test field resolver functionality."""

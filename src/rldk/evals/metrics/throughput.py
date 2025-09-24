@@ -139,6 +139,54 @@ def calculate_tokens_per_second(events: List[Dict[str, Any]]) -> Tuple[float, fl
     return mean_tokens_per_sec, std_tokens_per_sec, total_tokens
 
 
+def calculate_token_throughput(events: List[Dict[str, Any]]) -> Tuple[float, float, float]:
+    """Backward compatible helper that wraps :func:`calculate_tokens_per_second`."""
+
+    mean, std, total = calculate_tokens_per_second(events)
+    return float(mean), float(std), float(total)
+
+
+def calculate_batch_throughput(events: List[Dict[str, Any]]) -> Dict[str, float]:
+    """Compute batch throughput metrics while guarding against zero denominators."""
+
+    if not events:
+        return {
+            "average_batches_per_sec": 0.0,
+            "max_batches_per_sec": 0.0,
+            "min_batches_per_sec": 0.0,
+            "num_batches": 0.0,
+        }
+
+    rates: List[float] = []
+    total_batches = 0.0
+
+    for event in events:
+        batch_size = event.get("batch_size")
+        processing_time = event.get("processing_time")
+
+        if batch_size is None or processing_time is None:
+            continue
+
+        rate = safe_rate_calculation(batch_size, processing_time, 0.0)
+        rates.append(float(rate))
+        total_batches += float(batch_size)
+
+    if not rates:
+        return {
+            "average_batches_per_sec": 0.0,
+            "max_batches_per_sec": 0.0,
+            "min_batches_per_sec": 0.0,
+            "num_batches": float(total_batches),
+        }
+
+    return {
+        "average_batches_per_sec": float(np.mean(rates)),
+        "max_batches_per_sec": float(np.max(rates)),
+        "min_batches_per_sec": float(np.min(rates)),
+        "num_batches": float(total_batches),
+    }
+
+
 def calculate_confidence_interval(scores: List[float], confidence_level: float = 0.95) -> Tuple[float, float]:
     """
     Calculate confidence interval for throughput scores.

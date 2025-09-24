@@ -20,6 +20,7 @@ class MockNumpy:
     def __init__(self):
         self.__version__ = "1.21.0"
         self.random = MockRandom()
+        self.bool_ = bool
 
     def randn(self, *args):
         return [0.1, 0.2, 0.3]  # Mock data

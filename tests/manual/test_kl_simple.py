@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 """Simple test script for KL divergence functionality."""
 
-import os
-import sys
 import warnings
 
 import numpy as np
-
-# Add the src directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+import _path_setup  # noqa: F401
 
 # Import the specific modules
 from rldk.evals.metrics import (
