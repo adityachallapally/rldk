@@ -426,10 +426,17 @@ class TestPrintValidationResults:
 
         print_validation_results(issues)
         captured = capsys.readouterr()
-        assert "❌ evaluation configuration issues:" in captured.out
-        assert "✅ forensics configuration is valid" in captured.out
-        assert "❌ visualization configuration issues:" in captured.out
-        assert "✅ suite configuration is valid" in captured.out
+
+        expected_outputs = {
+            "evaluation": ("❌", "configuration issues"),
+            "forensics": ("✅", "configuration is valid"),
+            "visualization": ("❌", "configuration issues"),
+            "suite": ("✅", "configuration is valid"),
+        }
+
+        for key, (status, suffix) in expected_outputs.items():
+            expected = f"{status} {key.title()} {suffix}:" if "issues" in suffix else f"{status} {key.title()} {suffix}"
+            assert expected in captured.out
 
 
 if __name__ == "__main__":
