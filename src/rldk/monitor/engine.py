@@ -33,9 +33,22 @@ import pandas as pd
 
 from .presets import FIELD_MAP_PRESETS, RULE_PRESETS, get_field_map_preset, get_rule_preset
 from .regexes import create_line_parser
-from rldk.reward import health as reward_health_function
 
 logger = logging.getLogger(__name__)
+
+_reward_health_callable: Optional[Callable[..., Any]] = None
+
+
+def _load_reward_health_function() -> Callable[..., Any]:
+    """Lazily import the reward health analysis to avoid circular imports."""
+
+    global _reward_health_callable
+    if _reward_health_callable is None:
+        from rldk.reward import health as reward_health_function
+
+        _reward_health_callable = reward_health_function
+    return _reward_health_callable
+
 
 CANONICAL_FIELDS = {"time", "step", "name", "value", "run_id", "tags", "meta"}
 DEFAULT_WINDOW_KIND = "consecutive"
@@ -1020,6 +1033,7 @@ class _RewardHealthMonitor:
         self._last_step_evaluated[key] = event.step
 
         try:
+            reward_health_function = _load_reward_health_function()
             report = reward_health_function(df, reward_col=reward_col, step_col="step")
         except Exception as exc:  # pragma: no cover - defensive guard
             logger.debug("Reward health analysis failed: %s", exc)
