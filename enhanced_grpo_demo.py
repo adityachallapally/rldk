@@ -169,8 +169,20 @@ class EnhancedGRPOTrainer:
                 try:
                     monitor_process.terminate()
                     monitor_process.wait(timeout=10)
-                except:
+                except subprocess.TimeoutExpired:
+                    print("⚠️  Monitor process did not terminate gracefully, force killing...")
                     monitor_process.kill()
+                    try:
+                        monitor_process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        print("❌ Failed to kill monitor process")
+                except Exception as e:
+                    print(f"⚠️  Error terminating monitor process: {e}")
+                    try:
+                        monitor_process.kill()
+                        monitor_process.wait(timeout=5)
+                    except:
+                        print("❌ Failed to force kill monitor process")
         
         if alerts_file.exists():
             try:
@@ -266,6 +278,8 @@ class EnhancedGRPOTrainer:
     def _start_rldk_monitor(self, metrics_file: Path, alerts_file: Path):
         """Start RLDK monitor process with continuous monitoring."""
         try:
+            metrics_file.touch()
+            
             cmd = [
                 sys.executable, "-m", "rldk.cli", "monitor",
                 "--stream", str(metrics_file),

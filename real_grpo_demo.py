@@ -247,8 +247,7 @@ class GRPOTrainer:
                 "--stream", str(metrics_file),
                 "--rules", "grpo_safe",
                 "--preset", "grpo",
-                "--alerts", str(alerts_file),
-                "--once"  # Run once instead of continuous monitoring
+                "--alerts", str(alerts_file)
             ]
             
             print(f"🔍 Starting RLDK monitor: {' '.join(cmd)}")
