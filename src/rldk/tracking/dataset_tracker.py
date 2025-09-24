@@ -9,15 +9,55 @@ import multiprocessing as mp
 import pickle
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 import numpy as np
 import pandas as pd
 import torch
-from datasets import Dataset, DatasetDict
-from torch.utils.data import Dataset as TorchDataset
+
+try:
+    from torch.utils.data import Dataset as TorchDataset
+
+    TORCH_DATASET_AVAILABLE = True
+except (ImportError, AttributeError, TypeError):
+    TorchDataset = type("TorchDatasetShim", (), {})
+    TORCH_DATASET_AVAILABLE = False
+
+try:
+    NUMPY_ARRAY_TYPE = np.ndarray
+    if not isinstance(NUMPY_ARRAY_TYPE, type):  # Handles mocks without ndarray type
+        raise TypeError
+    NUMPY_AVAILABLE = True
+except Exception:  # pragma: no cover - triggered in dependency-light environments
+    NUMPY_ARRAY_TYPE = type("NumpyArrayShim", (), {})
+    NUMPY_AVAILABLE = False
+
+try:
+    PANDAS_DATAFRAME_TYPE = pd.DataFrame
+    if not isinstance(PANDAS_DATAFRAME_TYPE, type):  # Handles mocks without DataFrame class
+        raise TypeError
+    PANDAS_AVAILABLE = True
+except Exception:  # pragma: no cover - triggered in dependency-light environments
+    PANDAS_DATAFRAME_TYPE = type("PandasDataFrameShim", (), {})
+    PANDAS_AVAILABLE = False
 
 from .cache import TrackingCache, run_with_timeout_and_progress
+
+
+try:
+    from datasets import Dataset as _Dataset, DatasetDict as _DatasetDict
+
+    DATASETS_AVAILABLE = True
+except ImportError:  # pragma: no cover - dependency optional in some environments
+    _Dataset = type("DatasetShim", (), {})
+    _DatasetDict = type("DatasetDictShim", (), {})
+    DATASETS_AVAILABLE = False
+
+if TYPE_CHECKING:
+    from datasets import Dataset, DatasetDict
+else:  # pragma: no cover - runtime fallback when dependency missing
+    Dataset = _Dataset
+    DatasetDict = _DatasetDict
 
 
 class DatasetTracker:
@@ -119,13 +159,18 @@ class DatasetTracker:
         # Compute checksum based on dataset type
         if isinstance(dataset, (str, Path)):
             tracking_info.update(await self._track_file_dataset_async(dataset, progress_callback))
-        elif isinstance(dataset, (Dataset, DatasetDict)):
+        elif DATASETS_AVAILABLE and isinstance(dataset, (Dataset, DatasetDict)):
             tracking_info.update(await self._track_huggingface_dataset_async(dataset, progress_callback))
-        elif isinstance(dataset, TorchDataset):
+        elif not DATASETS_AVAILABLE and self._looks_like_hf_dataset(dataset):
+            raise RuntimeError(
+                "Hugging Face `datasets` package is required to track Dataset instances. "
+                "Install `datasets` to enable this functionality."
+            )
+        elif TORCH_DATASET_AVAILABLE and isinstance(dataset, TorchDataset):
             tracking_info.update(await self._track_torch_dataset_async(dataset, progress_callback))
-        elif isinstance(dataset, np.ndarray):
+        elif NUMPY_AVAILABLE and isinstance(dataset, NUMPY_ARRAY_TYPE):
             tracking_info.update(await self._track_numpy_dataset_async(dataset, progress_callback))
-        elif isinstance(dataset, pd.DataFrame):
+        elif PANDAS_AVAILABLE and isinstance(dataset, PANDAS_DATAFRAME_TYPE):
             tracking_info.update(await self._track_pandas_dataset_async(dataset, progress_callback))
         else:
             tracking_info.update(await self._track_generic_dataset_async(dataset, progress_callback))
@@ -160,8 +205,19 @@ class DatasetTracker:
 
         return info
 
+    @staticmethod
+    def _looks_like_hf_dataset(dataset: Any) -> bool:
+        """Best-effort detection for Hugging Face dataset instances when dependency is absent."""
+        module = getattr(type(dataset), "__module__", "")
+        return module.startswith("datasets.")
+
     async def _track_huggingface_dataset_async(self, dataset: Union[Dataset, DatasetDict], progress_callback=None) -> Dict[str, Any]:
         """Async version of Hugging Face dataset tracking."""
+        if not DATASETS_AVAILABLE:
+            raise RuntimeError(
+                "Hugging Face `datasets` package is required to track Dataset instances. "
+                "Install `datasets` to enable this functionality."
+            )
         info = {
             "num_rows": len(dataset) if isinstance(dataset, Dataset) else sum(len(split) for split in dataset.values()),
             "features": list(dataset.features.keys()) if isinstance(dataset, Dataset) else list(dataset.column_names.keys()),
@@ -181,6 +237,11 @@ class DatasetTracker:
 
     def _track_huggingface_dataset(self, dataset: Union[Dataset, DatasetDict]) -> Dict[str, Any]:
         """Track a Hugging Face dataset."""
+        if not DATASETS_AVAILABLE:
+            raise RuntimeError(
+                "Hugging Face `datasets` package is required to track Dataset instances. "
+                "Install `datasets` to enable this functionality."
+            )
         info = {
             "num_rows": len(dataset) if isinstance(dataset, Dataset) else sum(len(split) for split in dataset.values()),
             "features": list(dataset.features.keys()) if isinstance(dataset, Dataset) else list(dataset.column_names.keys()),
@@ -197,6 +258,11 @@ class DatasetTracker:
 
     async def _track_torch_dataset_async(self, dataset: TorchDataset, progress_callback=None) -> Dict[str, Any]:
         """Async version of PyTorch dataset tracking."""
+        if not TORCH_DATASET_AVAILABLE:
+            raise RuntimeError(
+                "PyTorch is required to track torch.utils.data.Dataset instances. "
+                "Install PyTorch to enable this functionality."
+            )
         info = {
             "num_samples": len(dataset),
         }
@@ -215,6 +281,11 @@ class DatasetTracker:
 
     def _track_torch_dataset(self, dataset: TorchDataset) -> Dict[str, Any]:
         """Track a PyTorch dataset."""
+        if not TORCH_DATASET_AVAILABLE:
+            raise RuntimeError(
+                "PyTorch is required to track torch.utils.data.Dataset instances. "
+                "Install PyTorch to enable this functionality."
+            )
         info = {
             "num_samples": len(dataset),
             "checksum": self._compute_torch_dataset_checksum(dataset)
@@ -229,6 +300,10 @@ class DatasetTracker:
 
     async def _track_numpy_dataset_async(self, dataset: np.ndarray, progress_callback=None) -> Dict[str, Any]:
         """Async version of NumPy dataset tracking."""
+        if not NUMPY_AVAILABLE:
+            raise RuntimeError(
+                "NumPy is required to track numpy.ndarray instances. Install NumPy to enable this functionality."
+            )
         if progress_callback:
             progress_callback("Computing NumPy array checksum...")
 
@@ -241,6 +316,10 @@ class DatasetTracker:
 
     def _track_numpy_dataset(self, dataset: np.ndarray) -> Dict[str, Any]:
         """Track a NumPy array dataset."""
+        if not NUMPY_AVAILABLE:
+            raise RuntimeError(
+                "NumPy is required to track numpy.ndarray instances. Install NumPy to enable this functionality."
+            )
         return {
             "shape": dataset.shape,
             "dtype": str(dataset.dtype),
@@ -250,6 +329,10 @@ class DatasetTracker:
 
     async def _track_pandas_dataset_async(self, dataset: pd.DataFrame, progress_callback=None) -> Dict[str, Any]:
         """Async version of Pandas dataset tracking."""
+        if not PANDAS_AVAILABLE:
+            raise RuntimeError(
+                "pandas is required to track pandas.DataFrame instances. Install pandas to enable this functionality."
+            )
         if progress_callback:
             progress_callback("Computing Pandas DataFrame checksum...")
 
@@ -263,6 +346,10 @@ class DatasetTracker:
 
     def _track_pandas_dataset(self, dataset: pd.DataFrame) -> Dict[str, Any]:
         """Track a Pandas DataFrame dataset."""
+        if not PANDAS_AVAILABLE:
+            raise RuntimeError(
+                "pandas is required to track pandas.DataFrame instances. Install pandas to enable this functionality."
+            )
         return {
             "shape": dataset.shape,
             "columns": list(dataset.columns),
@@ -329,6 +416,12 @@ class DatasetTracker:
 
     async def _compute_dataset_checksum_async(self, dataset: Union[Dataset, DatasetDict], progress_callback=None) -> str:
         """Async version of dataset checksum computation with multiprocessing."""
+        if not DATASETS_AVAILABLE:
+            raise RuntimeError(
+                "Hugging Face `datasets` package is required to track Dataset instances. "
+                "Install `datasets` to enable this functionality."
+            )
+
         if isinstance(dataset, DatasetDict):
             # Hash each split
             hash_obj = hashlib.new(self.algorithm)
@@ -438,6 +531,11 @@ class DatasetTracker:
 
     def _compute_dataset_checksum(self, dataset: Union[Dataset, DatasetDict]) -> str:
         """Compute checksum of a Hugging Face dataset."""
+        if not DATASETS_AVAILABLE:
+            raise RuntimeError(
+                "Hugging Face `datasets` package is required to track Dataset instances. "
+                "Install `datasets` to enable this functionality."
+            )
         hash_obj = hashlib.new(self.algorithm)
 
         if isinstance(dataset, DatasetDict):
