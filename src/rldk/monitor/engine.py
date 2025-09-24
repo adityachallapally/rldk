@@ -33,7 +33,6 @@ import pandas as pd
 
 from .presets import FIELD_MAP_PRESETS, RULE_PRESETS, get_field_map_preset, get_rule_preset
 from .regexes import create_line_parser
-from rldk.reward import health as reward_health_function
 
 logger = logging.getLogger(__name__)
 
@@ -1018,6 +1017,12 @@ class _RewardHealthMonitor:
             return []
 
         self._last_step_evaluated[key] = event.step
+
+        try:
+            from rldk.reward import health as reward_health_function
+        except ImportError as exc:  # pragma: no cover - defensive guard
+            logger.debug("Reward health analysis unavailable: %s", exc)
+            return []
 
         try:
             report = reward_health_function(df, reward_col=reward_col, step_col="step")
