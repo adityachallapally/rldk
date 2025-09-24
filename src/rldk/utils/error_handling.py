@@ -9,11 +9,6 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
 
-try:  # pragma: no cover - optional dependency
-    from .validation import validate_wandb_uri
-except ImportError:  # pragma: no cover - optional dependency missing
-    validate_wandb_uri = None  # type: ignore[assignment]
-
 
 class RLDKError(Exception):
     """Base exception for RLDK-specific errors."""
@@ -45,6 +40,12 @@ class EvaluationError(RLDKError):
 class RLDKTimeoutError(RLDKError):
     """Raised when operations timeout."""
     pass
+
+
+try:  # pragma: no cover - optional dependency
+    from .validation import validate_wandb_uri
+except ImportError:  # pragma: no cover - optional dependency missing
+    validate_wandb_uri = None  # type: ignore[assignment]
 
 
 def format_error_message(error: Exception, context: Optional[str] = None) -> str:
