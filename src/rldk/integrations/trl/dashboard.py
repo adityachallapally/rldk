@@ -7,13 +7,17 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 try:
-    import plotly.express as px
     import plotly.graph_objects as go
     import streamlit as st
     from plotly.subplots import make_subplots
     STREAMLIT_AVAILABLE = True
 except ImportError:
     STREAMLIT_AVAILABLE = False
+
+try:  # Plotly Express is optional – gracefully degrade if unavailable
+    import plotly.express as px
+except Exception:
+    px = None
 
 from .callbacks import RLDKCallback, RLDKMetrics
 
@@ -209,7 +213,6 @@ class RLDKDashboard:
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
 from plotly.subplots import make_subplots
 import json
 import time
