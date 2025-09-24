@@ -1113,6 +1113,7 @@ RLDK builds on the work of the open-source RL community, particularly:
 ## 📞 **Support**
 
 - **Documentation**: [GitHub Wiki](https://github.com/your-org/rldk/wiki)
+- **Reports & Summaries**: [docs/reports/](docs/reports/)
 - **Issues**: [GitHub Issues](https://github.com/your-org/rldk/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/your-org/rldk/discussions)
 - **Examples**: [Examples Directory](examples/)

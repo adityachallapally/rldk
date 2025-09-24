@@ -9,6 +9,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+try:  # pragma: no cover - defensive for older numpy installs
+    import numpy as _np
+
+    if not isinstance(getattr(_np, "bool_", bool), type):
+        _np.bool_ = bool  # type: ignore[attr-defined]
+except ImportError:  # pragma: no cover - numpy is an optional dependency
+    pass
+
 # Add src directory to Python path
 project_root = Path(__file__).parent.parent
 src_path = project_root / "src"
@@ -68,6 +76,10 @@ def mock_datasets():
 @pytest.fixture(autouse=True)
 def setup_test_environment():
     """Set up test environment before each test."""
+    from rldk.utils.seed import reset_global_seed
+
+    reset_global_seed()
+
     # Set environment variables for testing
     os.environ["RLDK_TEST_MODE"] = "true"
     os.environ["WANDB_MODE"] = "disabled"
@@ -88,6 +100,8 @@ def setup_test_environment():
         del os.environ["PYTHONPATH"]
     else:
         os.environ["PYTHONPATH"] = original_pythonpath
+
+    reset_global_seed()
 
 
 # Pytest configuration

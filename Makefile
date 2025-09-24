@@ -359,23 +359,23 @@ profile-clean:
 test-trl:
 	@echo "Running all TRL tests (unit + integration without downloads)..."
 	@echo "1. Running unit tests..."
-	python3 -m pytest test_trl_unit.py -v --tb=short
+	python3 -m pytest tests/integration/test_trl_unit.py -v --tb=short
 	@echo "2. Running integration tests (without model downloads)..."
-	SKIP_MODEL_LOADING=true python3 test_trl_integration.py
+	SKIP_MODEL_LOADING=true python3 tests/integration/test_trl_integration.py
 	@echo "✅ All TRL tests completed!"
 
 test-trl-unit:
 	@echo "Running TRL unit tests..."
-	python3 -m pytest test_trl_unit.py -v --tb=short
+	python3 -m pytest tests/integration/test_trl_unit.py -v --tb=short
 	@echo "✅ TRL unit tests completed!"
 
 test-trl-integration:
 	@echo "Running TRL integration tests (without model downloads)..."
-	SKIP_MODEL_LOADING=true python3 test_trl_integration.py
+	SKIP_MODEL_LOADING=true python3 tests/integration/test_trl_integration.py
 	@echo "✅ TRL integration tests completed!"
 
 test-trl-slow:
 	@echo "Running TRL tests with real model downloads (slow)..."
 	@echo "⚠️  This will download models and may take several minutes"
-	python3 -m pytest test_trl_integration_optional.py -m integration -v --tb=short
+	python3 -m pytest tests/integration/test_trl_integration_optional.py -m integration -v --tb=short
 	@echo "✅ TRL slow tests completed!"

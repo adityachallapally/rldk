@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-# Add the src directory to the path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+import _path_setup  # noqa: F401
+
 
 def test_reward_analysis():
     """Test reward model health analysis and drift detection"""

@@ -3,6 +3,7 @@
 import json
 import os
 import time
+from pathlib import Path
 from typing import Any, Dict, List
 
 import numpy as np
@@ -16,6 +17,7 @@ from rldk.integrations.trl import (
     PPOMonitor,
     RLDKCallback,
     RLDKDashboard,
+    RLDKMetrics,
 )
 from rldk.utils.math_utils import safe_divide, safe_rate_calculation
 
@@ -31,7 +33,12 @@ class CustomRLDKCallback(RLDKCallback):
     """Custom RLDK callback with additional monitoring capabilities."""
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        try:
+            super().__init__(*args, **kwargs)
+            self._fallback_mode = False
+        except ImportError:
+            self._initialize_without_trl(*args, **kwargs)
+            self._fallback_mode = True
         self.custom_metrics_history: List[Dict[str, Any]] = []
         self.performance_benchmarks = {
             "target_reward": 1.0,
@@ -150,7 +157,53 @@ class CustomRLDKCallback(RLDKCallback):
             print(f"📊 Custom metrics saved to {custom_path}")
 
         # Call parent method to save standard metrics
-        super().save_metrics_history()
+        if not getattr(self, "_fallback_mode", False):
+            super().save_metrics_history()
+
+    def _initialize_without_trl(
+        self,
+        output_dir: str | None = None,
+        log_interval: int = 10,
+        alert_thresholds: Dict[str, float] | None = None,
+        enable_checkpoint_analysis: bool = True,
+        enable_resource_monitoring: bool = True,
+        run_id: str | None = None,
+        enable_jsonl_logging: bool = True,
+        jsonl_log_interval: int = 1,
+        **_: Any,
+    ) -> None:
+        """Minimal initialization path used when TRL isn't available."""
+
+        self.output_dir = Path(output_dir) if output_dir else Path("./rldk_logs")
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+
+        self.log_interval = log_interval
+        self.enable_checkpoint_analysis = enable_checkpoint_analysis
+        self.enable_resource_monitoring = enable_resource_monitoring
+        self.enable_jsonl_logging = enable_jsonl_logging
+        self.jsonl_log_interval = jsonl_log_interval
+
+        self.alert_thresholds = {
+            "kl_divergence": 0.1,
+            "clip_fraction": 0.2,
+            "gradient_norm": 1.0,
+            "reward_std": 0.5,
+            "loss_spike": 2.0,
+            "memory_usage": 0.9,
+        }
+        if alert_thresholds:
+            self.alert_thresholds.update(alert_thresholds)
+
+        self.metrics_history = []
+        self.current_metrics = RLDKMetrics()
+        self.step_start_time = time.time()
+        self.run_start_time = time.time()
+
+        self.run_id = run_id or f"rldk_run_{int(self.run_start_time)}"
+        self.current_metrics.run_id = self.run_id
+
+        self.jsonl_file = None
+        self.alerts = []
 
 
 class AdvancedPPOMonitor(PPOMonitor):
@@ -243,6 +296,33 @@ class AdvancedPPOMonitor(PPOMonitor):
 
         # Call parent method to save standard PPO analysis
         super().save_ppo_analysis()
+
+
+class AdvancedMonitoringCallback(CustomRLDKCallback):
+    """Backward compatible alias exposing the advanced monitoring features."""
+
+    # This subclass exists to preserve the import path used in legacy tooling.
+    # All functionality is provided by ``CustomRLDKCallback``.
+    def _calculate_tokens_per_second(self) -> float:
+        """Compute tokens per second using safe rate calculations for tests."""
+
+        total_tokens = 0.0
+        total_time = 0.0
+
+        for metric in getattr(self, "metrics_history", []):
+            tokens_in = getattr(metric, "tokens_in", 0) or 0
+            tokens_out = getattr(metric, "tokens_out", 0) or 0
+            step_time = getattr(metric, "step_time", 0) or 0
+
+            total_tokens += float(tokens_in) + float(tokens_out)
+            total_time += float(step_time)
+
+        tokens_per_second = safe_rate_calculation(total_tokens, total_time, 0.0)
+
+        if hasattr(self, "current_metrics"):
+            setattr(self.current_metrics, "tokens_per_second", tokens_per_second)
+
+        return tokens_per_second
 
 
 def test_advanced_monitoring():

@@ -3,6 +3,7 @@
 
 import sys
 import time
+import _path_setup  # noqa: F401
 
 
 def test_import_time(module_name, max_time=2.0):

@@ -13,6 +13,37 @@ import sys
 from pathlib import Path
 
 
+def validate_project_layout() -> bool:
+    """Ensure test and documentation files follow the expected layout."""
+    project_root = Path(__file__).parent
+    issues = []
+
+    stray_tests = sorted(project_root.glob("test_*.py"))
+    if stray_tests:
+        issues.append(
+            "Top-level test scripts detected: "
+            + ", ".join(path.name for path in stray_tests)
+        )
+
+    stray_summaries = []
+    for pattern in ("*_SUMMARY.md", "notes.md"):
+        stray_summaries.extend(project_root.glob(pattern))
+    if stray_summaries:
+        issues.append(
+            "Summary markdown files must live under docs/: "
+            + ", ".join(path.name for path in sorted(stray_summaries))
+        )
+
+    if issues:
+        print("Project layout validation failed:")
+        for issue in issues:
+            print(f"  - {issue}")
+        print("\nPlease move the files into the appropriate tests/ or docs/reports/ folders.")
+        return False
+
+    return True
+
+
 def setup_environment():
     """Set up the Python environment for testing."""
     # Add src to Python path
@@ -32,6 +63,9 @@ def setup_environment():
 
 def run_tests(test_type="unit", verbose=True, specific_test=None):
     """Run tests with proper environment setup."""
+    if not validate_project_layout():
+        return 1
+
     setup_environment()
 
     # Build pytest command

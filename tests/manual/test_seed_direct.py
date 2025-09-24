@@ -11,12 +11,8 @@ import tempfile
 import numpy as np
 import torch
 
-# Add src directory to Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
-
-# Import directly from the specific file to avoid dependency issues
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src', 'rldk', 'tracking'))
-from seed_tracker import SeedTracker
+import _path_setup  # noqa: F401
+from rldk.tracking.seed_tracker import SeedTracker
 
 
 def test_seed_roundtrip():

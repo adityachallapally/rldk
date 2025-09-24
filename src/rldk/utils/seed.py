@@ -60,7 +60,7 @@ class SeedManager:
             'numpy': np.random.get_state(),
         }
 
-        if TORCH_AVAILABLE and torch.cuda.is_available():
+        if TORCH_AVAILABLE:
             self._original_states['torch_cpu'] = torch.get_rng_state()
             if torch.cuda.is_available():
                 self._original_states['torch_cuda'] = torch.cuda.get_rng_state()
@@ -92,38 +92,62 @@ class SeedManager:
             if seed is None:
                 seed = self.default_seed
 
-            # Validate seed
-            if not isinstance(seed, int) or seed < 0:
-                raise RLDKError(
-                    f"Seed must be a non-negative integer, got: {seed}",
-                    suggestion="Use a non-negative integer seed value",
-                    error_code="INVALID_SEED",
-                    details={"provided_seed": seed, "type": type(seed).__name__}
-                )
+            # Normalize booleans and integral floats
+            if isinstance(seed, bool):
+                seed = int(seed)
+            elif isinstance(seed, float):
+                if not seed.is_integer():
+                    raise TypeError(
+                        "Seed must be an integer value",
+                    )
+                seed = int(seed)
+
+            if not isinstance(seed, int):
+                raise TypeError("Seed must be an integer value")
 
             self.seed = seed
             self.deterministic = deterministic
 
+            normalized_seed = seed if seed >= 0 else seed % (2**32)
+
             # Set Python random seed
-            random.seed(seed)
+            random.seed(normalized_seed)
 
             # Set NumPy seed
-            np.random.seed(seed)
+            np.random.seed(normalized_seed)
 
             # Store current states
             self._store_current_states()
 
         # Set PyTorch seeds outside lock to avoid deadlocks
-        if TORCH_AVAILABLE:
-            torch.manual_seed(seed)
-            if torch.cuda.is_available():
-                torch.cuda.manual_seed(seed)
-                torch.cuda.manual_seed_all(seed)
+        if TORCH_AVAILABLE and torch is not None:
+            try:
+                torch.manual_seed(normalized_seed)
+            except Exception:
+                pass
 
-            # Enable deterministic behavior if requested
+            cuda_module = getattr(torch, "cuda", None)
+            if cuda_module is not None:
+                try:
+                    manual_seed = getattr(cuda_module, "manual_seed", None)
+                    if manual_seed is not None:
+                        manual_seed(normalized_seed)
+                except Exception:
+                    pass
+
+                try:
+                    manual_seed_all = getattr(cuda_module, "manual_seed_all", None)
+                    if manual_seed_all is not None:
+                        manual_seed_all(normalized_seed)
+                except Exception:
+                    pass
+
             if deterministic:
-                torch.backends.cudnn.deterministic = True
-                torch.backends.cudnn.benchmark = False
+                try:
+                    torch.backends.cudnn.deterministic = True  # type: ignore[attr-defined]
+                    torch.backends.cudnn.benchmark = False  # type: ignore[attr-defined]
+                except Exception:
+                    pass
 
         return seed
 
@@ -174,10 +198,19 @@ class SeedManager:
             np.random.set_state(self._original_states['numpy'])
 
             # Restore PyTorch states
-            if TORCH_AVAILABLE:
+            if TORCH_AVAILABLE and 'torch_cpu' in self._original_states:
                 torch.set_rng_state(self._original_states['torch_cpu'])
                 if torch.cuda.is_available() and 'torch_cuda' in self._original_states:
                     torch.cuda.set_rng_state(self._original_states['torch_cuda'])
+
+    def reset_seed(self) -> None:
+        """Clear tracked seed metadata and restore original RNG states."""
+        self.restore_original_states()
+
+        with self._lock:
+            self.seed = None
+            self.rng_state = {}
+            self.deterministic = False
 
     def get_state_summary(self) -> Dict[str, Any]:
         """Get a summary of current RNG states.
@@ -195,11 +228,19 @@ class SeedManager:
         with self._lock:
             summary = {
                 'seed': self.seed,
+                'global_seed': self.seed,
                 'deterministic': self.deterministic,
                 'libraries': list(self.rng_state.keys()),
                 'torch_available': TORCH_AVAILABLE,
                 'cuda_available': torch.cuda.is_available() if TORCH_AVAILABLE else False,
+                'python_state': self.rng_state.get('python'),
+                'numpy_state': self.rng_state.get('numpy'),
             }
+
+            if TORCH_AVAILABLE:
+                summary['torch_cpu_state'] = self.rng_state.get('torch_cpu')
+                if torch.cuda.is_available():
+                    summary['torch_cuda_state'] = self.rng_state.get('torch_cuda')
 
         if TORCH_AVAILABLE and self.deterministic:
             summary['cudnn_deterministic'] = torch.backends.cudnn.deterministic
@@ -298,6 +339,11 @@ def get_current_seed() -> Optional[int]:
     return _global_seed_manager.seed
 
 
+def reset_global_seed() -> None:
+    """Reset the tracked global seed and RNG checkpoints to their defaults."""
+    _global_seed_manager.reset_seed()
+
+
 def restore_seed_state():
     """Restore random number generator states to the last checkpoint.
 
@@ -313,7 +359,11 @@ def restore_seed_state():
         >>> # ... some random operations ...
         >>> rldk.restore_seed_state()  # Back to state after set_global_seed(42)
     """
-    _global_seed_manager.restore_states()
+    try:
+        _global_seed_manager.restore_states()
+    except RLDKError:
+        # No checkpoint has been established yet; treat as no-op for callers
+        return
 
 
 def restore_original_state():

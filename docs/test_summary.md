@@ -80,7 +80,6 @@
 - `run_comparison.json` - Training run comparison
 
 ### Visualizations
-- `ckpt_diff.png` - Checkpoint comparison visualization
 - `reward_drift.png` - Reward drift visualization
 
 ### Evaluation Results

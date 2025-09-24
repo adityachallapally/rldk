@@ -2,6 +2,8 @@
 
 import signal
 import subprocess
+import signal
+import subprocess
 from contextlib import contextmanager
 from functools import wraps
 from typing import Callable, List, Union
@@ -29,18 +31,24 @@ def with_timeout(timeout_seconds: float):
                     details={"timeout_seconds": timeout_seconds}
                 )
 
-            # Set up timeout - use ceiling to ensure we don't timeout early
             import math
-            timeout_int = max(1, math.ceil(timeout_seconds))
+
             old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(timeout_int)
+            if hasattr(signal, "setitimer"):
+                signal.setitimer(signal.ITIMER_REAL, max(timeout_seconds, 0.001))
+            else:
+                timeout_int = max(1, math.ceil(timeout_seconds))
+                signal.alarm(timeout_int)
 
             try:
                 result = func(*args, **kwargs)
                 return result
             finally:
                 # Restore old handler
-                signal.alarm(0)
+                if hasattr(signal, "setitimer"):
+                    signal.setitimer(signal.ITIMER_REAL, 0)
+                else:
+                    signal.alarm(0)
                 signal.signal(signal.SIGALRM, old_handler)
 
         return wrapper

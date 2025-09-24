@@ -8,8 +8,8 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-# Add the src directory to the path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+import _path_setup  # noqa: F401
+
 
 def test_evaluation_suites():
     """Test evaluation suites with different model sizes"""

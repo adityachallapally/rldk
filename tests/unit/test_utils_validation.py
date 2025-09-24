@@ -48,11 +48,22 @@ def temp_dir():
 @pytest.fixture
 def sample_data():
     """Create sample data for testing."""
-    return {
-        'numbers': [1, 2, 3, 4, 5],
-        'strings': ['a', 'b', 'c'],
-        'mixed': [1, 'a', 2.5, 'b']
-    }
+    np.random.seed(42)
+    rows = 100
+    return pd.DataFrame({
+        "numbers": np.arange(rows),
+        "strings": [f"s{i}" for i in range(rows)],
+        "mixed": np.where(np.arange(rows) % 2 == 0, np.arange(rows), np.arange(rows) * 0.1),
+        "step": np.arange(rows),
+        "reward_mean": np.random.normal(0.5, 0.2, rows),
+        "reward_std": np.random.uniform(0.1, 0.3, rows),
+        "tokens_out": np.random.randint(10, 100, rows),
+        "repetition_penalty": np.random.uniform(0.8, 1.2, rows),
+        "human_preference": np.random.uniform(0, 1, rows),
+        "ground_truth": np.random.choice([0, 1], rows),
+        "epoch": np.random.randint(0, 10, rows),
+        "run_id": ["test_run"] * rows,
+    })
 
 
 class TestFileValidation:

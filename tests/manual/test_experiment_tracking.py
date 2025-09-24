@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test experiment tracking with real models - Fixed version without WandB
+Test experiment tracking with real models
 """
 
 import sys
@@ -9,12 +9,12 @@ import json
 from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-# Add the src directory to the path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+import _path_setup  # noqa: F401
+
 
 def test_experiment_tracking():
     """Test experiment tracking with real models"""
-    print("Testing Experiment Tracking with Real Models (No WandB)")
+    print("Testing Experiment Tracking with Real Models")
     print("=" * 60)
     
     try:
@@ -24,7 +24,7 @@ def test_experiment_tracking():
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             
-            # Configure tracking WITHOUT WandB
+            # Configure tracking
             config = TrackingConfig(
                 experiment_name="gpt2_test_experiment",
                 output_dir=temp_path,
@@ -34,8 +34,7 @@ def test_experiment_tracking():
                 enable_seed_tracking=True,
                 enable_git_tracking=True,
                 save_to_json=True,
-                save_to_yaml=True,
-                save_to_wandb=False  # Disable WandB
+                save_to_yaml=True
             )
             
             print(f"✓ TrackingConfig created successfully")
@@ -83,14 +82,6 @@ def test_experiment_tracking():
                     print(f"  - Experiment ID: {data.get('experiment_id', 'N/A')}")
                     print(f"  - Model count: {len(data.get('models', {}))}")
                     print(f"  - Metadata count: {len(data.get('metadata', {}))}")
-                    
-                    # Show some model details
-                    models = data.get('models', {})
-                    if models:
-                        model_name = list(models.keys())[0]
-                        model_info = models[model_name]
-                        print(f"  - Model '{model_name}' architecture: {model_info.get('architecture', 'N/A')}")
-                        print(f"  - Model parameters: {model_info.get('num_parameters', 'N/A')}")
             else:
                 print(f"✗ JSON file not created")
                 

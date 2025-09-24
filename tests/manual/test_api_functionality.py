@@ -2,6 +2,7 @@
 """Test basic API functionality after import optimizations."""
 
 import sys
+import _path_setup  # noqa: F401
 
 
 def test_basic_api():

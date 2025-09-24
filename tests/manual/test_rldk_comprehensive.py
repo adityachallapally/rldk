@@ -17,8 +17,8 @@ import tempfile
 import shutil
 from datetime import datetime
 
-# Add the src directory to the path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+import _path_setup  # noqa: F401
+
 
 def test_experiment_tracking():
     """Test experiment tracking with real models and data"""

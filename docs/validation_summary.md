@@ -55,7 +55,6 @@ All required files exist and are non-empty:
 - `rldk_reports/ppo_scan.json`
 - `rldk_reports/ckpt_diff.json`
 - `rldk_reports/reward_drift.json`
-- `rldk_reports/ckpt_diff.png` (34KB)
 - `rldk_reports/reward_drift.png` (63KB)
 
 #### ✅ 5. Content assertions on JSON reports

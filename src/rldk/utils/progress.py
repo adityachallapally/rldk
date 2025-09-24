@@ -302,7 +302,7 @@ class TaskTracker:
         print(f"\r{status} - {eta_str}", end="", flush=True)
 
         if total_completed >= self.total_tasks:
-            print()  # New line when complete
+            print("")  # New line when complete
 
     def get_summary(self) -> Dict[str, Any]:
         """Get summary of task completion."""
@@ -336,6 +336,7 @@ class TaskContext:
         self.tracker.complete_task(self.task_name, success, result)
 
 
+@contextmanager
 def track_tasks(total_tasks: int, description: str = "Tasks"):
     """Context manager for tracking multiple tasks."""
     tracker = TaskTracker(total_tasks, description)

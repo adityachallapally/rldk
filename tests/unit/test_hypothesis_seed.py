@@ -9,8 +9,21 @@ from typing import List
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 import pytest
-from hypothesis import assume, given
-from hypothesis import strategies as st
+try:  # pragma: no cover - optional dependency handling
+    from hypothesis import assume, given
+    from hypothesis import strategies as st
+    HYPOTHESIS_AVAILABLE = True
+except ModuleNotFoundError:  # pragma: no cover - environment dependent
+    HYPOTHESIS_AVAILABLE = False
+
+
+pytestmark = pytest.mark.skipif(
+    not HYPOTHESIS_AVAILABLE,
+    reason="hypothesis package is not installed",
+)
+
+if not HYPOTHESIS_AVAILABLE:  # pragma: no cover - optional dependency handling
+    pytest.skip("hypothesis package is not installed", allow_module_level=True)
 
 
 class TestSeedHypothesis:

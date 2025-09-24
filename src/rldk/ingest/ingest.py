@@ -2,18 +2,10 @@
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 import pandas as pd
 
-from ..adapters import (
-    CustomJSONLAdapter,
-    FlexibleDataAdapter,
-    GRPOAdapter,
-    OpenRLHFAdapter,
-    TRLAdapter,
-    WandBAdapter,
-)
 from ..io.event_schema import Event, dataframe_to_events
 from ..utils.error_handling import (
     AdapterError,
@@ -23,6 +15,9 @@ from ..utils.error_handling import (
 from ..utils.progress import spinner
 from .training_metrics_normalizer import standardize_training_metrics
 
+
+if TYPE_CHECKING:  # pragma: no cover - used for type hints only
+    from ..adapters.base import BaseAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -109,30 +104,15 @@ def ingest_runs(
 
     # Create appropriate adapter
     try:
-        if adapter_hint == "trl":
-            adapter = TRLAdapter(source)
-        elif adapter_hint == "openrlhf":
-            adapter = OpenRLHFAdapter(source)
-        elif adapter_hint == "wandb":
-            adapter = WandBAdapter(source)
-        elif adapter_hint == "custom_jsonl":
-            adapter = CustomJSONLAdapter(source)
-        elif adapter_hint == "grpo":
-            adapter = GRPOAdapter(source)
-        elif adapter_hint == "flexible":
-            adapter = FlexibleDataAdapter(
-                source,
-                field_map=field_map,
-                config_file=config_file,
-                required_fields=required_fields or ['step', 'reward'],
-                validation_mode=validation_mode
-            )
-        else:
-            raise ValidationError(
-                f"Unknown adapter type: {adapter_hint}",
-                suggestion=f"Use one of: {', '.join(valid_adapters)}",
-                error_code="UNKNOWN_ADAPTER_TYPE"
-            )
+        adapter = _create_adapter(
+            adapter_hint,
+            source,
+            field_map=field_map,
+            config_file=config_file,
+            validation_mode=validation_mode,
+            required_fields=required_fields,
+            valid_adapters=valid_adapters,
+        )
     except Exception as e:
         raise AdapterError(
             f"Failed to create adapter: {e}",
@@ -246,6 +226,56 @@ def ingest_runs_to_events(
     return events
 
 
+def _create_adapter(
+    adapter_hint: str,
+    source: Union[str, Path],
+    *,
+    field_map: Optional[Dict[str, str]],
+    config_file: Optional[Union[str, Path]],
+    validation_mode: str,
+    required_fields: Optional[List[str]],
+    valid_adapters: List[str],
+) -> "BaseAdapter":
+    """Lazily construct adapters to avoid circular imports."""
+
+    if adapter_hint == "trl":
+        from ..adapters.trl import TRLAdapter
+
+        return TRLAdapter(source)
+    if adapter_hint == "openrlhf":
+        from ..adapters.openrlhf import OpenRLHFAdapter
+
+        return OpenRLHFAdapter(source)
+    if adapter_hint == "wandb":
+        from ..adapters.wandb import WandBAdapter
+
+        return WandBAdapter(source)
+    if adapter_hint == "custom_jsonl":
+        from ..adapters.custom_jsonl import CustomJSONLAdapter
+
+        return CustomJSONLAdapter(source)
+    if adapter_hint == "grpo":
+        from ..adapters.grpo import GRPOAdapter
+
+        return GRPOAdapter(source)
+    if adapter_hint == "flexible":
+        from ..adapters.flexible import FlexibleDataAdapter
+
+        return FlexibleDataAdapter(
+            source,
+            field_map=field_map,
+            config_file=config_file,
+            required_fields=required_fields or ["step", "reward"],
+            validation_mode=validation_mode,
+        )
+
+    raise ValidationError(
+        f"Unknown adapter type: {adapter_hint}",
+        suggestion=f"Use one of: {', '.join(valid_adapters)}",
+        error_code="UNKNOWN_ADAPTER_TYPE",
+    )
+
+
 def _detect_adapter_type(source: Union[str, Path]) -> str:
     """Auto-detect adapter type from source content."""
     source_path = Path(source)
@@ -254,21 +284,29 @@ def _detect_adapter_type(source: Union[str, Path]) -> str:
         return "flexible"  # Default to flexible adapter
 
     # Check for our custom JSONL format first
+    from ..adapters.custom_jsonl import CustomJSONLAdapter
+
     custom_adapter = CustomJSONLAdapter(source_path)
     if custom_adapter.can_handle():
         return "custom_jsonl"
 
     # Check for TRL-specific patterns
+    from ..adapters.trl import TRLAdapter
+
     trl_adapter = TRLAdapter(source_path)
     if trl_adapter.can_handle():
         return "trl"
 
     # Check for OpenRLHF-specific patterns
+    from ..adapters.openrlhf import OpenRLHFAdapter
+
     openrlhf_adapter = OpenRLHFAdapter(source_path)
     if openrlhf_adapter.can_handle():
         return "openrlhf"
 
     # Check for GRPO-specific patterns before falling back to flexible adapter
+    from ..adapters.grpo import GRPOAdapter
+
     grpo_adapter = GRPOAdapter(source_path)
     if grpo_adapter.can_handle():
         return "grpo"

@@ -2,14 +2,16 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Iterator
+from typing import TYPE_CHECKING, Any, Dict, Iterator
 
 import pandas as pd
 
-from rldk.adapters.flexible import FlexibleDataAdapter
 from rldk.forensics.ppo_scan import scan_ppo_events
 from rldk.io.readers import read_jsonl, read_tensorboard_export, read_wandb_export
 from rldk.utils.error_handling import AdapterError, ValidationError
+
+if TYPE_CHECKING:  # pragma: no cover - import cycle guard
+    from rldk.adapters.flexible import FlexibleDataAdapter
 
 
 def scan_logs(run_or_export: str) -> Dict[str, Any]:
@@ -32,11 +34,7 @@ def detect_and_read_logs(path: Path) -> Iterator[Dict[str, Any]]:
     """Detect log format and read events with enhanced format support."""
 
     try:
-        adapter = FlexibleDataAdapter(path)
-        df = adapter.load()
-
-        for _, row in df.iterrows():
-            yield row.to_dict()
+        yield from _load_with_flexible_adapter(path)
         return
 
     except (ValidationError, AdapterError):
@@ -81,10 +79,7 @@ def detect_and_read_logs(path: Path) -> Iterator[Dict[str, Any]]:
 
         if data_files:
             try:
-                adapter = FlexibleDataAdapter(data_files[0])
-                df = adapter.load()
-                for _, row in df.iterrows():
-                    yield row.to_dict()
+                yield from _load_with_flexible_adapter(data_files[0])
                 return
             except (ValidationError, AdapterError):
                 pass
@@ -127,3 +122,15 @@ def detect_and_read_logs(path: Path) -> Iterator[Dict[str, Any]]:
         f"TensorBoard export directories, W&B export directories. "
         f"For custom formats, ensure data contains standard RL fields like 'step', 'reward', 'kl'."
     )
+
+
+def _load_with_flexible_adapter(path: Path) -> Iterator[Dict[str, Any]]:
+    """Attempt to load data using the FlexibleDataAdapter without triggering import cycles."""
+
+    from rldk.adapters.flexible import FlexibleDataAdapter
+
+    adapter = FlexibleDataAdapter(path)
+    df = adapter.load()
+
+    for _, row in df.iterrows():
+        yield row.to_dict()

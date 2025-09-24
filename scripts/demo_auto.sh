@@ -206,7 +206,6 @@ main() {
     reports=(
         "rldk_reports/divergence_report.json"
         "rldk_reports/ckpt_diff.json"
-        "rldk_reports/ckpt_diff.png"
         "rldk_reports/determinism_card.json"
         "rldk_reports/ppo_scan.json"
         "rldk_reports/reward_drift.json"

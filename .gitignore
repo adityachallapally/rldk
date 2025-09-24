@@ -137,6 +137,7 @@ diff_analysis/
 determinism_analysis/
 !reference/expected/determinism_analysis/
 !reference/expected/determinism_analysis/**
+rldk_reports/*.png
 *.jsonl
 !tests/fixtures/**/*.jsonl
 out.jsonl
