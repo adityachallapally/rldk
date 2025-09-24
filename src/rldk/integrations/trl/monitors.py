@@ -11,12 +11,37 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from transformers import (
-    TrainerCallback,
-    TrainerControl,
-    TrainerState,
-    TrainingArguments,
-)
+try:
+    from transformers import (
+        TrainerCallback,
+        TrainerControl,
+        TrainerState,
+        TrainingArguments,
+    )
+    TRAINER_API_AVAILABLE = True
+except ImportError:  # pragma: no cover - optional dependency guard
+    TRAINER_API_AVAILABLE = False
+
+    class _TrainerAPINotAvailableStub:
+        _ERROR = (
+            "Transformers trainer callbacks are required for RLDK's TRL monitors. "
+            "Install with: pip install 'transformers[torch]'"
+        )
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            raise ImportError(self._ERROR)
+
+    class TrainerCallback(_TrainerAPINotAvailableStub):  # type: ignore[override]
+        pass
+
+    class TrainerControl(_TrainerAPINotAvailableStub):  # type: ignore[override]
+        pass
+
+    class TrainerState(_TrainerAPINotAvailableStub):  # type: ignore[override]
+        pass
+
+    class TrainingArguments(_TrainerAPINotAvailableStub):  # type: ignore[override]
+        pass
 
 try:  # pragma: no cover - optional dependency for typing compatibility
     import torch
@@ -150,6 +175,12 @@ class PPOMonitor(TrainerCallback):
             enable_advanced_analytics: Enable advanced PPO analytics
             run_id: Unique identifier for this run
         """
+        if not TRAINER_API_AVAILABLE:
+            raise ImportError(
+                "Transformers trainer callbacks are required for PPOMonitor. "
+                "Install with: pip install 'transformers[torch]'"
+            )
+
         if not TRL_AVAILABLE:
             raise ImportError(
                 "TRL is required for PPOMonitor. Install with: pip install trl"
@@ -505,6 +536,16 @@ class CheckpointMonitor(TrainerCallback):
         run_id: Optional[str] = None,
     ):
         """Initialize checkpoint monitor."""
+        if not TRAINER_API_AVAILABLE:
+            raise ImportError(
+                "Transformers trainer callbacks are required for CheckpointMonitor. "
+                "Install with: pip install 'transformers[torch]'"
+            )
+
+        if not TRL_AVAILABLE:
+            raise ImportError(
+                "TRL is required for CheckpointMonitor. Install with: pip install trl"
+            )
         self.output_dir = Path(output_dir) if output_dir else Path("./rldk_checkpoint_logs")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 

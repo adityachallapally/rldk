@@ -9,12 +9,40 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
-from transformers import (
-    TrainerCallback,
-    TrainerControl,
-    TrainerState,
-    TrainingArguments,
-)
+try:
+    from transformers import (
+        TrainerCallback,
+        TrainerControl,
+        TrainerState,
+        TrainingArguments,
+    )
+    TRAINER_API_AVAILABLE = True
+except ImportError:  # pragma: no cover - transformers Trainer APIs are optional in some envs
+    TRAINER_API_AVAILABLE = False
+
+    class _TrainerAPINotAvailableStub:
+        """Minimal stub that raises a helpful error when trainer APIs are missing."""
+
+        _ERROR = (
+            "Transformers trainer callbacks are required for the TRL integrations. "
+            "Install the full transformers package with trainer extras, for example: "
+            "pip install 'transformers[torch]'"
+        )
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - short helper
+            raise ImportError(self._ERROR)
+
+    class TrainerCallback(_TrainerAPINotAvailableStub):  # type: ignore[override]
+        pass
+
+    class TrainerControl(_TrainerAPINotAvailableStub):  # type: ignore[override]
+        pass
+
+    class TrainerState(_TrainerAPINotAvailableStub):  # type: ignore[override]
+        pass
+
+    class TrainingArguments(_TrainerAPINotAvailableStub):  # type: ignore[override]
+        pass
 
 try:
     from trl import PPOTrainer
@@ -153,6 +181,12 @@ class RLDKCallback(TrainerCallback):
             enable_resource_monitoring: Whether to monitor resource usage
             run_id: Unique identifier for this training run
         """
+        if not TRAINER_API_AVAILABLE:
+            raise ImportError(
+                "Transformers trainer callbacks are required for RLDKCallback. "
+                "Install with: pip install 'transformers[torch]'"
+            )
+
         if not TRL_AVAILABLE:
             raise ImportError(
                 "TRL is required for RLDKCallback. Install with: pip install trl"

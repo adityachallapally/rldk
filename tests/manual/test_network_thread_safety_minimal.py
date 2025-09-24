@@ -1,5 +1,6 @@
 """Minimal thread safety tests for network monitoring components with mocked dependencies."""
 
+import importlib.util
 import sys
 import threading
 import time
@@ -20,8 +21,24 @@ from rldk.integrations.openrlhf.network_monitor import (
 # Mock the required dependencies before importing
 sys.modules['psutil'] = MagicMock()
 sys.modules['numpy'] = MagicMock()
-sys.modules['torch'] = MagicMock()
-sys.modules['torch.distributed'] = MagicMock()
+_torch_mock = MagicMock()
+_torch_mock.__spec__ = importlib.util.spec_from_loader("torch", loader=None)
+sys.modules['torch'] = _torch_mock
+_torch_distributed_mock = MagicMock()
+_torch_distributed_mock.__spec__ = importlib.util.spec_from_loader(
+    "torch.distributed", loader=None
+)
+sys.modules['torch.distributed'] = _torch_distributed_mock
+
+
+def test_torch_mock_sets_module_spec() -> None:
+    """Ensure mocked torch module provides a ModuleSpec for dataset utilities."""
+
+    torch_spec = getattr(sys.modules['torch'], "__spec__", None)
+    dist_spec = getattr(sys.modules['torch.distributed'], "__spec__", None)
+
+    assert torch_spec is not None, "torch mock is missing __spec__"
+    assert dist_spec is not None, "torch.distributed mock is missing __spec__"
 
 
 def test_network_diagnostics_thread_safety():

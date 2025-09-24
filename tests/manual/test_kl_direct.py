@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Direct test script for KL divergence functionality."""
 
+import _path_setup  # noqa: F401
+
 import warnings
 
 import numpy as np
 
 from rldk.evals.metrics import (
-import _path_setup  # noqa: F401
     calculate_kl_divergence,
     calculate_kl_divergence_between_runs,
 )

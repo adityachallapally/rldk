@@ -13,10 +13,27 @@ import _path_setup  # noqa: F401
 # Mock the required dependencies before importing
 sys.modules['psutil'] = MagicMock()
 sys.modules['numpy'] = MagicMock()
-sys.modules['torch'] = MagicMock()
-sys.modules['torch.distributed'] = MagicMock()
+_torch_mock = MagicMock()
+_torch_mock.__spec__ = importlib.util.spec_from_loader("torch", loader=None)
+sys.modules['torch'] = _torch_mock
+_torch_distributed_mock = MagicMock()
+_torch_distributed_mock.__spec__ = importlib.util.spec_from_loader(
+    "torch.distributed", loader=None
+)
+sys.modules['torch.distributed'] = _torch_distributed_mock
 
 SRC_PATH = (_path_setup.PROJECT_ROOT / "src").resolve()
+
+
+def test_mocked_torch_module_has_spec() -> None:
+    """Regression test to ensure mocked torch modules provide __spec__."""
+
+    torch_spec = getattr(sys.modules['torch'], "__spec__", None)
+    dist_spec = getattr(sys.modules['torch.distributed'], "__spec__", None)
+
+    assert torch_spec is not None, "torch mock missing __spec__"
+    assert dist_spec is not None, "torch.distributed mock missing __spec__"
+
 
 try:
     network_monitor_path = (

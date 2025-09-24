@@ -540,8 +540,15 @@ class TestFlexibleJSONLAdapter:
 
         original_stat = Path.stat
 
-        def fake_stat(path_obj: Path):
-            result = original_stat(path_obj)
+        def fake_stat(path_obj: Path, *args, follow_symlinks: bool | None = None, **kwargs):
+            result = original_stat(
+                path_obj,
+                *args,
+                follow_symlinks=follow_symlinks if follow_symlinks is not None else kwargs.pop(
+                    "follow_symlinks", True
+                ),
+                **kwargs,
+            )
             if path_obj == file_path:
                 values = list(result)
                 values[6] = 101 * 1024 * 1024
