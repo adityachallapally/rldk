@@ -27,13 +27,20 @@ class TestTRLImports:
 
     def test_rldk_trl_imports(self):
         """Test that RLDK TRL integration can be imported."""
-        from rldk.integrations.trl import (
-            CheckpointMonitor,
-            PPOMonitor,
-            RLDKCallback,
-            RLDKDashboard,
-        )
-        assert True
+        try:
+            from rldk.integrations.trl import (
+                CheckpointMonitor,
+                PPOMonitor,
+                RLDKCallback,
+                RLDKDashboard,
+            )
+        except ImportError as exc:
+            pytest.skip(str(exc))
+        else:
+            assert CheckpointMonitor
+            assert PPOMonitor
+            assert RLDKCallback
+            assert RLDKDashboard
 
 
 class TestRLDKCallbacks:
@@ -41,30 +48,68 @@ class TestRLDKCallbacks:
 
     def test_rldk_callback_creation(self):
         """Test RLDK callback creation."""
-        from rldk.integrations.trl import RLDKCallback
+        try:
+            from rldk.integrations.trl import RLDKCallback
+        except ImportError as exc:
+            pytest.skip(str(exc))
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            callback = RLDKCallback(output_dir=temp_dir)
+            try:
+                callback = RLDKCallback(output_dir=temp_dir)
+            except ImportError as exc:
+                pytest.skip(str(exc))
             assert callback is not None
             assert str(callback.output_dir) == temp_dir
 
     def test_ppo_monitor_creation(self):
         """Test PPO monitor creation."""
-        from rldk.integrations.trl import PPOMonitor
+        try:
+            from rldk.integrations.trl import PPOMonitor
+        except ImportError as exc:
+            pytest.skip(str(exc))
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            monitor = PPOMonitor(output_dir=temp_dir)
+            try:
+                monitor = PPOMonitor(output_dir=temp_dir)
+            except ImportError as exc:
+                pytest.skip(str(exc))
             assert monitor is not None
             assert str(monitor.output_dir) == temp_dir
 
     def test_checkpoint_monitor_creation(self):
         """Test checkpoint monitor creation."""
-        from rldk.integrations.trl import CheckpointMonitor
+        try:
+            from rldk.integrations.trl import CheckpointMonitor
+        except ImportError as exc:
+            pytest.skip(str(exc))
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            monitor = CheckpointMonitor(output_dir=temp_dir)
+            try:
+                monitor = CheckpointMonitor(output_dir=temp_dir)
+            except ImportError as exc:
+                pytest.skip(str(exc))
             assert monitor is not None
             assert str(monitor.output_dir) == temp_dir
+
+    def test_rldk_callback_warns_without_event_schema(self, monkeypatch):
+        """JSONL logging should emit a warning instead of failing when schema missing."""
+
+        try:
+            from rldk.integrations.trl import RLDKCallback
+            from src.rldk.integrations.trl import callbacks as trl_callbacks
+        except ImportError as exc:
+            pytest.skip(str(exc))
+
+        if not getattr(trl_callbacks, "TRAINER_API_AVAILABLE", True):
+            pytest.skip("Transformers trainer callbacks unavailable")
+        if not getattr(trl_callbacks, "TRL_AVAILABLE", True):
+            pytest.skip("TRL integration unavailable")
+
+        monkeypatch.setattr(trl_callbacks, "EVENT_SCHEMA_AVAILABLE", False)
+
+        with tempfile.TemporaryDirectory() as temp_dir, pytest.warns(UserWarning):
+            callback = RLDKCallback(output_dir=temp_dir, enable_jsonl_logging=True)
+        assert callback.enable_jsonl_logging is False
 
 
 class TestPPOConfig:
@@ -95,7 +140,7 @@ class TestPPOConfig:
 class TestGRPOConfig:
     """Test GRPO configuration helpers."""
 
-    def test_grpo_config_cpu_fallback(self):
+    def test_grpo_config_cpu_fallback(self, monkeypatch):
         """Ensure GRPOConfig defaults disable unsupported precision on CPU."""
 
         try:
@@ -104,9 +149,17 @@ class TestGRPOConfig:
             pytest.skip("GRPOConfig helper unavailable")
 
         try:
-            config = create_grpo_config()
-        except ImportError:
-            pytest.skip("GRPOConfig not available in this TRL version")
+            from trl import GRPOConfig  # noqa: F401
+        except ImportError as exc:  # pragma: no cover - TRL without GRPO support
+            pytest.skip(str(exc))
+
+        from rldk.integrations.trl import utils as trl_utils
+
+        monkeypatch.setattr(trl_utils, "_accelerator_available", lambda: False)
+        monkeypatch.setattr(trl_utils, "_bf16_supported", lambda: False)
+
+        with pytest.warns(RuntimeWarning):
+            config = create_grpo_config(bf16=True, fp16=True)
 
         assert config.bf16 is False
         assert config.fp16 is False

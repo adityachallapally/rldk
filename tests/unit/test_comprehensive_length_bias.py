@@ -9,10 +9,18 @@ from src.rldk.forensics.comprehensive_ppo_forensics import (
     ComprehensivePPOMetrics,
 )
 from src.rldk.integrations.trl import monitors as trl_monitors
-from src.rldk.integrations.trl.monitors import ComprehensivePPOMonitor
+from src.rldk.integrations.trl.monitors import (
+    ComprehensivePPOMonitor,
+    TRAINER_API_AVAILABLE,
+)
 from src.rldk.monitor.engine import Event, MonitorEngine, load_rules
 from src.rldk.monitor.presets import get_rule_preset
 
+
+pytestmark = pytest.mark.skipif(
+    not TRAINER_API_AVAILABLE,
+    reason="Transformers trainer callbacks unavailable",
+)
 
 @pytest.fixture
 def response_batch() -> list[dict[str, float | str]]:

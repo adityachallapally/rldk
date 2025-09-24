@@ -15,6 +15,7 @@ python3 -m venv "${VENV_DIR}"
 # shellcheck disable=SC1091
 source "${VENV_DIR}/bin/activate"
 python -m pip install --upgrade pip >/dev/null
+python -m pip install --no-cache-dir -r "${ROOT_DIR}/requirements-dev.txt" >/dev/null
 python -m pip install --no-cache-dir -e "${ROOT_DIR}" >/dev/null
 
 export TRANSFORMERS_NO_ADVISORY_WARNINGS=1

@@ -102,7 +102,8 @@ def _apply_precision_fallbacks(config_kwargs: Dict[str, Any]) -> Dict[str, Any]:
                 updated_kwargs["torch_dtype"] = getattr(torch, "float32", None)
 
     if not _bf16_supported():
-        if updated_kwargs.get("bf16"):
+        original_bf16 = updated_kwargs.pop("bf16", None)
+        if original_bf16:
             warnings.warn(
                 "Disabling bf16 because the current hardware does not support it.",
                 RuntimeWarning,

@@ -3,10 +3,17 @@ from __future__ import annotations
 import logging
 
 import pandas as pd
-import pandas.testing as pdt
 import pytest
 
 from rldk.ingest import standardize_training_metrics
+
+try:  # pragma: no cover - compatibility shim for minimal pandas builds
+    import pandas.testing as pdt
+except ImportError:  # pragma: no cover - pandas < 0.24 style
+    try:
+        from pandas import testing as pdt  # type: ignore[attr-defined]
+    except ImportError:  # pragma: no cover - fallback when testing helpers absent
+        pdt = None  # type: ignore[assignment]
 
 
 def test_standardize_schema_coerces_numeric_columns() -> None:
@@ -44,6 +51,7 @@ def test_standardize_schema_drops_rows_with_invalid_step(caplog: pytest.LogCaptu
     assert any("Dropped 2 row" in message for message in caplog.messages)
 
 
+@pytest.mark.skipif(pdt is None, reason="pandas.testing helpers unavailable")
 def test_standardize_schema_column_order_and_idempotent() -> None:
     raw = pd.DataFrame(
         {
