@@ -120,10 +120,10 @@ class TestKLDivergenceFixes:
     def test_kl_schedule_tracker_robustness(self, mock_numpy):
         """Test KL schedule tracker with mocked numpy."""
         try:
-            with patch('numpy', mock_numpy):
-                from rldk.forensics.kl_schedule_tracker import KLScheduleTracker
+            from rldk.forensics import kl_schedule_tracker as tracker_module
 
-                tracker = KLScheduleTracker(kl_target=0.1, kl_target_tolerance=0.05)
+            with patch.object(tracker_module, "np", mock_numpy):
+                tracker = tracker_module.KLScheduleTracker(kl_target=0.1, kl_target_tolerance=0.05)
                 assert tracker.kl_target == 0.1
                 assert tracker.kl_target_tolerance == 0.05
 

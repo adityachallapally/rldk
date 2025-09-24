@@ -63,3 +63,47 @@ def test_cli_column_mapping_json():
         assert "evaluation suite completed" in result.stdout.lower() or "evaluation: " in result.stdout.lower()
     finally:
         temp_file.unlink()
+
+
+def test_cli_column_mapping_for_standard_eval_dataset():
+    """Ensure evaluation datasets with column mappings still bypass the normalizer."""
+    records = [
+        {
+            "step": 1,
+            "input": "prompt 1",
+            "output": "response 1",
+            "events": "[]",
+            "reward_mean": 0.1,
+        },
+        {
+            "step": 2,
+            "input": "prompt 2",
+            "output": "response 2",
+            "events": "[]",
+            "reward_mean": 0.2,
+        },
+    ]
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as handle:
+        for record in records:
+            handle.write(json.dumps(record) + "\n")
+        dataset_path = Path(handle.name)
+
+    try:
+        runner = CliRunner()
+        result = runner.invoke(
+            app,
+            [
+                "evals",
+                "evaluate",
+                str(dataset_path),
+                "--suite",
+                "quick",
+                "--column-mapping",
+                "prompt=input,completion=output",
+            ],
+        )
+
+        assert result.exit_code == 0
+    finally:
+        dataset_path.unlink()
