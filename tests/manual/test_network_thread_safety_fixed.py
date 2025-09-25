@@ -8,34 +8,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import _path_setup  # noqa: F401
+import pytest
 
-# Mock the required dependencies before importing
-sys.modules['psutil'] = MagicMock()
-sys.modules['numpy'] = MagicMock()
-_torch_mock = MagicMock()
-_torch_mock.__spec__ = importlib.util.spec_from_loader("torch", loader=None)
-sys.modules['torch'] = _torch_mock
-_torch_distributed_mock = MagicMock()
-_torch_distributed_mock.__spec__ = importlib.util.spec_from_loader(
-    "torch.distributed", loader=None
-)
-sys.modules['torch.distributed'] = _torch_distributed_mock
+import _path_setup  # noqa: F401
 
 SRC_PATH = (_path_setup.PROJECT_ROOT / "src").resolve()
 
 
-def test_mocked_torch_module_has_spec() -> None:
-    """Regression test to ensure mocked torch modules provide __spec__."""
+def _load_network_monitor_module() -> object:
+    """Load the network_monitor module with proper error reporting."""
 
-    torch_spec = getattr(sys.modules['torch'], "__spec__", None)
-    dist_spec = getattr(sys.modules['torch.distributed'], "__spec__", None)
-
-    assert torch_spec is not None, "torch mock missing __spec__"
-    assert dist_spec is not None, "torch.distributed mock missing __spec__"
-
-
-try:
     network_monitor_path = (
         SRC_PATH / 'rldk' / 'integrations' / 'openrlhf' / 'network_monitor.py'
     )
@@ -47,38 +29,63 @@ try:
     spec = importlib.util.spec_from_file_location(
         "network_monitor", str(network_monitor_path)
     )
-    network_monitor = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(network_monitor)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise ImportError("Unable to load network_monitor module")
+    spec.loader.exec_module(module)
+    return module
 
-    try:
-        NetworkDiagnostics = network_monitor.NetworkDiagnostics
-        NetworkInterfaceMonitor = network_monitor.NetworkInterfaceMonitor
-        NetworkLatencyMonitor = network_monitor.NetworkLatencyMonitor
-        NetworkBandwidthMonitor = network_monitor.NetworkBandwidthMonitor
-        DistributedNetworkMonitor = network_monitor.DistributedNetworkMonitor
-        RealNetworkMonitor = network_monitor.RealNetworkMonitor
-    except AttributeError as error:
-        print(f"Error importing network monitor classes: {error}")
-        print(
-            "Available attributes:",
-            [attr for attr in dir(network_monitor) if not attr.startswith('_')],
-        )
-        raise
 
-except Exception as error:
-    print(f"Failed to import network monitor: {error}")
-    print(f"Resolved src path: {SRC_PATH}")
-    print(
-        "Directory contents:",
-        [p.name for p in Path(_path_setup.PROJECT_ROOT).iterdir()],
+@pytest.fixture
+def network_monitor_components(monkeypatch):
+    """Provide mocked dependencies and loaded network monitor classes."""
+
+    monkeypatch.setitem(sys.modules, 'psutil', MagicMock())
+    monkeypatch.setitem(sys.modules, 'numpy', MagicMock())
+
+    torch_mock = MagicMock()
+    torch_mock.__spec__ = importlib.util.spec_from_loader("torch", loader=None)
+    monkeypatch.setitem(sys.modules, 'torch', torch_mock)
+
+    torch_distributed_mock = MagicMock()
+    torch_distributed_mock.__spec__ = importlib.util.spec_from_loader(
+        "torch.distributed", loader=None
     )
-    sys.exit(1)
+    monkeypatch.setitem(sys.modules, 'torch.distributed', torch_distributed_mock)
+
+    module = _load_network_monitor_module()
+    monkeypatch.setitem(sys.modules, 'network_monitor', module)
+
+    components = {
+        'torch_mock': torch_mock,
+        'torch_distributed_mock': torch_distributed_mock,
+        'NetworkDiagnostics': module.NetworkDiagnostics,
+        'NetworkInterfaceMonitor': module.NetworkInterfaceMonitor,
+        'NetworkLatencyMonitor': module.NetworkLatencyMonitor,
+        'NetworkBandwidthMonitor': module.NetworkBandwidthMonitor,
+        'DistributedNetworkMonitor': module.DistributedNetworkMonitor,
+        'RealNetworkMonitor': module.RealNetworkMonitor,
+    }
+
+    yield components
 
 
-def test_network_diagnostics_thread_safety():
+def test_mocked_torch_module_has_spec(network_monitor_components) -> None:
+    """Regression test to ensure mocked torch modules provide __spec__."""
+
+    torch_spec = getattr(network_monitor_components['torch_mock'], "__spec__", None)
+    dist_spec = getattr(
+        network_monitor_components['torch_distributed_mock'], "__spec__", None
+    )
+
+    assert torch_spec is not None, "torch mock missing __spec__"
+    assert dist_spec is not None, "torch.distributed mock missing __spec__"
+
+
+def test_network_diagnostics_thread_safety(network_monitor_components):
     """Test NetworkDiagnostics thread safety with concurrent access."""
     print("Testing NetworkDiagnostics thread safety...")
-    diagnostics = NetworkDiagnostics(sampling_frequency=1)
+    diagnostics = network_monitor_components['NetworkDiagnostics'](sampling_frequency=1)
 
     def run_diagnostics():
         """Run diagnostics in a thread."""
@@ -107,10 +114,10 @@ def test_network_diagnostics_thread_safety():
     print("✓ NetworkDiagnostics thread safety test passed")
 
 
-def test_network_interface_monitor_thread_safety():
+def test_network_interface_monitor_thread_safety(network_monitor_components):
     """Test NetworkInterfaceMonitor thread safety with concurrent access."""
     print("Testing NetworkInterfaceMonitor thread safety...")
-    monitor = NetworkInterfaceMonitor(sampling_frequency=1)
+    monitor = network_monitor_components['NetworkInterfaceMonitor'](sampling_frequency=1)
 
     def get_stats():
         """Get interface stats in a thread."""
@@ -139,10 +146,10 @@ def test_network_interface_monitor_thread_safety():
     print("✓ NetworkInterfaceMonitor thread safety test passed")
 
 
-def test_network_latency_monitor_thread_safety():
+def test_network_latency_monitor_thread_safety(network_monitor_components):
     """Test NetworkLatencyMonitor thread safety with concurrent access."""
     print("Testing NetworkLatencyMonitor thread safety...")
-    monitor = NetworkLatencyMonitor(sampling_frequency=1)
+    monitor = network_monitor_components['NetworkLatencyMonitor'](sampling_frequency=1)
 
     def measure_latency():
         """Measure latency in a thread."""
@@ -177,10 +184,10 @@ def test_network_latency_monitor_thread_safety():
     print("✓ NetworkLatencyMonitor thread safety test passed")
 
 
-def test_network_bandwidth_monitor_thread_safety():
+def test_network_bandwidth_monitor_thread_safety(network_monitor_components):
     """Test NetworkBandwidthMonitor thread safety with concurrent access."""
     print("Testing NetworkBandwidthMonitor thread safety...")
-    monitor = NetworkBandwidthMonitor(sampling_frequency=1)
+    monitor = network_monitor_components['NetworkBandwidthMonitor'](sampling_frequency=1)
 
     def measure_bandwidth():
         """Measure bandwidth in a thread."""
@@ -213,10 +220,10 @@ def test_network_bandwidth_monitor_thread_safety():
     print("✓ NetworkBandwidthMonitor thread safety test passed")
 
 
-def test_distributed_network_monitor_thread_safety():
+def test_distributed_network_monitor_thread_safety(network_monitor_components):
     """Test DistributedNetworkMonitor thread safety with concurrent access."""
     print("Testing DistributedNetworkMonitor thread safety...")
-    monitor = DistributedNetworkMonitor(sampling_frequency=1)
+    monitor = network_monitor_components['DistributedNetworkMonitor'](sampling_frequency=1)
 
     def measure_metrics():
         """Measure distributed metrics in a thread."""
@@ -257,10 +264,10 @@ def test_distributed_network_monitor_thread_safety():
     print("✓ DistributedNetworkMonitor thread safety test passed")
 
 
-def test_real_network_monitor_thread_safety():
+def test_real_network_monitor_thread_safety(network_monitor_components):
     """Test RealNetworkMonitor thread safety with concurrent access."""
     print("Testing RealNetworkMonitor thread safety...")
-    monitor = RealNetworkMonitor(sampling_frequency=1)
+    monitor = network_monitor_components['RealNetworkMonitor'](sampling_frequency=1)
 
     def get_metrics():
         """Get current metrics in a thread."""
@@ -295,12 +302,12 @@ def test_real_network_monitor_thread_safety():
     print("✓ RealNetworkMonitor thread safety test passed")
 
 
-def test_memory_bounds_enforcement():
+def test_memory_bounds_enforcement(network_monitor_components):
     """Test that memory bounds are enforced with deque maxlen."""
     print("Testing memory bounds enforcement...")
 
     # Test latency monitor history bounds
-    latency_monitor = NetworkLatencyMonitor(sampling_frequency=1)
+    latency_monitor = network_monitor_components['NetworkLatencyMonitor'](sampling_frequency=1)
 
     # Fill history beyond maxlen
     for i in range(150):  # More than maxlen=100
@@ -314,7 +321,7 @@ def test_memory_bounds_enforcement():
         assert latency_monitor.latency_history[host].maxlen == 100
 
     # Test bandwidth monitor history bounds
-    bandwidth_monitor = NetworkBandwidthMonitor(sampling_frequency=1)
+    bandwidth_monitor = network_monitor_components['NetworkBandwidthMonitor'](sampling_frequency=1)
 
     # Fill history beyond maxlen
     for i in range(150):  # More than maxlen=100
@@ -326,7 +333,7 @@ def test_memory_bounds_enforcement():
     assert bandwidth_monitor.bandwidth_history.maxlen == 100
 
     # Test distributed monitor history bounds
-    distributed_monitor = DistributedNetworkMonitor(sampling_frequency=1)
+    distributed_monitor = network_monitor_components['DistributedNetworkMonitor'](sampling_frequency=1)
 
     # Fill all distributed histories beyond maxlen
     for i in range(150):  # More than maxlen=100
@@ -356,13 +363,13 @@ def test_memory_bounds_enforcement():
     print("✓ Memory bounds enforcement test passed")
 
 
-def test_sampling_frequency_control():
+def test_sampling_frequency_control(network_monitor_components):
     """Test that sampling frequency parameter works correctly."""
     print("Testing sampling frequency control...")
 
     # Test with sampling frequency of 3
     sampling_freq = 3
-    monitor = NetworkInterfaceMonitor(sampling_frequency=sampling_freq)
+    monitor = network_monitor_components['NetworkInterfaceMonitor'](sampling_frequency=sampling_freq)
 
     # Call get_interface_stats multiple times
     results = []
@@ -399,14 +406,14 @@ def test_sampling_frequency_control():
     print("✓ Sampling frequency control test passed")
 
 
-def test_lock_uniqueness():
+def test_lock_uniqueness(network_monitor_components):
     """Test that each monitor instance has its own unique lock."""
     print("Testing lock uniqueness...")
 
     # Create multiple instances
-    monitor1 = NetworkInterfaceMonitor()
-    monitor2 = NetworkInterfaceMonitor()
-    monitor3 = NetworkLatencyMonitor()
+    monitor1 = network_monitor_components['NetworkInterfaceMonitor']()
+    monitor2 = network_monitor_components['NetworkInterfaceMonitor']()
+    monitor3 = network_monitor_components['NetworkLatencyMonitor']()
 
     # Each should have its own lock
     assert monitor1._lock is not monitor2._lock
@@ -420,11 +427,11 @@ def test_lock_uniqueness():
     print("✓ Lock uniqueness test passed")
 
 
-def test_concurrent_read_write_operations():
+def test_concurrent_read_write_operations(network_monitor_components):
     """Test concurrent read and write operations on shared state."""
     print("Testing concurrent read/write operations...")
 
-    monitor = NetworkLatencyMonitor(sampling_frequency=1)
+    monitor = network_monitor_components['NetworkLatencyMonitor'](sampling_frequency=1)
 
     def writer():
         """Write to latency history."""
@@ -468,12 +475,12 @@ def test_concurrent_read_write_operations():
     print("✓ Concurrent read/write operations test passed")
 
 
-def test_double_sampling_fix():
+def test_double_sampling_fix(network_monitor_components):
     """Test that double sampling frequency issue is fixed."""
     print("Testing double sampling frequency fix...")
 
     # Test that sub-monitors don't apply their own sampling when called by parent
-    distributed_monitor = DistributedNetworkMonitor(sampling_frequency=3)
+    distributed_monitor = network_monitor_components['DistributedNetworkMonitor'](sampling_frequency=3)
 
     # Call measure_distributed_metrics multiple times
     results = []

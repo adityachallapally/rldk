@@ -3,137 +3,148 @@
 
 import os
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock
 
-# Add the src directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src', 'rldk', 'integrations', 'openrlhf'))
+import pytest
 
-def test_openrlhf_metrics_compatibility():
+# Ensure the src directory is available for imports
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'src'))
+
+
+@pytest.fixture
+def mock_openrlhf_common_dependencies(monkeypatch):
+    """Mock core dependencies used by OpenRLHF modules."""
+
+    mocks = {
+        'numpy': MagicMock(),
+        'pandas': MagicMock(),
+        'torch': MagicMock(),
+        'psutil': MagicMock(),
+    }
+
+    for module_name, mock in mocks.items():
+        mock.__version__ = "0.0.0"
+        monkeypatch.setitem(sys.modules, module_name, mock)
+
+    for module_name in (
+        'rldk.integrations.openrlhf.callbacks',
+    ):
+        monkeypatch.delitem(sys.modules, module_name, raising=False)
+
+    yield mocks
+
+
+@pytest.fixture
+def mock_dashboard_dependencies(mock_openrlhf_common_dependencies, monkeypatch):
+    """Mock additional dependencies required for dashboard tests."""
+
+    dashboard_mocks = {
+        'flask': MagicMock(),
+        'plotly': MagicMock(),
+        'plotly.graph_objs': MagicMock(),
+        'plotly.utils': MagicMock(),
+    }
+
+    for module_name, mock in dashboard_mocks.items():
+        mock.__version__ = "0.0.0"
+        monkeypatch.setitem(sys.modules, module_name, mock)
+
+    monkeypatch.delitem(sys.modules, 'rldk.integrations.openrlhf.dashboard', raising=False)
+
+    yield dashboard_mocks
+
+
+def test_openrlhf_metrics_compatibility(mock_openrlhf_common_dependencies):
     """Test that OpenRLHFMetrics has both old and new attributes."""
-    try:
-        # Mock numpy to avoid import error
-        sys.modules['numpy'] = MagicMock()
-        sys.modules['pandas'] = MagicMock()
-        sys.modules['torch'] = MagicMock()
-        sys.modules['psutil'] = MagicMock()
 
-        from callbacks import OpenRLHFMetrics
+    from rldk.integrations.openrlhf.callbacks import OpenRLHFMetrics
 
-        # Test creating metrics with both old and new attributes
-        metrics = OpenRLHFMetrics()
-        metrics.bandwidth_mbps = 100.0
-        metrics.latency_ms = 5.0
-        metrics.network_bandwidth = 100.0  # Legacy
-        metrics.network_latency = 5.0      # Legacy
+    # Test creating metrics with both old and new attributes
+    metrics = OpenRLHFMetrics()
+    metrics.bandwidth_mbps = 100.0
+    metrics.latency_ms = 5.0
+    metrics.network_bandwidth = 100.0  # Legacy
+    metrics.network_latency = 5.0      # Legacy
 
-        print('✅ OpenRLHFMetrics with both old and new attributes created successfully')
-        print(f'   bandwidth_mbps: {metrics.bandwidth_mbps}')
-        print(f'   latency_ms: {metrics.latency_ms}')
-        print(f'   network_bandwidth (legacy): {metrics.network_bandwidth}')
-        print(f'   network_latency (legacy): {metrics.network_latency}')
+    print('✅ OpenRLHFMetrics with both old and new attributes created successfully')
+    print(f'   bandwidth_mbps: {metrics.bandwidth_mbps}')
+    print(f'   latency_ms: {metrics.latency_ms}')
+    print(f'   network_bandwidth (legacy): {metrics.network_bandwidth}')
+    print(f'   network_latency (legacy): {metrics.network_latency}')
 
-        # Test to_dict method
-        metrics_dict = metrics.to_dict()
-        print('✅ to_dict method works')
-        print(f'   Dictionary keys: {list(metrics_dict.keys())[:5]}...')
+    # Test to_dict method
+    metrics_dict = metrics.to_dict()
+    print('✅ to_dict method works')
+    print(f'   Dictionary keys: {list(metrics_dict.keys())[:5]}...')
 
-        return True
+    assert metrics_dict['network_bandwidth'] == 100.0
+    assert metrics_dict['network_latency'] == 5.0
 
-    except Exception as e:
-        print(f'❌ OpenRLHFMetrics test failed: {e}')
-        return False
 
-def test_dashboard_compatibility():
+def test_dashboard_compatibility(mock_dashboard_dependencies):
     """Test that dashboard methods handle both dataclass and dictionary inputs."""
-    try:
-        # Mock required modules
-        sys.modules['flask'] = MagicMock()
-        sys.modules['plotly'] = MagicMock()
-        sys.modules['plotly.graph_objs'] = MagicMock()
-        sys.modules['plotly.utils'] = MagicMock()
-        sys.modules['numpy'] = MagicMock()
-        sys.modules['pandas'] = MagicMock()
-        sys.modules['torch'] = MagicMock()
-        sys.modules['psutil'] = MagicMock()
 
-        from callbacks import OpenRLHFMetrics
-        from dashboard import OpenRLHFDashboard
+    from rldk.integrations.openrlhf.callbacks import OpenRLHFMetrics
+    from rldk.integrations.openrlhf.dashboard import OpenRLHFDashboard
 
-        # Create test metrics
-        metrics = OpenRLHFMetrics()
-        metrics.bandwidth_mbps = 100.0
-        metrics.latency_ms = 5.0
-        metrics.network_bandwidth = 100.0
-        metrics.network_latency = 5.0
+    # Create test metrics
+    metrics = OpenRLHFMetrics()
+    metrics.bandwidth_mbps = 100.0
+    metrics.latency_ms = 5.0
+    metrics.network_bandwidth = 100.0
+    metrics.network_latency = 5.0
 
-        # Create dashboard
-        dashboard = OpenRLHFDashboard(output_dir='./test_dashboard')
-        print('✅ Dashboard created successfully')
+    # Create dashboard
+    dashboard = OpenRLHFDashboard(output_dir='./test_dashboard')
+    print('✅ Dashboard created successfully')
 
-        # Test add_metrics with dataclass
-        dashboard.add_metrics(metrics)
-        print('✅ add_metrics with dataclass works')
+    # Test add_metrics with dataclass
+    dashboard.add_metrics(metrics)
+    print('✅ add_metrics with dataclass works')
 
-        # Test add_metrics with dictionary
-        metrics_dict = metrics.to_dict()
-        dashboard.add_metrics(metrics_dict)
-        print('✅ add_metrics with dictionary works')
+    # Test add_metrics with dictionary
+    metrics_dict = metrics.to_dict()
+    dashboard.add_metrics(metrics_dict)
+    print('✅ add_metrics with dictionary works')
 
-        # Test check_network_thresholds with dataclass
-        dashboard.check_network_thresholds(metrics)
-        print('✅ check_network_thresholds with dataclass works')
+    # Test check_network_thresholds with dataclass
+    dashboard.check_network_thresholds(metrics)
+    print('✅ check_network_thresholds with dataclass works')
 
-        # Test check_network_thresholds with dictionary
-        dashboard.check_network_thresholds(metrics_dict)
-        print('✅ check_network_thresholds with dictionary works')
+    # Test check_network_thresholds with dictionary
+    dashboard.check_network_thresholds(metrics_dict)
+    print('✅ check_network_thresholds with dictionary works')
 
-        return True
 
-    except Exception as e:
-        print(f'❌ Dashboard compatibility test failed: {e}')
-        return False
-
-def test_bandwidth_fix():
+def test_bandwidth_fix(mock_openrlhf_common_dependencies):
     """Test that bandwidth metrics are correctly assigned."""
-    try:
-        # Mock required modules
-        sys.modules['numpy'] = MagicMock()
-        sys.modules['pandas'] = MagicMock()
-        sys.modules['torch'] = MagicMock()
-        sys.modules['psutil'] = MagicMock()
+    from rldk.integrations.openrlhf.callbacks import OpenRLHFMetrics
 
-        from callbacks import OpenRLHFMetrics
+    # Test that the fix is in place by checking the field definitions
+    metrics = OpenRLHFMetrics()
 
-        # Test that the fix is in place by checking the field definitions
-        metrics = OpenRLHFMetrics()
+    # Check that both old and new attributes exist
+    assert hasattr(metrics, 'network_bandwidth'), "network_bandwidth attribute missing"
+    assert hasattr(metrics, 'network_latency'), "network_latency attribute missing"
+    assert hasattr(metrics, 'bandwidth_mbps'), "bandwidth_mbps attribute missing"
+    assert hasattr(metrics, 'latency_ms'), "latency_ms attribute missing"
+    assert hasattr(metrics, 'bandwidth_upload_mbps'), "bandwidth_upload_mbps attribute missing"
+    assert hasattr(metrics, 'bandwidth_download_mbps'), "bandwidth_download_mbps attribute missing"
 
-        # Check that both old and new attributes exist
-        assert hasattr(metrics, 'network_bandwidth'), "network_bandwidth attribute missing"
-        assert hasattr(metrics, 'network_latency'), "network_latency attribute missing"
-        assert hasattr(metrics, 'bandwidth_mbps'), "bandwidth_mbps attribute missing"
-        assert hasattr(metrics, 'latency_ms'), "latency_ms attribute missing"
-        assert hasattr(metrics, 'bandwidth_upload_mbps'), "bandwidth_upload_mbps attribute missing"
-        assert hasattr(metrics, 'bandwidth_download_mbps'), "bandwidth_download_mbps attribute missing"
+    print('✅ All required attributes exist in OpenRLHFMetrics')
 
-        print('✅ All required attributes exist in OpenRLHFMetrics')
+    # Test that we can set values
+    metrics.bandwidth_upload_mbps = 50.0
+    metrics.bandwidth_download_mbps = 100.0
+    metrics.network_bandwidth = 100.0
+    metrics.network_latency = 5.0
 
-        # Test that we can set values
-        metrics.bandwidth_upload_mbps = 50.0
-        metrics.bandwidth_download_mbps = 100.0
-        metrics.network_bandwidth = 100.0
-        metrics.network_latency = 5.0
-
-        print('✅ Can set values for all attributes')
-        print(f'   Upload: {metrics.bandwidth_upload_mbps} Mbps')
-        print(f'   Download: {metrics.bandwidth_download_mbps} Mbps')
-        print(f'   Legacy bandwidth: {metrics.network_bandwidth} Mbps')
-        print(f'   Legacy latency: {metrics.network_latency} ms')
-
-        return True
-
-    except Exception as e:
-        print(f'❌ Bandwidth fix test failed: {e}')
-        return False
+    print('✅ Can set values for all attributes')
+    print(f'   Upload: {metrics.bandwidth_upload_mbps} Mbps')
+    print(f'   Download: {metrics.bandwidth_download_mbps} Mbps')
+    print(f'   Legacy bandwidth: {metrics.network_bandwidth} Mbps')
+    print(f'   Legacy latency: {metrics.network_latency} ms')
 
 def main():
     """Run all compatibility tests."""
