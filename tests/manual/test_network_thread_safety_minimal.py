@@ -7,6 +7,8 @@ import threading
 import time
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import contextmanager
+from typing import Dict, Iterator
 from unittest.mock import MagicMock
 
 import pytest
@@ -14,6 +16,60 @@ import pytest
 import _path_setup  # noqa: F401
 
 SRC_PATH = (_path_setup.PROJECT_ROOT / "src").resolve()
+
+
+@contextmanager
+def manual_network_monitor_components() -> Iterator[Dict[str, object]]:
+    """Provide network monitor components for manual execution with sys.modules patches."""
+
+    original_modules: Dict[str, object] = {}
+
+    def _patch_module(name: str, value: object) -> None:
+        if name not in original_modules:
+            original_modules[name] = sys.modules.get(name)
+        if value is None:
+            sys.modules.pop(name, None)
+        else:
+            sys.modules[name] = value
+
+    psutil_mock = MagicMock()
+    numpy_mock = MagicMock()
+    torch_mock = MagicMock()
+    torch_mock.__spec__ = importlib.util.spec_from_loader("torch", loader=None)
+    torch_distributed_mock = MagicMock()
+    torch_distributed_mock.__spec__ = importlib.util.spec_from_loader(
+        "torch.distributed", loader=None
+    )
+
+    _patch_module('psutil', psutil_mock)
+    _patch_module('numpy', numpy_mock)
+    _patch_module('torch', torch_mock)
+    _patch_module('torch.distributed', torch_distributed_mock)
+
+    module = _load_network_monitor_module()
+    _patch_module('network_monitor', module)
+
+    components = {
+        'psutil_mock': psutil_mock,
+        'numpy_mock': numpy_mock,
+        'torch_mock': torch_mock,
+        'torch_distributed_mock': torch_distributed_mock,
+        'NetworkDiagnostics': module.NetworkDiagnostics,
+        'NetworkInterfaceMonitor': module.NetworkInterfaceMonitor,
+        'NetworkLatencyMonitor': module.NetworkLatencyMonitor,
+        'NetworkBandwidthMonitor': module.NetworkBandwidthMonitor,
+        'DistributedNetworkMonitor': module.DistributedNetworkMonitor,
+        'RealNetworkMonitor': module.RealNetworkMonitor,
+    }
+
+    try:
+        yield components
+    finally:
+        for name, original in original_modules.items():
+            if original is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = original
 
 
 def _load_network_monitor_module() -> object:
@@ -469,32 +525,36 @@ def test_concurrent_read_write_operations(network_monitor_components):
     print("✓ Concurrent read/write operations test passed")
 
 
-def main():
-    """Run all tests."""
+def main() -> int:
+    """Run all tests with manual sys.modules patches applied."""
+
     print("Running network monitoring thread safety tests...\n")
 
     try:
-        test_network_diagnostics_thread_safety()
-        test_network_interface_monitor_thread_safety()
-        test_network_latency_monitor_thread_safety()
-        test_network_bandwidth_monitor_thread_safety()
-        test_distributed_network_monitor_thread_safety()
-        test_real_network_monitor_thread_safety()
-        test_memory_bounds_enforcement()
-        test_sampling_frequency_control()
-        test_lock_uniqueness()
-        test_concurrent_read_write_operations()
+        with manual_network_monitor_components() as components:
+            test_torch_mock_sets_module_spec(components)
+            test_network_diagnostics_thread_safety(components)
+            test_network_interface_monitor_thread_safety(components)
+            test_network_latency_monitor_thread_safety(components)
+            test_network_bandwidth_monitor_thread_safety(components)
+            test_distributed_network_monitor_thread_safety(components)
+            test_real_network_monitor_thread_safety(components)
+            test_memory_bounds_enforcement(components)
+            test_sampling_frequency_control(components)
+            test_lock_uniqueness(components)
+            test_concurrent_read_write_operations(components)
 
         print("\n🎉 All tests passed! Network monitoring is thread-safe and memory-bounded.")
 
-    except Exception as e:
+    except Exception as e:  # pragma: no cover - manual diagnostics path
         print(f"\n❌ Test failed: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 
     return 0
 
 
-if __name__ == "__main__":
-    exit(main())
+if __name__ == "__main__":  # pragma: no cover - manual diagnostics entry point
+    sys.exit(main())
