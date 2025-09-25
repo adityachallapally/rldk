@@ -351,13 +351,9 @@ def monitor(
         "--stream",
         help="Path to a JSONL metrics file or '-' to read from stdin.",
     ),
-    once: Optional[Path] = typer.Option(
+    once: Optional[str] = typer.Option(
         None,
         "--once",
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        readable=True,
         help="Analyze an existing JSONL metrics file once and exit.",
     ),
     from_wandb: Optional[str] = typer.Option(
@@ -371,7 +367,7 @@ def monitor(
         help="Stream metrics from an MLflow run ID using the active tracking URI.",
     ),
     rules: str = typer.Option(..., "--rules", help=_MONITOR_RULES_HELP),
-    report: Optional[Path] = typer.Option(
+    report: Optional[str] = typer.Option(
         None,
         "--report",
         help="Optional path to write the monitoring summary report as JSON.",
@@ -401,17 +397,15 @@ def monitor(
         "--pid",
         help="PID of the training process to terminate when stop actions fire.",
     ),
-    alerts: Path = typer.Option(
-        Path("artifacts/alerts.jsonl"),
+    alerts: str = typer.Option(
+        str(Path("artifacts/alerts.jsonl")),
         "--alerts",
         help="Path to write alert activations as JSONL.",
-        dir_okay=False,
     ),
-    alerts_txt: Optional[Path] = typer.Option(
+    alerts_txt: Optional[str] = typer.Option(
         None,
         "--alerts-txt",
         help="Optional path for human-readable alert summaries.",
-        dir_okay=False,
     ),
     reward_health_window: Optional[int] = typer.Option(
         None,
@@ -440,9 +434,18 @@ def monitor(
     """Monitor JSONL metrics with streaming or batch analysis."""
     ensure_config_initialized()
     stream_source = stream
-    once_source = once
+    try:
+        once_source = (
+            validate_file_path(once, must_exist=True) if once is not None else None
+        )
+    except ValidationError as exc:
+        typer.echo(format_error_message(exc), err=True)
+        raise typer.Exit(1)
     wandb_source = from_wandb
     mlflow_source = from_mlflow
+    report_path = Path(report) if report is not None else None
+    alerts_path = Path(alerts)
+    alerts_text_override = Path(alerts_txt) if alerts_txt is not None else None
     env_stream = os.environ.get("RLDK_METRICS_PATH")
     if (
         stream_source is None
@@ -490,8 +493,8 @@ def monitor(
         action_executor=dispatcher,
         reward_health_window=reward_health_window,
     )
-    alerts_text_path = _derive_alert_text_path(alerts, alerts_txt)
-    alert_writer = AlertWriter(alerts, alerts_text_path)
+    alerts_text_path = _derive_alert_text_path(alerts_path, alerts_text_override)
+    alert_writer = AlertWriter(alerts_path, alerts_text_path)
 
     def emit_alerts(alerts):
         for alert in alerts:
@@ -545,11 +548,11 @@ def monitor(
         raise typer.Exit(1)
 
     report_payload = engine.generate_report().to_dict()
-    if report is not None:
+    if report_path is not None:
         try:
-            if report.parent and not report.parent.exists():
-                report.parent.mkdir(parents=True, exist_ok=True)
-            report.write_text(json.dumps(report_payload, indent=2, sort_keys=True))
+            if report_path.parent and not report_path.parent.exists():
+                report_path.parent.mkdir(parents=True, exist_ok=True)
+            report_path.write_text(json.dumps(report_payload, indent=2, sort_keys=True))
         except Exception as exc:
             typer.echo(f"Failed to write report: {exc}", err=True)
             raise typer.Exit(1)

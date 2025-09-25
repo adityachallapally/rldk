@@ -36,6 +36,23 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["monitor", "--help"],
+        ["monitor", "--once", "dummy.jsonl", "--help"],
+        ["monitor", "--report", "dummy.json", "--help"],
+        ["monitor", "--alerts", "dummy.jsonl", "--help"],
+        ["monitor", "--alerts-txt", "dummy.txt", "--help"],
+    ],
+)
+def test_monitor_help_handles_optional_path_flags(
+    runner: CliRunner, argv: List[str]
+) -> None:
+    result = runner.invoke(app, argv)
+    assert result.exit_code == 0
+
+
 def test_event_writer_writes_canonical_event(tmp_path: Path) -> None:
     output = tmp_path / "events.jsonl"
     writer = EventWriter(output)
