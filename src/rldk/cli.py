@@ -2186,17 +2186,14 @@ def evaluate(
                 error_code="INVALID_FIELD_MAP",
             ) from exc
 
-        if combined_field_map:
-            logging.info(f"Using field map: {combined_field_map}")
-
         use_normalizer = False
+        first_record: Optional[Dict[str, Any]] = None
         suffix = resolved_path.suffix.lower()
         if resolved_path.is_dir() or suffix in {".csv", ".tsv", ".parquet"}:
             use_normalizer = True
-        elif suite == "training_metrics" or combined_field_map:
+        if suite == "training_metrics" or combined_field_map:
             use_normalizer = True
-        elif suffix in {".jsonl", ".ndjson"}:
-            first_record = None
+        if suffix in {".jsonl", ".ndjson"}:
             try:
                 with resolved_path.open("r", encoding="utf-8") as handle:
                     for raw_line in handle:
@@ -2223,13 +2220,32 @@ def evaluate(
                     if {"name", "value"}.issubset(keys) or keys.intersection(metric_keys):
                         use_normalizer = True
 
+        effective_field_map = combined_field_map
+        if use_normalizer and parsed_column_mapping:
+            effective_field_map = {**(effective_field_map or {}), **parsed_column_mapping}
+
+        if use_normalizer and effective_field_map:
+            logging.info(f"Using field map: {effective_field_map}")
+
         # Load data with progress indication
         with timed_operation_context("Data loading"):
             logging.info(f"Loading data from {resolved_path}")
             if use_normalizer:
-                data = normalize_training_metrics_source(
-                    resolved_path, field_map=combined_field_map
+                jsonl_like_table = (
+                    suffix in {".jsonl", ".ndjson"}
+                    and isinstance(first_record, dict)
+                    and not {"name", "value"}.issubset({str(k) for k in first_record.keys()})
                 )
+
+                if jsonl_like_table:
+                    raw_df = load_jsonl_data(resolved_path)
+                    data = normalize_training_metrics(
+                        raw_df, field_map=effective_field_map
+                    )
+                else:
+                    data = normalize_training_metrics_source(
+                        resolved_path, field_map=effective_field_map
+                    )
             else:
                 data = load_jsonl_data(resolved_path)
 
