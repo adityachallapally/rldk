@@ -66,8 +66,15 @@ from rldk.emit import EventWriter
 def test_run_ppo_tiny_smoke(monkeypatch, tmp_path):
     import examples.run_ppo_tiny as run_ppo_tiny
 
-    dummy_config = types.SimpleNamespace(run_name="ppo-test")
-    monkeypatch.setattr(run_ppo_tiny, "load_ppo_config", lambda path: dummy_config)
+    dummy_settings = run_ppo_tiny.TinyPPORunSettings(
+        model="dummy-ppo",
+        dataset_seed=0,
+        steps=4,
+        logging_interval=1,
+        log_path=Path("artifacts/ppo_tiny/run.jsonl"),
+        ppo_config=types.SimpleNamespace(run_name="ppo-test"),
+    )
+    monkeypatch.setattr(run_ppo_tiny, "load_ppo_config", lambda path: dummy_settings)
 
     dummy_dataset = [{"prompt": "hi", "response": "hello"}]
     monkeypatch.setattr(run_ppo_tiny, "build_tiny_dataset", lambda: dummy_dataset)
@@ -108,8 +115,15 @@ def test_run_ppo_tiny_smoke(monkeypatch, tmp_path):
 def test_run_grpo_tiny_smoke(monkeypatch, tmp_path):
     import examples.run_grpo_tiny as run_grpo_tiny
 
-    dummy_config = types.SimpleNamespace(run_name="grpo-test")
-    monkeypatch.setattr(run_grpo_tiny, "load_grpo_config", lambda path: dummy_config)
+    dummy_settings = run_grpo_tiny.TinyGRPORunSettings(
+        model="dummy-grpo",
+        dataset_seed=0,
+        steps=4,
+        logging_interval=1,
+        log_path=Path("artifacts/grpo_tiny/run.jsonl"),
+        grpo_config=types.SimpleNamespace(run_name="grpo-test"),
+    )
+    monkeypatch.setattr(run_grpo_tiny, "load_grpo_config", lambda path: dummy_settings)
 
     dummy_dataset = [
         {"accepted": True},

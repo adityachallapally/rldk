@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import random
 import sys
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Any, Dict, Iterable, Optional
 
 import yaml
 
@@ -14,7 +16,18 @@ from rldk.integrations.trl import EventWriterCallback, create_grpo_config
 
 DEFAULT_MODEL_NAME = "sshleifer/tiny-gpt2"
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[1] / "configs" / "grpo_tiny.yaml"
-DEFAULT_LOG_DIR = Path("artifacts/grpo_tiny")
+
+
+@dataclass
+class TinyGRPORunSettings:
+    """Container for metadata encoded in ``configs/grpo_tiny.yaml``."""
+
+    model: str
+    dataset_seed: int
+    steps: int
+    logging_interval: int
+    log_path: Path
+    grpo_config: "GRPOConfig"
 
 
 def build_tiny_dataset() -> "Dataset":
@@ -68,8 +81,8 @@ def load_tokenizer(model_name: str):
     return tokenizer
 
 
-def load_grpo_config(config_path: Path):
-    """Load a :class:`trl.GRPOConfig` using the helper that applies CPU defaults."""
+def load_grpo_config(config_path: Path) -> TinyGRPORunSettings:
+    """Load metadata and construct a :class:`trl.GRPOConfig` with safe defaults."""
 
     with config_path.open("r", encoding="utf-8") as stream:
         config_payload = yaml.safe_load(stream) or {}
@@ -77,7 +90,49 @@ def load_grpo_config(config_path: Path):
     if not isinstance(config_payload, dict):
         raise ValueError(f"Expected mapping in {config_path}, found {type(config_payload)!r}")
 
-    return create_grpo_config(**config_payload)
+    model_name = config_payload.get("model", DEFAULT_MODEL_NAME)
+    if not isinstance(model_name, str):
+        raise TypeError("The 'model' field must be a string in the GRPO config YAML")
+
+    dataset_seed = config_payload.get("dataset_seed", 0)
+    if not isinstance(dataset_seed, int):
+        raise TypeError("The 'dataset_seed' field must be an integer in the GRPO config YAML")
+
+    steps = config_payload.get("steps")
+    if not isinstance(steps, int):
+        raise TypeError("The 'steps' field must be provided as an integer in the GRPO config YAML")
+
+    logging_interval = config_payload.get("logging_interval", 1)
+    if not isinstance(logging_interval, int):
+        raise TypeError(
+            "The 'logging_interval' field must be provided as an integer in the GRPO config YAML"
+        )
+
+    log_path_field = config_payload.get("log_path")
+    if not isinstance(log_path_field, str):
+        raise TypeError("The 'log_path' field must be provided as a string in the GRPO config YAML")
+
+    log_path = Path(log_path_field)
+    if not log_path.is_absolute():
+        log_path = (config_path.parents[1] / log_path).resolve()
+
+    grpo_kwargs: Dict[str, Any] = dict(config_payload.get("grpo_kwargs", {}))
+    if not isinstance(grpo_kwargs, dict):  # pragma: no cover - validation guard
+        raise TypeError("The 'grpo_kwargs' section must be a mapping in the GRPO config YAML")
+
+    grpo_kwargs.setdefault("max_steps", steps)
+    grpo_kwargs.setdefault("logging_steps", logging_interval)
+
+    grpo_config = create_grpo_config(**grpo_kwargs)
+
+    return TinyGRPORunSettings(
+        model=model_name,
+        dataset_seed=dataset_seed,
+        steps=steps,
+        logging_interval=logging_interval,
+        log_path=log_path,
+        grpo_config=grpo_config,
+    )
 
 
 def build_grpo_trainer(
@@ -139,13 +194,13 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--log-dir",
         type=Path,
-        default=DEFAULT_LOG_DIR,
-        help="Directory where EventWriter JSONL logs should be stored.",
+        default=None,
+        help="Optional override for the directory where EventWriter JSONL logs should be stored.",
     )
     parser.add_argument(
         "--model-name",
-        default=DEFAULT_MODEL_NAME,
-        help="Model identifier to use for tokenizer and policy/value weights.",
+        default=None,
+        help="Optional override for the model identifier defined in the YAML configuration.",
     )
     return parser.parse_args(list(argv) if argv is not None else None)
 
@@ -155,17 +210,24 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
 
     args = parse_args(argv)
     config_path = args.config.expanduser().resolve()
-    log_dir = args.log_dir.expanduser().resolve()
-    log_dir.mkdir(parents=True, exist_ok=True)
-    event_log_path = log_dir / "run.jsonl"
 
     try:
-        grpo_config = load_grpo_config(config_path)
+        settings = load_grpo_config(config_path)
+        model_name = args.model_name or settings.model
+
+        random.seed(settings.dataset_seed)
+
+        event_log_path = settings.log_path
+        if args.log_dir is not None:
+            event_log_path = args.log_dir.expanduser().resolve() / settings.log_path.name
+
+        event_log_path.parent.mkdir(parents=True, exist_ok=True)
+
         dataset = build_tiny_dataset()
-        tokenizer = load_tokenizer(args.model_name)
+        tokenizer = load_tokenizer(model_name)
         trainer = build_grpo_trainer(
-            model_name=args.model_name,
-            grpo_config=grpo_config,
+            model_name=model_name,
+            grpo_config=settings.grpo_config,
             dataset=dataset,
             tokenizer=tokenizer,
             event_log_path=event_log_path,
