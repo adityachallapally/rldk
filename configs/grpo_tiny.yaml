@@ -1,0 +1,14 @@
+# Tiny GRPO configuration mirroring the PPO defaults for CPU-only smoke tests
+run_name: grpo_tiny
+learning_rate: 5.0e-5
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 1
+num_train_epochs: 1
+num_generations: 1
+max_steps: 4
+logging_steps: 1
+save_steps: 0
+remove_unused_columns: false
+bf16: false
+fp16: false
+dataloader_num_workers: 0

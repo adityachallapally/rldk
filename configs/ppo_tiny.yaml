@@ -1,0 +1,19 @@
+# Tiny PPO configuration for CPU-friendly smoke runs
+run_name: ppo_tiny
+learning_rate: 5.0e-5
+per_device_train_batch_size: 1
+mini_batch_size: 1
+batch_size: 2
+gradient_accumulation_steps: 1
+num_ppo_epochs: 1
+max_steps: 4
+target_kl: 0.1
+clip_range: 0.2
+clip_range_value: 0.2
+logging_steps: 1
+save_steps: 0
+remove_unused_columns: false
+bf16: false
+fp16: false
+dataloader_num_workers: 0
+log_with: []
