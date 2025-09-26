@@ -113,9 +113,10 @@ def load_ppo_config(config_path: Path) -> TinyPPORunSettings:
     if not log_path.is_absolute():
         log_path = (config_path.parents[1] / log_path).resolve()
 
-    ppo_kwargs: Dict[str, Any] = dict(config_payload.get("ppo_kwargs", {}))
-    if not isinstance(ppo_kwargs, dict):  # pragma: no cover - validation guard
+    ppo_kwargs_field = config_payload.get("ppo_kwargs", {})
+    if not isinstance(ppo_kwargs_field, dict):  # pragma: no cover - validation guard
         raise TypeError("The 'ppo_kwargs' section must be a mapping in the PPO config YAML")
+    ppo_kwargs: Dict[str, Any] = dict(ppo_kwargs_field)
 
     ppo_kwargs.setdefault("max_steps", steps)
     ppo_kwargs.setdefault("logging_steps", logging_interval)

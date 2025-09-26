@@ -116,9 +116,10 @@ def load_grpo_config(config_path: Path) -> TinyGRPORunSettings:
     if not log_path.is_absolute():
         log_path = (config_path.parents[1] / log_path).resolve()
 
-    grpo_kwargs: Dict[str, Any] = dict(config_payload.get("grpo_kwargs", {}))
-    if not isinstance(grpo_kwargs, dict):  # pragma: no cover - validation guard
+    grpo_kwargs_field = config_payload.get("grpo_kwargs", {})
+    if not isinstance(grpo_kwargs_field, dict):  # pragma: no cover - validation guard
         raise TypeError("The 'grpo_kwargs' section must be a mapping in the GRPO config YAML")
+    grpo_kwargs: Dict[str, Any] = dict(grpo_kwargs_field)
 
     grpo_kwargs.setdefault("max_steps", steps)
     grpo_kwargs.setdefault("logging_steps", logging_interval)
