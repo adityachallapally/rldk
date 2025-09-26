@@ -24,6 +24,7 @@ from rldk.cards import (
 )
 from rldk.config import settings
 from rldk.determinism.check import check
+from rldk.determinism.runner import run_deterministic_command
 from rldk.diff import compare_training_metrics_tables
 from rldk.evals import run
 from rldk.evals.metrics import (
@@ -72,6 +73,10 @@ from rldk.monitor.presets import FIELD_MAP_PRESETS, RULE_PRESETS, get_field_map_
 from rldk.emit import EventWriter
 from rldk.replay import replay
 from rldk.reward import health
+
+__all__ = [
+    "run_deterministic_command",
+]
 
 # Import reward modules
 from rldk.reward.drift import compare_models, compare_score_lists
