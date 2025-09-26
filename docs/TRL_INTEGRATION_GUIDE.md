@@ -52,6 +52,36 @@ trainer = PPOTrainer(
 trainer.train()
 ```
 
+### 3. Lightweight Event Logging
+
+For minimal setups that only need raw scalar metrics, RLDK ships a dedicated
+`EventWriterCallback`. It mirrors TRL's log payloads into the canonical
+`EventWriter` JSONL format using RLDK's field presets, so downstream tooling can
+ingest KL, reward, and gradient metrics without the heavier monitoring stack.
+
+```python
+from pathlib import Path
+
+from rldk.integrations.trl import EventWriterCallback, create_ppo_trainer
+from trl import PPOConfig
+
+event_log_path = Path("./artifacts/my_run/events.jsonl")
+
+trainer = create_ppo_trainer(
+    model_name="sshleifer/tiny-gpt2",
+    ppo_config=ppo_config,
+    train_dataset=train_dataset,
+    callbacks=[],
+    event_log_path=event_log_path,
+)
+
+trainer.train()
+```
+
+When ``event_log_path`` is provided, :func:`create_ppo_trainer` automatically
+attaches the callback (unless one is already supplied) and appends events to the
+specified JSONL file.
+
 ## JSONL Event Logging
 
 RLDK automatically logs training events in a standardized JSONL format that includes:
@@ -185,9 +215,10 @@ plt.show()
 RLDK generates several output files in the specified directory:
 
 ### JSONL Events File
-- **Format**: `{run_id}_events.jsonl`
-- **Content**: Per-step training events in standardized format
-- **Usage**: Primary data source for analysis
+- **Format**: `{run_id}_events.jsonl` or the path passed to ``event_log_path``
+- **Content**: Per-step training events in standardized format with canonical
+  metric names (``kl``, ``reward_mean``, ``grad_norm_policy`` and more)
+- **Usage**: Primary data source for analysis or ingestion tools
 
 ### Metrics CSV File
 - **Format**: `{run_id}_metrics.csv`

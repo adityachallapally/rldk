@@ -56,6 +56,8 @@ def run_minimal_trl_loop():
     # Create output directory
     output_dir = "./artifacts/trl_live"
     os.makedirs(output_dir, exist_ok=True)
+
+    event_log_path = os.path.join(output_dir, "trl_live_min_events.jsonl")
     
     # Use tiny model to keep downloads fast
     model_name = "sshleifer/tiny-gpt2"  # Very small model
@@ -105,6 +107,7 @@ def run_minimal_trl_loop():
             ppo_config=ppo_config,
             train_dataset=dataset,
             callbacks=[monitor],
+            event_log_path=event_log_path,
         )
         print("✅ PPO Trainer created with RLDK monitor callback")
     except Exception as e:

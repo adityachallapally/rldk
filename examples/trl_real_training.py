@@ -87,6 +87,7 @@ def run_real_trl_training():
     # Create output directory
     output_dir = "./artifacts/trl_real"
     os.makedirs(output_dir, exist_ok=True)
+    event_log_path = os.path.join(output_dir, "trl_real_training_events.jsonl")
     
     # Use tiny model to keep downloads fast
     model_name = "sshleifer/tiny-gpt2"  # Very small model
@@ -171,6 +172,7 @@ def run_real_trl_training():
             ref_model=ref_model,
             reward_model=reward_model,
             value_model=value_model,
+            event_log_path=event_log_path,
         )
         print("✅ PPO Trainer created with RLDK monitor callback")
     except Exception as e:

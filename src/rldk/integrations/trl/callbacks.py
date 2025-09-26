@@ -4,8 +4,9 @@ import json
 import time
 import warnings
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Mapping, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -54,6 +55,9 @@ except ImportError:
     PPOTrainerClass = None
 
 # Import Event schema for proper JSONL emission
+from ...emit import EventWriter
+from ...monitor.presets import FIELD_MAP_PRESETS
+
 try:
     from ...io.event_schema import Event, create_event_from_row
     EVENT_SCHEMA_AVAILABLE = True
@@ -61,6 +65,167 @@ except ImportError:
     EVENT_SCHEMA_AVAILABLE = False
     Event = None
     create_event_from_row = None
+
+
+class EventWriterCallback(TrainerCallback):
+    """Lightweight callback that mirrors TRL logs into ``EventWriter`` JSONL files."""
+
+    _SOURCE = "trl"
+
+    def __init__(
+        self,
+        event_log_path: Union[str, Path],
+        *,
+        run_id: Optional[str] = None,
+        tags: Optional[Mapping[str, Any]] = None,
+    ) -> None:
+        if not TRAINER_API_AVAILABLE:
+            raise ImportError(
+                "Transformers trainer callbacks are required for EventWriterCallback. "
+                "Install with: pip install 'transformers[torch]'"
+            )
+
+        self.event_log_path = Path(event_log_path)
+        self.event_log_path.parent.mkdir(parents=True, exist_ok=True)
+        self.run_id = run_id
+        self._provided_tags = dict(tags) if tags else None
+        self._writer: Optional[EventWriter] = None
+        self._trl_field_map: Dict[str, str] = dict(FIELD_MAP_PRESETS.get("trl", {}))
+        self._metric_field_map: Dict[str, str] = dict(FIELD_MAP_PRESETS.get("grpo", {}))
+        self._token_normalizer = {
+            "rewards": "reward",
+            "advantages": "advantage",
+            "vals": "value",
+            "val": "value",
+            "values": "value",
+            "kl_divergence": "kl",
+            "clipfrac": "clip_frac",
+        }
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+    def _ensure_writer(self) -> EventWriter:
+        if self._writer is None:
+            self._writer = EventWriter(self.event_log_path)
+        return self._writer
+
+    def _normalise_token(self, token: str) -> str:
+        token = token.replace("-", "_")
+        return self._token_normalizer.get(token, token)
+
+    def _candidate_metric_keys(self, key: str) -> List[str]:
+        sanitized = key.strip().replace("-", "_")
+        parts = [part for part in sanitized.split("/") if part]
+        candidates: List[str] = []
+
+        for start in range(len(parts)):
+            suffix = parts[start:]
+            direct = "_".join(suffix)
+            if direct and direct not in candidates:
+                candidates.append(direct)
+
+            normalized_suffix = [self._normalise_token(part) for part in suffix]
+            normalized = "_".join(normalized_suffix)
+            if normalized and normalized not in candidates:
+                candidates.append(normalized)
+
+        if sanitized and sanitized not in candidates:
+            candidates.append(sanitized)
+
+        return candidates
+
+    def _canonical_metric_name(self, key: str) -> str:
+        for candidate in self._candidate_metric_keys(key):
+            mapped = self._metric_field_map.get(candidate)
+            if mapped:
+                return mapped
+        return key.replace("/", "_")
+
+    # ------------------------------------------------------------------
+    # Trainer callback hooks
+    # ------------------------------------------------------------------
+    def on_train_begin(self, args, state, control, **kwargs):  # type: ignore[override]
+        self._ensure_writer()
+        if self.run_id is None:
+            self.run_id = getattr(args, "run_name", None)
+        return control
+
+    def on_train_end(self, args, state, control, **kwargs):  # type: ignore[override]
+        if self._writer is not None:
+            self._writer.close()
+            self._writer = None
+        return control
+
+    def on_log(self, args, state, control, logs=None, **kwargs):  # type: ignore[override]
+        if not logs:
+            return control
+
+        writer = self._ensure_writer()
+        step = getattr(state, "global_step", 0) or 0
+        timestamp = time.time()
+
+        context_tags: Dict[str, Any] = {}
+        context_meta: Dict[str, Any] = {}
+        context_run_id: Optional[str] = None
+        context_step: Optional[int] = None
+        context_time: Optional[Any] = None
+
+        for raw_key, raw_value in list(logs.items()):
+            mapped_field = self._trl_field_map.get(raw_key)
+            if mapped_field == "step":
+                try:
+                    context_step = int(raw_value)  # type: ignore[arg-type]
+                except Exception:
+                    continue
+            elif mapped_field == "time":
+                context_time = raw_value
+            elif mapped_field == "run_id":
+                context_run_id = str(raw_value)
+            elif mapped_field == "tags" and isinstance(raw_value, dict):
+                context_tags.update(raw_value)
+            elif mapped_field == "meta" and isinstance(raw_value, dict):
+                context_meta.update(raw_value)
+
+        if context_step is not None:
+            step = context_step
+        event_time = context_time if context_time is not None else timestamp
+        if isinstance(event_time, (int, float)):
+            event_time = datetime.fromtimestamp(event_time, tz=timezone.utc)
+        run_identifier = context_run_id or self.run_id
+
+        base_tags = dict(self._provided_tags) if self._provided_tags else {}
+        if context_tags:
+            base_tags.update(context_tags)
+
+        for raw_key, raw_value in logs.items():
+            if self._trl_field_map.get(raw_key) in {"step", "time", "run_id", "tags", "meta"}:
+                continue
+
+            if isinstance(raw_value, (int, float)):
+                numeric_value = float(raw_value)
+            else:
+                try:
+                    numeric_value = float(raw_value)
+                except (TypeError, ValueError):
+                    continue
+
+            canonical_name = self._canonical_metric_name(str(raw_key))
+            meta_payload = {"source": self._SOURCE, "raw_name": raw_key}
+            if context_meta:
+                meta_payload.update(context_meta)
+
+            writer.log(
+                step=step,
+                name=canonical_name,
+                value=numeric_value,
+                time=event_time,
+                run_id=run_identifier,
+                tags=base_tags or None,
+                meta=meta_payload,
+            )
+
+        return control
 
 
 @dataclass

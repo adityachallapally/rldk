@@ -126,12 +126,15 @@ def test_basic_ppo_integration():
         fp16=False,  # Disable fp16 for compatibility
     )
 
+    event_log_path = os.path.join(output_dir, "test_ppo_run_events.jsonl")
+
     # Create PPO trainer with automatic compatibility handling
     trainer = create_ppo_trainer(
         model_name=model_name,
         ppo_config=ppo_config,
         train_dataset=dataset,
         callbacks=[rldk_callback, ppo_monitor, checkpoint_monitor],
+        event_log_path=event_log_path,
     )
 
     print("✅ PPO Trainer created with RLDK callbacks")
