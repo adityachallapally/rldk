@@ -384,10 +384,9 @@ class FlexibleDataAdapter(BaseAdapter):
                                 all_required_fields=self.required_fields,
                             )
                     elif self.logger:
-                        optional_missing = [f for f in missing_fields if f != "step"]
-                        if optional_missing:
+                        if missing_fields:
                             self.logger.warning(
-                                f"Missing optional fields in flexible mode: {', '.join(optional_missing)}"
+                                f"Missing optional fields in flexible mode: {', '.join(missing_fields)}"
                             )
             elif self.validation_mode == "lenient" and missing_fields and self.logger:
                 self.logger.warning(
@@ -471,6 +470,13 @@ class FlexibleDataAdapter(BaseAdapter):
         Returns:
             Merged series if multiple synonyms found, None otherwise
         """
+        if "." in primary_resolved:
+            return None
+
+        # Check if primary_resolved is actually a column in the DataFrame
+        if primary_resolved not in df.columns:
+            return None
+
         synonyms = self.field_resolver.get_synonyms(canonical_name)
 
         available_synonyms = []
@@ -485,6 +491,22 @@ class FlexibleDataAdapter(BaseAdapter):
 
         for synonym in available_synonyms:
             synonym_series = df[synonym]
+            
+            # Check for conflicting non-null values
+            conflicts = (
+                merged_series.notna() & 
+                synonym_series.notna() & 
+                (merged_series != synonym_series)
+            )
+            
+            if conflicts.any() and self.logger:
+                conflict_count = conflicts.sum()
+                self.logger.warning(
+                    f"Found {conflict_count} conflicting values between "
+                    f"'{primary_resolved}' and '{synonym}' for field '{canonical_name}'. "
+                    f"Keeping values from '{primary_resolved}'."
+                )
+            
             merged_series = merged_series.fillna(synonym_series)
 
         return merged_series

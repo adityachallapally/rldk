@@ -404,7 +404,7 @@ class SchemaError(AdapterError):
         suggestions = []
         field_map_suggestion = {}
 
-        fields_to_suggest = (
+        fields_to_suggest = list(
             self.all_required_fields if self.all_required_fields else missing_fields
         )
 
