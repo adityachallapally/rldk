@@ -144,6 +144,16 @@ def build_tiny_dataset(tokenizer) -> None:
     pass
 
 
+def load_tokenizer():
+    """Legacy function - no longer used in synthetic training approach."""
+    pass
+
+
+def create_ppo_trainer():
+    """Legacy function - no longer used in synthetic training approach."""
+    pass
+
+
 def run_synthetic_training(model: str, task: str, seed: int, steps: int, log_path: Path) -> None:
     """Run synthetic PPO training and log metrics."""
     

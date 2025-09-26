@@ -360,8 +360,8 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             steps=settings.steps,
             log_path=event_log_path,
         )
-    except ImportError as exc:  # pragma: no cover - environment specific fallback
-        print(f"❌ Missing dependency: {exc}", file=sys.stderr)
+    except Exception as exc:
+        print(f"❌ Error during synthetic GRPO training: {exc}", file=sys.stderr)
         return 1
 
     print(f"✅ Synthetic GRPO training complete. Logs written to {event_log_path}")
