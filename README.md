@@ -1110,6 +1110,33 @@ RLDK builds on the work of the open-source RL community, particularly:
 - [Transformers](https://github.com/huggingface/transformers) - Model architectures
 - [Datasets](https://github.com/huggingface/datasets) - Dataset handling
 
+## 📝 **Reproduce the Blog**
+
+Generate believable training plots and tables for blog content using minimal CPU-friendly training runners:
+
+### **1. Run PPO Training**
+```bash
+python examples/run_ppo_tiny.py
+```
+
+### **2. Run GRPO Training**
+```bash
+python examples/run_grpo_tiny.py
+```
+
+### **3. Generate Training Plots**
+```bash
+rldk plot-training artifacts/ppo_tiny/run.jsonl
+rldk plot-training artifacts/grpo_tiny/run.jsonl
+```
+
+This workflow creates:
+- **Training logs**: Unified JSONL format with KL, reward, entropy, and algorithm-specific metrics
+- **Training plots**: KL divergence, reward curves, stability indicators, and instability markers
+- **Summary tables**: Statistical summaries of training metrics in CSV format
+
+The synthetic training approach generates realistic training dynamics without requiring large GPUs, perfect for creating blog-ready visualizations and analysis.
+
 ## 📞 **Support**
 
 - **Documentation**: [GitHub Wiki](https://github.com/your-org/rldk/wiki)

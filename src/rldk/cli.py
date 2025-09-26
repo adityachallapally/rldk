@@ -3860,6 +3860,136 @@ def seed_cmd(
         raise typer.Exit(1)
 
 
+@app.command(name="plot-training")
+def plot_training(
+    log_path: Path = typer.Argument(
+        help="Path to training JSONL log file from run_ppo_tiny.py or run_grpo_tiny.py"
+    ),
+    output_dir: Path = typer.Option(
+        Path("artifacts/plots"),
+        "--output-dir",
+        help="Directory to write generated plots",
+    ),
+    algorithm: Optional[str] = typer.Option(
+        None,
+        "--algorithm",
+        help="Algorithm type (ppo or grpo) - auto-detected if not specified",
+    ),
+) -> None:
+    """Plot KL, reward, and instability markers from tiny training logs."""
+    ensure_config_initialized()
+    
+    if not log_path.exists():
+        typer.echo(f"Log file does not exist: {log_path}", err=True)
+        raise typer.Exit(1)
+    
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        df = pd.read_json(log_path, lines=True)
+        
+        # Auto-detect algorithm if not specified
+        if algorithm is None:
+            if "meta" in df.columns and not df["meta"].empty:
+                first_meta = df["meta"].iloc[0]
+                if isinstance(first_meta, dict) and "algorithm" in first_meta:
+                    algorithm = first_meta["algorithm"]
+                else:
+                    algorithm = "unknown"
+            else:
+                if "ppo" in str(log_path).lower():
+                    algorithm = "ppo"
+                elif "grpo" in str(log_path).lower():
+                    algorithm = "grpo"
+                else:
+                    algorithm = "unknown"
+        
+        import matplotlib.pyplot as plt
+        plt.style.use("seaborn-v0_8-darkgrid")
+        
+        # Create subplots for different metrics
+        fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+        fig.suptitle(f"{algorithm.upper()} Training Metrics", fontsize=16)
+        
+        kl_data = df[df["name"] == "kl"]
+        if not kl_data.empty:
+            axes[0, 0].plot(kl_data["step"], kl_data["value"], color="#1f77b4", linewidth=1.2)
+            axes[0, 0].set_title("KL Divergence")
+            axes[0, 0].set_xlabel("Step")
+            axes[0, 0].set_ylabel("KL Value")
+            axes[0, 0].grid(True, alpha=0.3)
+            
+            high_kl = kl_data[kl_data["value"] > kl_data["value"].quantile(0.9)]
+            if not high_kl.empty:
+                axes[0, 0].scatter(high_kl["step"], high_kl["value"], 
+                                 color="#d62728", marker="x", s=50, 
+                                 label="Instability markers")
+                axes[0, 0].legend()
+        
+        reward_data = df[df["name"] == "reward"]
+        if not reward_data.empty:
+            axes[0, 1].plot(reward_data["step"], reward_data["value"], color="#2ca02c", linewidth=1.2)
+            axes[0, 1].set_title("Reward")
+            axes[0, 1].set_xlabel("Step")
+            axes[0, 1].set_ylabel("Reward Value")
+            axes[0, 1].grid(True, alpha=0.3)
+        
+        entropy_data = df[df["name"] == "entropy"]
+        if not entropy_data.empty:
+            axes[1, 0].plot(entropy_data["step"], entropy_data["value"], color="#ff7f0e", linewidth=1.2)
+            axes[1, 0].set_title("Entropy (Stability)")
+            axes[1, 0].set_xlabel("Step")
+            axes[1, 0].set_ylabel("Entropy Value")
+            axes[1, 0].grid(True, alpha=0.3)
+        
+        if algorithm == "grpo":
+            acceptance_data = df[df["name"] == "acceptance_rate"]
+            if not acceptance_data.empty:
+                axes[1, 1].plot(acceptance_data["step"], acceptance_data["value"], color="#9467bd", linewidth=1.2)
+                axes[1, 1].set_title("Acceptance Rate")
+                axes[1, 1].set_xlabel("Step")
+                axes[1, 1].set_ylabel("Acceptance Rate")
+                axes[1, 1].grid(True, alpha=0.3)
+        else:
+            grad_norm_data = df[df["name"] == "grad_norm"]
+            if not grad_norm_data.empty:
+                axes[1, 1].plot(grad_norm_data["step"], grad_norm_data["value"], color="#8c564b", linewidth=1.2)
+                axes[1, 1].set_title("Gradient Norm")
+                axes[1, 1].set_xlabel("Step")
+                axes[1, 1].set_ylabel("Grad Norm")
+                axes[1, 1].grid(True, alpha=0.3)
+        
+        output_path = output_dir / f"{algorithm}_training_metrics.png"
+        fig.tight_layout()
+        fig.savefig(output_path, dpi=300, bbox_inches='tight')
+        plt.close(fig)
+        
+        typer.echo(f"✅ Generated training plot: {output_path}")
+        
+        summary_data = []
+        for metric_name in ["kl", "reward", "entropy", "grad_norm"]:
+            metric_data = df[df["name"] == metric_name]
+            if not metric_data.empty:
+                summary_data.append({
+                    "metric": metric_name,
+                    "final_value": metric_data["value"].iloc[-1],
+                    "mean_value": metric_data["value"].mean(),
+                    "std_value": metric_data["value"].std(),
+                    "min_value": metric_data["value"].min(),
+                    "max_value": metric_data["value"].max(),
+                })
+        
+        if summary_data:
+            summary_df = pd.DataFrame(summary_data)
+            summary_path = output_dir / f"{algorithm}_training_summary.csv"
+            summary_df.to_csv(summary_path, index=False)
+            typer.echo(f"✅ Generated training summary: {summary_path}")
+        
+    except Exception as exc:
+        typer.echo(f"Failed to generate plots: {exc}", err=True)
+        raise typer.Exit(1)
+
+
 # Card generation commands
 @app.command(name="card")
 def card(
