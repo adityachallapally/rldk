@@ -62,7 +62,7 @@ if "transformers" not in sys.modules:  # pragma: no cover - test bootstrap helpe
 from rldk.emit import EventWriter
 
 
-@pytest.mark.xfail(condition=False, reason="Tiny PPO script smoke test is experimental", strict=False)
+@pytest.mark.xfail(reason="Tiny PPO script smoke test is experimental", strict=False)
 def test_run_ppo_tiny_smoke(monkeypatch, tmp_path):
     import examples.run_ppo_tiny as run_ppo_tiny
 
@@ -104,7 +104,7 @@ def test_run_ppo_tiny_smoke(monkeypatch, tmp_path):
     assert {"reward", "kl"} <= names
 
 
-@pytest.mark.xfail(condition=False, reason="Tiny GRPO script smoke test is experimental", strict=False)
+@pytest.mark.xfail(reason="Tiny GRPO script smoke test is experimental", strict=False)
 def test_run_grpo_tiny_smoke(monkeypatch, tmp_path):
     import examples.run_grpo_tiny as run_grpo_tiny
 
