@@ -74,6 +74,10 @@ from rldk.emit import EventWriter
 from rldk.replay import replay
 from rldk.reward import health
 
+__all__ = [
+    "run_deterministic_command",
+]
+
 # Import reward modules
 from rldk.reward.drift import compare_models, compare_score_lists
 from rldk.reward.health_analysis import health as reward_health_analysis
