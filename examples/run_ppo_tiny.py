@@ -3,17 +3,31 @@
 from __future__ import annotations
 
 import argparse
+import random
 import sys
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Any, Dict, Iterable, Optional
 
 import yaml
 
 from rldk.integrations.trl import create_ppo_trainer
 
 DEFAULT_MODEL_NAME = "sshleifer/tiny-gpt2"
-DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[1] / "configs" / "ppo_tiny.yaml"
-DEFAULT_LOG_DIR = Path("artifacts/ppo_tiny")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_CONFIG_PATH = PROJECT_ROOT / "configs" / "ppo_tiny.yaml"
+
+
+@dataclass
+class TinyPPORunSettings:
+    """Container for the metadata encoded in ``configs/ppo_tiny.yaml``."""
+
+    model: str
+    dataset_seed: int
+    steps: int
+    logging_interval: int
+    log_path: Path
+    ppo_config: "PPOConfig"
 
 
 def build_tiny_dataset() -> "Dataset":
@@ -60,9 +74,26 @@ def load_tokenizer(model_name: str):
     return tokenizer
 
 
-def load_ppo_config(config_path: Path):
-    """Load a :class:`trl.PPOConfig` from YAML."""
+def _resolve_log_path(log_path: Path, config_path: Path) -> Path:
+    """Resolve ``log_path`` against the repo root or config directory."""
 
+    if log_path.is_absolute():
+        return log_path
+
+    config_root = config_path.parent.resolve()
+    base_dir = PROJECT_ROOT
+    try:
+        config_path.resolve().relative_to(PROJECT_ROOT)
+    except ValueError:
+        base_dir = config_root
+
+    return (base_dir / log_path).resolve()
+
+
+def load_ppo_config(config_path: Path) -> TinyPPORunSettings:
+    """Load metadata and create a :class:`trl.PPOConfig` from YAML."""
+
+    config_path = config_path.resolve()
     with config_path.open("r", encoding="utf-8") as stream:
         config_payload = yaml.safe_load(stream) or {}
 
@@ -74,7 +105,48 @@ def load_ppo_config(config_path: Path):
     except ImportError as exc:  # pragma: no cover - exercised in real runs
         raise ImportError("TRL is required for run_ppo_tiny. Install with: pip install trl") from exc
 
-    return PPOConfig(**config_payload)
+    model_name = config_payload.get("model", DEFAULT_MODEL_NAME)
+    if not isinstance(model_name, str):
+        raise TypeError("The 'model' field must be a string in the PPO config YAML")
+
+    dataset_seed = config_payload.get("dataset_seed", 0)
+    if not isinstance(dataset_seed, int):
+        raise TypeError("The 'dataset_seed' field must be an integer in the PPO config YAML")
+
+    steps = config_payload.get("steps")
+    if not isinstance(steps, int):
+        raise TypeError("The 'steps' field must be provided as an integer in the PPO config YAML")
+
+    logging_interval = config_payload.get("logging_interval", 1)
+    if not isinstance(logging_interval, int):
+        raise TypeError(
+            "The 'logging_interval' field must be provided as an integer in the PPO config YAML"
+        )
+
+    log_path_field = config_payload.get("log_path")
+    if not isinstance(log_path_field, str):
+        raise TypeError("The 'log_path' field must be provided as a string in the PPO config YAML")
+
+    log_path = _resolve_log_path(Path(log_path_field), config_path)
+
+    ppo_kwargs_field = config_payload.get("ppo_kwargs", {})
+    if not isinstance(ppo_kwargs_field, dict):  # pragma: no cover - validation guard
+        raise TypeError("The 'ppo_kwargs' section must be a mapping in the PPO config YAML")
+    ppo_kwargs: Dict[str, Any] = dict(ppo_kwargs_field)
+
+    ppo_kwargs.setdefault("max_steps", steps)
+    ppo_kwargs.setdefault("logging_steps", logging_interval)
+
+    ppo_config = PPOConfig(**ppo_kwargs)
+
+    return TinyPPORunSettings(
+        model=model_name,
+        dataset_seed=dataset_seed,
+        steps=steps,
+        logging_interval=logging_interval,
+        log_path=log_path,
+        ppo_config=ppo_config,
+    )
 
 
 def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
@@ -88,13 +160,13 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--log-dir",
         type=Path,
-        default=DEFAULT_LOG_DIR,
-        help="Directory where EventWriter JSONL logs should be stored.",
+        default=None,
+        help="Optional override for the directory where JSONL logs should be stored.",
     )
     parser.add_argument(
         "--model-name",
-        default=DEFAULT_MODEL_NAME,
-        help="Model identifier to use for tokenizer and policy/value weights.",
+        default=None,
+        help="Optional override for the model identifier defined in the YAML configuration.",
     )
     return parser.parse_args(list(argv) if argv is not None else None)
 
@@ -104,17 +176,24 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
 
     args = parse_args(argv)
     config_path = args.config.expanduser().resolve()
-    log_dir = args.log_dir.expanduser().resolve()
-    log_dir.mkdir(parents=True, exist_ok=True)
-    event_log_path = log_dir / "run.jsonl"
 
     try:
-        ppo_config = load_ppo_config(config_path)
+        settings = load_ppo_config(config_path)
+        model_name = args.model_name or settings.model
+
+        random.seed(settings.dataset_seed)
+
+        event_log_path = settings.log_path
+        if args.log_dir is not None:
+            event_log_path = args.log_dir.expanduser().resolve() / settings.log_path.name
+
+        event_log_path.parent.mkdir(parents=True, exist_ok=True)
+
         dataset = build_tiny_dataset()
-        tokenizer = load_tokenizer(args.model_name)
+        tokenizer = load_tokenizer(model_name)
         trainer = create_ppo_trainer(
-            model_name=args.model_name,
-            ppo_config=ppo_config,
+            model_name=model_name,
+            ppo_config=settings.ppo_config,
             train_dataset=dataset,
             tokenizer=tokenizer,
             event_log_path=event_log_path,

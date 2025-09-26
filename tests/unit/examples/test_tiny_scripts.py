@@ -62,12 +62,31 @@ if "transformers" not in sys.modules:  # pragma: no cover - test bootstrap helpe
 from rldk.emit import EventWriter
 
 
+def _install_trl_stub(monkeypatch):
+    trl_stub = types.ModuleType("trl")
+
+    class _DummyPPOConfig:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+    trl_stub.PPOConfig = _DummyPPOConfig  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "trl", trl_stub)
+    return trl_stub
+
+
 @pytest.mark.xfail(reason="Tiny PPO script smoke test is experimental", strict=False)
 def test_run_ppo_tiny_smoke(monkeypatch, tmp_path):
     import examples.run_ppo_tiny as run_ppo_tiny
 
-    dummy_config = types.SimpleNamespace(run_name="ppo-test")
-    monkeypatch.setattr(run_ppo_tiny, "load_ppo_config", lambda path: dummy_config)
+    dummy_settings = run_ppo_tiny.TinyPPORunSettings(
+        model="dummy-ppo",
+        dataset_seed=0,
+        steps=4,
+        logging_interval=1,
+        log_path=Path("artifacts/ppo_tiny/run.jsonl"),
+        ppo_config=types.SimpleNamespace(run_name="ppo-test"),
+    )
+    monkeypatch.setattr(run_ppo_tiny, "load_ppo_config", lambda path: dummy_settings)
 
     dummy_dataset = [{"prompt": "hi", "response": "hello"}]
     monkeypatch.setattr(run_ppo_tiny, "build_tiny_dataset", lambda: dummy_dataset)
@@ -104,12 +123,61 @@ def test_run_ppo_tiny_smoke(monkeypatch, tmp_path):
     assert {"reward", "kl"} <= names
 
 
+def test_load_ppo_config_resolves_repo_relative_log_path(monkeypatch):
+    import examples.run_ppo_tiny as run_ppo_tiny
+
+    _install_trl_stub(monkeypatch)
+
+    settings = run_ppo_tiny.load_ppo_config(run_ppo_tiny.DEFAULT_CONFIG_PATH)
+
+    expected = (
+        run_ppo_tiny.DEFAULT_CONFIG_PATH.parents[1]
+        / "artifacts"
+        / "ppo_tiny"
+        / "run.jsonl"
+    ).resolve()
+    assert settings.log_path == expected
+
+
+def test_load_ppo_config_resolves_external_relative_log_path(monkeypatch, tmp_path):
+    import examples.run_ppo_tiny as run_ppo_tiny
+
+    _install_trl_stub(monkeypatch)
+
+    config_path = tmp_path / "ppo_custom.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "model: custom/model",
+                "dataset_seed: 1",
+                "steps: 2",
+                "logging_interval: 1",
+                "log_path: logs/run.jsonl",
+                "ppo_kwargs: {}",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    settings = run_ppo_tiny.load_ppo_config(config_path)
+
+    expected = (tmp_path / "logs" / "run.jsonl").resolve()
+    assert settings.log_path == expected
+
+
 @pytest.mark.xfail(reason="Tiny GRPO script smoke test is experimental", strict=False)
 def test_run_grpo_tiny_smoke(monkeypatch, tmp_path):
     import examples.run_grpo_tiny as run_grpo_tiny
 
-    dummy_config = types.SimpleNamespace(run_name="grpo-test")
-    monkeypatch.setattr(run_grpo_tiny, "load_grpo_config", lambda path: dummy_config)
+    dummy_settings = run_grpo_tiny.TinyGRPORunSettings(
+        model="dummy-grpo",
+        dataset_seed=0,
+        steps=4,
+        logging_interval=1,
+        log_path=Path("artifacts/grpo_tiny/run.jsonl"),
+        grpo_config=types.SimpleNamespace(run_name="grpo-test"),
+    )
+    monkeypatch.setattr(run_grpo_tiny, "load_grpo_config", lambda path: dummy_settings)
 
     dummy_dataset = [
         {"accepted": True},
@@ -146,3 +214,53 @@ def test_run_grpo_tiny_smoke(monkeypatch, tmp_path):
     entries = [json.loads(line) for line in log_path.read_text().splitlines() if line.strip()]
     names = {entry["name"] for entry in entries}
     assert {"reward", "kl"} <= names  # acceptance_rate logged separately in real script
+
+
+def test_load_grpo_config_resolves_repo_relative_log_path(monkeypatch):
+    import examples.run_grpo_tiny as run_grpo_tiny
+
+    monkeypatch.setattr(
+        run_grpo_tiny,
+        "create_grpo_config",
+        lambda **kwargs: types.SimpleNamespace(**kwargs),
+    )
+
+    settings = run_grpo_tiny.load_grpo_config(run_grpo_tiny.DEFAULT_CONFIG_PATH)
+
+    expected = (
+        run_grpo_tiny.DEFAULT_CONFIG_PATH.parents[1]
+        / "artifacts"
+        / "grpo_tiny"
+        / "run.jsonl"
+    ).resolve()
+    assert settings.log_path == expected
+
+
+def test_load_grpo_config_resolves_external_relative_log_path(monkeypatch, tmp_path):
+    import examples.run_grpo_tiny as run_grpo_tiny
+
+    monkeypatch.setattr(
+        run_grpo_tiny,
+        "create_grpo_config",
+        lambda **kwargs: types.SimpleNamespace(**kwargs),
+    )
+
+    config_path = tmp_path / "grpo_custom.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "model: custom/model",
+                "dataset_seed: 2",
+                "steps: 3",
+                "logging_interval: 1",
+                "log_path: logs/run.jsonl",
+                "grpo_kwargs: {}",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    settings = run_grpo_tiny.load_grpo_config(config_path)
+
+    expected = (tmp_path / "logs" / "run.jsonl").resolve()
+    assert settings.log_path == expected
