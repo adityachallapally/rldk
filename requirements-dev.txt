@@ -1,7 +1,7 @@
-# Development dependencies with pinned versions
-# Install with: pip install -r requirements-dev.txt
+# Development dependencies with pinned versions.
+# Install optional stacks with: `pip install -e .[compiled]` (or other extras).
 
-# Include base requirements
+# Core runtime pins
 -r requirements.txt
 
 # Testing
@@ -14,6 +14,5 @@ isort==5.13.0
 mypy==1.8.0
 ruff==0.1.0
 
-# Optional dependencies for specific features
-pyarrow==21.0.0
-# openrlhf requires GPU-specific build tooling; install manually if needed.
+# Property-based testing
+hypothesis==6.92.0
