@@ -24,6 +24,7 @@ from rldk.cards import (
 )
 from rldk.config import settings
 from rldk.determinism.check import check
+from rldk.determinism.runner import run_deterministic_command
 from rldk.diff import compare_training_metrics_tables
 from rldk.evals import run
 from rldk.evals.metrics import (
