@@ -3890,22 +3890,30 @@ def plot_training(
         
         # Auto-detect algorithm if not specified
         if algorithm is None:
+            algorithm = "unknown"
+            
             if "meta" in df.columns and not df["meta"].empty:
-                first_meta = df["meta"].iloc[0]
-                if isinstance(first_meta, dict) and "algorithm" in first_meta:
-                    algorithm = first_meta["algorithm"]
-                else:
-                    algorithm = "unknown"
-            else:
+                try:
+                    first_meta = df["meta"].iloc[0]
+                    if isinstance(first_meta, dict) and "algorithm" in first_meta:
+                        algorithm = first_meta["algorithm"]
+                except (KeyError, IndexError, TypeError):
+                    pass
+            
+            if algorithm == "unknown":
                 if "ppo" in str(log_path).lower():
                     algorithm = "ppo"
                 elif "grpo" in str(log_path).lower():
                     algorithm = "grpo"
-                else:
-                    algorithm = "unknown"
         
         import matplotlib.pyplot as plt
-        plt.style.use("seaborn-v0_8-darkgrid")
+        try:
+            plt.style.use("seaborn-v0_8-darkgrid")
+        except OSError:
+            try:
+                plt.style.use("seaborn-darkgrid")
+            except OSError:
+                plt.style.use("default")
         
         # Create subplots for different metrics
         fig, axes = plt.subplots(2, 2, figsize=(12, 8))
