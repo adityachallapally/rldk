@@ -6,17 +6,84 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ARTIFACT_DIR="${ROOT_DIR}/artifacts/fullscale"
 LOG_FILE="${ARTIFACT_DIR}/cli_logs.txt"
 VENV_DIR="${ARTIFACT_DIR}/.venv"
+CACHE_ROOT="${ROOT_DIR}/artifacts/fullscale_cache"
+WHEEL_CACHE="${CACHE_ROOT}/wheels"
+PIP_CACHE="${CACHE_ROOT}/pip"
+EXTRA_GROUPS="${RLDK_ACCEPTANCE_EXTRAS:-compiled}"
+
+mkdir -p "${WHEEL_CACHE}" "${PIP_CACHE}"
 
 rm -rf "${ARTIFACT_DIR}"
 mkdir -p "${ARTIFACT_DIR}"
 : >"${LOG_FILE}"
 
+EXTRA_REQ_FILE="${ARTIFACT_DIR}/optional_extras.txt"
+if [[ -n "${EXTRA_GROUPS}" ]]; then
+  EXTRA_GROUPS_ENV="${EXTRA_GROUPS}" python3 - <<'PY' >"${EXTRA_REQ_FILE}"
+import ast
+import os
+import re
+import sys
+from pathlib import Path
+
+extras = [item.strip() for item in os.environ.get("EXTRA_GROUPS_ENV", "").split(",") if item.strip()]
+if not extras:
+    raise SystemExit(0)
+
+text = Path("pyproject.toml").read_text(encoding="utf-8")
+match = re.search(r"\[project\.optional-dependencies\](.*?)(?:\n\[|\Z)", text, re.S)
+if not match:
+    raise SystemExit("Could not find optional dependency definitions in pyproject.toml")
+
+section = match.group(1)
+pattern = re.compile(r"^\s*([A-Za-z0-9_-]+)\s*=\s*\[(.*?)\]", re.S | re.M)
+data = {}
+for name, body in pattern.findall(section):
+    try:
+        values = ast.literal_eval("[" + body + "]")
+    except Exception as exc:  # pragma: no cover - defensive parsing guard
+        raise SystemExit(f"Failed to parse requirements for extra '{name}': {exc}") from exc
+    data[name] = values
+
+output = []
+for extra in extras:
+    try:
+        output.extend(data[extra])
+    except KeyError as exc:
+        raise SystemExit(f"Requested extra '{extra}' is not defined in pyproject.toml") from exc
+
+for requirement in dict.fromkeys(output):  # preserve order while deduplicating
+    print(requirement)
+PY
+
+  if [[ -s "${EXTRA_REQ_FILE}" ]]; then
+    echo "Preflight: downloading wheels for extras [${EXTRA_GROUPS}]"
+    if ! python3 -m pip download --dest "${WHEEL_CACHE}" --cache-dir "${PIP_CACHE}" --only-binary=:all: --requirement "${EXTRA_REQ_FILE}"; then
+      echo "ERROR: Required wheels for extras [${EXTRA_GROUPS}] are unavailable for this platform." >&2
+      echo "Set RLDK_ACCEPTANCE_EXTRAS= to skip optional stacks or adjust versions." >&2
+      exit 1
+    fi
+  fi
+fi
+
 python3 -m venv "${VENV_DIR}"
 # shellcheck disable=SC1091
 source "${VENV_DIR}/bin/activate"
+export PIP_CACHE_DIR="${PIP_CACHE}"
+PIP_FIND_LINKS_ARGS=()
+if [[ -s "${EXTRA_REQ_FILE}" ]]; then
+  PIP_FIND_LINKS_ARGS=(--find-links "${WHEEL_CACHE}")
+fi
+
 python -m pip install --upgrade pip >/dev/null
-python -m pip install --no-cache-dir -r "${ROOT_DIR}/requirements-dev.txt" >/dev/null
-python -m pip install --no-cache-dir -e "${ROOT_DIR}" >/dev/null
+
+EXTRA_SUFFIX=""
+if [[ -n "${EXTRA_GROUPS}" ]]; then
+  EXTRA_SUFFIX="[${EXTRA_GROUPS}]"
+fi
+
+python -m pip install "${PIP_FIND_LINKS_ARGS[@]}" -e "${ROOT_DIR}${EXTRA_SUFFIX}" >/dev/null
+python -m pip install "${PIP_FIND_LINKS_ARGS[@]}" -r "${ROOT_DIR}/requirements-dev.txt" >/dev/null
 
 export TRANSFORMERS_NO_ADVISORY_WARNINGS=1
 export TOKENIZERS_PARALLELISM=false
