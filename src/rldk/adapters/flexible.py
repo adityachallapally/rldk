@@ -17,7 +17,7 @@ from .field_resolver import FieldResolver, SchemaError
 class FlexibleDataAdapter(BaseAdapter):
     """Flexible adapter that can handle multiple data formats with schema mapping."""
 
-    SUPPORTED_EXTENSIONS = {'.jsonl', '.json', '.csv', '.parquet'}
+    SUPPORTED_EXTENSIONS = {".jsonl", ".json", ".csv", ".parquet"}
 
     def __init__(
         self,
@@ -44,7 +44,7 @@ class FlexibleDataAdapter(BaseAdapter):
         self.field_map = self._normalize_user_field_map(field_map)
         self.config_file = Path(config_file) if config_file else None
         self.allow_dot_paths = allow_dot_paths
-        self.required_fields = required_fields or ['step', 'reward']
+        self.required_fields = required_fields or ["step", "reward"]
         self.validation_mode = validation_mode
         self.preset = preset
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -57,30 +57,32 @@ class FlexibleDataAdapter(BaseAdapter):
         """Load field mapping from config file."""
         try:
             with open(self.config_file) as f:
-                if self.config_file.suffix.lower() in ['.yaml', '.yml']:
+                if self.config_file.suffix.lower() in [".yaml", ".yml"]:
                     config = yaml.safe_load(f)
-                elif self.config_file.suffix.lower() == '.json':
+                elif self.config_file.suffix.lower() == ".json":
                     config = json.load(f)
                 else:
                     raise ValidationError(
                         f"Unsupported config file format: {self.config_file.suffix}",
                         suggestion="Use .yaml, .yml, or .json files",
-                        error_code="UNSUPPORTED_CONFIG_FORMAT"
+                        error_code="UNSUPPORTED_CONFIG_FORMAT",
                     )
 
-            if 'field_map' in config:
-                normalized = self._normalize_user_field_map(config['field_map'])
+            if "field_map" in config:
+                normalized = self._normalize_user_field_map(config["field_map"])
                 if normalized:
                     self.field_map.update(normalized)
                 self.logger.info(f"Loaded field map from {self.config_file}")
             else:
-                self.logger.warning(f"Config file {self.config_file} does not contain 'field_map' section")
+                self.logger.warning(
+                    f"Config file {self.config_file} does not contain 'field_map' section"
+                )
 
         except Exception as e:
             raise ValidationError(
                 f"Failed to load config file {self.config_file}: {e}",
                 suggestion="Check that the config file is valid YAML or JSON",
-                error_code="CONFIG_LOAD_FAILED"
+                error_code="CONFIG_LOAD_FAILED",
             ) from e
 
     def can_handle(self) -> bool:
@@ -105,7 +107,7 @@ class FlexibleDataAdapter(BaseAdapter):
             raise AdapterError(
                 f"Cannot handle source: {self.source}",
                 suggestion=f"Source must be a file or directory with supported extensions: {', '.join(self.SUPPORTED_EXTENSIONS)}",
-                error_code="CANNOT_HANDLE_SOURCE"
+                error_code="CANNOT_HANDLE_SOURCE",
             )
 
         self._log_operation("Loading flexible data", {"source": str(self.source)})
@@ -120,7 +122,7 @@ class FlexibleDataAdapter(BaseAdapter):
             raise AdapterError(
                 "No data found in source",
                 suggestion="Check that the source contains valid data in a supported format",
-                error_code="NO_DATA_FOUND"
+                error_code="NO_DATA_FOUND",
             )
 
         df = self._records_to_dataframe(data)
@@ -131,7 +133,9 @@ class FlexibleDataAdapter(BaseAdapter):
         converted = self._convert_to_training_metrics(df)
 
         try:
-            from ..ingest.training_metrics_normalizer import standardize_training_metrics
+            from ..ingest.training_metrics_normalizer import (
+                standardize_training_metrics,
+            )
 
             standardized = standardize_training_metrics(converted)
         except ValidationError as exc:
@@ -147,19 +151,19 @@ class FlexibleDataAdapter(BaseAdapter):
         """Load data from a single file."""
         extension = file_path.suffix.lower()
 
-        if extension == '.jsonl':
+        if extension == ".jsonl":
             return self._load_jsonl(file_path)
-        elif extension == '.json':
+        elif extension == ".json":
             return self._load_json(file_path)
-        elif extension == '.csv':
+        elif extension == ".csv":
             return self._load_csv(file_path)
-        elif extension == '.parquet':
+        elif extension == ".parquet":
             return self._load_parquet(file_path)
         else:
             raise AdapterError(
                 f"Unsupported file extension: {extension}",
                 suggestion=f"Use one of: {', '.join(self.SUPPORTED_EXTENSIONS)}",
-                error_code="UNSUPPORTED_FILE_EXTENSION"
+                error_code="UNSUPPORTED_FILE_EXTENSION",
             )
 
     def _load_directory(self, dir_path: Path) -> List[Dict[str, Any]]:
@@ -184,7 +188,7 @@ class FlexibleDataAdapter(BaseAdapter):
             return pd.DataFrame()
 
         try:
-            return pd.json_normalize(records, sep='.')
+            return pd.json_normalize(records, sep=".")
         except Exception as exc:  # pragma: no cover - defensive
             self.logger.debug("Failed to normalize records: %s", exc)
             return pd.DataFrame(records)
@@ -194,7 +198,7 @@ class FlexibleDataAdapter(BaseAdapter):
         data = []
 
         try:
-            with open(file_path, encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 for line_num, line in enumerate(f, 1):
                     line = line.strip()
                     if not line:
@@ -205,15 +209,19 @@ class FlexibleDataAdapter(BaseAdapter):
                         if isinstance(record, dict):
                             data.append(record)
                         else:
-                            self.logger.warning(f"Skipping non-dict record at line {line_num}")
+                            self.logger.warning(
+                                f"Skipping non-dict record at line {line_num}"
+                            )
                     except json.JSONDecodeError as e:
-                        self.logger.warning(f"JSON decode error at line {line_num}: {e}")
+                        self.logger.warning(
+                            f"JSON decode error at line {line_num}: {e}"
+                        )
                         continue
         except Exception as e:
             raise AdapterError(
                 f"Failed to load JSONL file {file_path}: {e}",
                 suggestion="Check that the file contains valid JSONL data",
-                error_code="JSONL_LOAD_FAILED"
+                error_code="JSONL_LOAD_FAILED",
             ) from e
 
         return data
@@ -221,7 +229,7 @@ class FlexibleDataAdapter(BaseAdapter):
     def _load_json(self, file_path: Path) -> List[Dict[str, Any]]:
         """Load JSON file."""
         try:
-            with open(file_path, encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = json.load(f)
 
             # Handle different JSON structures
@@ -229,9 +237,9 @@ class FlexibleDataAdapter(BaseAdapter):
                 return data
             elif isinstance(data, dict):
                 # Check if it's a single record or a collection
-                if any(key in data for key in ['records', 'data', 'items', 'metrics']):
+                if any(key in data for key in ["records", "data", "items", "metrics"]):
                     # Try common collection keys
-                    for key in ['records', 'data', 'items', 'metrics']:
+                    for key in ["records", "data", "items", "metrics"]:
                         if key in data and isinstance(data[key], list):
                             return data[key]
                 # Otherwise treat as single record
@@ -240,37 +248,37 @@ class FlexibleDataAdapter(BaseAdapter):
                 raise ValidationError(
                     f"JSON file contains unsupported data type: {type(data)}",
                     suggestion="JSON file should contain a list of records or a single record object",
-                    error_code="INVALID_JSON_STRUCTURE"
+                    error_code="INVALID_JSON_STRUCTURE",
                 )
         except Exception as e:
             raise AdapterError(
                 f"Failed to load JSON file {file_path}: {e}",
                 suggestion="Check that the file contains valid JSON data",
-                error_code="JSON_LOAD_FAILED"
+                error_code="JSON_LOAD_FAILED",
             ) from e
 
     def _load_csv(self, file_path: Path) -> List[Dict[str, Any]]:
         """Load CSV file."""
         try:
             df = pd.read_csv(file_path)
-            return df.to_dict('records')
+            return df.to_dict("records")
         except Exception as e:
             raise AdapterError(
                 f"Failed to load CSV file {file_path}: {e}",
                 suggestion="Check that the file contains valid CSV data",
-                error_code="CSV_LOAD_FAILED"
+                error_code="CSV_LOAD_FAILED",
             ) from e
 
     def _load_parquet(self, file_path: Path) -> List[Dict[str, Any]]:
         """Load Parquet file."""
         try:
             df = pd.read_parquet(file_path)
-            return df.to_dict('records')
+            return df.to_dict("records")
         except Exception as e:
             raise AdapterError(
                 f"Failed to load Parquet file {file_path}: {e}",
                 suggestion="Check that the file contains valid Parquet data",
-                error_code="PARQUET_LOAD_FAILED"
+                error_code="PARQUET_LOAD_FAILED",
             ) from e
 
     def _resolve_and_validate_schema(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -295,21 +303,25 @@ class FlexibleDataAdapter(BaseAdapter):
                     self.field_resolver,
                 )
             elif self.validation_mode == "flexible":
-                step_missing = 'step' in missing_fields
+                step_missing = "step" in missing_fields
                 has_metric = any(
                     self.field_resolver.resolve_field(
                         metric, available_headers, effective_field_map
                     )
-                    for metric in ['reward', 'score', 'return', 'kl', 'entropy', 'loss'])
+                    for metric in ["reward", "score", "return", "kl", "entropy", "loss"]
+                )
 
                 if step_missing:
-                    extra_missing = [field for field in missing_fields if field != 'step']
+                    extra_missing = [
+                        field for field in missing_fields if field != "step"
+                    ]
                     message = "Missing required 'step' field in flexible mode"
                     if extra_missing:
                         extras = ", ".join(sorted(extra_missing))
                         message += f"; additional missing fields: {extras}"
                     optional_hints: Dict[str, List[str]] = {}
-                    for optional_field in ('kl', 'entropy', 'loss'):
+                    resolved_hints: Dict[str, str] = {}
+                    for optional_field in ("kl", "entropy", "loss"):
                         if optional_field in missing_fields:
                             continue
                         resolved_optional = self.field_resolver.resolve_field(
@@ -318,6 +330,7 @@ class FlexibleDataAdapter(BaseAdapter):
                             effective_field_map,
                         )
                         if resolved_optional:
+                            resolved_hints[optional_field] = resolved_optional
                             continue
                         suggestions = self.field_resolver.get_suggestions(
                             optional_field,
@@ -325,29 +338,61 @@ class FlexibleDataAdapter(BaseAdapter):
                         )
                         if suggestions:
                             optional_hints[optional_field] = suggestions
+
+                    if resolved_hints:
+                        resolved_lines = [
+                            f"  {field}: {resolved_name}"
+                            for field, resolved_name in resolved_hints.items()
+                        ]
+                        message += "\n\nRecognized fields:\n" + "\n".join(
+                            resolved_lines
+                        )
+
                     if optional_hints:
                         hint_lines = [
                             f"  {field}: {', '.join(values)}"
                             for field, values in optional_hints.items()
                         ]
-                        message += "\n\nOther recognizable fields:\n" + "\n".join(hint_lines)
+                        message += "\n\nOther recognizable fields:\n" + "\n".join(
+                            hint_lines
+                        )
                     raise SchemaError(
                         message,
                         missing_fields,
                         available_headers,
                         self.field_resolver,
+                        all_required_fields=self.required_fields,
                     )
                 elif not has_metric:
                     raise SchemaError(
                         "No metric fields found in flexible mode (need at least one of: reward, score, return, kl, entropy, loss)",
-                        [], available_headers, self.field_resolver
+                        [],
+                        available_headers,
+                        self.field_resolver,
+                        all_required_fields=self.required_fields,
                     )
-                elif missing_fields and self.logger:
-                    optional_missing = [f for f in missing_fields if f != 'step']
-                    if optional_missing:
-                        self.logger.warning(f"Missing optional fields in flexible mode: {', '.join(optional_missing)}")
+                elif missing_fields:
+                    user_specified_required = self.required_fields != ["step", "reward"]
+                    if user_specified_required:
+                        additional_missing = [f for f in missing_fields if f != "step"]
+                        if additional_missing:
+                            raise SchemaError(
+                                f"Missing required fields: {', '.join(missing_fields)}",
+                                missing_fields,
+                                available_headers,
+                                self.field_resolver,
+                                all_required_fields=self.required_fields,
+                            )
+                    elif self.logger:
+                        optional_missing = [f for f in missing_fields if f != "step"]
+                        if optional_missing:
+                            self.logger.warning(
+                                f"Missing optional fields in flexible mode: {', '.join(optional_missing)}"
+                            )
             elif self.validation_mode == "lenient" and missing_fields and self.logger:
-                self.logger.warning(f"Missing fields in lenient mode: {', '.join(missing_fields)}")
+                self.logger.warning(
+                    f"Missing fields in lenient mode: {', '.join(missing_fields)}"
+                )
 
         resolved_df = df.copy()
         resolved_fields: Dict[str, str] = {}
@@ -356,12 +401,23 @@ class FlexibleDataAdapter(BaseAdapter):
         )
 
         for canonical_name, resolved_name in resolved_candidates.items():
-            if self.allow_dot_paths and '.' in resolved_name and resolved_name not in df.columns:
+            if (
+                self.allow_dot_paths
+                and "." in resolved_name
+                and resolved_name not in df.columns
+            ):
                 resolved_series = self._extract_nested_field(df, resolved_name)
             else:
                 if resolved_name not in df.columns:
                     continue
                 resolved_series = df[resolved_name]
+
+            # Check if we need to merge with other synonym columns
+            merged_series = self._merge_synonym_columns(
+                df, canonical_name, resolved_name, effective_field_map
+            )
+            if merged_series is not None:
+                resolved_series = merged_series
 
             resolved_df[canonical_name] = resolved_series
             resolved_fields[canonical_name] = resolved_name
@@ -397,6 +453,42 @@ class FlexibleDataAdapter(BaseAdapter):
 
         return converted
 
+    def _merge_synonym_columns(
+        self,
+        df: pd.DataFrame,
+        canonical_name: str,
+        primary_resolved: str,
+        effective_field_map: Dict[str, str],
+    ) -> Optional[pd.Series]:
+        """Merge multiple synonym columns for the same canonical field.
+
+        Args:
+            df: DataFrame containing the data
+            canonical_name: The canonical field name (e.g., 'step', 'reward')
+            primary_resolved: The primary resolved column name
+            effective_field_map: The effective field mapping
+
+        Returns:
+            Merged series if multiple synonyms found, None otherwise
+        """
+        synonyms = self.field_resolver.get_synonyms(canonical_name)
+
+        available_synonyms = []
+        for synonym in synonyms:
+            if synonym in df.columns and synonym != primary_resolved:
+                available_synonyms.append(synonym)
+
+        if not available_synonyms:
+            return None
+
+        merged_series = df[primary_resolved].copy()
+
+        for synonym in available_synonyms:
+            synonym_series = df[synonym]
+            merged_series = merged_series.fillna(synonym_series)
+
+        return merged_series
+
     def _extract_nested_field(self, df: pd.DataFrame, field_path: str) -> pd.Series:
         """Extract nested field using dot notation.
 
@@ -407,7 +499,7 @@ class FlexibleDataAdapter(BaseAdapter):
         Returns:
             Series with extracted values
         """
-        parts = field_path.split('.')
+        parts = field_path.split(".")
         result = []
 
         for idx, row in df.iterrows():
@@ -447,7 +539,8 @@ class FlexibleDataAdapter(BaseAdapter):
             1 for key in field_map if isinstance(key, str) and key in canonical_fields
         )
         values_canonical = sum(
-            1 for value in field_map.values()
+            1
+            for value in field_map.values()
             if isinstance(value, str) and value in canonical_fields
         )
 
@@ -487,7 +580,7 @@ class FlexibleDataAdapter(BaseAdapter):
                 if canonical in effective:
                     continue
                 if source_field not in available_headers and not (
-                    self.allow_dot_paths and '.' in source_field
+                    self.allow_dot_paths and "." in source_field
                 ):
                     continue
                 effective[canonical] = source_field
@@ -526,7 +619,7 @@ class FlexibleDataAdapter(BaseAdapter):
             "required_fields": self.required_fields,
             "validation_mode": self.validation_mode,
             "preset": self.preset,
-            "supported_extensions": list(self.SUPPORTED_EXTENSIONS)
+            "supported_extensions": list(self.SUPPORTED_EXTENSIONS),
         }
 
 
@@ -572,7 +665,7 @@ class FlexibleJSONLAdapter(FlexibleDataAdapter):
             return False
 
         if self.source.is_file():
-            return self.source.suffix.lower() == '.jsonl'
+            return self.source.suffix.lower() == ".jsonl"
         elif self.source.is_dir():
             return len(list(self.source.glob("*.jsonl"))) > 0
 
@@ -584,14 +677,16 @@ class FlexibleJSONLAdapter(FlexibleDataAdapter):
             raise AdapterError(
                 f"Cannot handle source: {self.source}",
                 suggestion="Source must be a .jsonl file or directory containing .jsonl files",
-                error_code="CANNOT_HANDLE_SOURCE"
+                error_code="CANNOT_HANDLE_SOURCE",
             )
 
         # For large files, use streaming approach
         if self.stream_large_files and self.source.is_file():
             file_size = self.source.stat().st_size
             if file_size > 100 * 1024 * 1024:  # 100MB threshold
-                self.logger.info(f"Large file detected ({file_size / 1024 / 1024:.1f}MB), using streaming")
+                self.logger.info(
+                    f"Large file detected ({file_size / 1024 / 1024:.1f}MB), using streaming"
+                )
                 return self._load_streaming()
 
         return super().load()
@@ -623,7 +718,7 @@ class FlexibleJSONLAdapter(FlexibleDataAdapter):
         sample_size = 1000
         sample_data = []
 
-        with open(self.source, encoding='utf-8') as f:
+        with open(self.source, encoding="utf-8") as f:
             for i, line in enumerate(f):
                 if i >= sample_size:
                     break
@@ -641,7 +736,7 @@ class FlexibleJSONLAdapter(FlexibleDataAdapter):
             raise AdapterError(
                 "No valid records found in JSONL file",
                 suggestion="Check that the file contains valid JSONL data",
-                error_code="NO_VALID_RECORDS"
+                error_code="NO_VALID_RECORDS",
             )
 
         # Analyze field mapping
@@ -660,26 +755,35 @@ class FlexibleJSONLAdapter(FlexibleDataAdapter):
             if self.validation_mode == "strict":
                 raise SchemaError(
                     f"Missing required fields: {', '.join(missing_fields)}",
-                    missing_fields, available_headers, self.field_resolver
+                    missing_fields,
+                    available_headers,
+                    self.field_resolver,
+                    all_required_fields=self.required_fields,
                 )
             elif self.validation_mode == "flexible":
-                step_missing = 'step' in missing_fields
+                step_missing = "step" in missing_fields
                 has_metric = any(
                     self.field_resolver.resolve_field(
                         metric, available_headers, effective_field_map
                     )
-                    for metric in ['reward', 'score', 'return', 'kl', 'entropy', 'loss']
+                    for metric in ["reward", "score", "return", "kl", "entropy", "loss"]
                 )
 
                 if step_missing:
                     raise SchemaError(
                         "Missing required 'step' field in flexible mode",
-                        ['step'], available_headers, self.field_resolver
+                        ["step"],
+                        available_headers,
+                        self.field_resolver,
+                        all_required_fields=self.required_fields,
                     )
                 elif not has_metric:
                     raise SchemaError(
                         "No metric fields found in flexible mode (need at least one of: reward, score, return, kl, entropy, loss)",
-                        [], available_headers, self.field_resolver
+                        [],
+                        available_headers,
+                        self.field_resolver,
+                        all_required_fields=self.required_fields,
                     )
 
         self._log_resolution_summary(
@@ -700,7 +804,7 @@ class FlexibleJSONLAdapter(FlexibleDataAdapter):
         resolved_fields = schema_info["resolved_fields"]
         all_data = []
 
-        with open(self.source, encoding='utf-8') as f:
+        with open(self.source, encoding="utf-8") as f:
             for line_num, line in enumerate(f, 1):
                 line = line.strip()
                 if not line:
@@ -712,8 +816,10 @@ class FlexibleJSONLAdapter(FlexibleDataAdapter):
                         # Extract only the fields we need
                         extracted_record = {}
                         for canonical, actual in resolved_fields.items():
-                            if self.allow_dot_paths and '.' in actual:
-                                extracted_record[canonical] = self._extract_nested_value(record, actual)
+                            if self.allow_dot_paths and "." in actual:
+                                extracted_record[canonical] = (
+                                    self._extract_nested_value(record, actual)
+                                )
                             else:
                                 extracted_record[canonical] = record.get(actual)
                         all_data.append(extracted_record)
@@ -725,7 +831,7 @@ class FlexibleJSONLAdapter(FlexibleDataAdapter):
 
     def _extract_nested_value(self, record: Dict[str, Any], field_path: str) -> Any:
         """Extract nested value from a record."""
-        parts = field_path.split('.')
+        parts = field_path.split(".")
         value = record
 
         try:

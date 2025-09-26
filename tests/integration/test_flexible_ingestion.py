@@ -17,14 +17,31 @@ class TestFlexibleIngestionIntegration:
 
     def test_acceptance_check_sample_a_jsonl(self):
         """Test acceptance check: Sample A JSONL with fields: global_step, reward_scalar, kl_to_ref"""
-        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            suffix=".jsonl", delete=False, mode="w", encoding="utf-8"
+        ) as f:
             data = [
-                {"global_step": 0, "reward_scalar": 0.5, "kl_to_ref": 0.1, "entropy": 0.8},
-                {"global_step": 1, "reward_scalar": 0.6, "kl_to_ref": 0.12, "entropy": 0.82},
-                {"global_step": 2, "reward_scalar": 0.7, "kl_to_ref": 0.14, "entropy": 0.84}
+                {
+                    "global_step": 0,
+                    "reward_scalar": 0.5,
+                    "kl_to_ref": 0.1,
+                    "entropy": 0.8,
+                },
+                {
+                    "global_step": 1,
+                    "reward_scalar": 0.6,
+                    "kl_to_ref": 0.12,
+                    "entropy": 0.82,
+                },
+                {
+                    "global_step": 2,
+                    "reward_scalar": 0.7,
+                    "kl_to_ref": 0.14,
+                    "entropy": 0.84,
+                },
             ]
             for record in data:
-                f.write(json.dumps(record) + '\n')
+                f.write(json.dumps(record) + "\n")
             f.flush()
 
             # Test zero-config loading
@@ -53,7 +70,9 @@ class TestFlexibleIngestionIntegration:
 
     def test_acceptance_check_sample_b_csv(self):
         """Test acceptance check: Sample B CSV with fields: step, reward, kl"""
-        with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            suffix=".csv", delete=False, mode="w", encoding="utf-8"
+        ) as f:
             writer = csv.writer(f)
             writer.writerow(["step", "reward", "kl", "entropy"])
             writer.writerow([0, 0.5, 0.1, 0.8])
@@ -82,24 +101,24 @@ class TestFlexibleIngestionIntegration:
 
     def test_acceptance_check_sample_c_parquet(self):
         """Test acceptance check: Sample C Parquet with fields: iteration, score, metrics.kl_ref"""
-        with tempfile.NamedTemporaryFile(suffix='.parquet', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as f:
             # Create data with nested structure
             data = [
                 {
                     "iteration": 0,
                     "score": 0.5,
-                    "metrics": {"kl_ref": 0.1, "entropy": 0.8}
+                    "metrics": {"kl_ref": 0.1, "entropy": 0.8},
                 },
                 {
                     "iteration": 1,
                     "score": 0.6,
-                    "metrics": {"kl_ref": 0.12, "entropy": 0.82}
+                    "metrics": {"kl_ref": 0.12, "entropy": 0.82},
                 },
                 {
                     "iteration": 2,
                     "score": 0.7,
-                    "metrics": {"kl_ref": 0.14, "entropy": 0.84}
-                }
+                    "metrics": {"kl_ref": 0.14, "entropy": 0.84},
+                },
             ]
 
             # Convert to DataFrame and save as Parquet
@@ -112,7 +131,7 @@ class TestFlexibleIngestionIntegration:
                 "step": "iteration",
                 "reward": "score",
                 "kl": "metrics.kl_ref",
-                "entropy": "metrics.entropy"
+                "entropy": "metrics.entropy",
             }
             adapter = FlexibleDataAdapter(f.name, field_map=field_map)
             df = adapter.load()
@@ -134,17 +153,21 @@ class TestFlexibleIngestionIntegration:
 
     def test_missing_kl_produces_schema_error(self):
         """Test that missing kl produces SchemaError only when required by downstream metric"""
-        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            suffix=".jsonl", delete=False, mode="w", encoding="utf-8"
+        ) as f:
             data = [
                 {"step": 0, "reward": 0.5, "entropy": 0.8},
-                {"step": 1, "reward": 0.6, "entropy": 0.82}
+                {"step": 1, "reward": 0.6, "entropy": 0.82},
             ]
             for record in data:
-                f.write(json.dumps(record) + '\n')
+                f.write(json.dumps(record) + "\n")
             f.flush()
 
             # Test with kl as required field
-            adapter = FlexibleDataAdapter(f.name, required_fields=["step", "reward", "kl"])
+            adapter = FlexibleDataAdapter(
+                f.name, required_fields=["step", "reward", "kl"]
+            )
 
             with pytest.raises(SchemaError) as exc_info:
                 adapter.load()
@@ -169,23 +192,37 @@ class TestFlexibleIngestionIntegration:
                 "step": "iteration",
                 "reward": "score",
                 "kl": "kl_divergence",
-                "entropy": "policy_entropy"
+                "entropy": "policy_entropy",
             }
         }
 
-        with tempfile.NamedTemporaryFile(suffix='.yaml', delete=False) as config_f:
+        with tempfile.NamedTemporaryFile(
+            suffix=".yaml", delete=False, mode="w", encoding="utf-8"
+        ) as config_f:
             yaml.dump(config_data, config_f)
             config_path = config_f.name
 
         try:
             # Create test data
-            with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as data_f:
+            with tempfile.NamedTemporaryFile(
+                suffix=".jsonl", delete=False, mode="w", encoding="utf-8"
+            ) as data_f:
                 data = [
-                    {"iteration": 0, "score": 0.5, "kl_divergence": 0.1, "policy_entropy": 0.8},
-                    {"iteration": 1, "score": 0.6, "kl_divergence": 0.12, "policy_entropy": 0.82}
+                    {
+                        "iteration": 0,
+                        "score": 0.5,
+                        "kl_divergence": 0.1,
+                        "policy_entropy": 0.8,
+                    },
+                    {
+                        "iteration": 1,
+                        "score": 0.6,
+                        "kl_divergence": 0.12,
+                        "policy_entropy": 0.82,
+                    },
                 ]
                 for record in data:
-                    data_f.write(json.dumps(record) + '\n')
+                    data_f.write(json.dumps(record) + "\n")
                 data_f.flush()
 
                 # Test with YAML config
@@ -211,13 +248,15 @@ class TestFlexibleIngestionIntegration:
 
     def test_canonical_output_dataframe_format(self):
         """Test that canonical output is DataFrame with columns step, reward, kl where available"""
-        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            suffix=".jsonl", delete=False, mode="w", encoding="utf-8"
+        ) as f:
             data = [
                 {"step": 0, "reward": 0.5, "kl": 0.1, "entropy": 0.8, "loss": 0.4},
-                {"step": 1, "reward": 0.6, "kl": 0.12, "entropy": 0.82, "loss": 0.38}
+                {"step": 1, "reward": 0.6, "kl": 0.12, "entropy": 0.82, "loss": 0.38},
             ]
             for record in data:
-                f.write(json.dumps(record) + '\n')
+                f.write(json.dumps(record) + "\n")
             f.flush()
 
             adapter = FlexibleDataAdapter(f.name)
@@ -234,9 +273,9 @@ class TestFlexibleIngestionIntegration:
             assert "loss" in df.columns
 
             # Verify data types are appropriate
-            assert df["step"].dtype in ['int64', 'int32', 'float64']
-            assert df["reward"].dtype in ['float64', 'float32']
-            assert df["kl"].dtype in ['float64', 'float32']
+            assert df["step"].dtype in ["int64", "int32", "float64"]
+            assert df["reward"].dtype in ["float64", "float32"]
+            assert df["kl"].dtype in ["float64", "float32"]
 
             # Verify values are correct
             assert df["step"].iloc[0] == 0
@@ -247,16 +286,18 @@ class TestFlexibleIngestionIntegration:
 
     def test_streaming_behavior_large_jsonl(self):
         """Test streaming behavior for large JSONL files"""
-        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            suffix=".jsonl", delete=False, mode="w", encoding="utf-8"
+        ) as f:
             # Create a large dataset (simulate large file)
             for i in range(1000):
                 record = {
                     "step": i,
                     "reward": 0.5 + i * 0.001,
                     "kl": 0.1 + i * 0.0001,
-                    "entropy": 0.8 - i * 0.0001
+                    "entropy": 0.8 - i * 0.0001,
                 }
-                f.write(json.dumps(record) + '\n')
+                f.write(json.dumps(record) + "\n")
             f.flush()
 
             # Test streaming JSONL adapter
@@ -287,7 +328,7 @@ class TestFlexibleIngestionIntegration:
             "step": ["global_step", "step", "iteration", "iter", "timestep"],
             "reward": ["reward_scalar", "reward", "score", "return", "r"],
             "kl": ["kl_to_ref", "kl", "kl_divergence", "kl_ref", "kl_value"],
-            "entropy": ["entropy", "entropy_mean", "avg_entropy", "mean_entropy"]
+            "entropy": ["entropy", "entropy_mean", "avg_entropy", "mean_entropy"],
         }
 
         # Generate synthetic data with random synonym choices
@@ -301,17 +342,25 @@ class TestFlexibleIngestionIntegration:
                 if canonical == "step":
                     record[chosen_synonym] = i
                 elif canonical == "reward":
-                    record[chosen_synonym] = 0.5 + i * 0.001 + random.uniform(-0.01, 0.01)
+                    record[chosen_synonym] = (
+                        0.5 + i * 0.001 + random.uniform(-0.01, 0.01)
+                    )
                 elif canonical == "kl":
-                    record[chosen_synonym] = 0.1 + i * 0.0001 + random.uniform(-0.001, 0.001)
+                    record[chosen_synonym] = (
+                        0.1 + i * 0.0001 + random.uniform(-0.001, 0.001)
+                    )
                 elif canonical == "entropy":
-                    record[chosen_synonym] = 0.8 - i * 0.0001 + random.uniform(-0.001, 0.001)
+                    record[chosen_synonym] = (
+                        0.8 - i * 0.0001 + random.uniform(-0.001, 0.001)
+                    )
             synthetic_data.append(record)
 
         # Write to temporary file
-        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            suffix=".jsonl", delete=False, mode="w", encoding="utf-8"
+        ) as f:
             for record in synthetic_data:
-                f.write(json.dumps(record) + '\n')
+                f.write(json.dumps(record) + "\n")
             f.flush()
 
             # Load with flexible adapter
@@ -347,21 +396,21 @@ class TestFlexibleIngestionIntegration:
 
             # Create JSONL file
             jsonl_file = temp_path / "data1.jsonl"
-            with open(jsonl_file, 'w') as f:
+            with open(jsonl_file, "w") as f:
                 data = [{"step": 0, "reward": 0.5, "kl": 0.1}]
                 for record in data:
-                    f.write(json.dumps(record) + '\n')
+                    f.write(json.dumps(record) + "\n")
 
             # Create CSV file
             csv_file = temp_path / "data2.csv"
-            with open(csv_file, 'w') as f:
+            with open(csv_file, "w") as f:
                 writer = csv.writer(f)
                 writer.writerow(["step", "reward", "kl"])
                 writer.writerow([1, 0.6, 0.12])
 
             # Create JSON file
             json_file = temp_path / "data3.json"
-            with open(json_file, 'w') as f:
+            with open(json_file, "w") as f:
                 json.dump([{"step": 2, "reward": 0.7, "kl": 0.14}], f)
 
             # Load from directory
@@ -380,14 +429,16 @@ class TestFlexibleIngestionIntegration:
 
     def test_error_handling_with_helpful_suggestions(self):
         """Test error handling provides helpful suggestions"""
-        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            suffix=".jsonl", delete=False, mode="w", encoding="utf-8"
+        ) as f:
             data = {
                 "step_count": 0,
                 "reward_value": 0.5,
                 "kl_divergence": 0.1,
-                "entropy_measure": 0.8
+                "entropy_measure": 0.8,
             }
-            f.write(json.dumps(data) + '\n')
+            f.write(json.dumps(data) + "\n")
             f.flush()
 
             adapter = FlexibleDataAdapter(f.name)

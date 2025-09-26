@@ -13,56 +13,87 @@ class FieldResolver:
     # Canonical field names and their synonyms
     FIELD_SYNONYMS = {
         "step": [
-            "global_step", "step", "iteration", "iter", "timestep", "step_id",
-            "epoch", "batch", "update", "training_step"
+            "global_step",
+            "step",
+            "iteration",
+            "iter",
+            "timestep",
+            "step_id",
+            "epoch",
+            "batch",
+            "update",
+            "training_step",
         ],
         "reward": [
-            "reward_scalar", "reward", "score", "return", "r", "reward_mean",
-            "avg_reward", "mean_reward", "total_reward", "cumulative_reward"
+            "reward_scalar",
+            "reward",
+            "score",
+            "return",
+            "r",
+            "reward_mean",
+            "avg_reward",
+            "mean_reward",
+            "total_reward",
+            "cumulative_reward",
         ],
         "kl": [
-            "kl_to_ref", "kl", "kl_ref", "kl_value", "kl_mean",
-            "kl_divergence", "kl_loss", "kl_penalty", "kl_regularization"
+            "kl_to_ref",
+            "kl",
+            "kl_ref",
+            "kl_value",
+            "kl_mean",
+            "kl_divergence",
+            "kl_loss",
+            "kl_penalty",
+            "kl_regularization",
         ],
         "entropy": [
-            "entropy", "entropy_mean", "avg_entropy", "mean_entropy",
-            "policy_entropy", "action_entropy"
+            "entropy",
+            "entropy_mean",
+            "avg_entropy",
+            "mean_entropy",
+            "policy_entropy",
+            "action_entropy",
         ],
         "loss": [
-            "loss", "total_loss", "policy_loss", "value_loss", "actor_loss",
-            "critic_loss", "combined_loss", "training_loss"
+            "loss",
+            "total_loss",
+            "policy_loss",
+            "value_loss",
+            "actor_loss",
+            "critic_loss",
+            "combined_loss",
+            "training_loss",
         ],
-        "phase": [
-            "phase", "stage", "mode", "train_phase", "training_phase"
-        ],
+        "phase": ["phase", "stage", "mode", "train_phase", "training_phase"],
         "wall_time": [
-            "wall_time", "timestamp", "time", "elapsed_time", "duration",
-            "wall_time_ms", "timestamp_ms", "time_ms"
+            "wall_time",
+            "timestamp",
+            "time",
+            "elapsed_time",
+            "duration",
+            "wall_time_ms",
+            "timestamp_ms",
+            "time_ms",
         ],
-        "seed": [
-            "seed", "random_seed", "rng_seed", "rng.python", "rng.python_seed"
-        ],
-        "run_id": [
-            "run_id", "experiment_id", "run_name", "experiment_name", "job_id"
-        ],
-        "git_sha": [
-            "git_sha", "commit_hash", "commit_sha", "version", "git_version"
-        ],
-        "lr": [
-            "lr", "learning_rate", "lr_value", "current_lr", "optimizer_lr"
-        ],
+        "seed": ["seed", "random_seed", "rng_seed", "rng.python", "rng.python_seed"],
+        "run_id": ["run_id", "experiment_id", "run_name", "experiment_name", "job_id"],
+        "git_sha": ["git_sha", "commit_hash", "commit_sha", "version", "git_version"],
+        "lr": ["lr", "learning_rate", "lr_value", "current_lr", "optimizer_lr"],
         "grad_norm": [
-            "grad_norm", "gradient_norm", "grad_norm_value", "gradient_magnitude"
+            "grad_norm",
+            "gradient_norm",
+            "grad_norm_value",
+            "gradient_magnitude",
         ],
-        "clip_frac": [
-            "clip_frac", "clipped_ratio", "clipping_fraction", "clip_ratio"
-        ],
-        "tokens_in": [
-            "tokens_in", "input_tokens", "input_length", "prompt_length"
-        ],
+        "clip_frac": ["clip_frac", "clipped_ratio", "clipping_fraction", "clip_ratio"],
+        "tokens_in": ["tokens_in", "input_tokens", "input_length", "prompt_length"],
         "tokens_out": [
-            "tokens_out", "output_tokens", "output_length", "response_length"
-        ]
+            "tokens_out",
+            "output_tokens",
+            "output_length",
+            "response_length",
+        ],
     }
 
     def __init__(self, allow_dot_paths: bool = True):
@@ -84,7 +115,7 @@ class FieldResolver:
         self,
         canonical_name: str,
         available_headers: List[str],
-        field_map: Optional[Dict[str, str]] = None
+        field_map: Optional[Dict[str, str]] = None,
     ) -> Optional[str]:
         """Resolve a canonical field name to an actual header name.
 
@@ -100,10 +131,14 @@ class FieldResolver:
             mapped_name = field_map[canonical_name]
             if mapped_name in available_headers:
                 return mapped_name
-            elif self.allow_dot_paths and self._check_nested_field(mapped_name, available_headers):
+            elif self.allow_dot_paths and self._check_nested_field(
+                mapped_name, available_headers
+            ):
                 return mapped_name
             else:
-                self.logger.warning(f"Field map specifies '{mapped_name}' for '{canonical_name}' but it's not found in headers")
+                self.logger.warning(
+                    f"Field map specifies '{mapped_name}' for '{canonical_name}' but it's not found in headers"
+                )
                 return None
 
         # Try synonyms in order of preference
@@ -111,12 +146,16 @@ class FieldResolver:
         for synonym in synonyms:
             if synonym in available_headers:
                 return synonym
-            elif self.allow_dot_paths and self._check_nested_field(synonym, available_headers):
+            elif self.allow_dot_paths and self._check_nested_field(
+                synonym, available_headers
+            ):
                 return synonym
 
         return None
 
-    def _check_nested_field(self, field_path: str, available_headers: List[str]) -> bool:
+    def _check_nested_field(
+        self, field_path: str, available_headers: List[str]
+    ) -> bool:
         """Check if a nested field path exists in the data structure.
 
         Args:
@@ -126,19 +165,19 @@ class FieldResolver:
         Returns:
             True if the nested field path is valid
         """
-        if not self.allow_dot_paths or '.' not in field_path:
+        if not self.allow_dot_paths or "." not in field_path:
             return False
 
         # For now, we'll assume nested fields are valid if the top-level key exists
         # The actual validation will happen during data extraction
-        top_level_key = field_path.split('.')[0]
+        top_level_key = field_path.split(".")[0]
         return top_level_key in available_headers
 
     def get_missing_fields(
         self,
         required_fields: List[str],
         available_headers: List[str],
-        field_map: Optional[Dict[str, str]] = None
+        field_map: Optional[Dict[str, str]] = None,
     ) -> List[str]:
         """Get list of required fields that cannot be resolved.
 
@@ -160,7 +199,7 @@ class FieldResolver:
         self,
         canonical_name: str,
         available_headers: List[str],
-        max_suggestions: int = 3
+        max_suggestions: int = 3,
     ) -> List[str]:
         """Get suggestions for field names based on approximate matching.
 
@@ -181,7 +220,7 @@ class FieldResolver:
         # Find approximate matches
         suggestions = []
         normalized_headers = {
-            header: ''.join(ch for ch in header.lower() if ch.isalnum())
+            header: "".join(ch for ch in header.lower() if ch.isalnum())
             for header in available_headers
         }
 
@@ -191,7 +230,7 @@ class FieldResolver:
             )
             suggestions.extend(matches)
 
-            normalized = ''.join(ch for ch in synonym.lower() if ch.isalnum())
+            normalized = "".join(ch for ch in synonym.lower() if ch.isalnum())
             if normalized:
                 normalized_matches = difflib.get_close_matches(
                     normalized,
@@ -210,7 +249,9 @@ class FieldResolver:
         )
         suggestions.extend(canonical_matches)
 
-        normalized_canonical = ''.join(ch for ch in canonical_name.lower() if ch.isalnum())
+        normalized_canonical = "".join(
+            ch for ch in canonical_name.lower() if ch.isalnum()
+        )
         if normalized_canonical:
             normalized_canonical_matches = difflib.get_close_matches(
                 normalized_canonical,
@@ -228,9 +269,7 @@ class FieldResolver:
         return unique_suggestions[:max_suggestions]
 
     def create_field_map_suggestion(
-        self,
-        missing_fields: List[str],
-        available_headers: List[str]
+        self, missing_fields: List[str], available_headers: List[str]
     ) -> Dict[str, str]:
         """Create a field map suggestion for missing fields.
 
@@ -249,9 +288,7 @@ class FieldResolver:
         return suggestion
 
     def validate_field_map(
-        self,
-        field_map: Dict[str, str],
-        available_headers: List[str]
+        self, field_map: Dict[str, str], available_headers: List[str]
     ) -> Dict[str, Any]:
         """Validate a field map against available headers.
 
@@ -266,20 +303,22 @@ class FieldResolver:
             "valid": True,
             "missing_fields": [],
             "invalid_mappings": [],
-            "warnings": []
+            "warnings": [],
         }
 
         for canonical, actual in field_map.items():
             if actual in available_headers:
                 continue
 
-            if self.allow_dot_paths and '.' in actual:
+            if self.allow_dot_paths and "." in actual:
                 results["warnings"].append(
                     f"Field '{actual}' for '{canonical}' uses nested path - validation will happen during data extraction"
                 )
                 continue
 
-            if self.allow_dot_paths and self._check_nested_field(actual, available_headers):
+            if self.allow_dot_paths and self._check_nested_field(
+                actual, available_headers
+            ):
                 results["warnings"].append(
                     f"Field '{actual}' for '{canonical}' uses nested path - validation will happen during data extraction"
                 )
@@ -313,7 +352,7 @@ class FieldResolver:
         self,
         resolved_fields: Dict[str, str],
         missing_fields: List[str],
-        total_records: int
+        total_records: int,
     ) -> None:
         """Log a summary of field resolution results.
 
@@ -344,7 +383,8 @@ class SchemaError(AdapterError):
         missing_fields: List[str],
         available_headers: List[str],
         field_resolver: FieldResolver,
-        suggestion: Optional[str] = None
+        suggestion: Optional[str] = None,
+        all_required_fields: Optional[List[str]] = None,
     ):
         """Initialize schema error with helpful suggestions.
 
@@ -358,12 +398,32 @@ class SchemaError(AdapterError):
         self.missing_fields = missing_fields
         self.available_headers = available_headers
         self.field_resolver = field_resolver
+        self.all_required_fields = all_required_fields or missing_fields
 
         # Generate suggestions for missing fields
         suggestions = []
         field_map_suggestion = {}
 
-        for field in missing_fields:
+        fields_to_suggest = (
+            self.all_required_fields if self.all_required_fields else missing_fields
+        )
+
+        # Also include all canonical fields that can be resolved from available headers
+        all_canonical_fields = ["step", "reward", "kl", "entropy", "loss"]
+        for canonical_field in all_canonical_fields:
+            if canonical_field not in fields_to_suggest:
+                resolved = field_resolver.resolve_field(
+                    canonical_field, available_headers
+                )
+                if resolved:
+                    fields_to_suggest.append(canonical_field)
+
+        for field in fields_to_suggest:
+            resolved_field = field_resolver.resolve_field(field, available_headers)
+            if resolved_field:
+                field_map_suggestion[field] = resolved_field
+                continue
+
             field_suggestions = field_resolver.get_suggestions(field, available_headers)
             if field_suggestions:
                 suggestions.append(f"  {field}: {', '.join(field_suggestions)}")
@@ -375,7 +435,9 @@ class SchemaError(AdapterError):
             detailed_message += "\n\nFound similar fields:\n" + "\n".join(suggestions)
 
         if field_map_suggestion:
-            field_map_str = ", ".join([f'"{k}": "{v}"' for k, v in field_map_suggestion.items()])
+            field_map_str = ", ".join(
+                [f'"{k}": "{v}"' for k, v in field_map_suggestion.items()]
+            )
             detailed_message += f"\n\nTry this field_map: {{{field_map_str}}}"
 
         if not suggestion:
@@ -388,6 +450,6 @@ class SchemaError(AdapterError):
             details={
                 "missing_fields": missing_fields,
                 "available_headers": available_headers,
-                "field_map_suggestion": field_map_suggestion
-            }
+                "field_map_suggestion": field_map_suggestion,
+            },
         )
