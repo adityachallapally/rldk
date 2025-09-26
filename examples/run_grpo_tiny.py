@@ -15,7 +15,8 @@ from rldk.emit import EventWriter
 from rldk.integrations.trl import EventWriterCallback, create_grpo_config
 
 DEFAULT_MODEL_NAME = "sshleifer/tiny-gpt2"
-DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[1] / "configs" / "grpo_tiny.yaml"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_CONFIG_PATH = PROJECT_ROOT / "configs" / "grpo_tiny.yaml"
 
 
 @dataclass
@@ -81,9 +82,26 @@ def load_tokenizer(model_name: str):
     return tokenizer
 
 
+def _resolve_log_path(log_path: Path, config_path: Path) -> Path:
+    """Resolve ``log_path`` against the repo root or config directory."""
+
+    if log_path.is_absolute():
+        return log_path
+
+    config_root = config_path.parent.resolve()
+    base_dir = PROJECT_ROOT
+    try:
+        config_path.resolve().relative_to(PROJECT_ROOT)
+    except ValueError:
+        base_dir = config_root
+
+    return (base_dir / log_path).resolve()
+
+
 def load_grpo_config(config_path: Path) -> TinyGRPORunSettings:
     """Load metadata and construct a :class:`trl.GRPOConfig` with safe defaults."""
 
+    config_path = config_path.resolve()
     with config_path.open("r", encoding="utf-8") as stream:
         config_payload = yaml.safe_load(stream) or {}
 
@@ -112,9 +130,7 @@ def load_grpo_config(config_path: Path) -> TinyGRPORunSettings:
     if not isinstance(log_path_field, str):
         raise TypeError("The 'log_path' field must be provided as a string in the GRPO config YAML")
 
-    log_path = Path(log_path_field)
-    if not log_path.is_absolute():
-        log_path = (config_path.parents[1] / log_path).resolve()
+    log_path = _resolve_log_path(Path(log_path_field), config_path)
 
     grpo_kwargs_field = config_payload.get("grpo_kwargs", {})
     if not isinstance(grpo_kwargs_field, dict):  # pragma: no cover - validation guard

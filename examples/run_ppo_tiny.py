@@ -14,7 +14,8 @@ import yaml
 from rldk.integrations.trl import create_ppo_trainer
 
 DEFAULT_MODEL_NAME = "sshleifer/tiny-gpt2"
-DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[1] / "configs" / "ppo_tiny.yaml"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_CONFIG_PATH = PROJECT_ROOT / "configs" / "ppo_tiny.yaml"
 
 
 @dataclass
@@ -73,9 +74,26 @@ def load_tokenizer(model_name: str):
     return tokenizer
 
 
+def _resolve_log_path(log_path: Path, config_path: Path) -> Path:
+    """Resolve ``log_path`` against the repo root or config directory."""
+
+    if log_path.is_absolute():
+        return log_path
+
+    config_root = config_path.parent.resolve()
+    base_dir = PROJECT_ROOT
+    try:
+        config_path.resolve().relative_to(PROJECT_ROOT)
+    except ValueError:
+        base_dir = config_root
+
+    return (base_dir / log_path).resolve()
+
+
 def load_ppo_config(config_path: Path) -> TinyPPORunSettings:
     """Load metadata and create a :class:`trl.PPOConfig` from YAML."""
 
+    config_path = config_path.resolve()
     with config_path.open("r", encoding="utf-8") as stream:
         config_payload = yaml.safe_load(stream) or {}
 
@@ -109,9 +127,7 @@ def load_ppo_config(config_path: Path) -> TinyPPORunSettings:
     if not isinstance(log_path_field, str):
         raise TypeError("The 'log_path' field must be provided as a string in the PPO config YAML")
 
-    log_path = Path(log_path_field)
-    if not log_path.is_absolute():
-        log_path = (config_path.parents[1] / log_path).resolve()
+    log_path = _resolve_log_path(Path(log_path_field), config_path)
 
     ppo_kwargs_field = config_payload.get("ppo_kwargs", {})
     if not isinstance(ppo_kwargs_field, dict):  # pragma: no cover - validation guard
