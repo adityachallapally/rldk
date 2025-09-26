@@ -19,6 +19,19 @@ sys.path.append('src')
 from rldk.tracking import ExperimentTracker, TrackingConfig
 
 
+class MockParameter:
+    """Mock parameter that mimics PyTorch parameter interface."""
+    def __init__(self, numel_count):
+        self._numel = numel_count
+
+    def numel(self):
+        return self._numel
+
+    @property
+    def requires_grad(self):
+        return True
+
+
 class LargeModel:
     """Simulated large model for testing."""
 
@@ -31,10 +44,35 @@ class LargeModel:
         self.max_sequence_length = 512
 
         # Simulate model parameters
-        self.parameters = self._calculate_parameters()
+        self.parameter_count = self._calculate_parameters()
 
         # Simulate model structure
         self.layers = self._create_layer_structure()
+
+        # Create mock parameters for tracking system
+        self._mock_parameters = self._create_mock_parameters()
+
+    def parameters(self):
+        """Return mock parameters that mimic PyTorch model.parameters()."""
+        return iter(self._mock_parameters)
+
+    def named_parameters(self):
+        """Return named mock parameters."""
+        for i, param in enumerate(self._mock_parameters):
+            yield f"layer_{i}", param
+
+    def named_modules(self):
+        """Return named modules."""
+        for i, layer in enumerate(self.layers):
+            yield f"layer_{i}", MockModule(layer["type"])
+
+    def _create_mock_parameters(self):
+        """Create mock parameters based on layer structure."""
+        mock_params = []
+        for layer in self.layers:
+            # Create a mock parameter for each layer
+            mock_params.append(MockParameter(layer["parameters"]))
+        return mock_params
 
     def _calculate_parameters(self):
         """Calculate approximate number of parameters."""
@@ -86,7 +124,19 @@ class LargeModel:
         return layers
 
     def __repr__(self):
-        return f"LargeModel(num_layers={self.num_layers}, layer_size={self.layer_size}, vocab_size={self.vocab_size}, parameters={self.parameters:,})"
+        return f"LargeModel(num_layers={self.num_layers}, layer_size={self.layer_size}, vocab_size={self.vocab_size}, parameters={self.parameter_count:,})"
+
+
+class MockModule:
+    """Mock module that mimics PyTorch module interface."""
+    def __init__(self, module_type):
+        self.module_type = module_type
+
+    def children(self):
+        return iter([])  # Leaf modules have no children
+
+    def parameters(self):
+        return iter([])  # Mock empty parameters for modules
 
 
 def test_large_model_tracking():
@@ -117,7 +167,7 @@ def test_large_model_tracking():
             vocab_size=30000  # 30k vocabulary
         )
 
-        print(f"   Model parameters: {large_model.parameters:,}")
+        print(f"   Model parameters: {large_model.parameter_count:,}")
         print(f"   Model layers: {len(large_model.layers)}")
 
         print("3. Tracking large model...")
@@ -132,7 +182,7 @@ def test_large_model_tracking():
                 "embedding_dim": large_model.embedding_dim,
                 "num_attention_heads": large_model.num_attention_heads,
                 "max_sequence_length": large_model.max_sequence_length,
-                "total_parameters": large_model.parameters
+                "total_parameters": large_model.parameter_count
             }
         )
 
@@ -148,7 +198,7 @@ def test_large_model_tracking():
             vocab_size=50000  # 50k vocabulary
         )
 
-        print(f"   Huge model parameters: {huge_model.parameters:,}")
+        print(f"   Huge model parameters: {huge_model.parameter_count:,}")
 
         # Track the huge model
         huge_model_info = tracker.track_model(
@@ -158,7 +208,7 @@ def test_large_model_tracking():
                 "num_layers": huge_model.num_layers,
                 "layer_size": huge_model.layer_size,
                 "vocab_size": huge_model.vocab_size,
-                "total_parameters": huge_model.parameters
+                "total_parameters": huge_model.parameter_count
             }
         )
 
@@ -181,11 +231,11 @@ def test_large_model_tracking():
 
         print("6. Adding performance metadata...")
         # Add performance-related metadata
-        tracker.add_metadata("model_size_mb", large_model.parameters * 4 / (1024 * 1024))  # 4 bytes per parameter
-        tracker.add_metadata("huge_model_size_mb", huge_model.parameters * 4 / (1024 * 1024))
+        tracker.add_metadata("model_size_mb", large_model.parameter_count * 4 / (1024 * 1024))  # 4 bytes per parameter
+        tracker.add_metadata("huge_model_size_mb", huge_model.parameter_count * 4 / (1024 * 1024))
         tracker.add_metadata("dataset_size_mb", len(large_dataset) * 4 / (1024 * 1024))
         tracker.add_metadata("total_memory_estimate_mb",
-                           (large_model.parameters + huge_model.parameters) * 4 / (1024 * 1024) +
+                           (large_model.parameter_count + huge_model.parameter_count) * 4 / (1024 * 1024) +
                            len(large_dataset) * 4 / (1024 * 1024))
 
         print("7. Finishing experiment...")

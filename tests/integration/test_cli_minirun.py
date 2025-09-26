@@ -65,7 +65,7 @@ class TestCLIMinirun:
         """Test that CLI help works."""
         result = subprocess.run(rldk_cmd + ["--help"], capture_output=True, text=True)
         assert result.returncode == 0
-        assert "RLDK" in result.stdout
+        assert "RL Debug Kit" in result.stdout
         assert "Usage:" in result.stdout
 
     def test_cli_seed_help(self, rldk_cmd):
