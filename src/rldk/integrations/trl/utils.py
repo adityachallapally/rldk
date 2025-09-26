@@ -1,12 +1,15 @@
 """Utility functions for TRL integration."""
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import warnings
 
 from packaging import version
 from packaging.version import InvalidVersion
 from transformers import AutoTokenizer, GenerationConfig
+
+from .callbacks import EventWriterCallback
 
 try:  # pragma: no cover - torch is an optional dependency for some integrations
     import torch
@@ -316,6 +319,7 @@ def create_ppo_trainer(
     reward_model: Optional[Any] = None,
     value_model: Optional["AutoModelForCausalLMWithValueHead"] = None,
     validate_setup: bool = True,
+    event_log_path: Optional[Union[str, Path]] = None,
     **ppo_kwargs: Any,
 ) -> "PPOTrainer":
     """Create a :class:`trl.PPOTrainer` with version-aware defaults."""
@@ -402,6 +406,18 @@ def create_ppo_trainer(
         if not validation["valid"]:
             issues = "; ".join(validation["issues"])
             raise ValueError(f"Invalid PPO setup detected: {issues}")
+
+    if event_log_path is not None:
+        already_has_writer = any(
+            isinstance(cb, EventWriterCallback) for cb in callbacks_list
+        )
+        if not already_has_writer:
+            callbacks_list.append(
+                EventWriterCallback(
+                    event_log_path,
+                    run_id=getattr(ppo_config, "run_name", None),
+                )
+            )
 
     trainer_kwargs: Dict[str, Any] = {
         "args": ppo_config,

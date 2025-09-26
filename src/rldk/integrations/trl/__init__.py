@@ -1,6 +1,6 @@
 """TRL integration for RLDK."""
 
-from .callbacks import RLDKCallback, RLDKMetrics, RLDKMonitor
+from .callbacks import EventWriterCallback, RLDKCallback, RLDKMetrics, RLDKMonitor
 from .dashboard import RLDKDashboard
 from .monitors import CheckpointMetrics, CheckpointMonitor, PPOMetrics, PPOMonitor
 from .utils import (
@@ -13,6 +13,7 @@ from .utils import (
 )
 
 __all__ = [
+    "EventWriterCallback",
     "RLDKCallback",
     "RLDKMonitor",
     "RLDKMetrics",
