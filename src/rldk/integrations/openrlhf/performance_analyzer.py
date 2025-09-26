@@ -113,6 +113,14 @@ class PerformanceAnalyzer:
         """
         self.step_count += 1
 
+        # Handle empty or None step_metrics - return early with default signals
+        if not step_metrics:
+            return {
+                'status': 'ok',
+                'signals': self._compute_signals(),
+                'reasons': []
+            }
+
         # Extract metrics from step_metrics
         kl_mean = step_metrics.get('kl_mean', 0.0)
         entropy_mean = step_metrics.get('entropy_mean', 0.0)
@@ -142,16 +150,22 @@ class PerformanceAnalyzer:
     def _update_buffers(self, kl_mean: float, entropy_mean: float, step_time: float,
                        loss: float, reward_mean: float):
         """Update rolling buffers with new metrics."""
-        self.kl_history.append(kl_mean)
-        self.entropy_history.append(entropy_mean)
-        self.step_times.append(step_time)
-        self.loss_history.append(loss)
-        self.reward_history.append(reward_mean)
+        if isinstance(kl_mean, (int, float)) and not np.isnan(kl_mean):
+            self.kl_history.append(round(float(kl_mean), 10))
+        if isinstance(entropy_mean, (int, float)) and not np.isnan(entropy_mean):
+            self.entropy_history.append(round(float(entropy_mean), 10))
+        if isinstance(step_time, (int, float)) and not np.isnan(step_time):
+            self.step_times.append(round(float(step_time), 10))
+        if isinstance(loss, (int, float)) and not np.isnan(loss):
+            self.loss_history.append(round(float(loss), 10))
+        if isinstance(reward_mean, (int, float)) and not np.isnan(reward_mean):
+            self.reward_history.append(round(float(reward_mean), 10))
 
-        # Calculate throughput (steps per second)
-        if step_time > 0:
+        # Calculate throughput (steps per second) with safety checks
+        if step_time > 0 and isinstance(step_time, (int, float)) and not np.isnan(step_time):
             throughput = 1.0 / step_time
-            self.throughput_history.append(throughput)
+            if not np.isnan(throughput) and throughput > 0:
+                self.throughput_history.append(round(float(throughput), 10))
 
     def _compute_signals(self) -> Dict[str, Any]:
         """Compute performance signals from rolling buffers."""
