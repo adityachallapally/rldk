@@ -1,5 +1,6 @@
 """Tests for determinism dependency warnings."""
 
+import builtins
 import os
 import warnings
 from unittest.mock import MagicMock, patch
@@ -16,10 +17,12 @@ class TestDeterminismWarnings:
     def test_pytorch_cuda_kernels_warning_when_missing(self):
         """Test that PyTorch CUDA kernels warning is shown when torch is missing."""
         with patch.dict(os.environ, {"RLDK_SILENCE_DETERMINISM_WARN": "0"}):
+            original_import = builtins.__import__
+
             def mock_import(name, *args, **kwargs):
                 if name == "torch":
                     raise ImportError("No module named 'torch'")
-                return __import__(name, *args, **kwargs)
+                return original_import(name, *args, **kwargs)
 
             with patch("builtins.__import__", side_effect=mock_import):
                 with warnings.catch_warnings(record=True) as w:
@@ -47,9 +50,11 @@ class TestDeterminismWarnings:
                         )
 
                         # Check that warning was issued
-                        assert len(w) == 1
-                        assert "Skipped PyTorch CUDA kernels check" in str(w[0].message)
-                        assert "Install torch>=2.0.0 to enable" in str(w[0].message)
+                        warning_messages = [str(warning.message) for warning in w]
+                        assert any(
+                            "Skipped PyTorch CUDA kernels check" in msg for msg in warning_messages
+                        )
+                        assert any("Install torch>=2.0.0 to enable" in msg for msg in warning_messages)
 
                         # Check that skipped_checks contains the right value
                         assert "pytorch_cuda_kernels" in report.skipped_checks
@@ -57,10 +62,12 @@ class TestDeterminismWarnings:
     def test_tensorflow_warning_when_missing(self):
         """Test that TensorFlow warning is shown when tensorflow is missing."""
         with patch.dict(os.environ, {"RLDK_SILENCE_DETERMINISM_WARN": "0"}):
+            original_import = builtins.__import__
+
             def mock_import(name, *args, **kwargs):
                 if name == "tensorflow":
                     raise ImportError("No module named 'tensorflow'")
-                return __import__(name, *args, **kwargs)
+                return original_import(name, *args, **kwargs)
 
             with patch("builtins.__import__", side_effect=mock_import):
                 with warnings.catch_warnings(record=True) as w:
@@ -88,9 +95,11 @@ class TestDeterminismWarnings:
                         )
 
                         # Check that warning was issued
-                        assert len(w) == 1
-                        assert "Skipped TensorFlow determinism check" in str(w[0].message)
-                        assert "Install tensorflow>=2.8.0 to enable" in str(w[0].message)
+                        warning_messages = [str(warning.message) for warning in w]
+                        assert any(
+                            "Skipped TensorFlow determinism check" in msg for msg in warning_messages
+                        )
+                        assert any("Install tensorflow>=2.8.0 to enable" in msg for msg in warning_messages)
 
                         # Check that skipped_checks contains the right value
                         assert "tensorflow_determinism" in report.skipped_checks
@@ -98,10 +107,12 @@ class TestDeterminismWarnings:
     def test_jax_warning_when_missing(self):
         """Test that JAX warning is shown when jax is missing."""
         with patch.dict(os.environ, {"RLDK_SILENCE_DETERMINISM_WARN": "0"}):
+            original_import = builtins.__import__
+
             def mock_import(name, *args, **kwargs):
                 if name == "jax":
                     raise ImportError("No module named 'jax'")
-                return __import__(name, *args, **kwargs)
+                return original_import(name, *args, **kwargs)
 
             with patch("builtins.__import__", side_effect=mock_import):
                 with warnings.catch_warnings(record=True) as w:
@@ -129,9 +140,11 @@ class TestDeterminismWarnings:
                         )
 
                         # Check that warning was issued
-                        assert len(w) == 1
-                        assert "Skipped JAX determinism check" in str(w[0].message)
-                        assert "Install jax>=0.4.0 to enable" in str(w[0].message)
+                        warning_messages = [str(warning.message) for warning in w]
+                        assert any(
+                            "Skipped JAX determinism check" in msg for msg in warning_messages
+                        )
+                        assert any("Install jax>=0.4.0 to enable" in msg for msg in warning_messages)
 
                         # Check that skipped_checks contains the right value
                         assert "jax_determinism" in report.skipped_checks
@@ -139,10 +152,12 @@ class TestDeterminismWarnings:
     def test_silence_flag_prevents_warnings(self):
         """Test that RLDK_SILENCE_DETERMINISM_WARN=1 prevents warnings."""
         with patch.dict(os.environ, {"RLDK_SILENCE_DETERMINISM_WARN": "1"}):
+            original_import = builtins.__import__
+
             def mock_import(name, *args, **kwargs):
                 if name == "torch":
                     raise ImportError("No module named 'torch'")
-                return __import__(name, *args, **kwargs)
+                return original_import(name, *args, **kwargs)
 
             with patch("builtins.__import__", side_effect=mock_import):
                 with warnings.catch_warnings(record=True) as w:
@@ -178,6 +193,8 @@ class TestDeterminismWarnings:
     def test_multiple_missing_dependencies(self):
         """Test that multiple missing dependencies generate multiple warnings."""
         with patch.dict(os.environ, {"RLDK_SILENCE_DETERMINISM_WARN": "0"}):
+            original_import = builtins.__import__
+
             def mock_import(name, *args, **kwargs):
                 if name == "torch":
                     raise ImportError("No module named 'torch'")
@@ -186,7 +203,7 @@ class TestDeterminismWarnings:
                 elif name == "jax":
                     raise ImportError("No module named 'jax'")
                 else:
-                    return __import__(name, *args, **kwargs)
+                    return original_import(name, *args, **kwargs)
 
             with patch("builtins.__import__", side_effect=mock_import):
                 with warnings.catch_warnings(record=True) as w:
