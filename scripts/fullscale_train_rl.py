@@ -471,15 +471,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         for ep in episodes:
             baseline = 0.9 * baseline + 0.1 * ep.total_reward
             advantages.append(ep.total_reward - baseline)
-        loss = -sum(adv * ep.log_prob_sum for adv, ep in zip(advantages, episodes))
-        loss = loss / max(len(episodes), 1)
+        
+        loss_terms = []
+        for adv, ep in zip(advantages, episodes):
+            loss_terms.append(adv * ep.log_prob_sum)
+        loss_tensor = -torch.stack(loss_terms).sum()
+        loss_tensor = loss_tensor / max(len(episodes), 1)
 
         adv_mean = float(np.mean(advantages)) if advantages else 0.0
         adv_std = float(np.std(advantages)) if len(advantages) > 1 else 0.0
 
         grad_norm = 0.0
         if not args.disable_updates:
-            loss.backward()
+            loss_tensor.backward()
             grad_norm = float(clip_grad_norm_(policy.adapter.parameters(), args.max_grad_norm))
             optimizer.step()
         else:
@@ -520,7 +524,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "kl": logged_kl,
             "kl_penalty": kl_penalty,
             "kl_ema": ema_kl,
-            "loss": float(loss.detach().cpu()),
+            "loss": float(loss_tensor.detach().cpu()),
             "grad_norm": grad_norm,
             "entropy": entropy,
             "learning_rate": optimizer.param_groups[0]["lr"],
