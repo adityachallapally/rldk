@@ -165,12 +165,11 @@ def run_real_grpo_training(model: str, task: str, seed: int, steps: int, log_pat
     log_path.parent.mkdir(parents=True, exist_ok=True)
     
     try:
-        tokenizer = load_tokenizer(model)
-        train_dataset = build_tiny_dataset(tokenizer)
+        train_dataset = build_tiny_dataset()
         
         grpo_config = create_grpo_config(**grpo_kwargs)
         
-        trainer = create_grpo_trainer_real(model, grpo_config, train_dataset, tokenizer, log_path)
+        trainer = create_grpo_trainer_real(model, grpo_config, train_dataset, log_path)
         
         print(f"🚀 Starting real GRPO training with {model} for {steps} steps...")
         
@@ -220,7 +219,7 @@ def run_synthetic_training(model: str, task: str, seed: int, steps: int, log_pat
                 )
 
 
-def build_tiny_dataset(tokenizer):
+def build_tiny_dataset():
     """Construct a toy dataset with acceptance metadata for GRPO runs."""
 
     try:
@@ -343,15 +342,15 @@ def load_grpo_config(config_path: Path) -> TinyGRPORunSettings:
 
 def create_reward_function():
     """Create a simple reward function for GRPO training."""
-    def reward_fn(prompts, responses):
+    def reward_fn(completions, **kwargs):
         """Simple reward function that gives higher rewards for longer, more detailed responses."""
         rewards = []
-        for prompt, response in zip(prompts, responses):
+        for completion in completions:
             base_reward = 0.5
-            length_bonus = min(0.3, len(response.split()) / 50.0)  # Up to 0.3 for longer responses
+            length_bonus = min(0.3, len(completion.split()) / 50.0)  # Up to 0.3 for longer responses
             
             helpful_keywords = ["please", "check", "ensure", "monitor", "evaluate"]
-            keyword_bonus = sum(0.05 for word in helpful_keywords if word.lower() in response.lower())
+            keyword_bonus = sum(0.05 for word in helpful_keywords if word.lower() in completion.lower())
             
             total_reward = base_reward + length_bonus + keyword_bonus
             rewards.append(min(1.0, total_reward))  # Cap at 1.0
@@ -361,7 +360,7 @@ def create_reward_function():
     return reward_fn
 
 
-def create_grpo_trainer_real(model_name: str, grpo_config, train_dataset, tokenizer, event_log_path: Path):
+def create_grpo_trainer_real(model_name: str, grpo_config, train_dataset, event_log_path: Path):
     """Create a real GRPO trainer using RLDK TRL integration."""
     try:
         from trl import GRPOTrainer
@@ -385,7 +384,6 @@ def create_grpo_trainer_real(model_name: str, grpo_config, train_dataset, tokeni
         reward_funcs=reward_fn,
         args=grpo_config,
         train_dataset=train_dataset,
-        processing_class=tokenizer,
         callbacks=callbacks,
     )
     
