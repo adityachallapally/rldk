@@ -10,10 +10,10 @@ log_path: artifacts/grpo_tiny/run.jsonl
 grpo_kwargs:
   run_name: grpo_tiny
   learning_rate: 5.0e-5
-  per_device_train_batch_size: 1
+  per_device_train_batch_size: 2
   gradient_accumulation_steps: 1
   num_train_epochs: 1
-  num_generations: 1
+  num_generations: 2
   save_steps: 0
   remove_unused_columns: false
   bf16: false

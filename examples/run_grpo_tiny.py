@@ -166,17 +166,15 @@ def build_grpo_trainer(
     except ImportError as exc:  # pragma: no cover - exercised in real runs
         raise ImportError("TRL is required for run_grpo_tiny. Install with: pip install trl") from exc
 
-    policy_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
-    ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
-    reward_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    # For GRPO, we use the model as both policy and reward function
+    model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
 
     callback = EventWriterCallback(event_log_path, run_id=getattr(grpo_config, "run_name", None))
 
     trainer = GRPOTrainer(
         args=grpo_config,
-        model=policy_model,
-        ref_model=ref_model,
-        reward_model=reward_model,
+        model=model,
+        reward_funcs=model,  # Use the same model as reward function
         processing_class=tokenizer,
         train_dataset=dataset,
         callbacks=[callback],
