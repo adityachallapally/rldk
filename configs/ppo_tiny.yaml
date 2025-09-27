@@ -15,12 +15,11 @@ ppo_kwargs:
   batch_size: 2
   gradient_accumulation_steps: 1
   num_ppo_epochs: 1
-  target_kl: 0.1
-  clip_range: 0.2
-  clip_range_value: 0.2
+  kl_coef: 0.1
+  cliprange: 0.2
+  cliprange_value: 0.2
   save_steps: 0
   remove_unused_columns: false
   bf16: false
   fp16: false
   dataloader_num_workers: 0
-  log_with: []
