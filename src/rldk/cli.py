@@ -3975,7 +3975,13 @@ def plot_training(
         typer.echo(f"✅ Generated training plot: {output_path}")
         
         summary_data = []
-        for metric_name in ["kl", "reward", "entropy", "grad_norm"]:
+        metric_names = ["kl", "reward", "entropy"]
+        if algorithm == "grpo":
+            metric_names.append("acceptance_rate")
+        else:
+            metric_names.append("grad_norm")
+        
+        for metric_name in metric_names:
             metric_data = df[df["name"] == metric_name]
             if not metric_data.empty:
                 summary_data.append({
