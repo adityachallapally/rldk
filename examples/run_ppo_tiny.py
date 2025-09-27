@@ -14,6 +14,7 @@ import yaml
 import numpy as np
 
 from rldk.emit import EventWriter
+from rldk.integrations.trl.utils import create_ppo_trainer, prepare_models_for_ppo, check_trl_compatibility
 
 DEFAULT_MODEL_NAME = "sshleifer/tiny-gpt2"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -139,23 +140,115 @@ def generate_ppo_samples(
         )
 
 
-def build_tiny_dataset(tokenizer) -> None:
-    """Legacy function - no longer used in synthetic training approach."""
-    pass
+def build_tiny_dataset(tokenizer):
+    """Build a minimal dataset for PPO training with proper tokenization for TRL 0.23.0+."""
+    try:
+        from datasets import Dataset
+    except ImportError:
+        raise ImportError("datasets library required. Install with: pip install datasets")
+    
+    prompts = [
+        "Summarize the importance of unit tests.",
+        "Name a benefit of continuous integration.", 
+        "Why is code review valuable?",
+        "Suggest a use-case for reinforcement learning.",
+    ]
+    
+    # Tokenize prompts for TRL 0.23.0+ compatibility
+    tokenized = tokenizer(prompts, padding=True, truncation=True, return_tensors="pt")
+    
+    # Convert tensors to lists for dataset compatibility
+    input_ids = tokenized["input_ids"].tolist()
+    attention_mask = tokenized["attention_mask"].tolist()
+    
+    return Dataset.from_dict({
+        "input_ids": input_ids,
+        "attention_mask": attention_mask,
+    })
 
 
-def load_tokenizer():
-    """Legacy function - no longer used in synthetic training approach."""
-    pass
+def load_tokenizer(model_name: str):
+    """Load tokenizer for the specified model."""
+    try:
+        from transformers import AutoTokenizer
+    except ImportError:
+        raise ImportError("transformers library required. Install with: pip install transformers")
+    
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    return tokenizer
 
 
-def create_ppo_trainer():
-    """Legacy function - no longer used in synthetic training approach."""
-    pass
+def create_ppo_trainer_real(model_name: str, ppo_config, train_dataset, tokenizer, event_log_path: Path):
+    """Create a real PPO trainer using RLDK TRL integration."""
+    try:
+        from trl import PPOConfig
+        from rldk.integrations.trl.callbacks import EventWriterCallback
+    except ImportError:
+        raise ImportError("TRL library required. Install with: pip install trl")
+    
+    # Check TRL compatibility and show warnings
+    compatibility = check_trl_compatibility()
+    if not compatibility["trl_available"]:
+        raise ImportError("TRL is not available")
+    
+    if compatibility["warnings"]:
+        print("⚠️  TRL Compatibility Warnings:")
+        for warning in compatibility["warnings"]:
+            print(f"   - {warning}")
+    
+    callbacks = [EventWriterCallback(event_log_path)]
+    
+    trainer = create_ppo_trainer(
+        model_name=model_name,
+        ppo_config=ppo_config,
+        train_dataset=train_dataset,
+        callbacks=callbacks,
+    )
+    
+    return trainer
+
+
+def run_real_ppo_training(model: str, task: str, seed: int, steps: int, log_path: Path, ppo_kwargs: Dict[str, Any]) -> None:
+    """Run real PPO training using TRL and RLDK integration."""
+    
+    try:
+        from trl import PPOConfig
+        import torch
+    except ImportError as e:
+        print(f"❌ Missing required libraries: {e}")
+        print("Falling back to synthetic training...")
+        return run_synthetic_training(model, task, seed, steps, log_path)
+    
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        tokenizer = load_tokenizer(model)
+        train_dataset = build_tiny_dataset(tokenizer)
+        
+        ppo_config = PPOConfig(**ppo_kwargs)
+        
+        trainer = create_ppo_trainer_real(model, ppo_config, train_dataset, tokenizer, log_path)
+        
+        print(f"🚀 Starting real PPO training with {model} for {steps} steps...")
+        
+        trainer.train()
+        
+        print(f"✅ Real PPO training complete!")
+        
+    except Exception as e:
+        print(f"❌ Real PPO training failed: {e}")
+        print("Falling back to synthetic training...")
+        return run_synthetic_training(model, task, seed, steps, log_path)
 
 
 def run_synthetic_training(model: str, task: str, seed: int, steps: int, log_path: Path) -> None:
-    """Run synthetic PPO training and log metrics."""
+    """Run synthetic PPO training and log metrics (fallback)."""
     
     rng = random.Random(seed)
     np.random.seed(seed)
@@ -291,19 +384,20 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
         if args.log_dir is not None:
             event_log_path = args.log_dir.expanduser().resolve() / settings.log_path.name
 
-        run_synthetic_training(
+        run_real_ppo_training(
             model=model_name,
-            task="synthetic_ppo",
+            task="real_ppo",
             seed=settings.dataset_seed,
             steps=settings.steps,
             log_path=event_log_path,
+            ppo_kwargs=settings.ppo_config,
         )
         
     except Exception as exc:
         print(f"❌ Error during synthetic PPO training: {exc}", file=sys.stderr)
         return 1
 
-    print(f"✅ Synthetic PPO training complete. Logs written to {event_log_path}")
+    print(f"✅ PPO training complete. Logs written to {event_log_path}")
     return 0
 
 
