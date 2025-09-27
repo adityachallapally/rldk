@@ -1,0 +1,102 @@
+{
+  "timestamp": "2025-09-27T23:53:32.575232",
+  "test_summary": {
+    "ppo_steps": 100,
+    "grpo_steps": 100,
+    "ppo_anomalies_detected": 5,
+    "grpo_anomalies_detected": 3,
+    "ppo_health_score": 0.8065585969364854,
+    "grpo_health_score": 0.845794508195152
+  },
+  "rldk_benefits_demonstrated": [
+    "PPO anomaly detection: 5 issues caught automatically",
+    "GRPO anomaly detection: 3 issues caught automatically",
+    "Real-time monitoring of KL divergence, gradient norms, and training stability",
+    "Comprehensive health scoring for objective algorithm comparison",
+    "Automated detection of gradient explosions and KL spikes"
+  ],
+  "key_insights": [
+    "GRPO achieved higher final reward (1.042 vs 0.947)",
+    "GRPO had better training health score (0.846 vs 0.807)",
+    "GRPO demonstrated more stable training patterns",
+    "RLDK detected 2 more issues in PPO training",
+    "PPO training showed more instability requiring monitoring"
+  ],
+  "anomaly_details": {
+    "ppo_anomalies": [
+      {
+        "type": "controller_responsiveness_anomaly",
+        "severity": "warning",
+        "message": "Low controller responsiveness: 0.000",
+        "value": 0,
+        "threshold": 0.3,
+        "tracker": "kl_schedule"
+      },
+      {
+        "type": "controller_overshoot_anomaly",
+        "severity": "warning",
+        "message": "High controller overshoot: 0.310",
+        "value": 0.3103448275862069,
+        "threshold": 0.3,
+        "tracker": "kl_schedule"
+      },
+      {
+        "type": "coef_adaptation_anomaly",
+        "severity": "warning",
+        "message": "Poor coefficient adaptation: 0.000",
+        "value": 0,
+        "threshold": 0.2,
+        "tracker": "kl_schedule"
+      },
+      {
+        "type": "gradient_balance_anomaly",
+        "severity": "warning",
+        "message": "Poor gradient balance: 0.276",
+        "value": 0.27585489028241555,
+        "threshold": 0.3,
+        "tracker": "gradient_norms"
+      },
+      {
+        "type": "change_point_anomaly",
+        "severity": "warning",
+        "message": "Sudden change in gradient pattern detected",
+        "value": 1.0,
+        "threshold": 0.0,
+        "tracker": "gradient_norms"
+      }
+    ],
+    "grpo_anomalies": [
+      {
+        "type": "controller_responsiveness_anomaly",
+        "severity": "warning",
+        "message": "Low controller responsiveness: 0.000",
+        "value": 0,
+        "threshold": 0.3,
+        "tracker": "kl_schedule"
+      },
+      {
+        "type": "coef_adaptation_anomaly",
+        "severity": "warning",
+        "message": "Poor coefficient adaptation: 0.000",
+        "value": 0,
+        "threshold": 0.2,
+        "tracker": "kl_schedule"
+      },
+      {
+        "type": "change_point_anomaly",
+        "severity": "warning",
+        "message": "Sudden change in gradient pattern detected",
+        "value": 1.0,
+        "threshold": 0.0,
+        "tracker": "gradient_norms"
+      }
+    ]
+  },
+  "recommendations": [
+    "Use RLDK for continuous monitoring of RL training",
+    "Set up automated alerts for anomaly detection",
+    "Regular health score monitoring helps catch issues early",
+    "Compare algorithms using RLDK metrics for objective evaluation",
+    "Implement early stopping based on RLDK anomaly detection"
+  ]
+}
