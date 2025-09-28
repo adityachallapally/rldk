@@ -283,13 +283,6 @@ def _detect_adapter_type(source: Union[str, Path]) -> str:
     if not source_path.exists():
         return "flexible"  # Default to flexible adapter
 
-    # Check for our custom JSONL format first
-    from ..adapters.custom_jsonl import CustomJSONLAdapter
-
-    custom_adapter = CustomJSONLAdapter(source_path)
-    if custom_adapter.can_handle():
-        return "custom_jsonl"
-
     # Check for TRL-specific patterns
     from ..adapters.trl import TRLAdapter
 
@@ -310,6 +303,13 @@ def _detect_adapter_type(source: Union[str, Path]) -> str:
     grpo_adapter = GRPOAdapter(source_path)
     if grpo_adapter.can_handle():
         return "grpo"
+
+    # Check for our custom JSONL format after known formats
+    from ..adapters.custom_jsonl import CustomJSONLAdapter
+
+    custom_adapter = CustomJSONLAdapter(source_path)
+    if custom_adapter.can_handle():
+        return "custom_jsonl"
 
     # Default to flexible adapter for better field resolution
     return "flexible"

@@ -25,9 +25,11 @@ class CustomJSONLAdapter(BaseAdapter):
         if self.source.is_file():
             return self._is_custom_jsonl_file(self.source)
         elif self.source.is_dir():
-            # Check for our custom JSONL log files
-            jsonl_files = list(self.source.glob("*.jsonl"))
-            return len(jsonl_files) > 0
+            # Check directory contents for at least one file with the custom schema
+            for jsonl_file in self.source.glob("*.jsonl"):
+                if self._is_custom_jsonl_file(jsonl_file):
+                    return True
+            return False
 
         return False
 

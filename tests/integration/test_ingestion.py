@@ -358,6 +358,29 @@ class TestJSONLIngestion:
         finally:
             os.unlink(f.name)
 
+    def test_trl_directory_ingestion_prefers_trl_adapter(self, tmp_path):
+        """Regression test to ensure TRL exports aren't blocked by the custom adapter."""
+
+        trl_dir = tmp_path / "trl_export"
+        trl_dir.mkdir()
+
+        trl_file = trl_dir / "metrics.jsonl"
+        trl_payload = {
+            "step": 0,
+            "phase": "train",
+            "reward_mean": 1.0,
+            "kl_mean": 0.05,
+            "entropy_mean": 0.9,
+            "clip_frac": 0.01,
+        }
+        trl_file.write_text(json.dumps(trl_payload) + "\n", encoding="utf-8")
+
+        # Should ingest without raising the custom adapter error
+        df = ingest_runs(trl_dir)
+
+        assert not df.empty
+        assert df["phase"].iloc[0] == "train"
+
         # Test 3: Full standard schema - should NOT be detected as custom
         with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
             json.dump({
