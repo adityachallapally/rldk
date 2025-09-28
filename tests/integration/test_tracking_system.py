@@ -5,6 +5,7 @@ Comprehensive tests for the tracking system.
 import json
 import shutil
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -673,6 +674,42 @@ class TestIntegration:
                 assert "Sequential" in content
                 assert "Linear" in content
                 assert "ReLU" in content
+
+    def test_metric_logging_persists_and_appends(self):
+        """Ensure metric logging updates tracking data and persists to disk."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = TrackingConfig(
+                experiment_name="metric_logging_test",
+                output_dir=Path(temp_dir),
+                save_to_wandb=False,
+            )
+
+            tracker = ExperimentTracker(config)
+
+            first_entry = tracker.log_metric("accuracy", 0.91, step=1, timestamp=datetime(2024, 1, 1, 12, 0, 0))
+            assert first_entry["name"] == "accuracy"
+            assert first_entry["value"] == 0.91
+            assert first_entry["step"] == 1
+            assert first_entry["timestamp"].startswith("2024-01-01T12:00:00")
+
+            multiple_entries = tracker.log_metrics({"loss": 0.12, "precision": 0.78}, step=2)
+            assert len(multiple_entries["metrics"]) == 2
+            assert tracker.tracking_data["metrics"][-1]["name"] == "precision"
+
+            canonical_path = Path(temp_dir) / "experiment.json"
+            assert canonical_path.exists()
+
+            with canonical_path.open() as fp:
+                persisted_data = json.load(fp)
+
+            metric_names = [entry["name"] for entry in persisted_data["metrics"]]
+            assert metric_names.count("accuracy") == 1
+            assert metric_names.count("loss") == 1
+            assert metric_names.count("precision") == 1
+
+            loss_entry = next(entry for entry in persisted_data["metrics"] if entry["name"] == "loss")
+            assert loss_entry["step"] == 2
+            assert isinstance(loss_entry["timestamp"], str)
 
 
 if __name__ == "__main__":

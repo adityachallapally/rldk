@@ -9,7 +9,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Mapping, Optional
 
 import yaml
 
@@ -51,6 +51,7 @@ class ExperimentTracker:
             "environment": {},
             "seeds": {},
             "git": {},
+            "metrics": [],
             "metadata": config.metadata.copy(),
             "tags": config.tags.copy(),
             "notes": config.notes
@@ -515,6 +516,72 @@ class ExperimentTracker:
         self._save_tracking_data()
 
         return seed_info
+
+    def _append_metric_entry(
+        self,
+        name: str,
+        value: Any,
+        step: Optional[int] = None,
+        timestamp: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        """Create a metric entry and append it to tracking data without persisting."""
+        if not name or not str(name).strip():
+            raise ValueError("Metric name must be a non-empty string")
+
+        if isinstance(timestamp, datetime):
+            metric_timestamp = timestamp.isoformat()
+        elif timestamp is None:
+            metric_timestamp = datetime.now().isoformat()
+        else:
+            metric_timestamp = str(timestamp)
+
+        entry: Dict[str, Any] = {
+            "name": str(name),
+            "value": value,
+            "timestamp": metric_timestamp,
+        }
+
+        if step is not None:
+            entry["step"] = int(step)
+
+        self.tracking_data.setdefault("metrics", []).append(entry)
+        return entry
+
+    def log_metric(
+        self,
+        name: str,
+        value: Any,
+        *,
+        step: Optional[int] = None,
+        timestamp: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        """Log a single metric value and persist tracking data."""
+
+        entry = self._append_metric_entry(name, value, step=step, timestamp=timestamp)
+        self._save_tracking_data()
+        return entry
+
+    def log_metrics(
+        self,
+        metrics: Mapping[str, Any],
+        *,
+        step: Optional[int] = None,
+        timestamp: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        """Log multiple metrics at once and persist tracking data."""
+
+        if not isinstance(metrics, Mapping):
+            raise TypeError("metrics must be a mapping of metric names to values")
+
+        if not metrics:
+            return {"metrics": []}
+
+        entries = [
+            self._append_metric_entry(name, value, step=step, timestamp=timestamp)
+            for name, value in metrics.items()
+        ]
+        self._save_tracking_data()
+        return {"metrics": entries}
 
     def add_metadata(self, key: str, value: Any) -> None:
         """Add custom metadata to the experiment."""
