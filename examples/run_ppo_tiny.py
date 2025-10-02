@@ -11,7 +11,7 @@ from typing import Any, Dict, Iterable, Optional
 
 import yaml
 
-from rldk.integrations.trl import create_ppo_trainer
+from rldk.integrations.trl import create_ppo_trainer, tokenize_text_column
 
 DEFAULT_MODEL_NAME = "sshleifer/tiny-gpt2"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -191,6 +191,14 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
 
         dataset = build_tiny_dataset()
         tokenizer = load_tokenizer(model_name)
+        dataset = tokenize_text_column(
+            dataset,
+            tokenizer,
+            text_column="prompt",
+            padding=True,
+            truncation=True,
+            desc="Tokenizing PPO prompts",
+        )
         trainer = create_ppo_trainer(
             model_name=model_name,
             ppo_config=settings.ppo_config,

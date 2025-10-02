@@ -19,6 +19,7 @@ from rldk.integrations.trl import (
     RLDKCallback,
     check_trl_compatibility,
     create_ppo_trainer,
+    tokenize_text_column,
 )
 from rldk.utils.math_utils import safe_divide
 
@@ -106,8 +107,22 @@ def test_basic_ppo_integration():
         print("✅ Example structure validated without model download")
         return True
 
-    # Create sample dataset
+    # Create tokenizer and sample dataset
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    if getattr(tokenizer, "padding_side", None) != "right":
+        tokenizer.padding_side = "right"
+
     dataset = create_sample_dataset()
+    dataset = tokenize_text_column(
+        dataset,
+        tokenizer,
+        text_column="prompt",
+        padding=True,
+        truncation=True,
+        desc="Tokenizing basic PPO prompts",
+    )
 
     # PPO configuration
     ppo_config = PPOConfig(
@@ -135,6 +150,7 @@ def test_basic_ppo_integration():
         train_dataset=dataset,
         callbacks=[rldk_callback, ppo_monitor, checkpoint_monitor],
         event_log_path=event_log_path,
+        tokenizer=tokenizer,
     )
 
     print("✅ PPO Trainer created with RLDK callbacks")

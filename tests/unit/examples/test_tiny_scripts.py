@@ -94,8 +94,19 @@ def test_run_ppo_tiny_smoke(monkeypatch, tmp_path):
     dummy_tokenizer = types.SimpleNamespace(pad_token="[PAD]", eos_token="[EOS]", padding_side="right")
     monkeypatch.setattr(run_ppo_tiny, "load_tokenizer", lambda model_name: dummy_tokenizer)
 
+    def fake_tokenize(dataset, tokenizer, **kwargs):
+        for record in dataset:
+            record.setdefault("input_ids", [101, 102])
+            record.setdefault("attention_mask", [1, 1])
+        return dataset
+
+    monkeypatch.setattr(run_ppo_tiny, "tokenize_text_column", fake_tokenize)
+
     def fake_create_ppo_trainer(model_name, ppo_config, train_dataset, **kwargs):
         event_log_path = Path(kwargs["event_log_path"])
+
+        assert all("input_ids" in sample for sample in train_dataset)
+        assert all("attention_mask" in sample for sample in train_dataset)
 
         class DummyTrainer:
             def __init__(self, log_path: Path) -> None:

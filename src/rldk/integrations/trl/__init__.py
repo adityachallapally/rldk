@@ -9,6 +9,7 @@ from .utils import (
     create_ppo_trainer,
     fix_generation_config,
     prepare_models_for_ppo,
+    tokenize_text_column,
     validate_ppo_setup,
 )
 
@@ -26,6 +27,7 @@ __all__ = [
     "create_ppo_trainer",
     "fix_generation_config",
     "prepare_models_for_ppo",
+    "tokenize_text_column",
     "check_trl_compatibility",
     "validate_ppo_setup",
 ]
