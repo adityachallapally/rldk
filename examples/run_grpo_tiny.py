@@ -12,7 +12,7 @@ from typing import Any, Dict, Iterable, Optional
 import yaml
 
 from rldk.emit import EventWriter
-from rldk.integrations.trl import EventWriterCallback, create_grpo_config
+from rldk.integrations.trl import EventWriterCallback, create_grpo_config, fix_generation_config
 
 DEFAULT_MODEL_NAME = "sshleifer/tiny-gpt2"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -168,6 +168,7 @@ def build_grpo_trainer(
 
     # For GRPO, we use the model as both policy and reward function
     model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    model = fix_generation_config(model, tokenizer)
 
     callback = EventWriterCallback(event_log_path, run_id=getattr(grpo_config, "run_name", None))
 

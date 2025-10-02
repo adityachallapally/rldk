@@ -258,6 +258,10 @@ def fix_generation_config(
         else:
             model.is_gradient_checkpointing = False  # Default to False
 
+    # Ensure TRL compatibility helpers can track emitted warnings.
+    if not hasattr(model, 'warnings_issued'):
+        model.warnings_issued = {}
+
     return _ensure_value_head_score(model)
 
 

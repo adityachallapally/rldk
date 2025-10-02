@@ -289,6 +289,24 @@ def test_validate_setup_rejects_plain_value_model(monkeypatch: pytest.MonkeyPatc
     )
 
 
+def test_fix_generation_config_initializes_warning_registry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """fix_generation_config() ensures TRL models expose a warnings registry."""
+
+    _prepare_trl_environment(monkeypatch)
+
+    tokenizer = DummyTokenizer()
+    model = DummyValueHead.from_pretrained("policy-model")
+
+    assert not hasattr(model, "warnings_issued")
+
+    patched = trl_utils.fix_generation_config(model, tokenizer)
+
+    assert hasattr(patched, "warnings_issued")
+    assert patched.warnings_issued == {}
+
+
 def test_fix_generation_config_errors_without_value_head(monkeypatch: pytest.MonkeyPatch) -> None:
     """fix_generation_config() raises a clear error when value-head models are unavailable."""
 
