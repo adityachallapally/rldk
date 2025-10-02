@@ -95,10 +95,15 @@ def test_run_ppo_tiny_smoke(monkeypatch, tmp_path):
     monkeypatch.setattr(run_ppo_tiny, "load_tokenizer", lambda model_name: dummy_tokenizer)
 
     def fake_tokenize(dataset, tokenizer, **kwargs):
+        sanitized = []
         for record in dataset:
-            record.setdefault("input_ids", [101, 102])
-            record.setdefault("attention_mask", [1, 1])
-        return dataset
+            sanitized_record = dict(record)
+            sanitized_record.pop("prompt", None)
+            sanitized_record.pop("response", None)
+            sanitized_record.setdefault("input_ids", [101, 102])
+            sanitized_record.setdefault("attention_mask", [1, 1])
+            sanitized.append(sanitized_record)
+        return sanitized
 
     monkeypatch.setattr(run_ppo_tiny, "tokenize_text_column", fake_tokenize)
 
@@ -107,6 +112,8 @@ def test_run_ppo_tiny_smoke(monkeypatch, tmp_path):
 
         assert all("input_ids" in sample for sample in train_dataset)
         assert all("attention_mask" in sample for sample in train_dataset)
+        assert all("prompt" not in sample for sample in train_dataset)
+        assert all("response" not in sample for sample in train_dataset)
 
         class DummyTrainer:
             def __init__(self, log_path: Path) -> None:

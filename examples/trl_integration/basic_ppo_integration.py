@@ -121,8 +121,15 @@ def test_basic_ppo_integration():
         text_column="prompt",
         padding=True,
         truncation=True,
+        keep_original=False,
         desc="Tokenizing basic PPO prompts",
     )
+    if hasattr(dataset, "remove_columns"):
+        if "response" in getattr(dataset, "column_names", []):
+            dataset = dataset.remove_columns(["response"])
+    else:  # pragma: no cover - exercised when stubbing datasets in tests
+        for record in dataset:
+            record.pop("response", None)
 
     # PPO configuration
     ppo_config = PPOConfig(
