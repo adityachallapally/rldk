@@ -7,7 +7,7 @@ import warnings
 
 from packaging import version
 from packaging.version import InvalidVersion
-from transformers import AutoTokenizer, GenerationConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, PreTrainedModel
 
 from .callbacks import EventWriterCallback
 
@@ -155,6 +155,26 @@ def create_grpo_config(**config_kwargs: Any) -> "GRPOConfig":
     return GRPOConfig(**safe_kwargs)
 
 
+def _build_generation_config(
+    tokenizer: AutoTokenizer,
+    generation_config: Optional[GenerationConfig],
+) -> GenerationConfig:
+    """Return a usable :class:`~transformers.GenerationConfig` instance."""
+
+    if generation_config is not None:
+        return generation_config
+
+    return GenerationConfig(
+        eos_token_id=tokenizer.eos_token_id,
+        pad_token_id=tokenizer.pad_token_id,
+        bos_token_id=getattr(tokenizer, "bos_token_id", None),
+        max_length=512,
+        do_sample=True,
+        temperature=1.0,
+        top_p=1.0,
+    )
+
+
 def fix_generation_config(
     model: "AutoModelForCausalLMWithValueHead",
     tokenizer: AutoTokenizer,
@@ -181,20 +201,17 @@ def fix_generation_config(
     if not TRL_AVAILABLE:
         raise ImportError("TRL is required for this function. Install with: pip install trl")
 
+    if AutoModelForCausalLMWithValueHead is None:
+        raise ImportError(
+            "AutoModelForCausalLMWithValueHead is unavailable despite TRL being installed."
+            " Upgrade TRL to a version that provides value head models."
+        )
+
     if not isinstance(model, AutoModelForCausalLMWithValueHead):
         raise AttributeError("Model must be an AutoModelForCausalLMWithValueHead instance")
 
     # Create generation config if not provided
-    if generation_config is None:
-        generation_config = GenerationConfig(
-            eos_token_id=tokenizer.eos_token_id,
-            pad_token_id=tokenizer.pad_token_id,
-            bos_token_id=getattr(tokenizer, 'bos_token_id', None),
-            max_length=512,  # Default max length
-            do_sample=True,  # Enable sampling for generation
-            temperature=1.0,  # Default temperature
-            top_p=1.0,  # Default top_p
-        )
+    generation_config = _build_generation_config(tokenizer, generation_config)
 
     # Set the generation_config attribute
     model.generation_config = generation_config
@@ -238,8 +255,8 @@ def prepare_models_for_ppo(
     tokenizer: Optional[AutoTokenizer] = None,
     generation_config: Optional[GenerationConfig] = None
 ) -> Tuple[
-    "AutoModelForCausalLMWithValueHead",
-    "AutoModelForCausalLMWithValueHead",
+    PreTrainedModel,
+    PreTrainedModel,
     "AutoModelForCausalLMWithValueHead",
     AutoTokenizer,
 ]:
@@ -263,14 +280,18 @@ def prepare_models_for_ppo(
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
 
-    # Create models - use same model for policy and reward heads
-    model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
-    ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    # Create models - load policy/reference as base causal LMs to preserve weights
+    model = AutoModelForCausalLM.from_pretrained(model_name)
+    ref_model = AutoModelForCausalLM.from_pretrained(model_name)
     reward_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
 
-    # Fix generation_config for all models
-    model = fix_generation_config(model, tokenizer, generation_config)
-    ref_model = fix_generation_config(ref_model, tokenizer, generation_config)
+    # Ensure policy/ref models expose a usable generation_config
+    shared_generation_config = _build_generation_config(tokenizer, generation_config)
+    for candidate in (model, ref_model):
+        if getattr(candidate, "generation_config", None) is None:
+            candidate.generation_config = shared_generation_config
+
+    # Fix generation_config for TRL models
     reward_model = fix_generation_config(reward_model, tokenizer, generation_config)
 
     return model, ref_model, reward_model, tokenizer
@@ -304,6 +325,31 @@ def _ensure_generation_config(
         )
 
     return fix_generation_config(candidate, tokenizer, generation_config)
+
+
+def _wrap_policy_for_legacy_trl(
+    candidate: Optional[Union[PreTrainedModel, "AutoModelForCausalLMWithValueHead"]],
+    *,
+    model_name: str,
+    tokenizer: AutoTokenizer,
+    generation_config: Optional[GenerationConfig],
+) -> "AutoModelForCausalLMWithValueHead":
+    """Wrap policy models with TRL value heads without losing pretrained weights."""
+
+    if AutoModelForCausalLMWithValueHead is None:
+        raise ImportError(
+            "AutoModelForCausalLMWithValueHead is unavailable. Upgrade TRL to wrap policy models."
+        )
+
+    if isinstance(candidate, AutoModelForCausalLMWithValueHead):
+        return fix_generation_config(candidate, tokenizer, generation_config)
+
+    if candidate is not None:
+        wrapped = AutoModelForCausalLMWithValueHead.from_pretrained(pretrained_model=candidate)
+    else:
+        wrapped = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+
+    return fix_generation_config(wrapped, tokenizer, generation_config)
 
 
 def create_ppo_trainer(
@@ -387,6 +433,20 @@ def create_ppo_trainer(
     if tokenizer is None:
         raise ValueError("Tokenizer could not be prepared for PPO training")
 
+    if not use_new_api:
+        model = _wrap_policy_for_legacy_trl(
+            model,
+            model_name=model_name,
+            tokenizer=tokenizer,
+            generation_config=generation_config,
+        )
+        ref_model = _wrap_policy_for_legacy_trl(
+            ref_model,
+            model_name=model_name,
+            tokenizer=tokenizer,
+            generation_config=generation_config,
+        )
+
     if use_new_api and value_model is None:
         value_model = _prepare_value_model(
             model_name,
@@ -402,6 +462,7 @@ def create_ppo_trainer(
             value_model,
             tokenizer,
             require_value_model=use_new_api,
+            allow_base_models=use_new_api,
         )
         if not validation["valid"]:
             issues = "; ".join(validation["issues"])
@@ -523,6 +584,7 @@ def validate_ppo_setup(
     tokenizer: Optional[AutoTokenizer],
     *,
     require_value_model: bool = True,
+    allow_base_models: bool = False,
 ) -> Dict[str, Any]:
     """Validate PPO setup for common issues."""
 
@@ -530,7 +592,13 @@ def validate_ppo_setup(
     warnings: List[str] = []
 
     # Helper to validate TRL value-head models
-    def _check_value_head(name: str, model_obj: Optional[Any], required: bool = True) -> None:
+    def _check_value_head(
+        name: str,
+        model_obj: Optional[Any],
+        *,
+        required: bool = True,
+        allow_plain: bool = False,
+    ) -> None:
         if model_obj is None:
             message = f"{name} is missing"
             if required:
@@ -540,6 +608,11 @@ def validate_ppo_setup(
             return
 
         if not isinstance(model_obj, AutoModelForCausalLMWithValueHead):
+            if allow_plain and name in {"model", "ref_model"}:
+                if hasattr(model_obj, "forward"):
+                    if getattr(model_obj, "generation_config", None) is None:
+                        warnings.append(f"{name} missing generation_config attribute")
+                    return
             issues.append(f"{name} is not an AutoModelForCausalLMWithValueHead instance")
             return
 
@@ -548,8 +621,8 @@ def validate_ppo_setup(
         elif model_obj.generation_config is None:
             warnings.append(f"{name} has None generation_config")
 
-    _check_value_head("model", model)
-    _check_value_head("ref_model", ref_model)
+    _check_value_head("model", model, allow_plain=allow_base_models)
+    _check_value_head("ref_model", ref_model, allow_plain=allow_base_models)
     _check_value_head("value_model", value_model, required=require_value_model)
 
     if reward_model is None:
