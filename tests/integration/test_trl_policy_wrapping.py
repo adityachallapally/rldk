@@ -136,6 +136,7 @@ class DummyValueHead:
             setattr(self, self.base_model_prefix, getattr(pretrained_model, self.base_model_prefix))
         self.is_gradient_checkpointing = getattr(pretrained_model, "is_gradient_checkpointing", False)
         self.generation_config = None
+        self.v_head = lambda *args, **kwargs: {"values": [0.0]}
 
     @classmethod
     def from_pretrained(
@@ -200,6 +201,32 @@ def _prepare_trl_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(trl_utils, "TRL_AVAILABLE", True)
     monkeypatch.setattr(trl_utils, "AutoModelForCausalLMWithValueHead", DummyValueHead)
     monkeypatch.setattr(trl_utils, "check_trl_compatibility", lambda: {"version": "0.22.0"})
+
+
+def test_prepare_models_for_ppo_sets_score_shim(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Reward/value models expose a callable score attribute for TRL 0.23+ shims."""
+
+    _prepare_trl_environment(monkeypatch)
+    monkeypatch.setattr(trl_utils, "check_trl_compatibility", lambda: {"version": "0.23.0"})
+
+    tokenizer = DummyTokenizer()
+    _, _, reward_model, prepared_tokenizer = trl_utils.prepare_models_for_ppo(
+        "base-model",
+        tokenizer=tokenizer,
+    )
+
+    assert hasattr(reward_model, "score")
+    assert reward_model.score is reward_model.v_head
+    assert callable(reward_model.score)
+
+    value_model = trl_utils._prepare_value_model(
+        "base-model",
+        prepared_tokenizer,
+    )
+
+    assert hasattr(value_model, "score")
+    assert value_model.score is value_model.v_head
+    assert callable(value_model.score)
 
 
 def test_legacy_wrapping_preserves_custom_policy(monkeypatch: pytest.MonkeyPatch) -> None:

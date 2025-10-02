@@ -175,6 +175,17 @@ def _build_generation_config(
     )
 
 
+def _ensure_value_head_score(
+    model: "AutoModelForCausalLMWithValueHead",
+) -> "AutoModelForCausalLMWithValueHead":
+    """Ensure TRL value-head models expose a ``score`` attribute."""
+
+    if hasattr(model, "v_head") and not hasattr(model, "score"):
+        model.score = model.v_head
+
+    return model
+
+
 def fix_generation_config(
     model: "AutoModelForCausalLMWithValueHead",
     tokenizer: AutoTokenizer,
@@ -247,7 +258,7 @@ def fix_generation_config(
         else:
             model.is_gradient_checkpointing = False  # Default to False
 
-    return model
+    return _ensure_value_head_score(model)
 
 
 def prepare_models_for_ppo(
@@ -305,7 +316,8 @@ def _prepare_value_model(
     """Prepare a value model that matches TRL's value head expectations."""
 
     value_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
-    return fix_generation_config(value_model, tokenizer, generation_config)
+    value_model = fix_generation_config(value_model, tokenizer, generation_config)
+    return _ensure_value_head_score(value_model)
 
 
 def _ensure_generation_config(
