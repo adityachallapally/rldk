@@ -18,7 +18,7 @@
 
 Added comprehensive utility functions to handle the `generation_config` issue:
 
-- **`fix_generation_config()`**: Fixes a single model by adding the missing `generation_config` attribute
+- **`fix_generation_config()`**: Fixes a single model by adding the missing `generation_config` attribute and, for TRL 0.23+, provides a backward-compatible `score` alias for the model's `v_head`
 - **`prepare_models_for_ppo()`**: Prepares policy, reference, and reward models with proper `generation_config`, returning the tokenizer alongside them
 - **`create_ppo_trainer()`**: Builds a version-aware PPOTrainer and prepares a value model when required
 - **`check_trl_compatibility()`**: Checks TRL version and provides warnings/recommendations
@@ -119,6 +119,11 @@ generation_config = GenerationConfig(
 - Checks for missing attributes
 - Provides detailed error reporting
 - Helps debug integration issues
+
+### 6. **Value-Head Score Shim**
+- Mirrors TRL's internal `.score` attribute by aliasing it to `v_head`
+- Keeps reward and value models compatible with TRL 0.23+ expectations
+- Ensures PPO helpers expose callable scoring heads without requiring downstream patches
 
 ## Usage Examples
 
