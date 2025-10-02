@@ -197,8 +197,15 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             text_column="prompt",
             padding=True,
             truncation=True,
+            keep_original=False,
             desc="Tokenizing PPO prompts",
         )
+        if hasattr(dataset, "remove_columns"):
+            if "response" in getattr(dataset, "column_names", []):
+                dataset = dataset.remove_columns(["response"])
+        else:  # pragma: no cover - exercised in unit tests with simple stubs
+            for record in dataset:
+                record.pop("response", None)
         trainer = create_ppo_trainer(
             model_name=model_name,
             ppo_config=settings.ppo_config,

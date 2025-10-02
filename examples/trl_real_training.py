@@ -131,9 +131,16 @@ def run_real_trl_training():
         text_column="prompt",
         padding=True,
         truncation=True,
+        keep_original=False,
         desc="Tokenizing TRL real training prompts",
     )
-    
+    if hasattr(dataset, "remove_columns"):
+        if "response" in getattr(dataset, "column_names", []):
+            dataset = dataset.remove_columns(["response"])
+    else:  # pragma: no cover - used in tests with lightweight dataset stubs
+        for record in dataset:
+            record.pop("response", None)
+
     # Initialize RLDK monitor with low thresholds to trigger alerts
     monitor = Monitor(
         output_dir=output_dir,

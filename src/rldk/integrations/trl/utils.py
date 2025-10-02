@@ -591,12 +591,14 @@ def tokenize_text_column(
     truncation: Union[bool, str] = True,
     max_length: Optional[int] = None,
     add_special_tokens: bool = True,
+    keep_original: bool = False,
     desc: Optional[str] = None,
 ) -> "Dataset":
     """Add ``input_ids`` and ``attention_mask`` columns to a dataset.
 
-    The helper relies on :meth:`datasets.Dataset.map` to apply the tokenizer while keeping the
-    original text column intact so downstream components can still access the raw strings.
+    The helper relies on :meth:`datasets.Dataset.map` to apply the tokenizer and, by default,
+    removes the source text column so the resulting dataset only contains tensor-friendly fields.
+    Set ``keep_original=True`` to retain the raw strings alongside the tokenized payload.
 
     Args:
         dataset: The dataset whose records contain ``text_column`` entries.
@@ -606,6 +608,7 @@ def tokenize_text_column(
         truncation: Truncation strategy forwarded to the tokenizer.
         max_length: Optional maximum sequence length.
         add_special_tokens: Whether to include special tokens during tokenization.
+        keep_original: When ``True`` the raw ``text_column`` is retained in the mapped dataset.
         desc: Optional description forwarded to :meth:`datasets.Dataset.map`.
 
     Returns:
@@ -631,10 +634,14 @@ def tokenize_text_column(
         texts = batch[text_column]
         return tokenizer(texts, **tokenization_kwargs)
 
+    remove_columns: Optional[List[str]] = None
+    if not keep_original:
+        remove_columns = [text_column]
+
     return dataset.map(
         _tokenize,
         batched=True,
-        remove_columns=[],
+        remove_columns=remove_columns,
         desc=desc or f"Tokenizing '{text_column}' column",
     )
 

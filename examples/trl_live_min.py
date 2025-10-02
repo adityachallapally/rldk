@@ -80,9 +80,16 @@ def run_minimal_trl_loop():
         text_column="prompt",
         padding=True,
         truncation=True,
+        keep_original=False,
         desc="Tokenizing TRL live prompts",
     )
-    
+    if hasattr(dataset, "remove_columns"):
+        if "response" in getattr(dataset, "column_names", []):
+            dataset = dataset.remove_columns(["response"])
+    else:  # pragma: no cover - used when list-backed datasets are injected in tests
+        for record in dataset:
+            record.pop("response", None)
+
     # Initialize RLDK monitor with low thresholds to trigger alerts
     monitor = Monitor(
         output_dir=output_dir,
