@@ -17,7 +17,7 @@ class TestFlexibleIngestionIntegration:
 
     def test_acceptance_check_sample_a_jsonl(self):
         """Test acceptance check: Sample A JSONL with fields: global_step, reward_scalar, kl_to_ref"""
-        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False, mode="w", encoding="utf-8") as f:
             data = [
                 {"global_step": 0, "reward_scalar": 0.5, "kl_to_ref": 0.1, "entropy": 0.8},
                 {"global_step": 1, "reward_scalar": 0.6, "kl_to_ref": 0.12, "entropy": 0.82},
@@ -53,7 +53,7 @@ class TestFlexibleIngestionIntegration:
 
     def test_acceptance_check_sample_b_csv(self):
         """Test acceptance check: Sample B CSV with fields: step, reward, kl"""
-        with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix='.csv', delete=False, mode="w", encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerow(["step", "reward", "kl", "entropy"])
             writer.writerow([0, 0.5, 0.1, 0.8])
@@ -82,7 +82,7 @@ class TestFlexibleIngestionIntegration:
 
     def test_acceptance_check_sample_c_parquet(self):
         """Test acceptance check: Sample C Parquet with fields: iteration, score, metrics.kl_ref"""
-        with tempfile.NamedTemporaryFile(suffix='.parquet', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix='.parquet', delete=False, mode="w", encoding="utf-8") as f:
             # Create data with nested structure
             data = [
                 {
@@ -134,7 +134,7 @@ class TestFlexibleIngestionIntegration:
 
     def test_missing_kl_produces_schema_error(self):
         """Test that missing kl produces SchemaError only when required by downstream metric"""
-        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False, mode="w", encoding="utf-8") as f:
             data = [
                 {"step": 0, "reward": 0.5, "entropy": 0.8},
                 {"step": 1, "reward": 0.6, "entropy": 0.82}
@@ -173,13 +173,13 @@ class TestFlexibleIngestionIntegration:
             }
         }
 
-        with tempfile.NamedTemporaryFile(suffix='.yaml', delete=False) as config_f:
+        with tempfile.NamedTemporaryFile(suffix='.yaml', delete=False, mode="w", encoding="utf-8") as config_f:
             yaml.dump(config_data, config_f)
             config_path = config_f.name
 
         try:
             # Create test data
-            with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as data_f:
+            with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False, mode="w", encoding="utf-8") as data_f:
                 data = [
                     {"iteration": 0, "score": 0.5, "kl_divergence": 0.1, "policy_entropy": 0.8},
                     {"iteration": 1, "score": 0.6, "kl_divergence": 0.12, "policy_entropy": 0.82}
@@ -211,7 +211,7 @@ class TestFlexibleIngestionIntegration:
 
     def test_canonical_output_dataframe_format(self):
         """Test that canonical output is DataFrame with columns step, reward, kl where available"""
-        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False, mode="w", encoding="utf-8") as f:
             data = [
                 {"step": 0, "reward": 0.5, "kl": 0.1, "entropy": 0.8, "loss": 0.4},
                 {"step": 1, "reward": 0.6, "kl": 0.12, "entropy": 0.82, "loss": 0.38}
@@ -247,7 +247,7 @@ class TestFlexibleIngestionIntegration:
 
     def test_streaming_behavior_large_jsonl(self):
         """Test streaming behavior for large JSONL files"""
-        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False, mode="w", encoding="utf-8") as f:
             # Create a large dataset (simulate large file)
             for i in range(1000):
                 record = {
@@ -309,7 +309,7 @@ class TestFlexibleIngestionIntegration:
             synthetic_data.append(record)
 
         # Write to temporary file
-        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False, mode="w", encoding="utf-8") as f:
             for record in synthetic_data:
                 f.write(json.dumps(record) + '\n')
             f.flush()
@@ -380,7 +380,7 @@ class TestFlexibleIngestionIntegration:
 
     def test_error_handling_with_helpful_suggestions(self):
         """Test error handling provides helpful suggestions"""
-        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False, mode="w", encoding="utf-8") as f:
             data = {
                 "step_count": 0,
                 "reward_value": 0.5,
