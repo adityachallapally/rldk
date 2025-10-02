@@ -580,3 +580,61 @@ def validate_ppo_setup(
             "Verify tokenizer has required token IDs",
         ] if issues else [],
     }
+
+
+def tokenize_text_column(
+    dataset: "Dataset",
+    tokenizer: AutoTokenizer,
+    *,
+    text_column: str,
+    padding: Union[bool, str] = True,
+    truncation: Union[bool, str] = True,
+    max_length: Optional[int] = None,
+    add_special_tokens: bool = True,
+    desc: Optional[str] = None,
+) -> "Dataset":
+    """Add ``input_ids`` and ``attention_mask`` columns to a dataset.
+
+    The helper relies on :meth:`datasets.Dataset.map` to apply the tokenizer while keeping the
+    original text column intact so downstream components can still access the raw strings.
+
+    Args:
+        dataset: The dataset whose records contain ``text_column`` entries.
+        tokenizer: Tokenizer used to encode the strings.
+        text_column: Name of the column that should be tokenized.
+        padding: Padding strategy forwarded to the tokenizer.
+        truncation: Truncation strategy forwarded to the tokenizer.
+        max_length: Optional maximum sequence length.
+        add_special_tokens: Whether to include special tokens during tokenization.
+        desc: Optional description forwarded to :meth:`datasets.Dataset.map`.
+
+    Returns:
+        A dataset instance that includes ``input_ids`` and ``attention_mask`` columns.
+
+    Raises:
+        KeyError: If ``text_column`` is missing from the dataset records.
+    """
+
+    tokenization_kwargs: Dict[str, Any] = {
+        "return_tensors": None,
+        "padding": padding,
+        "truncation": truncation,
+        "add_special_tokens": add_special_tokens,
+    }
+
+    if max_length is not None:
+        tokenization_kwargs["max_length"] = max_length
+
+    def _tokenize(batch: Dict[str, Any]) -> Dict[str, Any]:
+        if text_column not in batch:
+            raise KeyError(f"Column '{text_column}' not found in batch")
+        texts = batch[text_column]
+        return tokenizer(texts, **tokenization_kwargs)
+
+    return dataset.map(
+        _tokenize,
+        batched=True,
+        remove_columns=[],
+        desc=desc or f"Tokenizing '{text_column}' column",
+    )
+

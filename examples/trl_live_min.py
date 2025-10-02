@@ -6,10 +6,10 @@ import time
 from pathlib import Path
 
 from datasets import Dataset
-from transformers import TrainingArguments
+from transformers import AutoTokenizer, TrainingArguments
 
 # Import RLDK utilities
-from rldk.integrations.trl import create_ppo_trainer
+from rldk.integrations.trl import create_ppo_trainer, tokenize_text_column
 from rldk.integrations.trl.monitors import PPOMonitor as Monitor
 
 try:
@@ -67,6 +67,21 @@ def run_minimal_trl_loop():
     # Create dataset
     dataset = create_tiny_dataset()
     print(f"📊 Dataset created with {len(dataset)} samples")
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    if getattr(tokenizer, "padding_side", None) != "right":
+        tokenizer.padding_side = "right"
+
+    dataset = tokenize_text_column(
+        dataset,
+        tokenizer,
+        text_column="prompt",
+        padding=True,
+        truncation=True,
+        desc="Tokenizing TRL live prompts",
+    )
     
     # Initialize RLDK monitor with low thresholds to trigger alerts
     monitor = Monitor(
@@ -108,6 +123,7 @@ def run_minimal_trl_loop():
             train_dataset=dataset,
             callbacks=[monitor],
             event_log_path=event_log_path,
+            tokenizer=tokenizer,
         )
         print("✅ PPO Trainer created with RLDK monitor callback")
     except Exception as e:

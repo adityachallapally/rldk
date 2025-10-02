@@ -15,7 +15,7 @@ from transformers import (
 )
 
 # Import RLDK utilities
-from rldk.integrations.trl import create_ppo_trainer
+from rldk.integrations.trl import create_ppo_trainer, tokenize_text_column
 from rldk.integrations.trl.monitors import PPOMonitor as Monitor
 
 try:
@@ -124,6 +124,15 @@ def run_real_trl_training():
     # Create dataset
     dataset = create_tiny_dataset()
     print(f"📊 Dataset created with {len(dataset)} samples")
+
+    dataset = tokenize_text_column(
+        dataset,
+        tokenizer,
+        text_column="prompt",
+        padding=True,
+        truncation=True,
+        desc="Tokenizing TRL real training prompts",
+    )
     
     # Initialize RLDK monitor with low thresholds to trigger alerts
     monitor = Monitor(
