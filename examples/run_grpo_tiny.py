@@ -7,6 +7,7 @@ import random
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from types import MethodType
 from typing import Any, Dict, Iterable, Optional
 
 import yaml
@@ -169,6 +170,15 @@ def build_grpo_trainer(
     # For GRPO, we use the model as both policy and reward function
     model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
     model = fix_generation_config(model, tokenizer)
+
+    if not hasattr(model, "add_model_tags"):
+        # TRL < 0.24.0 does not define ``add_model_tags`` on value-head models.
+        # Newer releases call this method unconditionally during trainer setup.
+        # Provide a no-op shim so the example remains compatible across versions.
+        def _noop_add_model_tags(self, *_args, **_kwargs):
+            return None
+
+        model.add_model_tags = MethodType(_noop_add_model_tags, model)
 
     callback = EventWriterCallback(event_log_path, run_id=getattr(grpo_config, "run_name", None))
 
