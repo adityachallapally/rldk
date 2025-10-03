@@ -82,7 +82,11 @@ def trl_stub(monkeypatch: pytest.MonkeyPatch):
 
     importlib.reload(trl_integration)
 
-    return stub
+    try:
+        yield stub
+    finally:
+        for module_name in ("rldk.integrations.trl.utils", "rldk.integrations.trl"):
+            sys.modules.pop(module_name, None)
 
 
 def test_build_grpo_trainer_shims_missing_add_model_tags(trl_stub, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
