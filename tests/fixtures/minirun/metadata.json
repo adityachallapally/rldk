@@ -1,0 +1,16 @@
+{
+  "run_id": "minirun_test",
+  "timestamp": "2024-01-01T00:00:00Z",
+  "git_commit": "abc123",
+  "git_branch": "main",
+  "python_version": "3.11.0",
+  "rldk_version": "0.1.0",
+  "seed": 42,
+  "environment": "CartPole-v1",
+  "algorithm": "PPO",
+  "hyperparameters": {
+    "learning_rate": 0.001,
+    "batch_size": 32,
+    "epochs": 10
+  }
+}

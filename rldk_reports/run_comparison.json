@@ -1,0 +1,20 @@
+{
+  "version": "1",
+  "run_a": {
+    "path": "/tmp/tmp0ug_daaj",
+    "anomalies": []
+  },
+  "run_b": {
+    "path": "/tmp/tmp0ug_daaj",
+    "anomalies": []
+  },
+  "earliest_divergent_step": null,
+  "format_info": {
+    "run_a_stats": {
+      "kl_median": 0.0
+    },
+    "run_b_stats": {
+      "kl_median": 0.0
+    }
+  }
+}

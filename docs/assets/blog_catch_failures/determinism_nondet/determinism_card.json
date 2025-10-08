@@ -1,0 +1,5425 @@
+{
+  "version": "1",
+  "passed": false,
+  "culprit": null,
+  "fixes": [
+    "Set torch.backends.cudnn.deterministic = True",
+    "Set torch.backends.cudnn.benchmark = False",
+    "Use torch.manual_seed() consistently",
+    "Disable dropout or use deterministic=True",
+    "Use deterministic reduction operations"
+  ],
+  "replica_variance": {
+    "reward_mean": 0.03698388050720457
+  },
+  "rng_map": {
+    "python_hash_seed": "42",
+    "omp_threads": "1",
+    "mkl_threads": "1",
+    "numexpr_threads": "1",
+    "torch_deterministic": "True (enforced)",
+    "torch_seed": "Set per replica (42 + replica_id)",
+    "numpy_seed": "Set per replica (42 + replica_id)",
+    "random_seed": "Set per replica (42 + replica_id)",
+    "cuda_launch_blocking": "N/A (CPU only)",
+    "cublas_workspace": "N/A (CPU only)",
+    "cudnn_deterministic": "N/A (CPU only)",
+    "cudnn_benchmark": "N/A (CPU only)",
+    "tf32_disabled": "N/A (CPU only)",
+    "cuda_seed": "N/A (CPU only)"
+  },
+  "mismatches": [
+    {
+      "replica": 1,
+      "step": 0,
+      "metric": "reward_mean",
+      "reference_value": -0.004511777591029748,
+      "replica_value": -0.0036495250189922824,
+      "difference": 0.000862252572037466,
+      "issue": "Metric reward_mean differs at step 0"
+    },
+    {
+      "replica": 1,
+      "step": 1,
+      "metric": "reward_mean",
+      "reference_value": 0.007334971725117403,
+      "replica_value": 0.00982865118618326,
+      "difference": 0.0024936794610658577,
+      "issue": "Metric reward_mean differs at step 1"
+    },
+    {
+      "replica": 1,
+      "step": 2,
+      "metric": "reward_mean",
+      "reference_value": 0.014626098786197956,
+      "replica_value": 0.008694916629409811,
+      "difference": 0.005931182156788145,
+      "issue": "Metric reward_mean differs at step 2"
+    },
+    {
+      "replica": 1,
+      "step": 3,
+      "metric": "reward_mean",
+      "reference_value": 0.01797458475567338,
+      "replica_value": 0.013243456182055458,
+      "difference": 0.004731128573617922,
+      "issue": "Metric reward_mean differs at step 3"
+    },
+    {
+      "replica": 1,
+      "step": 4,
+      "metric": "reward_mean",
+      "reference_value": 0.01838785059819621,
+      "replica_value": 0.018105867953796036,
+      "difference": 0.0002819826444001722,
+      "issue": "Metric reward_mean differs at step 4"
+    },
+    {
+      "replica": 1,
+      "step": 5,
+      "metric": "reward_mean",
+      "reference_value": 0.030551497842901003,
+      "replica_value": 0.03126037671455451,
+      "difference": 0.0007088788716535094,
+      "issue": "Metric reward_mean differs at step 5"
+    },
+    {
+      "replica": 1,
+      "step": 6,
+      "metric": "reward_mean",
+      "reference_value": 0.030689109156780862,
+      "replica_value": 0.03629561018992276,
+      "difference": 0.005606501033141895,
+      "issue": "Metric reward_mean differs at step 6"
+    },
+    {
+      "replica": 1,
+      "step": 7,
+      "metric": "reward_mean",
+      "reference_value": 0.04179600220076521,
+      "replica_value": 0.041649042408627907,
+      "difference": 0.00014695979213730226,
+      "issue": "Metric reward_mean differs at step 7"
+    },
+    {
+      "replica": 1,
+      "step": 8,
+      "metric": "reward_mean",
+      "reference_value": 0.047997139062991065,
+      "replica_value": 0.0437398539634636,
+      "difference": 0.004257285099527462,
+      "issue": "Metric reward_mean differs at step 8"
+    },
+    {
+      "replica": 1,
+      "step": 9,
+      "metric": "reward_mean",
+      "reference_value": 0.047159325471917174,
+      "replica_value": 0.05240529244271953,
+      "difference": 0.005245966970802353,
+      "issue": "Metric reward_mean differs at step 9"
+    },
+    {
+      "replica": 1,
+      "step": 10,
+      "metric": "reward_mean",
+      "reference_value": 0.05583777831895552,
+      "replica_value": 0.049418577382302195,
+      "difference": 0.006419200936653324,
+      "issue": "Metric reward_mean differs at step 10"
+    },
+    {
+      "replica": 1,
+      "step": 11,
+      "metric": "reward_mean",
+      "reference_value": 0.05474797751760792,
+      "replica_value": 0.061478198780468354,
+      "difference": 0.006730221262860436,
+      "issue": "Metric reward_mean differs at step 11"
+    },
+    {
+      "replica": 1,
+      "step": 12,
+      "metric": "reward_mean",
+      "reference_value": 0.06296443902009305,
+      "replica_value": 0.06349307768675147,
+      "difference": 0.0005286386666584209,
+      "issue": "Metric reward_mean differs at step 12"
+    },
+    {
+      "replica": 1,
+      "step": 13,
+      "metric": "reward_mean",
+      "reference_value": 0.0647126833153065,
+      "replica_value": 0.07233551664010067,
+      "difference": 0.007622833324794173,
+      "issue": "Metric reward_mean differs at step 13"
+    },
+    {
+      "replica": 1,
+      "step": 14,
+      "metric": "reward_mean",
+      "reference_value": 0.07046977095954542,
+      "replica_value": 0.07809367368736021,
+      "difference": 0.007623902727814796,
+      "issue": "Metric reward_mean differs at step 14"
+    },
+    {
+      "replica": 1,
+      "step": 15,
+      "metric": "reward_mean",
+      "reference_value": 0.08464111571657044,
+      "replica_value": 0.08286446487350023,
+      "difference": 0.0017766508430702155,
+      "issue": "Metric reward_mean differs at step 15"
+    },
+    {
+      "replica": 1,
+      "step": 16,
+      "metric": "reward_mean",
+      "reference_value": 0.08522568561464558,
+      "replica_value": 0.08198520759909628,
+      "difference": 0.003240478015549303,
+      "issue": "Metric reward_mean differs at step 16"
+    },
+    {
+      "replica": 1,
+      "step": 17,
+      "metric": "reward_mean",
+      "reference_value": 0.08840690801307613,
+      "replica_value": 0.08657727699130617,
+      "difference": 0.001829631021769959,
+      "issue": "Metric reward_mean differs at step 17"
+    },
+    {
+      "replica": 1,
+      "step": 18,
+      "metric": "reward_mean",
+      "reference_value": 0.09211167272920673,
+      "replica_value": 0.09847504394937696,
+      "difference": 0.006363371220170236,
+      "issue": "Metric reward_mean differs at step 18"
+    },
+    {
+      "replica": 1,
+      "step": 19,
+      "metric": "reward_mean",
+      "reference_value": 0.10294960391830497,
+      "replica_value": 0.0989943972244539,
+      "difference": 0.003955206693851077,
+      "issue": "Metric reward_mean differs at step 19"
+    },
+    {
+      "replica": 1,
+      "step": 20,
+      "metric": "reward_mean",
+      "reference_value": 0.1065223847085552,
+      "replica_value": 0.10775171033956639,
+      "difference": 0.001229325631011191,
+      "issue": "Metric reward_mean differs at step 20"
+    },
+    {
+      "replica": 1,
+      "step": 21,
+      "metric": "reward_mean",
+      "reference_value": 0.11492793963839543,
+      "replica_value": 0.11102978979935256,
+      "difference": 0.0038981498390428665,
+      "issue": "Metric reward_mean differs at step 21"
+    },
+    {
+      "replica": 1,
+      "step": 22,
+      "metric": "reward_mean",
+      "reference_value": 0.1130262419247719,
+      "replica_value": 0.11588101551241294,
+      "difference": 0.002854773587641038,
+      "issue": "Metric reward_mean differs at step 22"
+    },
+    {
+      "replica": 1,
+      "step": 23,
+      "metric": "reward_mean",
+      "reference_value": 0.1168269748523923,
+      "replica_value": 0.1201367476001099,
+      "difference": 0.0033097727477175987,
+      "issue": "Metric reward_mean differs at step 23"
+    },
+    {
+      "replica": 1,
+      "step": 24,
+      "metric": "reward_mean",
+      "reference_value": 0.1229292191631062,
+      "replica_value": 0.12300802524722243,
+      "difference": 7.880608411622858e-05,
+      "issue": "Metric reward_mean differs at step 24"
+    },
+    {
+      "replica": 1,
+      "step": 25,
+      "metric": "reward_mean",
+      "reference_value": 0.12686628451614618,
+      "replica_value": 0.12935738635723884,
+      "difference": 0.0024911018410926633,
+      "issue": "Metric reward_mean differs at step 25"
+    },
+    {
+      "replica": 1,
+      "step": 26,
+      "metric": "reward_mean",
+      "reference_value": 0.1314005752870984,
+      "replica_value": 0.13677684293423809,
+      "difference": 0.005376267647139693,
+      "issue": "Metric reward_mean differs at step 26"
+    },
+    {
+      "replica": 1,
+      "step": 27,
+      "metric": "reward_mean",
+      "reference_value": 0.14309426071276013,
+      "replica_value": 0.1387969322133316,
+      "difference": 0.004297328499428543,
+      "issue": "Metric reward_mean differs at step 27"
+    },
+    {
+      "replica": 1,
+      "step": 28,
+      "metric": "reward_mean",
+      "reference_value": 0.13951431575446477,
+      "replica_value": 0.1414599464532585,
+      "difference": 0.001945630698793721,
+      "issue": "Metric reward_mean differs at step 28"
+    },
+    {
+      "replica": 1,
+      "step": 29,
+      "metric": "reward_mean",
+      "reference_value": 0.14739691025104243,
+      "replica_value": 0.1459143249316021,
+      "difference": 0.001482585319440316,
+      "issue": "Metric reward_mean differs at step 29"
+    },
+    {
+      "replica": 1,
+      "step": 30,
+      "metric": "reward_mean",
+      "reference_value": 0.14918423183785204,
+      "replica_value": 0.15698090968806835,
+      "difference": 0.007796677850216316,
+      "issue": "Metric reward_mean differs at step 30"
+    },
+    {
+      "replica": 1,
+      "step": 31,
+      "metric": "reward_mean",
+      "reference_value": 0.16143934741874688,
+      "replica_value": 0.16132231126386162,
+      "difference": 0.00011703615488525831,
+      "issue": "Metric reward_mean differs at step 31"
+    },
+    {
+      "replica": 1,
+      "step": 32,
+      "metric": "reward_mean",
+      "reference_value": 0.15907361379044774,
+      "replica_value": 0.16710773020008107,
+      "difference": 0.008034116409633335,
+      "issue": "Metric reward_mean differs at step 32"
+    },
+    {
+      "replica": 1,
+      "step": 33,
+      "metric": "reward_mean",
+      "reference_value": 0.16250950506282516,
+      "replica_value": 0.16299167971673614,
+      "difference": 0.0004821746539109828,
+      "issue": "Metric reward_mean differs at step 33"
+    },
+    {
+      "replica": 1,
+      "step": 34,
+      "metric": "reward_mean",
+      "reference_value": 0.16808714491000723,
+      "replica_value": 0.17655358354680292,
+      "difference": 0.008466438636795692,
+      "issue": "Metric reward_mean differs at step 34"
+    },
+    {
+      "replica": 1,
+      "step": 35,
+      "metric": "reward_mean",
+      "reference_value": 0.17914303952889163,
+      "replica_value": 0.17774415763093673,
+      "difference": 0.0013988818979548956,
+      "issue": "Metric reward_mean differs at step 35"
+    },
+    {
+      "replica": 1,
+      "step": 36,
+      "metric": "reward_mean",
+      "reference_value": 0.17985263582893357,
+      "replica_value": 0.18468453375702115,
+      "difference": 0.004831897928087581,
+      "issue": "Metric reward_mean differs at step 36"
+    },
+    {
+      "replica": 1,
+      "step": 37,
+      "metric": "reward_mean",
+      "reference_value": 0.1858563674701101,
+      "replica_value": 0.18206417163065197,
+      "difference": 0.00379219583945814,
+      "issue": "Metric reward_mean differs at step 37"
+    },
+    {
+      "replica": 1,
+      "step": 38,
+      "metric": "reward_mean",
+      "reference_value": 0.1942445188984308,
+      "replica_value": 0.18969967517034003,
+      "difference": 0.004544843728090775,
+      "issue": "Metric reward_mean differs at step 38"
+    },
+    {
+      "replica": 1,
+      "step": 39,
+      "metric": "reward_mean",
+      "reference_value": 0.19515799710234016,
+      "replica_value": 0.1913251158218343,
+      "difference": 0.003832881280505851,
+      "issue": "Metric reward_mean differs at step 39"
+    },
+    {
+      "replica": 1,
+      "step": 40,
+      "metric": "reward_mean",
+      "reference_value": 0.1979700804008755,
+      "replica_value": 0.2028676524235036,
+      "difference": 0.0048975720226281105,
+      "issue": "Metric reward_mean differs at step 40"
+    },
+    {
+      "replica": 1,
+      "step": 41,
+      "metric": "reward_mean",
+      "reference_value": 0.20087196042526867,
+      "replica_value": 0.2003099386162812,
+      "difference": 0.0005620218089874562,
+      "issue": "Metric reward_mean differs at step 41"
+    },
+    {
+      "replica": 1,
+      "step": 42,
+      "metric": "reward_mean",
+      "reference_value": 0.20711514620219298,
+      "replica_value": 0.2066715613390924,
+      "difference": 0.00044358486310058787,
+      "issue": "Metric reward_mean differs at step 42"
+    },
+    {
+      "replica": 1,
+      "step": 43,
+      "metric": "reward_mean",
+      "reference_value": 0.21100631019674687,
+      "replica_value": 0.21189710287235902,
+      "difference": 0.0008907926756121509,
+      "issue": "Metric reward_mean differs at step 43"
+    },
+    {
+      "replica": 1,
+      "step": 44,
+      "metric": "reward_mean",
+      "reference_value": 0.21928787283036769,
+      "replica_value": 0.21805595402792874,
+      "difference": 0.0012319188024389471,
+      "issue": "Metric reward_mean differs at step 44"
+    },
+    {
+      "replica": 1,
+      "step": 45,
+      "metric": "reward_mean",
+      "reference_value": 0.22336501054602476,
+      "replica_value": 0.21630026137469277,
+      "difference": 0.007064749171331985,
+      "issue": "Metric reward_mean differs at step 45"
+    },
+    {
+      "replica": 1,
+      "step": 46,
+      "metric": "reward_mean",
+      "reference_value": 0.2284149710995264,
+      "replica_value": 0.2243868098179353,
+      "difference": 0.004028161281591114,
+      "issue": "Metric reward_mean differs at step 46"
+    },
+    {
+      "replica": 1,
+      "step": 47,
+      "metric": "reward_mean",
+      "reference_value": 0.23206250359946998,
+      "replica_value": 0.22858727043477464,
+      "difference": 0.003475233164695335,
+      "issue": "Metric reward_mean differs at step 47"
+    },
+    {
+      "replica": 1,
+      "step": 48,
+      "metric": "reward_mean",
+      "reference_value": 0.23679480110849063,
+      "replica_value": 0.23495251096680153,
+      "difference": 0.0018422901416891013,
+      "issue": "Metric reward_mean differs at step 48"
+    },
+    {
+      "replica": 1,
+      "step": 49,
+      "metric": "reward_mean",
+      "reference_value": 0.2351392488306315,
+      "replica_value": 0.23659035771863302,
+      "difference": 0.0014511088880015122,
+      "issue": "Metric reward_mean differs at step 49"
+    },
+    {
+      "replica": 1,
+      "step": 50,
+      "metric": "reward_mean",
+      "reference_value": 0.24494005783084039,
+      "replica_value": 0.2403538939543935,
+      "difference": 0.0045861638764468915,
+      "issue": "Metric reward_mean differs at step 50"
+    },
+    {
+      "replica": 1,
+      "step": 51,
+      "metric": "reward_mean",
+      "reference_value": 0.24899655297829376,
+      "replica_value": 0.24573357658092718,
+      "difference": 0.003262976397366585,
+      "issue": "Metric reward_mean differs at step 51"
+    },
+    {
+      "replica": 1,
+      "step": 52,
+      "metric": "reward_mean",
+      "reference_value": 0.25182426886093334,
+      "replica_value": 0.25278104033815485,
+      "difference": 0.0009567714772215075,
+      "issue": "Metric reward_mean differs at step 52"
+    },
+    {
+      "replica": 1,
+      "step": 53,
+      "metric": "reward_mean",
+      "reference_value": 0.2504157787417044,
+      "replica_value": 0.2587964386001547,
+      "difference": 0.008380659858450323,
+      "issue": "Metric reward_mean differs at step 53"
+    },
+    {
+      "replica": 1,
+      "step": 54,
+      "metric": "reward_mean",
+      "reference_value": 0.25782220162334335,
+      "replica_value": 0.25711748129361384,
+      "difference": 0.0007047203297295135,
+      "issue": "Metric reward_mean differs at step 54"
+    },
+    {
+      "replica": 1,
+      "step": 55,
+      "metric": "reward_mean",
+      "reference_value": 0.26521501427009986,
+      "replica_value": 0.266963486752979,
+      "difference": 0.0017484724828791265,
+      "issue": "Metric reward_mean differs at step 55"
+    },
+    {
+      "replica": 1,
+      "step": 56,
+      "metric": "reward_mean",
+      "reference_value": 0.27163727094323903,
+      "replica_value": 0.26762360381455447,
+      "difference": 0.0040136671286845615,
+      "issue": "Metric reward_mean differs at step 56"
+    },
+    {
+      "replica": 1,
+      "step": 57,
+      "metric": "reward_mean",
+      "reference_value": 0.2720063023986553,
+      "replica_value": 0.2753258525203795,
+      "difference": 0.0033195501217241907,
+      "issue": "Metric reward_mean differs at step 57"
+    },
+    {
+      "replica": 1,
+      "step": 59,
+      "metric": "reward_mean",
+      "reference_value": 0.2813596956532,
+      "replica_value": 0.27511262885701615,
+      "difference": 0.006247066796183864,
+      "issue": "Metric reward_mean differs at step 59"
+    },
+    {
+      "replica": 1,
+      "step": 60,
+      "metric": "reward_mean",
+      "reference_value": 0.2877965454294669,
+      "replica_value": 0.2878732995968666,
+      "difference": 7.67541673996619e-05,
+      "issue": "Metric reward_mean differs at step 60"
+    },
+    {
+      "replica": 1,
+      "step": 61,
+      "metric": "reward_mean",
+      "reference_value": 0.28383647631254066,
+      "replica_value": 0.2851185332605422,
+      "difference": 0.001282056948001542,
+      "issue": "Metric reward_mean differs at step 61"
+    },
+    {
+      "replica": 1,
+      "step": 62,
+      "metric": "reward_mean",
+      "reference_value": 0.2873757864893197,
+      "replica_value": 0.28651086188221403,
+      "difference": 0.0008649246071056882,
+      "issue": "Metric reward_mean differs at step 62"
+    },
+    {
+      "replica": 1,
+      "step": 63,
+      "metric": "reward_mean",
+      "reference_value": 0.296978142919595,
+      "replica_value": 0.2995022690981315,
+      "difference": 0.002524126178536479,
+      "issue": "Metric reward_mean differs at step 63"
+    },
+    {
+      "replica": 1,
+      "step": 64,
+      "metric": "reward_mean",
+      "reference_value": 0.3011720550287758,
+      "replica_value": 0.29771435244128197,
+      "difference": 0.0034577025874938383,
+      "issue": "Metric reward_mean differs at step 64"
+    },
+    {
+      "replica": 1,
+      "step": 65,
+      "metric": "reward_mean",
+      "reference_value": 0.3030140211920382,
+      "replica_value": 0.30478715928542716,
+      "difference": 0.0017731380933889707,
+      "issue": "Metric reward_mean differs at step 65"
+    },
+    {
+      "replica": 1,
+      "step": 66,
+      "metric": "reward_mean",
+      "reference_value": 0.30480616472724364,
+      "replica_value": 0.30447656653058514,
+      "difference": 0.0003295981966585093,
+      "issue": "Metric reward_mean differs at step 66"
+    },
+    {
+      "replica": 1,
+      "step": 67,
+      "metric": "reward_mean",
+      "reference_value": 0.3125470529051589,
+      "replica_value": 0.3098746014149596,
+      "difference": 0.00267245149019929,
+      "issue": "Metric reward_mean differs at step 67"
+    },
+    {
+      "replica": 1,
+      "step": 68,
+      "metric": "reward_mean",
+      "reference_value": 0.3139686546268509,
+      "replica_value": 0.31087216354528185,
+      "difference": 0.003096491081569064,
+      "issue": "Metric reward_mean differs at step 68"
+    },
+    {
+      "replica": 1,
+      "step": 69,
+      "metric": "reward_mean",
+      "reference_value": 0.3231557909759261,
+      "replica_value": 0.31929296969308724,
+      "difference": 0.0038628212828388797,
+      "issue": "Metric reward_mean differs at step 69"
+    },
+    {
+      "replica": 1,
+      "step": 70,
+      "metric": "reward_mean",
+      "reference_value": 0.3226352765289375,
+      "replica_value": 0.32353482463926025,
+      "difference": 0.0008995481103227787,
+      "issue": "Metric reward_mean differs at step 70"
+    },
+    {
+      "replica": 1,
+      "step": 71,
+      "metric": "reward_mean",
+      "reference_value": 0.3214842833056842,
+      "replica_value": 0.3238541331730616,
+      "difference": 0.002369849867377427,
+      "issue": "Metric reward_mean differs at step 71"
+    },
+    {
+      "replica": 1,
+      "step": 72,
+      "metric": "reward_mean",
+      "reference_value": 0.3248457347433128,
+      "replica_value": 0.3275250489477028,
+      "difference": 0.002679314204389993,
+      "issue": "Metric reward_mean differs at step 72"
+    },
+    {
+      "replica": 1,
+      "step": 73,
+      "metric": "reward_mean",
+      "reference_value": 0.3316459403469401,
+      "replica_value": 0.3323096327115801,
+      "difference": 0.0006636923646399784,
+      "issue": "Metric reward_mean differs at step 73"
+    },
+    {
+      "replica": 1,
+      "step": 74,
+      "metric": "reward_mean",
+      "reference_value": 0.3388679818801532,
+      "replica_value": 0.33268033949830594,
+      "difference": 0.006187642381847269,
+      "issue": "Metric reward_mean differs at step 74"
+    },
+    {
+      "replica": 1,
+      "step": 75,
+      "metric": "reward_mean",
+      "reference_value": 0.33584781735516556,
+      "replica_value": 0.3369411909378104,
+      "difference": 0.0010933735826448299,
+      "issue": "Metric reward_mean differs at step 75"
+    },
+    {
+      "replica": 1,
+      "step": 76,
+      "metric": "reward_mean",
+      "reference_value": 0.34606314604065513,
+      "replica_value": 0.3486277649885958,
+      "difference": 0.002564618947940689,
+      "issue": "Metric reward_mean differs at step 76"
+    },
+    {
+      "replica": 1,
+      "step": 77,
+      "metric": "reward_mean",
+      "reference_value": 0.35200811731612325,
+      "replica_value": 0.34623071228852353,
+      "difference": 0.0057774050275997135,
+      "issue": "Metric reward_mean differs at step 77"
+    },
+    {
+      "replica": 1,
+      "step": 78,
+      "metric": "reward_mean",
+      "reference_value": 0.35311193542228453,
+      "replica_value": 0.3528159483716717,
+      "difference": 0.0002959870506128448,
+      "issue": "Metric reward_mean differs at step 78"
+    },
+    {
+      "replica": 1,
+      "step": 79,
+      "metric": "reward_mean",
+      "reference_value": 0.3591088366248758,
+      "replica_value": 0.35030944102756095,
+      "difference": 0.008799395597314852,
+      "issue": "Metric reward_mean differs at step 79"
+    },
+    {
+      "replica": 1,
+      "step": 80,
+      "metric": "reward_mean",
+      "reference_value": 0.3581524005489722,
+      "replica_value": 0.3612975535667056,
+      "difference": 0.0031451530177334375,
+      "issue": "Metric reward_mean differs at step 80"
+    },
+    {
+      "replica": 1,
+      "step": 81,
+      "metric": "reward_mean",
+      "reference_value": 0.36293205020836816,
+      "replica_value": 0.3611848982035595,
+      "difference": 0.001747152004808683,
+      "issue": "Metric reward_mean differs at step 81"
+    },
+    {
+      "replica": 1,
+      "step": 82,
+      "metric": "reward_mean",
+      "reference_value": 0.3609433218244594,
+      "replica_value": 0.3675215281716237,
+      "difference": 0.006578206347164328,
+      "issue": "Metric reward_mean differs at step 82"
+    },
+    {
+      "replica": 1,
+      "step": 83,
+      "metric": "reward_mean",
+      "reference_value": 0.3699116629852883,
+      "replica_value": 0.3700412987004179,
+      "difference": 0.0001296357151295835,
+      "issue": "Metric reward_mean differs at step 83"
+    },
+    {
+      "replica": 1,
+      "step": 84,
+      "metric": "reward_mean",
+      "reference_value": 0.370889348728445,
+      "replica_value": 0.3751628519949766,
+      "difference": 0.004273503266531642,
+      "issue": "Metric reward_mean differs at step 84"
+    },
+    {
+      "replica": 1,
+      "step": 85,
+      "metric": "reward_mean",
+      "reference_value": 0.37944277012203376,
+      "replica_value": 0.3775726416789936,
+      "difference": 0.001870128443040131,
+      "issue": "Metric reward_mean differs at step 85"
+    },
+    {
+      "replica": 1,
+      "step": 86,
+      "metric": "reward_mean",
+      "reference_value": 0.3824741266895038,
+      "replica_value": 0.3753367432750088,
+      "difference": 0.007137383414494991,
+      "issue": "Metric reward_mean differs at step 86"
+    },
+    {
+      "replica": 1,
+      "step": 87,
+      "metric": "reward_mean",
+      "reference_value": 0.3794314405695395,
+      "replica_value": 0.3864145432567612,
+      "difference": 0.006983102687221743,
+      "issue": "Metric reward_mean differs at step 87"
+    },
+    {
+      "replica": 1,
+      "step": 88,
+      "metric": "reward_mean",
+      "reference_value": 0.3871206055093299,
+      "replica_value": 0.39123910309868265,
+      "difference": 0.004118497589352732,
+      "issue": "Metric reward_mean differs at step 88"
+    },
+    {
+      "replica": 1,
+      "step": 89,
+      "metric": "reward_mean",
+      "reference_value": 0.3870056417248827,
+      "replica_value": 0.39323043479409614,
+      "difference": 0.006224793069213419,
+      "issue": "Metric reward_mean differs at step 89"
+    },
+    {
+      "replica": 1,
+      "step": 90,
+      "metric": "reward_mean",
+      "reference_value": 0.3890349268444221,
+      "replica_value": 0.3959472441499881,
+      "difference": 0.006912317305566018,
+      "issue": "Metric reward_mean differs at step 90"
+    },
+    {
+      "replica": 1,
+      "step": 91,
+      "metric": "reward_mean",
+      "reference_value": 0.39862177739609483,
+      "replica_value": 0.3938057673081479,
+      "difference": 0.004816010087946909,
+      "issue": "Metric reward_mean differs at step 91"
+    },
+    {
+      "replica": 1,
+      "step": 92,
+      "metric": "reward_mean",
+      "reference_value": 0.40004213459854676,
+      "replica_value": 0.39725302619108194,
+      "difference": 0.0027891084074648242,
+      "issue": "Metric reward_mean differs at step 92"
+    },
+    {
+      "replica": 1,
+      "step": 93,
+      "metric": "reward_mean",
+      "reference_value": 0.40771572205110224,
+      "replica_value": 0.4038538486335151,
+      "difference": 0.003861873417587147,
+      "issue": "Metric reward_mean differs at step 93"
+    },
+    {
+      "replica": 1,
+      "step": 94,
+      "metric": "reward_mean",
+      "reference_value": 0.4097814902471339,
+      "replica_value": 0.41001731323795004,
+      "difference": 0.000235822990816148,
+      "issue": "Metric reward_mean differs at step 94"
+    },
+    {
+      "replica": 1,
+      "step": 95,
+      "metric": "reward_mean",
+      "reference_value": 0.40793757595837876,
+      "replica_value": 0.4085078615388838,
+      "difference": 0.0005702855805050366,
+      "issue": "Metric reward_mean differs at step 95"
+    },
+    {
+      "replica": 1,
+      "step": 96,
+      "metric": "reward_mean",
+      "reference_value": 0.4121358874680728,
+      "replica_value": 0.4091670853176974,
+      "difference": 0.0029688021503753714,
+      "issue": "Metric reward_mean differs at step 96"
+    },
+    {
+      "replica": 1,
+      "step": 97,
+      "metric": "reward_mean",
+      "reference_value": 0.42139035998170454,
+      "replica_value": 0.4158360813687455,
+      "difference": 0.0055542786129590405,
+      "issue": "Metric reward_mean differs at step 97"
+    },
+    {
+      "replica": 1,
+      "step": 98,
+      "metric": "reward_mean",
+      "reference_value": 0.4152532683093998,
+      "replica_value": 0.4169043787259303,
+      "difference": 0.001651110416530488,
+      "issue": "Metric reward_mean differs at step 98"
+    },
+    {
+      "replica": 1,
+      "step": 99,
+      "metric": "reward_mean",
+      "reference_value": 0.4212652562006001,
+      "replica_value": 0.4185906791382142,
+      "difference": 0.002674577062385941,
+      "issue": "Metric reward_mean differs at step 99"
+    },
+    {
+      "replica": 1,
+      "step": 100,
+      "metric": "reward_mean",
+      "reference_value": 0.42368008731011025,
+      "replica_value": 0.42130184006531324,
+      "difference": 0.002378247244797016,
+      "issue": "Metric reward_mean differs at step 100"
+    },
+    {
+      "replica": 1,
+      "step": 101,
+      "metric": "reward_mean",
+      "reference_value": 0.4314031729522169,
+      "replica_value": 0.43116889345607073,
+      "difference": 0.0002342794961461836,
+      "issue": "Metric reward_mean differs at step 101"
+    },
+    {
+      "replica": 1,
+      "step": 102,
+      "metric": "reward_mean",
+      "reference_value": 0.43533631884137797,
+      "replica_value": 0.4304167193472598,
+      "difference": 0.0049195994941181875,
+      "issue": "Metric reward_mean differs at step 102"
+    },
+    {
+      "replica": 1,
+      "step": 103,
+      "metric": "reward_mean",
+      "reference_value": 0.4391059948442269,
+      "replica_value": 0.43382945808723933,
+      "difference": 0.005276536756987582,
+      "issue": "Metric reward_mean differs at step 103"
+    },
+    {
+      "replica": 1,
+      "step": 104,
+      "metric": "reward_mean",
+      "reference_value": 0.4422883248028046,
+      "replica_value": 0.4373197288028237,
+      "difference": 0.004968595999980896,
+      "issue": "Metric reward_mean differs at step 104"
+    },
+    {
+      "replica": 1,
+      "step": 105,
+      "metric": "reward_mean",
+      "reference_value": 0.4405384604331537,
+      "replica_value": 0.44002401842842437,
+      "difference": 0.0005144420047293319,
+      "issue": "Metric reward_mean differs at step 105"
+    },
+    {
+      "replica": 1,
+      "step": 106,
+      "metric": "reward_mean",
+      "reference_value": 0.44936931640525024,
+      "replica_value": 0.44059744294687886,
+      "difference": 0.008771873458371382,
+      "issue": "Metric reward_mean differs at step 106"
+    },
+    {
+      "replica": 1,
+      "step": 107,
+      "metric": "reward_mean",
+      "reference_value": 0.44461800909910865,
+      "replica_value": 0.45215200713399134,
+      "difference": 0.007533998034882694,
+      "issue": "Metric reward_mean differs at step 107"
+    },
+    {
+      "replica": 1,
+      "step": 108,
+      "metric": "reward_mean",
+      "reference_value": 0.4504885499225719,
+      "replica_value": 0.4549616069462928,
+      "difference": 0.004473057023720861,
+      "issue": "Metric reward_mean differs at step 108"
+    },
+    {
+      "replica": 1,
+      "step": 109,
+      "metric": "reward_mean",
+      "reference_value": 0.4562845121896158,
+      "replica_value": 0.45745424558973935,
+      "difference": 0.0011697334001235515,
+      "issue": "Metric reward_mean differs at step 109"
+    },
+    {
+      "replica": 1,
+      "step": 110,
+      "metric": "reward_mean",
+      "reference_value": 0.4555358458917112,
+      "replica_value": 0.4579483327168904,
+      "difference": 0.002412486825179194,
+      "issue": "Metric reward_mean differs at step 110"
+    },
+    {
+      "replica": 1,
+      "step": 111,
+      "metric": "reward_mean",
+      "reference_value": 0.4568592822007695,
+      "replica_value": 0.45940147908888196,
+      "difference": 0.002542196888112469,
+      "issue": "Metric reward_mean differs at step 111"
+    },
+    {
+      "replica": 1,
+      "step": 112,
+      "metric": "reward_mean",
+      "reference_value": 0.4655986010422859,
+      "replica_value": 0.4629525392539935,
+      "difference": 0.0026460617882924087,
+      "issue": "Metric reward_mean differs at step 112"
+    },
+    {
+      "replica": 1,
+      "step": 113,
+      "metric": "reward_mean",
+      "reference_value": 0.4655599828038766,
+      "replica_value": 0.46699779228486604,
+      "difference": 0.001437809480989427,
+      "issue": "Metric reward_mean differs at step 113"
+    },
+    {
+      "replica": 1,
+      "step": 114,
+      "metric": "reward_mean",
+      "reference_value": 0.4682461268876445,
+      "replica_value": 0.47234410045361264,
+      "difference": 0.004097973565968138,
+      "issue": "Metric reward_mean differs at step 114"
+    },
+    {
+      "replica": 1,
+      "step": 115,
+      "metric": "reward_mean",
+      "reference_value": 0.46828868293519027,
+      "replica_value": 0.47632932278032786,
+      "difference": 0.008040639845137587,
+      "issue": "Metric reward_mean differs at step 115"
+    },
+    {
+      "replica": 1,
+      "step": 116,
+      "metric": "reward_mean",
+      "reference_value": 0.47413903112100625,
+      "replica_value": 0.477982699196118,
+      "difference": 0.0038436680751117724,
+      "issue": "Metric reward_mean differs at step 116"
+    },
+    {
+      "replica": 1,
+      "step": 117,
+      "metric": "reward_mean",
+      "reference_value": 0.4824028554873442,
+      "replica_value": 0.47905079913818405,
+      "difference": 0.0033520563491601374,
+      "issue": "Metric reward_mean differs at step 117"
+    },
+    {
+      "replica": 1,
+      "step": 118,
+      "metric": "reward_mean",
+      "reference_value": 0.4780425230946828,
+      "replica_value": 0.48188551390245443,
+      "difference": 0.003842990807771618,
+      "issue": "Metric reward_mean differs at step 118"
+    },
+    {
+      "replica": 1,
+      "step": 119,
+      "metric": "reward_mean",
+      "reference_value": 0.4824762118750762,
+      "replica_value": 0.4861864783280322,
+      "difference": 0.003710266452955968,
+      "issue": "Metric reward_mean differs at step 119"
+    },
+    {
+      "replica": 1,
+      "step": 120,
+      "metric": "reward_mean",
+      "reference_value": 0.48210331300143555,
+      "replica_value": 0.4877591075705598,
+      "difference": 0.0056557945691242395,
+      "issue": "Metric reward_mean differs at step 120"
+    },
+    {
+      "replica": 1,
+      "step": 121,
+      "metric": "reward_mean",
+      "reference_value": 0.48747434053899463,
+      "replica_value": 0.4939829393064605,
+      "difference": 0.006508598767465845,
+      "issue": "Metric reward_mean differs at step 121"
+    },
+    {
+      "replica": 1,
+      "step": 122,
+      "metric": "reward_mean",
+      "reference_value": 0.49345573518349906,
+      "replica_value": 0.49491940435740495,
+      "difference": 0.0014636691739058905,
+      "issue": "Metric reward_mean differs at step 122"
+    },
+    {
+      "replica": 1,
+      "step": 123,
+      "metric": "reward_mean",
+      "reference_value": 0.49926957590329324,
+      "replica_value": 0.49393495510370994,
+      "difference": 0.005334620799583301,
+      "issue": "Metric reward_mean differs at step 123"
+    },
+    {
+      "replica": 1,
+      "step": 124,
+      "metric": "reward_mean",
+      "reference_value": 0.49292612828095045,
+      "replica_value": 0.49508212972336935,
+      "difference": 0.002156001442418898,
+      "issue": "Metric reward_mean differs at step 124"
+    },
+    {
+      "replica": 1,
+      "step": 125,
+      "metric": "reward_mean",
+      "reference_value": 0.5007627815206033,
+      "replica_value": 0.49905309282691834,
+      "difference": 0.0017096886936849298,
+      "issue": "Metric reward_mean differs at step 125"
+    },
+    {
+      "replica": 1,
+      "step": 126,
+      "metric": "reward_mean",
+      "reference_value": 0.5008357880828979,
+      "replica_value": 0.5042878740466084,
+      "difference": 0.003452085963710494,
+      "issue": "Metric reward_mean differs at step 126"
+    },
+    {
+      "replica": 1,
+      "step": 127,
+      "metric": "reward_mean",
+      "reference_value": 0.5108152455367012,
+      "replica_value": 0.5079466468230504,
+      "difference": 0.0028685987136508606,
+      "issue": "Metric reward_mean differs at step 127"
+    },
+    {
+      "replica": 1,
+      "step": 128,
+      "metric": "reward_mean",
+      "reference_value": 0.5044953885356135,
+      "replica_value": 0.5093824566099422,
+      "difference": 0.004887068074328704,
+      "issue": "Metric reward_mean differs at step 128"
+    },
+    {
+      "replica": 1,
+      "step": 129,
+      "metric": "reward_mean",
+      "reference_value": 0.5142131152027106,
+      "replica_value": 0.5075422507071469,
+      "difference": 0.006670864495563755,
+      "issue": "Metric reward_mean differs at step 129"
+    },
+    {
+      "replica": 1,
+      "step": 130,
+      "metric": "reward_mean",
+      "reference_value": 0.5176346392712635,
+      "replica_value": 0.5162524299944119,
+      "difference": 0.0013822092768516203,
+      "issue": "Metric reward_mean differs at step 130"
+    },
+    {
+      "replica": 1,
+      "step": 131,
+      "metric": "reward_mean",
+      "reference_value": 0.5141599934641966,
+      "replica_value": 0.5127302737708007,
+      "difference": 0.0014297196933958922,
+      "issue": "Metric reward_mean differs at step 131"
+    },
+    {
+      "replica": 1,
+      "step": 132,
+      "metric": "reward_mean",
+      "reference_value": 0.5169780940670253,
+      "replica_value": 0.5212666655616335,
+      "difference": 0.004288571494608151,
+      "issue": "Metric reward_mean differs at step 132"
+    },
+    {
+      "replica": 1,
+      "step": 133,
+      "metric": "reward_mean",
+      "reference_value": 0.5193277925054538,
+      "replica_value": 0.5211243462927739,
+      "difference": 0.001796553787320132,
+      "issue": "Metric reward_mean differs at step 133"
+    },
+    {
+      "replica": 1,
+      "step": 134,
+      "metric": "reward_mean",
+      "reference_value": 0.5233464876892965,
+      "replica_value": 0.5225142943976564,
+      "difference": 0.000832193291640082,
+      "issue": "Metric reward_mean differs at step 134"
+    },
+    {
+      "replica": 1,
+      "step": 135,
+      "metric": "reward_mean",
+      "reference_value": 0.529004767576281,
+      "replica_value": 0.5288388669091091,
+      "difference": 0.00016590066717192542,
+      "issue": "Metric reward_mean differs at step 135"
+    },
+    {
+      "replica": 1,
+      "step": 136,
+      "metric": "reward_mean",
+      "reference_value": 0.53259092967333,
+      "replica_value": 0.531686024941898,
+      "difference": 0.0009049047314320102,
+      "issue": "Metric reward_mean differs at step 136"
+    },
+    {
+      "replica": 1,
+      "step": 137,
+      "metric": "reward_mean",
+      "reference_value": 0.5327683727016971,
+      "replica_value": 0.5318547655373728,
+      "difference": 0.0009136071643243149,
+      "issue": "Metric reward_mean differs at step 137"
+    },
+    {
+      "replica": 1,
+      "step": 138,
+      "metric": "reward_mean",
+      "reference_value": 0.534157281138747,
+      "replica_value": 0.5332280202581555,
+      "difference": 0.0009292608805915314,
+      "issue": "Metric reward_mean differs at step 138"
+    },
+    {
+      "replica": 1,
+      "step": 139,
+      "metric": "reward_mean",
+      "reference_value": 0.5368756801428551,
+      "replica_value": 0.541437572438496,
+      "difference": 0.004561892295640857,
+      "issue": "Metric reward_mean differs at step 139"
+    },
+    {
+      "replica": 1,
+      "step": 140,
+      "metric": "reward_mean",
+      "reference_value": 0.5380453195849644,
+      "replica_value": 0.5455148217508862,
+      "difference": 0.007469502165921793,
+      "issue": "Metric reward_mean differs at step 140"
+    },
+    {
+      "replica": 1,
+      "step": 141,
+      "metric": "reward_mean",
+      "reference_value": 0.5443507765815299,
+      "replica_value": 0.5449069409992118,
+      "difference": 0.0005561644176819147,
+      "issue": "Metric reward_mean differs at step 141"
+    },
+    {
+      "replica": 1,
+      "step": 142,
+      "metric": "reward_mean",
+      "reference_value": 0.5424471200654933,
+      "replica_value": 0.5454354885066129,
+      "difference": 0.0029883684411196043,
+      "issue": "Metric reward_mean differs at step 142"
+    },
+    {
+      "replica": 1,
+      "step": 143,
+      "metric": "reward_mean",
+      "reference_value": 0.5526325366650916,
+      "replica_value": 0.5443039457352121,
+      "difference": 0.008328590929879476,
+      "issue": "Metric reward_mean differs at step 143"
+    },
+    {
+      "replica": 1,
+      "step": 144,
+      "metric": "reward_mean",
+      "reference_value": 0.5499127343965956,
+      "replica_value": 0.5536247115038366,
+      "difference": 0.003711977107241027,
+      "issue": "Metric reward_mean differs at step 144"
+    },
+    {
+      "replica": 1,
+      "step": 145,
+      "metric": "reward_mean",
+      "reference_value": 0.5513443359986668,
+      "replica_value": 0.5531554880245758,
+      "difference": 0.0018111520259089797,
+      "issue": "Metric reward_mean differs at step 145"
+    },
+    {
+      "replica": 1,
+      "step": 146,
+      "metric": "reward_mean",
+      "reference_value": 0.5535304249249976,
+      "replica_value": 0.5572660221133763,
+      "difference": 0.003735597188378681,
+      "issue": "Metric reward_mean differs at step 146"
+    },
+    {
+      "replica": 1,
+      "step": 147,
+      "metric": "reward_mean",
+      "reference_value": 0.5599101086936653,
+      "replica_value": 0.5577236433853837,
+      "difference": 0.0021864653082815932,
+      "issue": "Metric reward_mean differs at step 147"
+    },
+    {
+      "replica": 1,
+      "step": 148,
+      "metric": "reward_mean",
+      "reference_value": 0.5646323831740857,
+      "replica_value": 0.5588544241846802,
+      "difference": 0.005777958989405474,
+      "issue": "Metric reward_mean differs at step 148"
+    },
+    {
+      "replica": 1,
+      "step": 149,
+      "metric": "reward_mean",
+      "reference_value": 0.5586959557002312,
+      "replica_value": 0.5663702917528025,
+      "difference": 0.0076743360525712845,
+      "issue": "Metric reward_mean differs at step 149"
+    },
+    {
+      "replica": 1,
+      "step": 150,
+      "metric": "reward_mean",
+      "reference_value": 0.5641927599329658,
+      "replica_value": 0.568330402559474,
+      "difference": 0.004137642626508176,
+      "issue": "Metric reward_mean differs at step 150"
+    },
+    {
+      "replica": 1,
+      "step": 151,
+      "metric": "reward_mean",
+      "reference_value": 0.5633186728791163,
+      "replica_value": 0.5644702768229393,
+      "difference": 0.0011516039438229653,
+      "issue": "Metric reward_mean differs at step 151"
+    },
+    {
+      "replica": 1,
+      "step": 152,
+      "metric": "reward_mean",
+      "reference_value": 0.5658125271883491,
+      "replica_value": 0.5731015785585774,
+      "difference": 0.007289051370228283,
+      "issue": "Metric reward_mean differs at step 152"
+    },
+    {
+      "replica": 1,
+      "step": 153,
+      "metric": "reward_mean",
+      "reference_value": 0.5680817151245566,
+      "replica_value": 0.5764568939711799,
+      "difference": 0.00837517884662331,
+      "issue": "Metric reward_mean differs at step 153"
+    },
+    {
+      "replica": 1,
+      "step": 154,
+      "metric": "reward_mean",
+      "reference_value": 0.5721224666068392,
+      "replica_value": 0.57534222987468,
+      "difference": 0.0032197632678407917,
+      "issue": "Metric reward_mean differs at step 154"
+    },
+    {
+      "replica": 1,
+      "step": 155,
+      "metric": "reward_mean",
+      "reference_value": 0.5791696132840748,
+      "replica_value": 0.5818212576034536,
+      "difference": 0.0026516443193788097,
+      "issue": "Metric reward_mean differs at step 155"
+    },
+    {
+      "replica": 1,
+      "step": 156,
+      "metric": "reward_mean",
+      "reference_value": 0.5749489243122108,
+      "replica_value": 0.5823251419972988,
+      "difference": 0.007376217685088005,
+      "issue": "Metric reward_mean differs at step 156"
+    },
+    {
+      "replica": 1,
+      "step": 157,
+      "metric": "reward_mean",
+      "reference_value": 0.5784682150807545,
+      "replica_value": 0.5771924987995916,
+      "difference": 0.001275716281162964,
+      "issue": "Metric reward_mean differs at step 157"
+    },
+    {
+      "replica": 1,
+      "step": 158,
+      "metric": "reward_mean",
+      "reference_value": 0.579929974623718,
+      "replica_value": 0.5844422958779985,
+      "difference": 0.004512321254280471,
+      "issue": "Metric reward_mean differs at step 158"
+    },
+    {
+      "replica": 1,
+      "step": 159,
+      "metric": "reward_mean",
+      "reference_value": 0.5852999046027586,
+      "replica_value": 0.5824922344574983,
+      "difference": 0.002807670145260288,
+      "issue": "Metric reward_mean differs at step 159"
+    },
+    {
+      "replica": 1,
+      "step": 160,
+      "metric": "reward_mean",
+      "reference_value": 0.5899967823447952,
+      "replica_value": 0.5880359360716007,
+      "difference": 0.001960846273194594,
+      "issue": "Metric reward_mean differs at step 160"
+    },
+    {
+      "replica": 1,
+      "step": 161,
+      "metric": "reward_mean",
+      "reference_value": 0.5887689049702177,
+      "replica_value": 0.5883399769461474,
+      "difference": 0.0004289280240703519,
+      "issue": "Metric reward_mean differs at step 161"
+    },
+    {
+      "replica": 1,
+      "step": 162,
+      "metric": "reward_mean",
+      "reference_value": 0.5976101512478373,
+      "replica_value": 0.5885758437733258,
+      "difference": 0.009034307474511505,
+      "issue": "Metric reward_mean differs at step 162"
+    },
+    {
+      "replica": 1,
+      "step": 163,
+      "metric": "reward_mean",
+      "reference_value": 0.6002188497195441,
+      "replica_value": 0.5959176674059669,
+      "difference": 0.004301182313577234,
+      "issue": "Metric reward_mean differs at step 163"
+    },
+    {
+      "replica": 1,
+      "step": 164,
+      "metric": "reward_mean",
+      "reference_value": 0.595267019939868,
+      "replica_value": 0.5966760164796644,
+      "difference": 0.0014089965397964255,
+      "issue": "Metric reward_mean differs at step 164"
+    },
+    {
+      "replica": 1,
+      "step": 165,
+      "metric": "reward_mean",
+      "reference_value": 0.5993902255172812,
+      "replica_value": 0.5994024296260487,
+      "difference": 1.2204108767566169e-05,
+      "issue": "Metric reward_mean differs at step 165"
+    },
+    {
+      "replica": 1,
+      "step": 166,
+      "metric": "reward_mean",
+      "reference_value": 0.6045249463346415,
+      "replica_value": 0.6023819511334335,
+      "difference": 0.0021429952012079756,
+      "issue": "Metric reward_mean differs at step 166"
+    },
+    {
+      "replica": 1,
+      "step": 167,
+      "metric": "reward_mean",
+      "reference_value": 0.6057592291653153,
+      "replica_value": 0.606010520596923,
+      "difference": 0.00025129143160762535,
+      "issue": "Metric reward_mean differs at step 167"
+    },
+    {
+      "replica": 1,
+      "step": 168,
+      "metric": "reward_mean",
+      "reference_value": 0.6054522124539258,
+      "replica_value": 0.607343308279715,
+      "difference": 0.0018910958257892796,
+      "issue": "Metric reward_mean differs at step 168"
+    },
+    {
+      "replica": 1,
+      "step": 169,
+      "metric": "reward_mean",
+      "reference_value": 0.6122816583242654,
+      "replica_value": 0.6093827461253134,
+      "difference": 0.0028989121989519973,
+      "issue": "Metric reward_mean differs at step 169"
+    },
+    {
+      "replica": 1,
+      "step": 170,
+      "metric": "reward_mean",
+      "reference_value": 0.6145296813330899,
+      "replica_value": 0.6150124987110988,
+      "difference": 0.0004828173780088152,
+      "issue": "Metric reward_mean differs at step 170"
+    },
+    {
+      "replica": 1,
+      "step": 171,
+      "metric": "reward_mean",
+      "reference_value": 0.6094846758856666,
+      "replica_value": 0.6170905648903188,
+      "difference": 0.0076058890046522,
+      "issue": "Metric reward_mean differs at step 171"
+    },
+    {
+      "replica": 1,
+      "step": 172,
+      "metric": "reward_mean",
+      "reference_value": 0.612075772329054,
+      "replica_value": 0.6144696133840903,
+      "difference": 0.002393841055036372,
+      "issue": "Metric reward_mean differs at step 172"
+    },
+    {
+      "replica": 1,
+      "step": 173,
+      "metric": "reward_mean",
+      "reference_value": 0.6184383105681521,
+      "replica_value": 0.6157003042380154,
+      "difference": 0.0027380063301367663,
+      "issue": "Metric reward_mean differs at step 173"
+    },
+    {
+      "replica": 1,
+      "step": 174,
+      "metric": "reward_mean",
+      "reference_value": 0.62246740860932,
+      "replica_value": 0.6196695832915821,
+      "difference": 0.0027978253177379786,
+      "issue": "Metric reward_mean differs at step 174"
+    },
+    {
+      "replica": 1,
+      "step": 175,
+      "metric": "reward_mean",
+      "reference_value": 0.6198668850642447,
+      "replica_value": 0.6181756319711075,
+      "difference": 0.0016912530931372238,
+      "issue": "Metric reward_mean differs at step 175"
+    },
+    {
+      "replica": 1,
+      "step": 176,
+      "metric": "reward_mean",
+      "reference_value": 0.6213928513177005,
+      "replica_value": 0.6218200632578188,
+      "difference": 0.00042721194011829944,
+      "issue": "Metric reward_mean differs at step 176"
+    },
+    {
+      "replica": 1,
+      "step": 177,
+      "metric": "reward_mean",
+      "reference_value": 0.6234482065063237,
+      "replica_value": 0.6278935357438447,
+      "difference": 0.004445329237520945,
+      "issue": "Metric reward_mean differs at step 177"
+    },
+    {
+      "replica": 1,
+      "step": 178,
+      "metric": "reward_mean",
+      "reference_value": 0.6312359915447235,
+      "replica_value": 0.6320311026815114,
+      "difference": 0.0007951111367878738,
+      "issue": "Metric reward_mean differs at step 178"
+    },
+    {
+      "replica": 1,
+      "step": 179,
+      "metric": "reward_mean",
+      "reference_value": 0.6291645201549849,
+      "replica_value": 0.6267075555565548,
+      "difference": 0.0024569645984301447,
+      "issue": "Metric reward_mean differs at step 179"
+    },
+    {
+      "replica": 1,
+      "step": 180,
+      "metric": "reward_mean",
+      "reference_value": 0.6360126424342902,
+      "replica_value": 0.6277252576733309,
+      "difference": 0.00828738476095936,
+      "issue": "Metric reward_mean differs at step 180"
+    },
+    {
+      "replica": 1,
+      "step": 181,
+      "metric": "reward_mean",
+      "reference_value": 0.634333752070123,
+      "replica_value": 0.6354041051880924,
+      "difference": 0.0010703531179694359,
+      "issue": "Metric reward_mean differs at step 181"
+    },
+    {
+      "replica": 1,
+      "step": 182,
+      "metric": "reward_mean",
+      "reference_value": 0.635574536030831,
+      "replica_value": 0.6317292744056248,
+      "difference": 0.0038452616252062644,
+      "issue": "Metric reward_mean differs at step 182"
+    },
+    {
+      "replica": 1,
+      "step": 183,
+      "metric": "reward_mean",
+      "reference_value": 0.6407553290087257,
+      "replica_value": 0.6365125726372894,
+      "difference": 0.004242756371436229,
+      "issue": "Metric reward_mean differs at step 183"
+    },
+    {
+      "replica": 1,
+      "step": 184,
+      "metric": "reward_mean",
+      "reference_value": 0.6405315954634807,
+      "replica_value": 0.6379248054095055,
+      "difference": 0.0026067900539752387,
+      "issue": "Metric reward_mean differs at step 184"
+    },
+    {
+      "replica": 1,
+      "step": 185,
+      "metric": "reward_mean",
+      "reference_value": 0.6470314481600521,
+      "replica_value": 0.6386608659618569,
+      "difference": 0.008370582198195198,
+      "issue": "Metric reward_mean differs at step 185"
+    },
+    {
+      "replica": 1,
+      "step": 186,
+      "metric": "reward_mean",
+      "reference_value": 0.6482462397712293,
+      "replica_value": 0.641803665899337,
+      "difference": 0.006442573871892288,
+      "issue": "Metric reward_mean differs at step 186"
+    },
+    {
+      "replica": 1,
+      "step": 187,
+      "metric": "reward_mean",
+      "reference_value": 0.6469277633990227,
+      "replica_value": 0.6508264706776439,
+      "difference": 0.003898707278621183,
+      "issue": "Metric reward_mean differs at step 187"
+    },
+    {
+      "replica": 1,
+      "step": 188,
+      "metric": "reward_mean",
+      "reference_value": 0.649423946681048,
+      "replica_value": 0.6467772795492451,
+      "difference": 0.002646667131802838,
+      "issue": "Metric reward_mean differs at step 188"
+    },
+    {
+      "replica": 1,
+      "step": 189,
+      "metric": "reward_mean",
+      "reference_value": 0.6516793785001384,
+      "replica_value": 0.6504150729611469,
+      "difference": 0.0012643055389914837,
+      "issue": "Metric reward_mean differs at step 189"
+    },
+    {
+      "replica": 1,
+      "step": 190,
+      "metric": "reward_mean",
+      "reference_value": 0.6491222455359229,
+      "replica_value": 0.6542108473977397,
+      "difference": 0.0050886018618168105,
+      "issue": "Metric reward_mean differs at step 190"
+    },
+    {
+      "replica": 1,
+      "step": 191,
+      "metric": "reward_mean",
+      "reference_value": 0.6528036761318325,
+      "replica_value": 0.6535050173783434,
+      "difference": 0.0007013412465108892,
+      "issue": "Metric reward_mean differs at step 191"
+    },
+    {
+      "replica": 1,
+      "step": 192,
+      "metric": "reward_mean",
+      "reference_value": 0.654607228287008,
+      "replica_value": 0.6523302910436456,
+      "difference": 0.00227693724336242,
+      "issue": "Metric reward_mean differs at step 192"
+    },
+    {
+      "replica": 1,
+      "step": 193,
+      "metric": "reward_mean",
+      "reference_value": 0.6613600564741582,
+      "replica_value": 0.6579835055966688,
+      "difference": 0.003376550877489337,
+      "issue": "Metric reward_mean differs at step 193"
+    },
+    {
+      "replica": 1,
+      "step": 194,
+      "metric": "reward_mean",
+      "reference_value": 0.6588039295216295,
+      "replica_value": 0.6585344294188297,
+      "difference": 0.0002695001027998023,
+      "issue": "Metric reward_mean differs at step 194"
+    },
+    {
+      "replica": 1,
+      "step": 195,
+      "metric": "reward_mean",
+      "reference_value": 0.6616532623903661,
+      "replica_value": 0.6608348188608629,
+      "difference": 0.0008184435295032211,
+      "issue": "Metric reward_mean differs at step 195"
+    },
+    {
+      "replica": 1,
+      "step": 196,
+      "metric": "reward_mean",
+      "reference_value": 0.6671689458490867,
+      "replica_value": 0.6681909822336702,
+      "difference": 0.0010220363845835356,
+      "issue": "Metric reward_mean differs at step 196"
+    },
+    {
+      "replica": 1,
+      "step": 197,
+      "metric": "reward_mean",
+      "reference_value": 0.6656607726612849,
+      "replica_value": 0.6634490633386563,
+      "difference": 0.0022117093226285967,
+      "issue": "Metric reward_mean differs at step 197"
+    },
+    {
+      "replica": 1,
+      "step": 198,
+      "metric": "reward_mean",
+      "reference_value": 0.6696754302588167,
+      "replica_value": 0.6688259670852374,
+      "difference": 0.0008494631735792568,
+      "issue": "Metric reward_mean differs at step 198"
+    },
+    {
+      "replica": 1,
+      "step": 199,
+      "metric": "reward_mean",
+      "reference_value": 0.6721189772081583,
+      "replica_value": 0.6682559729018906,
+      "difference": 0.0038630043062676256,
+      "issue": "Metric reward_mean differs at step 199"
+    },
+    {
+      "replica": 2,
+      "step": 0,
+      "metric": "reward_mean",
+      "reference_value": -0.004511777591029748,
+      "replica_value": -0.002787162819147995,
+      "difference": 0.0017246147718817536,
+      "issue": "Metric reward_mean differs at step 0"
+    },
+    {
+      "replica": 2,
+      "step": 1,
+      "metric": "reward_mean",
+      "reference_value": 0.007334971725117403,
+      "replica_value": 0.009820173905531297,
+      "difference": 0.0024852021804138945,
+      "issue": "Metric reward_mean differs at step 1"
+    },
+    {
+      "replica": 2,
+      "step": 2,
+      "metric": "reward_mean",
+      "reference_value": 0.014626098786197956,
+      "replica_value": 0.015481115191823186,
+      "difference": 0.0008550164056252297,
+      "issue": "Metric reward_mean differs at step 2"
+    },
+    {
+      "replica": 2,
+      "step": 3,
+      "metric": "reward_mean",
+      "reference_value": 0.01797458475567338,
+      "replica_value": 0.019782225309040266,
+      "difference": 0.0018076405533668863,
+      "issue": "Metric reward_mean differs at step 3"
+    },
+    {
+      "replica": 2,
+      "step": 4,
+      "metric": "reward_mean",
+      "reference_value": 0.01838785059819621,
+      "replica_value": 0.01720220581413686,
+      "difference": 0.0011856447840593483,
+      "issue": "Metric reward_mean differs at step 4"
+    },
+    {
+      "replica": 2,
+      "step": 5,
+      "metric": "reward_mean",
+      "reference_value": 0.030551497842901003,
+      "replica_value": 0.029364138344646518,
+      "difference": 0.0011873594982544852,
+      "issue": "Metric reward_mean differs at step 5"
+    },
+    {
+      "replica": 2,
+      "step": 6,
+      "metric": "reward_mean",
+      "reference_value": 0.030689109156780862,
+      "replica_value": 0.02804741717301453,
+      "difference": 0.0026416919837663304,
+      "issue": "Metric reward_mean differs at step 6"
+    },
+    {
+      "replica": 2,
+      "step": 7,
+      "metric": "reward_mean",
+      "reference_value": 0.04179600220076521,
+      "replica_value": 0.03988612875285035,
+      "difference": 0.0019098734479148574,
+      "issue": "Metric reward_mean differs at step 7"
+    },
+    {
+      "replica": 2,
+      "step": 8,
+      "metric": "reward_mean",
+      "reference_value": 0.047997139062991065,
+      "replica_value": 0.043560529174791134,
+      "difference": 0.004436609888199931,
+      "issue": "Metric reward_mean differs at step 8"
+    },
+    {
+      "replica": 2,
+      "step": 9,
+      "metric": "reward_mean",
+      "reference_value": 0.047159325471917174,
+      "replica_value": 0.04569016474542675,
+      "difference": 0.0014691607264904205,
+      "issue": "Metric reward_mean differs at step 9"
+    },
+    {
+      "replica": 2,
+      "step": 10,
+      "metric": "reward_mean",
+      "reference_value": 0.05583777831895552,
+      "replica_value": 0.052028943867659494,
+      "difference": 0.0038088344512960254,
+      "issue": "Metric reward_mean differs at step 10"
+    },
+    {
+      "replica": 2,
+      "step": 11,
+      "metric": "reward_mean",
+      "reference_value": 0.05474797751760792,
+      "replica_value": 0.06321125732864137,
+      "difference": 0.008463279811033453,
+      "issue": "Metric reward_mean differs at step 11"
+    },
+    {
+      "replica": 2,
+      "step": 12,
+      "metric": "reward_mean",
+      "reference_value": 0.06296443902009305,
+      "replica_value": 0.0636358009732433,
+      "difference": 0.0006713619531502485,
+      "issue": "Metric reward_mean differs at step 12"
+    },
+    {
+      "replica": 2,
+      "step": 13,
+      "metric": "reward_mean",
+      "reference_value": 0.0647126833153065,
+      "replica_value": 0.07156314869843615,
+      "difference": 0.006850465383129653,
+      "issue": "Metric reward_mean differs at step 13"
+    },
+    {
+      "replica": 2,
+      "step": 14,
+      "metric": "reward_mean",
+      "reference_value": 0.07046977095954542,
+      "replica_value": 0.07357443123255246,
+      "difference": 0.0031046602730070427,
+      "issue": "Metric reward_mean differs at step 14"
+    },
+    {
+      "replica": 2,
+      "step": 15,
+      "metric": "reward_mean",
+      "reference_value": 0.08464111571657044,
+      "replica_value": 0.07594095875161928,
+      "difference": 0.008700156964951161,
+      "issue": "Metric reward_mean differs at step 15"
+    },
+    {
+      "replica": 2,
+      "step": 16,
+      "metric": "reward_mean",
+      "reference_value": 0.08522568561464558,
+      "replica_value": 0.08449866711782202,
+      "difference": 0.0007270184968235643,
+      "issue": "Metric reward_mean differs at step 16"
+    },
+    {
+      "replica": 2,
+      "step": 17,
+      "metric": "reward_mean",
+      "reference_value": 0.08840690801307613,
+      "replica_value": 0.09497957816128955,
+      "difference": 0.0065726701482134164,
+      "issue": "Metric reward_mean differs at step 17"
+    },
+    {
+      "replica": 2,
+      "step": 18,
+      "metric": "reward_mean",
+      "reference_value": 0.09211167272920673,
+      "replica_value": 0.09104210288327191,
+      "difference": 0.0010695698459348146,
+      "issue": "Metric reward_mean differs at step 18"
+    },
+    {
+      "replica": 2,
+      "step": 19,
+      "metric": "reward_mean",
+      "reference_value": 0.10294960391830497,
+      "replica_value": 0.10344453653279952,
+      "difference": 0.0004949326144945421,
+      "issue": "Metric reward_mean differs at step 19"
+    },
+    {
+      "replica": 2,
+      "step": 20,
+      "metric": "reward_mean",
+      "reference_value": 0.1065223847085552,
+      "replica_value": 0.10301761222443591,
+      "difference": 0.0035047724841192895,
+      "issue": "Metric reward_mean differs at step 20"
+    },
+    {
+      "replica": 2,
+      "step": 21,
+      "metric": "reward_mean",
+      "reference_value": 0.11492793963839543,
+      "replica_value": 0.1112415316008609,
+      "difference": 0.003686408037534533,
+      "issue": "Metric reward_mean differs at step 21"
+    },
+    {
+      "replica": 2,
+      "step": 22,
+      "metric": "reward_mean",
+      "reference_value": 0.1130262419247719,
+      "replica_value": 0.1197397544418049,
+      "difference": 0.0067135125170330046,
+      "issue": "Metric reward_mean differs at step 22"
+    },
+    {
+      "replica": 2,
+      "step": 23,
+      "metric": "reward_mean",
+      "reference_value": 0.1168269748523923,
+      "replica_value": 0.11903982028429529,
+      "difference": 0.0022128454319029905,
+      "issue": "Metric reward_mean differs at step 23"
+    },
+    {
+      "replica": 2,
+      "step": 24,
+      "metric": "reward_mean",
+      "reference_value": 0.1229292191631062,
+      "replica_value": 0.12125532236799694,
+      "difference": 0.0016738967951092643,
+      "issue": "Metric reward_mean differs at step 24"
+    },
+    {
+      "replica": 2,
+      "step": 25,
+      "metric": "reward_mean",
+      "reference_value": 0.12686628451614618,
+      "replica_value": 0.1295147657484062,
+      "difference": 0.002648481232260025,
+      "issue": "Metric reward_mean differs at step 25"
+    },
+    {
+      "replica": 2,
+      "step": 26,
+      "metric": "reward_mean",
+      "reference_value": 0.1314005752870984,
+      "replica_value": 0.13595353843084826,
+      "difference": 0.004552963143749866,
+      "issue": "Metric reward_mean differs at step 26"
+    },
+    {
+      "replica": 2,
+      "step": 27,
+      "metric": "reward_mean",
+      "reference_value": 0.14309426071276013,
+      "replica_value": 0.1435601509842638,
+      "difference": 0.00046589027150367723,
+      "issue": "Metric reward_mean differs at step 27"
+    },
+    {
+      "replica": 2,
+      "step": 28,
+      "metric": "reward_mean",
+      "reference_value": 0.13951431575446477,
+      "replica_value": 0.14456682234239565,
+      "difference": 0.005052506587930883,
+      "issue": "Metric reward_mean differs at step 28"
+    },
+    {
+      "replica": 2,
+      "step": 29,
+      "metric": "reward_mean",
+      "reference_value": 0.14739691025104243,
+      "replica_value": 0.15124495860428266,
+      "difference": 0.0038480483532402354,
+      "issue": "Metric reward_mean differs at step 29"
+    },
+    {
+      "replica": 2,
+      "step": 30,
+      "metric": "reward_mean",
+      "reference_value": 0.14918423183785204,
+      "replica_value": 0.15265980738774942,
+      "difference": 0.003475575549897386,
+      "issue": "Metric reward_mean differs at step 30"
+    },
+    {
+      "replica": 2,
+      "step": 31,
+      "metric": "reward_mean",
+      "reference_value": 0.16143934741874688,
+      "replica_value": 0.15986678584045946,
+      "difference": 0.001572561578287418,
+      "issue": "Metric reward_mean differs at step 31"
+    },
+    {
+      "replica": 2,
+      "step": 32,
+      "metric": "reward_mean",
+      "reference_value": 0.15907361379044774,
+      "replica_value": 0.16171539982492508,
+      "difference": 0.0026417860344773447,
+      "issue": "Metric reward_mean differs at step 32"
+    },
+    {
+      "replica": 2,
+      "step": 33,
+      "metric": "reward_mean",
+      "reference_value": 0.16250950506282516,
+      "replica_value": 0.1654467308401988,
+      "difference": 0.002937225777373653,
+      "issue": "Metric reward_mean differs at step 33"
+    },
+    {
+      "replica": 2,
+      "step": 34,
+      "metric": "reward_mean",
+      "reference_value": 0.16808714491000723,
+      "replica_value": 0.17492047545133305,
+      "difference": 0.006833330541325816,
+      "issue": "Metric reward_mean differs at step 34"
+    },
+    {
+      "replica": 2,
+      "step": 35,
+      "metric": "reward_mean",
+      "reference_value": 0.17914303952889163,
+      "replica_value": 0.17215874975460807,
+      "difference": 0.006984289774283559,
+      "issue": "Metric reward_mean differs at step 35"
+    },
+    {
+      "replica": 2,
+      "step": 36,
+      "metric": "reward_mean",
+      "reference_value": 0.17985263582893357,
+      "replica_value": 0.1771298377486757,
+      "difference": 0.002722798080257882,
+      "issue": "Metric reward_mean differs at step 36"
+    },
+    {
+      "replica": 2,
+      "step": 37,
+      "metric": "reward_mean",
+      "reference_value": 0.1858563674701101,
+      "replica_value": 0.18604810094389423,
+      "difference": 0.00019173347378412253,
+      "issue": "Metric reward_mean differs at step 37"
+    },
+    {
+      "replica": 2,
+      "step": 38,
+      "metric": "reward_mean",
+      "reference_value": 0.1942445188984308,
+      "replica_value": 0.1934429806831834,
+      "difference": 0.0008015382152473938,
+      "issue": "Metric reward_mean differs at step 38"
+    },
+    {
+      "replica": 2,
+      "step": 39,
+      "metric": "reward_mean",
+      "reference_value": 0.19515799710234016,
+      "replica_value": 0.19923220258583066,
+      "difference": 0.004074205483490495,
+      "issue": "Metric reward_mean differs at step 39"
+    },
+    {
+      "replica": 2,
+      "step": 40,
+      "metric": "reward_mean",
+      "reference_value": 0.1979700804008755,
+      "replica_value": 0.19860857399367934,
+      "difference": 0.0006384935928038515,
+      "issue": "Metric reward_mean differs at step 40"
+    },
+    {
+      "replica": 2,
+      "step": 41,
+      "metric": "reward_mean",
+      "reference_value": 0.20087196042526867,
+      "replica_value": 0.2064760425560899,
+      "difference": 0.005604082130821225,
+      "issue": "Metric reward_mean differs at step 41"
+    },
+    {
+      "replica": 2,
+      "step": 42,
+      "metric": "reward_mean",
+      "reference_value": 0.20711514620219298,
+      "replica_value": 0.2057240227585575,
+      "difference": 0.0013911234436354836,
+      "issue": "Metric reward_mean differs at step 42"
+    },
+    {
+      "replica": 2,
+      "step": 43,
+      "metric": "reward_mean",
+      "reference_value": 0.21100631019674687,
+      "replica_value": 0.2141261680629161,
+      "difference": 0.0031198578661692233,
+      "issue": "Metric reward_mean differs at step 43"
+    },
+    {
+      "replica": 2,
+      "step": 44,
+      "metric": "reward_mean",
+      "reference_value": 0.21928787283036769,
+      "replica_value": 0.22106508680764797,
+      "difference": 0.0017772139772802842,
+      "issue": "Metric reward_mean differs at step 44"
+    },
+    {
+      "replica": 2,
+      "step": 45,
+      "metric": "reward_mean",
+      "reference_value": 0.22336501054602476,
+      "replica_value": 0.2215415171625569,
+      "difference": 0.0018234933834678502,
+      "issue": "Metric reward_mean differs at step 45"
+    },
+    {
+      "replica": 2,
+      "step": 46,
+      "metric": "reward_mean",
+      "reference_value": 0.2284149710995264,
+      "replica_value": 0.22956270321752975,
+      "difference": 0.0011477321180033417,
+      "issue": "Metric reward_mean differs at step 46"
+    },
+    {
+      "replica": 2,
+      "step": 47,
+      "metric": "reward_mean",
+      "reference_value": 0.23206250359946998,
+      "replica_value": 0.22540241389556653,
+      "difference": 0.0066600897039034435,
+      "issue": "Metric reward_mean differs at step 47"
+    },
+    {
+      "replica": 2,
+      "step": 48,
+      "metric": "reward_mean",
+      "reference_value": 0.23679480110849063,
+      "replica_value": 0.23433982094233885,
+      "difference": 0.0024549801661517823,
+      "issue": "Metric reward_mean differs at step 48"
+    },
+    {
+      "replica": 2,
+      "step": 49,
+      "metric": "reward_mean",
+      "reference_value": 0.2351392488306315,
+      "replica_value": 0.24167761024460435,
+      "difference": 0.0065383614139728485,
+      "issue": "Metric reward_mean differs at step 49"
+    },
+    {
+      "replica": 2,
+      "step": 50,
+      "metric": "reward_mean",
+      "reference_value": 0.24494005783084039,
+      "replica_value": 0.23953790286350812,
+      "difference": 0.005402154967332262,
+      "issue": "Metric reward_mean differs at step 50"
+    },
+    {
+      "replica": 2,
+      "step": 51,
+      "metric": "reward_mean",
+      "reference_value": 0.24899655297829376,
+      "replica_value": 0.24610799019703075,
+      "difference": 0.00288856278126301,
+      "issue": "Metric reward_mean differs at step 51"
+    },
+    {
+      "replica": 2,
+      "step": 52,
+      "metric": "reward_mean",
+      "reference_value": 0.25182426886093334,
+      "replica_value": 0.2480495688282501,
+      "difference": 0.003774700032683237,
+      "issue": "Metric reward_mean differs at step 52"
+    },
+    {
+      "replica": 2,
+      "step": 53,
+      "metric": "reward_mean",
+      "reference_value": 0.2504157787417044,
+      "replica_value": 0.25762904458741204,
+      "difference": 0.007213265845707639,
+      "issue": "Metric reward_mean differs at step 53"
+    },
+    {
+      "replica": 2,
+      "step": 54,
+      "metric": "reward_mean",
+      "reference_value": 0.25782220162334335,
+      "replica_value": 0.2626415642394496,
+      "difference": 0.004819362616106271,
+      "issue": "Metric reward_mean differs at step 54"
+    },
+    {
+      "replica": 2,
+      "step": 55,
+      "metric": "reward_mean",
+      "reference_value": 0.26521501427009986,
+      "replica_value": 0.26568645019433457,
+      "difference": 0.0004714359242347088,
+      "issue": "Metric reward_mean differs at step 55"
+    },
+    {
+      "replica": 2,
+      "step": 56,
+      "metric": "reward_mean",
+      "reference_value": 0.27163727094323903,
+      "replica_value": 0.27071849651480856,
+      "difference": 0.0009187744284304689,
+      "issue": "Metric reward_mean differs at step 56"
+    },
+    {
+      "replica": 2,
+      "step": 57,
+      "metric": "reward_mean",
+      "reference_value": 0.2720063023986553,
+      "replica_value": 0.2725537727325594,
+      "difference": 0.0005474703339040654,
+      "issue": "Metric reward_mean differs at step 57"
+    },
+    {
+      "replica": 2,
+      "step": 58,
+      "metric": "reward_mean",
+      "reference_value": 0.2783144757169397,
+      "replica_value": 0.2796728161591215,
+      "difference": 0.0013583404421818046,
+      "issue": "Metric reward_mean differs at step 58"
+    },
+    {
+      "replica": 2,
+      "step": 59,
+      "metric": "reward_mean",
+      "reference_value": 0.2813596956532,
+      "replica_value": 0.28056951355861953,
+      "difference": 0.0007901820945804827,
+      "issue": "Metric reward_mean differs at step 59"
+    },
+    {
+      "replica": 2,
+      "step": 60,
+      "metric": "reward_mean",
+      "reference_value": 0.2877965454294669,
+      "replica_value": 0.2820917045261672,
+      "difference": 0.005704840903299702,
+      "issue": "Metric reward_mean differs at step 60"
+    },
+    {
+      "replica": 2,
+      "step": 61,
+      "metric": "reward_mean",
+      "reference_value": 0.28383647631254066,
+      "replica_value": 0.2857359868342524,
+      "difference": 0.0018995105217117225,
+      "issue": "Metric reward_mean differs at step 61"
+    },
+    {
+      "replica": 2,
+      "step": 62,
+      "metric": "reward_mean",
+      "reference_value": 0.2873757864893197,
+      "replica_value": 0.2935694850338314,
+      "difference": 0.006193698544511683,
+      "issue": "Metric reward_mean differs at step 62"
+    },
+    {
+      "replica": 2,
+      "step": 63,
+      "metric": "reward_mean",
+      "reference_value": 0.296978142919595,
+      "replica_value": 0.2949791826629638,
+      "difference": 0.0019989602566312104,
+      "issue": "Metric reward_mean differs at step 63"
+    },
+    {
+      "replica": 2,
+      "step": 64,
+      "metric": "reward_mean",
+      "reference_value": 0.3011720550287758,
+      "replica_value": 0.2981009640130824,
+      "difference": 0.003071091015693417,
+      "issue": "Metric reward_mean differs at step 64"
+    },
+    {
+      "replica": 2,
+      "step": 65,
+      "metric": "reward_mean",
+      "reference_value": 0.3030140211920382,
+      "replica_value": 0.3011560083645558,
+      "difference": 0.0018580128274823804,
+      "issue": "Metric reward_mean differs at step 65"
+    },
+    {
+      "replica": 2,
+      "step": 66,
+      "metric": "reward_mean",
+      "reference_value": 0.30480616472724364,
+      "replica_value": 0.3067142617877751,
+      "difference": 0.0019080970605314662,
+      "issue": "Metric reward_mean differs at step 66"
+    },
+    {
+      "replica": 2,
+      "step": 67,
+      "metric": "reward_mean",
+      "reference_value": 0.3125470529051589,
+      "replica_value": 0.30599421535469123,
+      "difference": 0.0065528375504676495,
+      "issue": "Metric reward_mean differs at step 67"
+    },
+    {
+      "replica": 2,
+      "step": 68,
+      "metric": "reward_mean",
+      "reference_value": 0.3139686546268509,
+      "replica_value": 0.31867810272617497,
+      "difference": 0.004709448099324054,
+      "issue": "Metric reward_mean differs at step 68"
+    },
+    {
+      "replica": 2,
+      "step": 69,
+      "metric": "reward_mean",
+      "reference_value": 0.3231557909759261,
+      "replica_value": 0.3217580052738197,
+      "difference": 0.0013977857021064133,
+      "issue": "Metric reward_mean differs at step 69"
+    },
+    {
+      "replica": 2,
+      "step": 70,
+      "metric": "reward_mean",
+      "reference_value": 0.3226352765289375,
+      "replica_value": 0.32487694692744273,
+      "difference": 0.0022416703985052577,
+      "issue": "Metric reward_mean differs at step 70"
+    },
+    {
+      "replica": 2,
+      "step": 71,
+      "metric": "reward_mean",
+      "reference_value": 0.3214842833056842,
+      "replica_value": 0.3262178027427022,
+      "difference": 0.004733519437017997,
+      "issue": "Metric reward_mean differs at step 71"
+    },
+    {
+      "replica": 2,
+      "step": 72,
+      "metric": "reward_mean",
+      "reference_value": 0.3248457347433128,
+      "replica_value": 0.3345623593874577,
+      "difference": 0.009716624644144911,
+      "issue": "Metric reward_mean differs at step 72"
+    },
+    {
+      "replica": 2,
+      "step": 73,
+      "metric": "reward_mean",
+      "reference_value": 0.3316459403469401,
+      "replica_value": 0.33513910946060776,
+      "difference": 0.003493169113667649,
+      "issue": "Metric reward_mean differs at step 73"
+    },
+    {
+      "replica": 2,
+      "step": 74,
+      "metric": "reward_mean",
+      "reference_value": 0.3388679818801532,
+      "replica_value": 0.33281447397021474,
+      "difference": 0.006053507909938471,
+      "issue": "Metric reward_mean differs at step 74"
+    },
+    {
+      "replica": 2,
+      "step": 75,
+      "metric": "reward_mean",
+      "reference_value": 0.33584781735516556,
+      "replica_value": 0.34127918917452016,
+      "difference": 0.005431371819354602,
+      "issue": "Metric reward_mean differs at step 75"
+    },
+    {
+      "replica": 2,
+      "step": 76,
+      "metric": "reward_mean",
+      "reference_value": 0.34606314604065513,
+      "replica_value": 0.3401295962402304,
+      "difference": 0.005933549800424709,
+      "issue": "Metric reward_mean differs at step 76"
+    },
+    {
+      "replica": 2,
+      "step": 77,
+      "metric": "reward_mean",
+      "reference_value": 0.35200811731612325,
+      "replica_value": 0.35184478544803044,
+      "difference": 0.00016333186809280864,
+      "issue": "Metric reward_mean differs at step 77"
+    },
+    {
+      "replica": 2,
+      "step": 78,
+      "metric": "reward_mean",
+      "reference_value": 0.35311193542228453,
+      "replica_value": 0.35594753439236404,
+      "difference": 0.0028355989700795114,
+      "issue": "Metric reward_mean differs at step 78"
+    },
+    {
+      "replica": 2,
+      "step": 79,
+      "metric": "reward_mean",
+      "reference_value": 0.3591088366248758,
+      "replica_value": 0.3529542914669786,
+      "difference": 0.006154545157897207,
+      "issue": "Metric reward_mean differs at step 79"
+    },
+    {
+      "replica": 2,
+      "step": 80,
+      "metric": "reward_mean",
+      "reference_value": 0.3581524005489722,
+      "replica_value": 0.362070054110725,
+      "difference": 0.003917653561752832,
+      "issue": "Metric reward_mean differs at step 80"
+    },
+    {
+      "replica": 2,
+      "step": 81,
+      "metric": "reward_mean",
+      "reference_value": 0.36293205020836816,
+      "replica_value": 0.36164376234025114,
+      "difference": 0.0012882878681170218,
+      "issue": "Metric reward_mean differs at step 81"
+    },
+    {
+      "replica": 2,
+      "step": 82,
+      "metric": "reward_mean",
+      "reference_value": 0.3609433218244594,
+      "replica_value": 0.3682219651054387,
+      "difference": 0.0072786432809793244,
+      "issue": "Metric reward_mean differs at step 82"
+    },
+    {
+      "replica": 2,
+      "step": 83,
+      "metric": "reward_mean",
+      "reference_value": 0.3699116629852883,
+      "replica_value": 0.36719777126384123,
+      "difference": 0.0027138917214470926,
+      "issue": "Metric reward_mean differs at step 83"
+    },
+    {
+      "replica": 2,
+      "step": 84,
+      "metric": "reward_mean",
+      "reference_value": 0.370889348728445,
+      "replica_value": 0.37520181036313527,
+      "difference": 0.00431246163469029,
+      "issue": "Metric reward_mean differs at step 84"
+    },
+    {
+      "replica": 2,
+      "step": 85,
+      "metric": "reward_mean",
+      "reference_value": 0.37944277012203376,
+      "replica_value": 0.3770639091247885,
+      "difference": 0.002378860997245269,
+      "issue": "Metric reward_mean differs at step 85"
+    },
+    {
+      "replica": 2,
+      "step": 86,
+      "metric": "reward_mean",
+      "reference_value": 0.3824741266895038,
+      "replica_value": 0.3813029481522141,
+      "difference": 0.0011711785372897077,
+      "issue": "Metric reward_mean differs at step 86"
+    },
+    {
+      "replica": 2,
+      "step": 87,
+      "metric": "reward_mean",
+      "reference_value": 0.3794314405695395,
+      "replica_value": 0.3791782507511444,
+      "difference": 0.00025318981839506094,
+      "issue": "Metric reward_mean differs at step 87"
+    },
+    {
+      "replica": 2,
+      "step": 88,
+      "metric": "reward_mean",
+      "reference_value": 0.3871206055093299,
+      "replica_value": 0.3881052132713114,
+      "difference": 0.0009846077619815041,
+      "issue": "Metric reward_mean differs at step 88"
+    },
+    {
+      "replica": 2,
+      "step": 89,
+      "metric": "reward_mean",
+      "reference_value": 0.3870056417248827,
+      "replica_value": 0.3912606987981599,
+      "difference": 0.004255057073277169,
+      "issue": "Metric reward_mean differs at step 89"
+    },
+    {
+      "replica": 2,
+      "step": 90,
+      "metric": "reward_mean",
+      "reference_value": 0.3890349268444221,
+      "replica_value": 0.38986546856905,
+      "difference": 0.0008305417246279312,
+      "issue": "Metric reward_mean differs at step 90"
+    },
+    {
+      "replica": 2,
+      "step": 91,
+      "metric": "reward_mean",
+      "reference_value": 0.39862177739609483,
+      "replica_value": 0.398515610100342,
+      "difference": 0.000106167295752857,
+      "issue": "Metric reward_mean differs at step 91"
+    },
+    {
+      "replica": 2,
+      "step": 92,
+      "metric": "reward_mean",
+      "reference_value": 0.40004213459854676,
+      "replica_value": 0.39652419432986935,
+      "difference": 0.003517940268677411,
+      "issue": "Metric reward_mean differs at step 92"
+    },
+    {
+      "replica": 2,
+      "step": 93,
+      "metric": "reward_mean",
+      "reference_value": 0.40771572205110224,
+      "replica_value": 0.4010320177786847,
+      "difference": 0.0066837042724175455,
+      "issue": "Metric reward_mean differs at step 93"
+    },
+    {
+      "replica": 2,
+      "step": 94,
+      "metric": "reward_mean",
+      "reference_value": 0.4097814902471339,
+      "replica_value": 0.4024854561449194,
+      "difference": 0.007296034102214521,
+      "issue": "Metric reward_mean differs at step 94"
+    },
+    {
+      "replica": 2,
+      "step": 95,
+      "metric": "reward_mean",
+      "reference_value": 0.40793757595837876,
+      "replica_value": 0.41354381090309206,
+      "difference": 0.005606234944713295,
+      "issue": "Metric reward_mean differs at step 95"
+    },
+    {
+      "replica": 2,
+      "step": 96,
+      "metric": "reward_mean",
+      "reference_value": 0.4121358874680728,
+      "replica_value": 0.41283443174595835,
+      "difference": 0.000698544277885571,
+      "issue": "Metric reward_mean differs at step 96"
+    },
+    {
+      "replica": 2,
+      "step": 97,
+      "metric": "reward_mean",
+      "reference_value": 0.42139035998170454,
+      "replica_value": 0.4155912613111364,
+      "difference": 0.005799098670568159,
+      "issue": "Metric reward_mean differs at step 97"
+    },
+    {
+      "replica": 2,
+      "step": 98,
+      "metric": "reward_mean",
+      "reference_value": 0.4152532683093998,
+      "replica_value": 0.41859019743218423,
+      "difference": 0.0033369291227844378,
+      "issue": "Metric reward_mean differs at step 98"
+    },
+    {
+      "replica": 2,
+      "step": 99,
+      "metric": "reward_mean",
+      "reference_value": 0.4212652562006001,
+      "replica_value": 0.42649570823145744,
+      "difference": 0.005230452030857313,
+      "issue": "Metric reward_mean differs at step 99"
+    },
+    {
+      "replica": 2,
+      "step": 100,
+      "metric": "reward_mean",
+      "reference_value": 0.42368008731011025,
+      "replica_value": 0.4271019680267345,
+      "difference": 0.003421880716624248,
+      "issue": "Metric reward_mean differs at step 100"
+    },
+    {
+      "replica": 2,
+      "step": 101,
+      "metric": "reward_mean",
+      "reference_value": 0.4314031729522169,
+      "replica_value": 0.4316804853863967,
+      "difference": 0.00027731243417977725,
+      "issue": "Metric reward_mean differs at step 101"
+    },
+    {
+      "replica": 2,
+      "step": 102,
+      "metric": "reward_mean",
+      "reference_value": 0.43533631884137797,
+      "replica_value": 0.431305718776102,
+      "difference": 0.004030600065275947,
+      "issue": "Metric reward_mean differs at step 102"
+    },
+    {
+      "replica": 2,
+      "step": 103,
+      "metric": "reward_mean",
+      "reference_value": 0.4391059948442269,
+      "replica_value": 0.4352393608866208,
+      "difference": 0.0038666339576061137,
+      "issue": "Metric reward_mean differs at step 103"
+    },
+    {
+      "replica": 2,
+      "step": 104,
+      "metric": "reward_mean",
+      "reference_value": 0.4422883248028046,
+      "replica_value": 0.44282513989745975,
+      "difference": 0.0005368150946551409,
+      "issue": "Metric reward_mean differs at step 104"
+    },
+    {
+      "replica": 2,
+      "step": 105,
+      "metric": "reward_mean",
+      "reference_value": 0.4405384604331537,
+      "replica_value": 0.4468891626110888,
+      "difference": 0.006350702177935097,
+      "issue": "Metric reward_mean differs at step 105"
+    },
+    {
+      "replica": 2,
+      "step": 106,
+      "metric": "reward_mean",
+      "reference_value": 0.44936931640525024,
+      "replica_value": 0.4413696144491173,
+      "difference": 0.00799970195613292,
+      "issue": "Metric reward_mean differs at step 106"
+    },
+    {
+      "replica": 2,
+      "step": 107,
+      "metric": "reward_mean",
+      "reference_value": 0.44461800909910865,
+      "replica_value": 0.4527825471549925,
+      "difference": 0.008164538055883852,
+      "issue": "Metric reward_mean differs at step 107"
+    },
+    {
+      "replica": 2,
+      "step": 108,
+      "metric": "reward_mean",
+      "reference_value": 0.4504885499225719,
+      "replica_value": 0.45167578987225115,
+      "difference": 0.0011872399496792307,
+      "issue": "Metric reward_mean differs at step 108"
+    },
+    {
+      "replica": 2,
+      "step": 109,
+      "metric": "reward_mean",
+      "reference_value": 0.4562845121896158,
+      "replica_value": 0.4534560697879436,
+      "difference": 0.002828442401672182,
+      "issue": "Metric reward_mean differs at step 109"
+    },
+    {
+      "replica": 2,
+      "step": 110,
+      "metric": "reward_mean",
+      "reference_value": 0.4555358458917112,
+      "replica_value": 0.45490374431240804,
+      "difference": 0.000632101579303157,
+      "issue": "Metric reward_mean differs at step 110"
+    },
+    {
+      "replica": 2,
+      "step": 111,
+      "metric": "reward_mean",
+      "reference_value": 0.4568592822007695,
+      "replica_value": 0.46489895489255584,
+      "difference": 0.008039672691786348,
+      "issue": "Metric reward_mean differs at step 111"
+    },
+    {
+      "replica": 2,
+      "step": 112,
+      "metric": "reward_mean",
+      "reference_value": 0.4655986010422859,
+      "replica_value": 0.462332034908318,
+      "difference": 0.0032665661339679186,
+      "issue": "Metric reward_mean differs at step 112"
+    },
+    {
+      "replica": 2,
+      "step": 113,
+      "metric": "reward_mean",
+      "reference_value": 0.4655599828038766,
+      "replica_value": 0.4652770174757779,
+      "difference": 0.00028296532809873876,
+      "issue": "Metric reward_mean differs at step 113"
+    },
+    {
+      "replica": 2,
+      "step": 114,
+      "metric": "reward_mean",
+      "reference_value": 0.4682461268876445,
+      "replica_value": 0.47398977031009,
+      "difference": 0.005743643422445488,
+      "issue": "Metric reward_mean differs at step 114"
+    },
+    {
+      "replica": 2,
+      "step": 115,
+      "metric": "reward_mean",
+      "reference_value": 0.46828868293519027,
+      "replica_value": 0.473993517690529,
+      "difference": 0.005704834755338728,
+      "issue": "Metric reward_mean differs at step 115"
+    },
+    {
+      "replica": 2,
+      "step": 116,
+      "metric": "reward_mean",
+      "reference_value": 0.47413903112100625,
+      "replica_value": 0.4767433089056637,
+      "difference": 0.0026042777846574383,
+      "issue": "Metric reward_mean differs at step 116"
+    },
+    {
+      "replica": 2,
+      "step": 117,
+      "metric": "reward_mean",
+      "reference_value": 0.4824028554873442,
+      "replica_value": 0.4739385555243493,
+      "difference": 0.008464299962994859,
+      "issue": "Metric reward_mean differs at step 117"
+    },
+    {
+      "replica": 2,
+      "step": 118,
+      "metric": "reward_mean",
+      "reference_value": 0.4780425230946828,
+      "replica_value": 0.4831679630274949,
+      "difference": 0.005125439932812059,
+      "issue": "Metric reward_mean differs at step 118"
+    },
+    {
+      "replica": 2,
+      "step": 119,
+      "metric": "reward_mean",
+      "reference_value": 0.4824762118750762,
+      "replica_value": 0.4839846760226604,
+      "difference": 0.0015084641475841543,
+      "issue": "Metric reward_mean differs at step 119"
+    },
+    {
+      "replica": 2,
+      "step": 120,
+      "metric": "reward_mean",
+      "reference_value": 0.48210331300143555,
+      "replica_value": 0.48857215501717605,
+      "difference": 0.006468842015740495,
+      "issue": "Metric reward_mean differs at step 120"
+    },
+    {
+      "replica": 2,
+      "step": 121,
+      "metric": "reward_mean",
+      "reference_value": 0.48747434053899463,
+      "replica_value": 0.4874536463015797,
+      "difference": 2.0694237414908834e-05,
+      "issue": "Metric reward_mean differs at step 121"
+    },
+    {
+      "replica": 2,
+      "step": 122,
+      "metric": "reward_mean",
+      "reference_value": 0.49345573518349906,
+      "replica_value": 0.49719565414834155,
+      "difference": 0.0037399189648424924,
+      "issue": "Metric reward_mean differs at step 122"
+    },
+    {
+      "replica": 2,
+      "step": 123,
+      "metric": "reward_mean",
+      "reference_value": 0.49926957590329324,
+      "replica_value": 0.4987667480074442,
+      "difference": 0.0005028278958490451,
+      "issue": "Metric reward_mean differs at step 123"
+    },
+    {
+      "replica": 2,
+      "step": 124,
+      "metric": "reward_mean",
+      "reference_value": 0.49292612828095045,
+      "replica_value": 0.5008220434681078,
+      "difference": 0.00789591518715732,
+      "issue": "Metric reward_mean differs at step 124"
+    },
+    {
+      "replica": 2,
+      "step": 125,
+      "metric": "reward_mean",
+      "reference_value": 0.5007627815206033,
+      "replica_value": 0.5037439424658631,
+      "difference": 0.0029811609452597976,
+      "issue": "Metric reward_mean differs at step 125"
+    },
+    {
+      "replica": 2,
+      "step": 126,
+      "metric": "reward_mean",
+      "reference_value": 0.5008357880828979,
+      "replica_value": 0.5043859961306838,
+      "difference": 0.003550208047785941,
+      "issue": "Metric reward_mean differs at step 126"
+    },
+    {
+      "replica": 2,
+      "step": 127,
+      "metric": "reward_mean",
+      "reference_value": 0.5108152455367012,
+      "replica_value": 0.5056721117743133,
+      "difference": 0.0051431337623879525,
+      "issue": "Metric reward_mean differs at step 127"
+    },
+    {
+      "replica": 2,
+      "step": 128,
+      "metric": "reward_mean",
+      "reference_value": 0.5044953885356135,
+      "replica_value": 0.5119760425233917,
+      "difference": 0.007480653987778196,
+      "issue": "Metric reward_mean differs at step 128"
+    },
+    {
+      "replica": 2,
+      "step": 129,
+      "metric": "reward_mean",
+      "reference_value": 0.5142131152027106,
+      "replica_value": 0.506676806427372,
+      "difference": 0.007536308775338618,
+      "issue": "Metric reward_mean differs at step 129"
+    },
+    {
+      "replica": 2,
+      "step": 130,
+      "metric": "reward_mean",
+      "reference_value": 0.5176346392712635,
+      "replica_value": 0.5150700501720352,
+      "difference": 0.0025645890992282983,
+      "issue": "Metric reward_mean differs at step 130"
+    },
+    {
+      "replica": 2,
+      "step": 131,
+      "metric": "reward_mean",
+      "reference_value": 0.5141599934641966,
+      "replica_value": 0.5143037978287244,
+      "difference": 0.00014380436452776646,
+      "issue": "Metric reward_mean differs at step 131"
+    },
+    {
+      "replica": 2,
+      "step": 132,
+      "metric": "reward_mean",
+      "reference_value": 0.5169780940670253,
+      "replica_value": 0.5205564569719563,
+      "difference": 0.003578362904930965,
+      "issue": "Metric reward_mean differs at step 132"
+    },
+    {
+      "replica": 2,
+      "step": 133,
+      "metric": "reward_mean",
+      "reference_value": 0.5193277925054538,
+      "replica_value": 0.5203914119687414,
+      "difference": 0.0010636194632875906,
+      "issue": "Metric reward_mean differs at step 133"
+    },
+    {
+      "replica": 2,
+      "step": 134,
+      "metric": "reward_mean",
+      "reference_value": 0.5233464876892965,
+      "replica_value": 0.5242410514900504,
+      "difference": 0.0008945638007539225,
+      "issue": "Metric reward_mean differs at step 134"
+    },
+    {
+      "replica": 2,
+      "step": 135,
+      "metric": "reward_mean",
+      "reference_value": 0.529004767576281,
+      "replica_value": 0.5240615751876311,
+      "difference": 0.004943192388649931,
+      "issue": "Metric reward_mean differs at step 135"
+    },
+    {
+      "replica": 2,
+      "step": 136,
+      "metric": "reward_mean",
+      "reference_value": 0.53259092967333,
+      "replica_value": 0.5313668311713109,
+      "difference": 0.0012240985020190998,
+      "issue": "Metric reward_mean differs at step 136"
+    },
+    {
+      "replica": 2,
+      "step": 137,
+      "metric": "reward_mean",
+      "reference_value": 0.5327683727016971,
+      "replica_value": 0.5339701412919242,
+      "difference": 0.0012017685902271369,
+      "issue": "Metric reward_mean differs at step 137"
+    },
+    {
+      "replica": 2,
+      "step": 138,
+      "metric": "reward_mean",
+      "reference_value": 0.534157281138747,
+      "replica_value": 0.5325419239585959,
+      "difference": 0.0016153571801511557,
+      "issue": "Metric reward_mean differs at step 138"
+    },
+    {
+      "replica": 2,
+      "step": 139,
+      "metric": "reward_mean",
+      "reference_value": 0.5368756801428551,
+      "replica_value": 0.537494321912519,
+      "difference": 0.0006186417696638635,
+      "issue": "Metric reward_mean differs at step 139"
+    },
+    {
+      "replica": 2,
+      "step": 140,
+      "metric": "reward_mean",
+      "reference_value": 0.5380453195849644,
+      "replica_value": 0.5356882951649624,
+      "difference": 0.002357024420001963,
+      "issue": "Metric reward_mean differs at step 140"
+    },
+    {
+      "replica": 2,
+      "step": 141,
+      "metric": "reward_mean",
+      "reference_value": 0.5443507765815299,
+      "replica_value": 0.5448947173264617,
+      "difference": 0.0005439407449318034,
+      "issue": "Metric reward_mean differs at step 141"
+    },
+    {
+      "replica": 2,
+      "step": 142,
+      "metric": "reward_mean",
+      "reference_value": 0.5424471200654933,
+      "replica_value": 0.5413420078078441,
+      "difference": 0.001105112257649199,
+      "issue": "Metric reward_mean differs at step 142"
+    },
+    {
+      "replica": 2,
+      "step": 143,
+      "metric": "reward_mean",
+      "reference_value": 0.5526325366650916,
+      "replica_value": 0.5469470749978264,
+      "difference": 0.005685461667265246,
+      "issue": "Metric reward_mean differs at step 143"
+    },
+    {
+      "replica": 2,
+      "step": 144,
+      "metric": "reward_mean",
+      "reference_value": 0.5499127343965956,
+      "replica_value": 0.5540190139391244,
+      "difference": 0.004106279542528846,
+      "issue": "Metric reward_mean differs at step 144"
+    },
+    {
+      "replica": 2,
+      "step": 145,
+      "metric": "reward_mean",
+      "reference_value": 0.5513443359986668,
+      "replica_value": 0.5544121901341523,
+      "difference": 0.0030678541354854927,
+      "issue": "Metric reward_mean differs at step 145"
+    },
+    {
+      "replica": 2,
+      "step": 146,
+      "metric": "reward_mean",
+      "reference_value": 0.5535304249249976,
+      "replica_value": 0.55458563654212,
+      "difference": 0.001055211617122409,
+      "issue": "Metric reward_mean differs at step 146"
+    },
+    {
+      "replica": 2,
+      "step": 147,
+      "metric": "reward_mean",
+      "reference_value": 0.5599101086936653,
+      "replica_value": 0.5604123096740404,
+      "difference": 0.0005022009803751226,
+      "issue": "Metric reward_mean differs at step 147"
+    },
+    {
+      "replica": 2,
+      "step": 148,
+      "metric": "reward_mean",
+      "reference_value": 0.5646323831740857,
+      "replica_value": 0.5651990562957381,
+      "difference": 0.0005666731216523724,
+      "issue": "Metric reward_mean differs at step 148"
+    },
+    {
+      "replica": 2,
+      "step": 149,
+      "metric": "reward_mean",
+      "reference_value": 0.5586959557002312,
+      "replica_value": 0.5589433333337167,
+      "difference": 0.00024737763348547936,
+      "issue": "Metric reward_mean differs at step 149"
+    },
+    {
+      "replica": 2,
+      "step": 150,
+      "metric": "reward_mean",
+      "reference_value": 0.5641927599329658,
+      "replica_value": 0.5630557476910746,
+      "difference": 0.001137012241891222,
+      "issue": "Metric reward_mean differs at step 150"
+    },
+    {
+      "replica": 2,
+      "step": 151,
+      "metric": "reward_mean",
+      "reference_value": 0.5633186728791163,
+      "replica_value": 0.5687392694592883,
+      "difference": 0.005420596580172021,
+      "issue": "Metric reward_mean differs at step 151"
+    },
+    {
+      "replica": 2,
+      "step": 152,
+      "metric": "reward_mean",
+      "reference_value": 0.5658125271883491,
+      "replica_value": 0.565907398672746,
+      "difference": 9.487148439690785e-05,
+      "issue": "Metric reward_mean differs at step 152"
+    },
+    {
+      "replica": 2,
+      "step": 153,
+      "metric": "reward_mean",
+      "reference_value": 0.5680817151245566,
+      "replica_value": 0.571830270406485,
+      "difference": 0.003748555281928412,
+      "issue": "Metric reward_mean differs at step 153"
+    },
+    {
+      "replica": 2,
+      "step": 154,
+      "metric": "reward_mean",
+      "reference_value": 0.5721224666068392,
+      "replica_value": 0.5773464057298368,
+      "difference": 0.005223939122997567,
+      "issue": "Metric reward_mean differs at step 154"
+    },
+    {
+      "replica": 2,
+      "step": 155,
+      "metric": "reward_mean",
+      "reference_value": 0.5791696132840748,
+      "replica_value": 0.5794144930516816,
+      "difference": 0.0002448797676067871,
+      "issue": "Metric reward_mean differs at step 155"
+    },
+    {
+      "replica": 2,
+      "step": 156,
+      "metric": "reward_mean",
+      "reference_value": 0.5749489243122108,
+      "replica_value": 0.5755741231770368,
+      "difference": 0.0006251988648260376,
+      "issue": "Metric reward_mean differs at step 156"
+    },
+    {
+      "replica": 2,
+      "step": 157,
+      "metric": "reward_mean",
+      "reference_value": 0.5784682150807545,
+      "replica_value": 0.5787346114228408,
+      "difference": 0.0002663963420862503,
+      "issue": "Metric reward_mean differs at step 157"
+    },
+    {
+      "replica": 2,
+      "step": 158,
+      "metric": "reward_mean",
+      "reference_value": 0.579929974623718,
+      "replica_value": 0.5857718361981291,
+      "difference": 0.0058418615744111335,
+      "issue": "Metric reward_mean differs at step 158"
+    },
+    {
+      "replica": 2,
+      "step": 159,
+      "metric": "reward_mean",
+      "reference_value": 0.5852999046027586,
+      "replica_value": 0.5894239549660676,
+      "difference": 0.004124050363308984,
+      "issue": "Metric reward_mean differs at step 159"
+    },
+    {
+      "replica": 2,
+      "step": 160,
+      "metric": "reward_mean",
+      "reference_value": 0.5899967823447952,
+      "replica_value": 0.5896165899012403,
+      "difference": 0.00038019244355491644,
+      "issue": "Metric reward_mean differs at step 160"
+    },
+    {
+      "replica": 2,
+      "step": 161,
+      "metric": "reward_mean",
+      "reference_value": 0.5887689049702177,
+      "replica_value": 0.5958343204431421,
+      "difference": 0.007065415472924386,
+      "issue": "Metric reward_mean differs at step 161"
+    },
+    {
+      "replica": 2,
+      "step": 162,
+      "metric": "reward_mean",
+      "reference_value": 0.5976101512478373,
+      "replica_value": 0.5888119154140302,
+      "difference": 0.008798235833807122,
+      "issue": "Metric reward_mean differs at step 162"
+    },
+    {
+      "replica": 2,
+      "step": 163,
+      "metric": "reward_mean",
+      "reference_value": 0.6002188497195441,
+      "replica_value": 0.595782353722659,
+      "difference": 0.004436495996885115,
+      "issue": "Metric reward_mean differs at step 163"
+    },
+    {
+      "replica": 2,
+      "step": 164,
+      "metric": "reward_mean",
+      "reference_value": 0.595267019939868,
+      "replica_value": 0.5932421795415509,
+      "difference": 0.0020248403983170737,
+      "issue": "Metric reward_mean differs at step 164"
+    },
+    {
+      "replica": 2,
+      "step": 165,
+      "metric": "reward_mean",
+      "reference_value": 0.5993902255172812,
+      "replica_value": 0.5977467226335694,
+      "difference": 0.0016435028837117338,
+      "issue": "Metric reward_mean differs at step 165"
+    },
+    {
+      "replica": 2,
+      "step": 166,
+      "metric": "reward_mean",
+      "reference_value": 0.6045249463346415,
+      "replica_value": 0.6021156047501032,
+      "difference": 0.002409341584538316,
+      "issue": "Metric reward_mean differs at step 166"
+    },
+    {
+      "replica": 2,
+      "step": 167,
+      "metric": "reward_mean",
+      "reference_value": 0.6057592291653153,
+      "replica_value": 0.6029414130790918,
+      "difference": 0.002817816086223557,
+      "issue": "Metric reward_mean differs at step 167"
+    },
+    {
+      "replica": 2,
+      "step": 168,
+      "metric": "reward_mean",
+      "reference_value": 0.6054522124539258,
+      "replica_value": 0.6089376655604551,
+      "difference": 0.003485453106529368,
+      "issue": "Metric reward_mean differs at step 168"
+    },
+    {
+      "replica": 2,
+      "step": 169,
+      "metric": "reward_mean",
+      "reference_value": 0.6122816583242654,
+      "replica_value": 0.6058895089704016,
+      "difference": 0.006392149353863785,
+      "issue": "Metric reward_mean differs at step 169"
+    },
+    {
+      "replica": 2,
+      "step": 170,
+      "metric": "reward_mean",
+      "reference_value": 0.6145296813330899,
+      "replica_value": 0.6096168774712755,
+      "difference": 0.004912803861814474,
+      "issue": "Metric reward_mean differs at step 170"
+    },
+    {
+      "replica": 2,
+      "step": 171,
+      "metric": "reward_mean",
+      "reference_value": 0.6094846758856666,
+      "replica_value": 0.6144103024528533,
+      "difference": 0.004925626567186758,
+      "issue": "Metric reward_mean differs at step 171"
+    },
+    {
+      "replica": 2,
+      "step": 172,
+      "metric": "reward_mean",
+      "reference_value": 0.612075772329054,
+      "replica_value": 0.6121277961667847,
+      "difference": 5.202383773073027e-05,
+      "issue": "Metric reward_mean differs at step 172"
+    },
+    {
+      "replica": 2,
+      "step": 173,
+      "metric": "reward_mean",
+      "reference_value": 0.6184383105681521,
+      "replica_value": 0.6180057573878807,
+      "difference": 0.0004325531802714666,
+      "issue": "Metric reward_mean differs at step 173"
+    },
+    {
+      "replica": 2,
+      "step": 174,
+      "metric": "reward_mean",
+      "reference_value": 0.62246740860932,
+      "replica_value": 0.6172697066011764,
+      "difference": 0.005197702008143623,
+      "issue": "Metric reward_mean differs at step 174"
+    },
+    {
+      "replica": 2,
+      "step": 175,
+      "metric": "reward_mean",
+      "reference_value": 0.6198668850642447,
+      "replica_value": 0.6218865233475709,
+      "difference": 0.002019638283326186,
+      "issue": "Metric reward_mean differs at step 175"
+    },
+    {
+      "replica": 2,
+      "step": 176,
+      "metric": "reward_mean",
+      "reference_value": 0.6213928513177005,
+      "replica_value": 0.6189724223004274,
+      "difference": 0.002420429017273129,
+      "issue": "Metric reward_mean differs at step 176"
+    },
+    {
+      "replica": 2,
+      "step": 177,
+      "metric": "reward_mean",
+      "reference_value": 0.6234482065063237,
+      "replica_value": 0.6251390905273645,
+      "difference": 0.0016908840210407838,
+      "issue": "Metric reward_mean differs at step 177"
+    },
+    {
+      "replica": 2,
+      "step": 178,
+      "metric": "reward_mean",
+      "reference_value": 0.6312359915447235,
+      "replica_value": 0.6274656041172988,
+      "difference": 0.0037703874274247484,
+      "issue": "Metric reward_mean differs at step 178"
+    },
+    {
+      "replica": 2,
+      "step": 179,
+      "metric": "reward_mean",
+      "reference_value": 0.6291645201549849,
+      "replica_value": 0.6257346395138449,
+      "difference": 0.0034298806411400262,
+      "issue": "Metric reward_mean differs at step 179"
+    },
+    {
+      "replica": 2,
+      "step": 180,
+      "metric": "reward_mean",
+      "reference_value": 0.6360126424342902,
+      "replica_value": 0.6346444718257271,
+      "difference": 0.0013681706085630907,
+      "issue": "Metric reward_mean differs at step 180"
+    },
+    {
+      "replica": 2,
+      "step": 181,
+      "metric": "reward_mean",
+      "reference_value": 0.634333752070123,
+      "replica_value": 0.6385685168543263,
+      "difference": 0.00423476478420326,
+      "issue": "Metric reward_mean differs at step 181"
+    },
+    {
+      "replica": 2,
+      "step": 182,
+      "metric": "reward_mean",
+      "reference_value": 0.635574536030831,
+      "replica_value": 0.6377316024231263,
+      "difference": 0.0021570663922952926,
+      "issue": "Metric reward_mean differs at step 182"
+    },
+    {
+      "replica": 2,
+      "step": 183,
+      "metric": "reward_mean",
+      "reference_value": 0.6407553290087257,
+      "replica_value": 0.6400302593226264,
+      "difference": 0.0007250696860993111,
+      "issue": "Metric reward_mean differs at step 183"
+    },
+    {
+      "replica": 2,
+      "step": 184,
+      "metric": "reward_mean",
+      "reference_value": 0.6405315954634807,
+      "replica_value": 0.6354507614323872,
+      "difference": 0.005080834031093495,
+      "issue": "Metric reward_mean differs at step 184"
+    },
+    {
+      "replica": 2,
+      "step": 185,
+      "metric": "reward_mean",
+      "reference_value": 0.6470314481600521,
+      "replica_value": 0.6441392991809926,
+      "difference": 0.002892148979059539,
+      "issue": "Metric reward_mean differs at step 185"
+    },
+    {
+      "replica": 2,
+      "step": 186,
+      "metric": "reward_mean",
+      "reference_value": 0.6482462397712293,
+      "replica_value": 0.6482950597243344,
+      "difference": 4.88199531051281e-05,
+      "issue": "Metric reward_mean differs at step 186"
+    },
+    {
+      "replica": 2,
+      "step": 187,
+      "metric": "reward_mean",
+      "reference_value": 0.6469277633990227,
+      "replica_value": 0.6438307630244419,
+      "difference": 0.0030970003745808272,
+      "issue": "Metric reward_mean differs at step 187"
+    },
+    {
+      "replica": 2,
+      "step": 188,
+      "metric": "reward_mean",
+      "reference_value": 0.649423946681048,
+      "replica_value": 0.6458510309810209,
+      "difference": 0.003572915700027046,
+      "issue": "Metric reward_mean differs at step 188"
+    },
+    {
+      "replica": 2,
+      "step": 189,
+      "metric": "reward_mean",
+      "reference_value": 0.6516793785001384,
+      "replica_value": 0.6513787555492258,
+      "difference": 0.00030062295091259905,
+      "issue": "Metric reward_mean differs at step 189"
+    },
+    {
+      "replica": 2,
+      "step": 190,
+      "metric": "reward_mean",
+      "reference_value": 0.6491222455359229,
+      "replica_value": 0.6499904557713609,
+      "difference": 0.0008682102354380383,
+      "issue": "Metric reward_mean differs at step 190"
+    },
+    {
+      "replica": 2,
+      "step": 191,
+      "metric": "reward_mean",
+      "reference_value": 0.6528036761318325,
+      "replica_value": 0.6508331028135008,
+      "difference": 0.0019705733183317253,
+      "issue": "Metric reward_mean differs at step 191"
+    },
+    {
+      "replica": 2,
+      "step": 192,
+      "metric": "reward_mean",
+      "reference_value": 0.654607228287008,
+      "replica_value": 0.6604567819392083,
+      "difference": 0.005849553652200301,
+      "issue": "Metric reward_mean differs at step 192"
+    },
+    {
+      "replica": 2,
+      "step": 193,
+      "metric": "reward_mean",
+      "reference_value": 0.6613600564741582,
+      "replica_value": 0.6569857377222001,
+      "difference": 0.0043743187519580395,
+      "issue": "Metric reward_mean differs at step 193"
+    },
+    {
+      "replica": 2,
+      "step": 194,
+      "metric": "reward_mean",
+      "reference_value": 0.6588039295216295,
+      "replica_value": 0.6594550317800308,
+      "difference": 0.0006511022584013704,
+      "issue": "Metric reward_mean differs at step 194"
+    },
+    {
+      "replica": 2,
+      "step": 195,
+      "metric": "reward_mean",
+      "reference_value": 0.6616532623903661,
+      "replica_value": 0.6567699370278358,
+      "difference": 0.004883325362530333,
+      "issue": "Metric reward_mean differs at step 195"
+    },
+    {
+      "replica": 2,
+      "step": 196,
+      "metric": "reward_mean",
+      "reference_value": 0.6671689458490867,
+      "replica_value": 0.6656941041008834,
+      "difference": 0.0014748417482033371,
+      "issue": "Metric reward_mean differs at step 196"
+    },
+    {
+      "replica": 2,
+      "step": 197,
+      "metric": "reward_mean",
+      "reference_value": 0.6656607726612849,
+      "replica_value": 0.6628220011015264,
+      "difference": 0.002838771559758424,
+      "issue": "Metric reward_mean differs at step 197"
+    },
+    {
+      "replica": 2,
+      "step": 198,
+      "metric": "reward_mean",
+      "reference_value": 0.6696754302588167,
+      "replica_value": 0.6701111772021585,
+      "difference": 0.0004357469433418082,
+      "issue": "Metric reward_mean differs at step 198"
+    },
+    {
+      "replica": 2,
+      "step": 199,
+      "metric": "reward_mean",
+      "reference_value": 0.6721189772081583,
+      "replica_value": 0.6684026735181557,
+      "difference": 0.0037163036900025315,
+      "issue": "Metric reward_mean differs at step 199"
+    },
+    {
+      "replica": 3,
+      "step": 0,
+      "metric": "reward_mean",
+      "reference_value": -0.004511777591029748,
+      "replica_value": -0.0027586916976791156,
+      "difference": 0.0017530858933506328,
+      "issue": "Metric reward_mean differs at step 0"
+    },
+    {
+      "replica": 3,
+      "step": 1,
+      "metric": "reward_mean",
+      "reference_value": 0.007334971725117403,
+      "replica_value": 0.0100131131869043,
+      "difference": 0.002678141461786897,
+      "issue": "Metric reward_mean differs at step 1"
+    },
+    {
+      "replica": 3,
+      "step": 2,
+      "metric": "reward_mean",
+      "reference_value": 0.014626098786197956,
+      "replica_value": 0.009030058170059956,
+      "difference": 0.005596040616138,
+      "issue": "Metric reward_mean differs at step 2"
+    },
+    {
+      "replica": 3,
+      "step": 3,
+      "metric": "reward_mean",
+      "reference_value": 0.01797458475567338,
+      "replica_value": 0.01323455308650439,
+      "difference": 0.00474003166916899,
+      "issue": "Metric reward_mean differs at step 3"
+    },
+    {
+      "replica": 3,
+      "step": 4,
+      "metric": "reward_mean",
+      "reference_value": 0.01838785059819621,
+      "replica_value": 0.021176024733746312,
+      "difference": 0.0027881741355501033,
+      "issue": "Metric reward_mean differs at step 4"
+    },
+    {
+      "replica": 3,
+      "step": 5,
+      "metric": "reward_mean",
+      "reference_value": 0.030551497842901003,
+      "replica_value": 0.031164307968331178,
+      "difference": 0.000612810125430175,
+      "issue": "Metric reward_mean differs at step 5"
+    },
+    {
+      "replica": 3,
+      "step": 6,
+      "metric": "reward_mean",
+      "reference_value": 0.030689109156780862,
+      "replica_value": 0.031869653506950535,
+      "difference": 0.0011805443501696732,
+      "issue": "Metric reward_mean differs at step 6"
+    },
+    {
+      "replica": 3,
+      "step": 7,
+      "metric": "reward_mean",
+      "reference_value": 0.04179600220076521,
+      "replica_value": 0.03965695463790803,
+      "difference": 0.0021390475628571756,
+      "issue": "Metric reward_mean differs at step 7"
+    },
+    {
+      "replica": 3,
+      "step": 8,
+      "metric": "reward_mean",
+      "reference_value": 0.047997139062991065,
+      "replica_value": 0.040759372380432146,
+      "difference": 0.007237766682558919,
+      "issue": "Metric reward_mean differs at step 8"
+    },
+    {
+      "replica": 3,
+      "step": 9,
+      "metric": "reward_mean",
+      "reference_value": 0.047159325471917174,
+      "replica_value": 0.046858508521601554,
+      "difference": 0.0003008169503156202,
+      "issue": "Metric reward_mean differs at step 9"
+    },
+    {
+      "replica": 3,
+      "step": 10,
+      "metric": "reward_mean",
+      "reference_value": 0.05583777831895552,
+      "replica_value": 0.0544201895143518,
+      "difference": 0.0014175888046037213,
+      "issue": "Metric reward_mean differs at step 10"
+    },
+    {
+      "replica": 3,
+      "step": 11,
+      "metric": "reward_mean",
+      "reference_value": 0.05474797751760792,
+      "replica_value": 0.061820161067179406,
+      "difference": 0.007072183549571488,
+      "issue": "Metric reward_mean differs at step 11"
+    },
+    {
+      "replica": 3,
+      "step": 12,
+      "metric": "reward_mean",
+      "reference_value": 0.06296443902009305,
+      "replica_value": 0.0657654867479672,
+      "difference": 0.002801047727874151,
+      "issue": "Metric reward_mean differs at step 12"
+    },
+    {
+      "replica": 3,
+      "step": 13,
+      "metric": "reward_mean",
+      "reference_value": 0.0647126833153065,
+      "replica_value": 0.07229023748981359,
+      "difference": 0.00757755417450709,
+      "issue": "Metric reward_mean differs at step 13"
+    },
+    {
+      "replica": 3,
+      "step": 14,
+      "metric": "reward_mean",
+      "reference_value": 0.07046977095954542,
+      "replica_value": 0.0715396573486511,
+      "difference": 0.0010698863891056842,
+      "issue": "Metric reward_mean differs at step 14"
+    },
+    {
+      "replica": 3,
+      "step": 15,
+      "metric": "reward_mean",
+      "reference_value": 0.08464111571657044,
+      "replica_value": 0.07900950437552438,
+      "difference": 0.005631611341046061,
+      "issue": "Metric reward_mean differs at step 15"
+    },
+    {
+      "replica": 3,
+      "step": 16,
+      "metric": "reward_mean",
+      "reference_value": 0.08522568561464558,
+      "replica_value": 0.08374463387425644,
+      "difference": 0.001481051740389136,
+      "issue": "Metric reward_mean differs at step 16"
+    },
+    {
+      "replica": 3,
+      "step": 17,
+      "metric": "reward_mean",
+      "reference_value": 0.08840690801307613,
+      "replica_value": 0.09095634868562641,
+      "difference": 0.0025494406725502794,
+      "issue": "Metric reward_mean differs at step 17"
+    },
+    {
+      "replica": 3,
+      "step": 18,
+      "metric": "reward_mean",
+      "reference_value": 0.09211167272920673,
+      "replica_value": 0.09350303789912459,
+      "difference": 0.001391365169917863,
+      "issue": "Metric reward_mean differs at step 18"
+    },
+    {
+      "replica": 3,
+      "step": 19,
+      "metric": "reward_mean",
+      "reference_value": 0.10294960391830497,
+      "replica_value": 0.09923416000520108,
+      "difference": 0.003715443913103897,
+      "issue": "Metric reward_mean differs at step 19"
+    },
+    {
+      "replica": 3,
+      "step": 20,
+      "metric": "reward_mean",
+      "reference_value": 0.1065223847085552,
+      "replica_value": 0.10223082743929397,
+      "difference": 0.004291557269261226,
+      "issue": "Metric reward_mean differs at step 20"
+    },
+    {
+      "replica": 3,
+      "step": 21,
+      "metric": "reward_mean",
+      "reference_value": 0.11492793963839543,
+      "replica_value": 0.10968617143458025,
+      "difference": 0.005241768203815181,
+      "issue": "Metric reward_mean differs at step 21"
+    },
+    {
+      "replica": 3,
+      "step": 22,
+      "metric": "reward_mean",
+      "reference_value": 0.1130262419247719,
+      "replica_value": 0.11874353355999577,
+      "difference": 0.005717291635223873,
+      "issue": "Metric reward_mean differs at step 22"
+    },
+    {
+      "replica": 3,
+      "step": 23,
+      "metric": "reward_mean",
+      "reference_value": 0.1168269748523923,
+      "replica_value": 0.11908708484353309,
+      "difference": 0.0022601099911407907,
+      "issue": "Metric reward_mean differs at step 23"
+    },
+    {
+      "replica": 3,
+      "step": 24,
+      "metric": "reward_mean",
+      "reference_value": 0.1229292191631062,
+      "replica_value": 0.12294084086506302,
+      "difference": 1.1621701956815444e-05,
+      "issue": "Metric reward_mean differs at step 24"
+    },
+    {
+      "replica": 3,
+      "step": 25,
+      "metric": "reward_mean",
+      "reference_value": 0.12686628451614618,
+      "replica_value": 0.13412678234137268,
+      "difference": 0.007260497825226503,
+      "issue": "Metric reward_mean differs at step 25"
+    },
+    {
+      "replica": 3,
+      "step": 26,
+      "metric": "reward_mean",
+      "reference_value": 0.1314005752870984,
+      "replica_value": 0.13326531860972599,
+      "difference": 0.0018647433226275933,
+      "issue": "Metric reward_mean differs at step 26"
+    },
+    {
+      "replica": 3,
+      "step": 27,
+      "metric": "reward_mean",
+      "reference_value": 0.14309426071276013,
+      "replica_value": 0.13767781022506076,
+      "difference": 0.00541645048769937,
+      "issue": "Metric reward_mean differs at step 27"
+    },
+    {
+      "replica": 3,
+      "step": 28,
+      "metric": "reward_mean",
+      "reference_value": 0.13951431575446477,
+      "replica_value": 0.14831132636242095,
+      "difference": 0.00879701060795618,
+      "issue": "Metric reward_mean differs at step 28"
+    },
+    {
+      "replica": 3,
+      "step": 29,
+      "metric": "reward_mean",
+      "reference_value": 0.14739691025104243,
+      "replica_value": 0.15304374553498357,
+      "difference": 0.005646835283941137,
+      "issue": "Metric reward_mean differs at step 29"
+    },
+    {
+      "replica": 3,
+      "step": 30,
+      "metric": "reward_mean",
+      "reference_value": 0.14918423183785204,
+      "replica_value": 0.15183358230262567,
+      "difference": 0.002649350464773631,
+      "issue": "Metric reward_mean differs at step 30"
+    },
+    {
+      "replica": 3,
+      "step": 31,
+      "metric": "reward_mean",
+      "reference_value": 0.16143934741874688,
+      "replica_value": 0.16167028705476366,
+      "difference": 0.00023093963601678036,
+      "issue": "Metric reward_mean differs at step 31"
+    },
+    {
+      "replica": 3,
+      "step": 32,
+      "metric": "reward_mean",
+      "reference_value": 0.15907361379044774,
+      "replica_value": 0.1675982746257239,
+      "difference": 0.008524660835276171,
+      "issue": "Metric reward_mean differs at step 32"
+    },
+    {
+      "replica": 3,
+      "step": 33,
+      "metric": "reward_mean",
+      "reference_value": 0.16250950506282516,
+      "replica_value": 0.16824887071496622,
+      "difference": 0.00573936565214106,
+      "issue": "Metric reward_mean differs at step 33"
+    },
+    {
+      "replica": 3,
+      "step": 34,
+      "metric": "reward_mean",
+      "reference_value": 0.16808714491000723,
+      "replica_value": 0.1759932011503963,
+      "difference": 0.007906056240389064,
+      "issue": "Metric reward_mean differs at step 34"
+    },
+    {
+      "replica": 3,
+      "step": 35,
+      "metric": "reward_mean",
+      "reference_value": 0.17914303952889163,
+      "replica_value": 0.18062062034515022,
+      "difference": 0.0014775808162585946,
+      "issue": "Metric reward_mean differs at step 35"
+    },
+    {
+      "replica": 3,
+      "step": 36,
+      "metric": "reward_mean",
+      "reference_value": 0.17985263582893357,
+      "replica_value": 0.17866088365127705,
+      "difference": 0.0011917521776565188,
+      "issue": "Metric reward_mean differs at step 36"
+    },
+    {
+      "replica": 3,
+      "step": 37,
+      "metric": "reward_mean",
+      "reference_value": 0.1858563674701101,
+      "replica_value": 0.18608935865480122,
+      "difference": 0.00023299118469111146,
+      "issue": "Metric reward_mean differs at step 37"
+    },
+    {
+      "replica": 3,
+      "step": 38,
+      "metric": "reward_mean",
+      "reference_value": 0.1942445188984308,
+      "replica_value": 0.19474522449326884,
+      "difference": 0.0005007055948380301,
+      "issue": "Metric reward_mean differs at step 38"
+    },
+    {
+      "replica": 3,
+      "step": 39,
+      "metric": "reward_mean",
+      "reference_value": 0.19515799710234016,
+      "replica_value": 0.19416934521359408,
+      "difference": 0.0009886518887460838,
+      "issue": "Metric reward_mean differs at step 39"
+    },
+    {
+      "replica": 3,
+      "step": 40,
+      "metric": "reward_mean",
+      "reference_value": 0.1979700804008755,
+      "replica_value": 0.1986747131264018,
+      "difference": 0.0007046327255263163,
+      "issue": "Metric reward_mean differs at step 40"
+    },
+    {
+      "replica": 3,
+      "step": 41,
+      "metric": "reward_mean",
+      "reference_value": 0.20087196042526867,
+      "replica_value": 0.1989197877416934,
+      "difference": 0.0019521726835752817,
+      "issue": "Metric reward_mean differs at step 41"
+    },
+    {
+      "replica": 3,
+      "step": 42,
+      "metric": "reward_mean",
+      "reference_value": 0.20711514620219298,
+      "replica_value": 0.20758051019816928,
+      "difference": 0.00046536399597629785,
+      "issue": "Metric reward_mean differs at step 42"
+    },
+    {
+      "replica": 3,
+      "step": 43,
+      "metric": "reward_mean",
+      "reference_value": 0.21100631019674687,
+      "replica_value": 0.20882906565971368,
+      "difference": 0.0021772445370331905,
+      "issue": "Metric reward_mean differs at step 43"
+    },
+    {
+      "replica": 3,
+      "step": 44,
+      "metric": "reward_mean",
+      "reference_value": 0.21928787283036769,
+      "replica_value": 0.2165595790538964,
+      "difference": 0.0027282937764712967,
+      "issue": "Metric reward_mean differs at step 44"
+    },
+    {
+      "replica": 3,
+      "step": 45,
+      "metric": "reward_mean",
+      "reference_value": 0.22336501054602476,
+      "replica_value": 0.22265029226023253,
+      "difference": 0.0007147182857922263,
+      "issue": "Metric reward_mean differs at step 45"
+    },
+    {
+      "replica": 3,
+      "step": 46,
+      "metric": "reward_mean",
+      "reference_value": 0.2284149710995264,
+      "replica_value": 0.2233165427907006,
+      "difference": 0.005098428308825814,
+      "issue": "Metric reward_mean differs at step 46"
+    },
+    {
+      "replica": 3,
+      "step": 47,
+      "metric": "reward_mean",
+      "reference_value": 0.23206250359946998,
+      "replica_value": 0.22729503609135956,
+      "difference": 0.004767467508110412,
+      "issue": "Metric reward_mean differs at step 47"
+    },
+    {
+      "replica": 3,
+      "step": 48,
+      "metric": "reward_mean",
+      "reference_value": 0.23679480110849063,
+      "replica_value": 0.23244165602749398,
+      "difference": 0.0043531450809966565,
+      "issue": "Metric reward_mean differs at step 48"
+    },
+    {
+      "replica": 3,
+      "step": 49,
+      "metric": "reward_mean",
+      "reference_value": 0.2351392488306315,
+      "replica_value": 0.23436676724140487,
+      "difference": 0.0007724815892266312,
+      "issue": "Metric reward_mean differs at step 49"
+    },
+    {
+      "replica": 3,
+      "step": 50,
+      "metric": "reward_mean",
+      "reference_value": 0.24494005783084039,
+      "replica_value": 0.23978928049558484,
+      "difference": 0.005150777335255541,
+      "issue": "Metric reward_mean differs at step 50"
+    },
+    {
+      "replica": 3,
+      "step": 51,
+      "metric": "reward_mean",
+      "reference_value": 0.24899655297829376,
+      "replica_value": 0.24397047547699693,
+      "difference": 0.005026077501296827,
+      "issue": "Metric reward_mean differs at step 51"
+    },
+    {
+      "replica": 3,
+      "step": 52,
+      "metric": "reward_mean",
+      "reference_value": 0.25182426886093334,
+      "replica_value": 0.2495957008638786,
+      "difference": 0.002228567997054731,
+      "issue": "Metric reward_mean differs at step 52"
+    },
+    {
+      "replica": 3,
+      "step": 53,
+      "metric": "reward_mean",
+      "reference_value": 0.2504157787417044,
+      "replica_value": 0.25918835629596887,
+      "difference": 0.008772577554264471,
+      "issue": "Metric reward_mean differs at step 53"
+    },
+    {
+      "replica": 3,
+      "step": 54,
+      "metric": "reward_mean",
+      "reference_value": 0.25782220162334335,
+      "replica_value": 0.2561857074139493,
+      "difference": 0.001636494209394046,
+      "issue": "Metric reward_mean differs at step 54"
+    },
+    {
+      "replica": 3,
+      "step": 55,
+      "metric": "reward_mean",
+      "reference_value": 0.26521501427009986,
+      "replica_value": 0.26541904676560407,
+      "difference": 0.00020403249550421387,
+      "issue": "Metric reward_mean differs at step 55"
+    },
+    {
+      "replica": 3,
+      "step": 56,
+      "metric": "reward_mean",
+      "reference_value": 0.27163727094323903,
+      "replica_value": 0.26590684562360406,
+      "difference": 0.005730425319634969,
+      "issue": "Metric reward_mean differs at step 56"
+    },
+    {
+      "replica": 3,
+      "step": 57,
+      "metric": "reward_mean",
+      "reference_value": 0.2720063023986553,
+      "replica_value": 0.27094586244797386,
+      "difference": 0.0010604399506814466,
+      "issue": "Metric reward_mean differs at step 57"
+    },
+    {
+      "replica": 3,
+      "step": 58,
+      "metric": "reward_mean",
+      "reference_value": 0.2783144757169397,
+      "replica_value": 0.27786165643008165,
+      "difference": 0.0004528192868580305,
+      "issue": "Metric reward_mean differs at step 58"
+    },
+    {
+      "replica": 3,
+      "step": 59,
+      "metric": "reward_mean",
+      "reference_value": 0.2813596956532,
+      "replica_value": 0.28208093416349006,
+      "difference": 0.0007212385102900454,
+      "issue": "Metric reward_mean differs at step 59"
+    },
+    {
+      "replica": 3,
+      "step": 60,
+      "metric": "reward_mean",
+      "reference_value": 0.2877965454294669,
+      "replica_value": 0.28316070808402083,
+      "difference": 0.004635837345446092,
+      "issue": "Metric reward_mean differs at step 60"
+    },
+    {
+      "replica": 3,
+      "step": 61,
+      "metric": "reward_mean",
+      "reference_value": 0.28383647631254066,
+      "replica_value": 0.28545722278163543,
+      "difference": 0.0016207464690947693,
+      "issue": "Metric reward_mean differs at step 61"
+    },
+    {
+      "replica": 3,
+      "step": 62,
+      "metric": "reward_mean",
+      "reference_value": 0.2873757864893197,
+      "replica_value": 0.293930870521791,
+      "difference": 0.006555084032471292,
+      "issue": "Metric reward_mean differs at step 62"
+    },
+    {
+      "replica": 3,
+      "step": 63,
+      "metric": "reward_mean",
+      "reference_value": 0.296978142919595,
+      "replica_value": 0.2974424483943058,
+      "difference": 0.0004643054747107689,
+      "issue": "Metric reward_mean differs at step 63"
+    },
+    {
+      "replica": 3,
+      "step": 64,
+      "metric": "reward_mean",
+      "reference_value": 0.3011720550287758,
+      "replica_value": 0.2956785226270341,
+      "difference": 0.005493532401741719,
+      "issue": "Metric reward_mean differs at step 64"
+    },
+    {
+      "replica": 3,
+      "step": 65,
+      "metric": "reward_mean",
+      "reference_value": 0.3030140211920382,
+      "replica_value": 0.2983815892550209,
+      "difference": 0.0046324319370172895,
+      "issue": "Metric reward_mean differs at step 65"
+    },
+    {
+      "replica": 3,
+      "step": 66,
+      "metric": "reward_mean",
+      "reference_value": 0.30480616472724364,
+      "replica_value": 0.3099678991026396,
+      "difference": 0.0051617343753959655,
+      "issue": "Metric reward_mean differs at step 66"
+    },
+    {
+      "replica": 3,
+      "step": 67,
+      "metric": "reward_mean",
+      "reference_value": 0.3125470529051589,
+      "replica_value": 0.31279073061748314,
+      "difference": 0.00024367771232425284,
+      "issue": "Metric reward_mean differs at step 67"
+    },
+    {
+      "replica": 3,
+      "step": 68,
+      "metric": "reward_mean",
+      "reference_value": 0.3139686546268509,
+      "replica_value": 0.31300148739458017,
+      "difference": 0.0009671672322707492,
+      "issue": "Metric reward_mean differs at step 68"
+    },
+    {
+      "replica": 3,
+      "step": 69,
+      "metric": "reward_mean",
+      "reference_value": 0.3231557909759261,
+      "replica_value": 0.3205427880836959,
+      "difference": 0.0026130028922302095,
+      "issue": "Metric reward_mean differs at step 69"
+    },
+    {
+      "replica": 3,
+      "step": 70,
+      "metric": "reward_mean",
+      "reference_value": 0.3226352765289375,
+      "replica_value": 0.32269002260763624,
+      "difference": 5.4746078698764133e-05,
+      "issue": "Metric reward_mean differs at step 70"
+    },
+    {
+      "replica": 3,
+      "step": 71,
+      "metric": "reward_mean",
+      "reference_value": 0.3214842833056842,
+      "replica_value": 0.33035682446568043,
+      "difference": 0.00887254115999625,
+      "issue": "Metric reward_mean differs at step 71"
+    },
+    {
+      "replica": 3,
+      "step": 72,
+      "metric": "reward_mean",
+      "reference_value": 0.3248457347433128,
+      "replica_value": 0.32505993256513394,
+      "difference": 0.00021419782182113822,
+      "issue": "Metric reward_mean differs at step 72"
+    },
+    {
+      "replica": 3,
+      "step": 73,
+      "metric": "reward_mean",
+      "reference_value": 0.3316459403469401,
+      "replica_value": 0.32895070597677595,
+      "difference": 0.002695234370164168,
+      "issue": "Metric reward_mean differs at step 73"
+    },
+    {
+      "replica": 3,
+      "step": 74,
+      "metric": "reward_mean",
+      "reference_value": 0.3388679818801532,
+      "replica_value": 0.3342305725329598,
+      "difference": 0.004637409347193422,
+      "issue": "Metric reward_mean differs at step 74"
+    },
+    {
+      "replica": 3,
+      "step": 75,
+      "metric": "reward_mean",
+      "reference_value": 0.33584781735516556,
+      "replica_value": 0.33807312221991814,
+      "difference": 0.0022253048647525864,
+      "issue": "Metric reward_mean differs at step 75"
+    },
+    {
+      "replica": 3,
+      "step": 76,
+      "metric": "reward_mean",
+      "reference_value": 0.34606314604065513,
+      "replica_value": 0.34389427570214626,
+      "difference": 0.002168870338508877,
+      "issue": "Metric reward_mean differs at step 76"
+    },
+    {
+      "replica": 3,
+      "step": 77,
+      "metric": "reward_mean",
+      "reference_value": 0.35200811731612325,
+      "replica_value": 0.34782197978214835,
+      "difference": 0.0041861375339748985,
+      "issue": "Metric reward_mean differs at step 77"
+    },
+    {
+      "replica": 3,
+      "step": 78,
+      "metric": "reward_mean",
+      "reference_value": 0.35311193542228453,
+      "replica_value": 0.3470698992962134,
+      "difference": 0.006042036126071126,
+      "issue": "Metric reward_mean differs at step 78"
+    },
+    {
+      "replica": 3,
+      "step": 79,
+      "metric": "reward_mean",
+      "reference_value": 0.3591088366248758,
+      "replica_value": 0.3591466233453659,
+      "difference": 3.7786720490096126e-05,
+      "issue": "Metric reward_mean differs at step 79"
+    },
+    {
+      "replica": 3,
+      "step": 80,
+      "metric": "reward_mean",
+      "reference_value": 0.3581524005489722,
+      "replica_value": 0.3637683523747235,
+      "difference": 0.005615951825751309,
+      "issue": "Metric reward_mean differs at step 80"
+    },
+    {
+      "replica": 3,
+      "step": 81,
+      "metric": "reward_mean",
+      "reference_value": 0.36293205020836816,
+      "replica_value": 0.3575782055229236,
+      "difference": 0.0053538446854445865,
+      "issue": "Metric reward_mean differs at step 81"
+    },
+    {
+      "replica": 3,
+      "step": 82,
+      "metric": "reward_mean",
+      "reference_value": 0.3609433218244594,
+      "replica_value": 0.3680652851207188,
+      "difference": 0.007121963296259415,
+      "issue": "Metric reward_mean differs at step 82"
+    },
+    {
+      "replica": 3,
+      "step": 83,
+      "metric": "reward_mean",
+      "reference_value": 0.3699116629852883,
+      "replica_value": 0.37400593319769954,
+      "difference": 0.004094270212411211,
+      "issue": "Metric reward_mean differs at step 83"
+    },
+    {
+      "replica": 3,
+      "step": 84,
+      "metric": "reward_mean",
+      "reference_value": 0.370889348728445,
+      "replica_value": 0.37319524487584604,
+      "difference": 0.0023058961474010653,
+      "issue": "Metric reward_mean differs at step 84"
+    },
+    {
+      "replica": 3,
+      "step": 85,
+      "metric": "reward_mean",
+      "reference_value": 0.37944277012203376,
+      "replica_value": 0.3745557884717296,
+      "difference": 0.004886981650304156,
+      "issue": "Metric reward_mean differs at step 85"
+    },
+    {
+      "replica": 3,
+      "step": 86,
+      "metric": "reward_mean",
+      "reference_value": 0.3824741266895038,
+      "replica_value": 0.38316746400931206,
+      "difference": 0.0006933373198082515,
+      "issue": "Metric reward_mean differs at step 86"
+    },
+    {
+      "replica": 3,
+      "step": 87,
+      "metric": "reward_mean",
+      "reference_value": 0.3794314405695395,
+      "replica_value": 0.38774180929670854,
+      "difference": 0.00831036872716906,
+      "issue": "Metric reward_mean differs at step 87"
+    },
+    {
+      "replica": 3,
+      "step": 88,
+      "metric": "reward_mean",
+      "reference_value": 0.3871206055093299,
+      "replica_value": 0.3843038536154021,
+      "difference": 0.002816751893927827,
+      "issue": "Metric reward_mean differs at step 88"
+    },
+    {
+      "replica": 3,
+      "step": 89,
+      "metric": "reward_mean",
+      "reference_value": 0.3870056417248827,
+      "replica_value": 0.39150550738507156,
+      "difference": 0.00449986566018884,
+      "issue": "Metric reward_mean differs at step 89"
+    },
+    {
+      "replica": 3,
+      "step": 90,
+      "metric": "reward_mean",
+      "reference_value": 0.3890349268444221,
+      "replica_value": 0.3912539921698626,
+      "difference": 0.002219065325440528,
+      "issue": "Metric reward_mean differs at step 90"
+    },
+    {
+      "replica": 3,
+      "step": 91,
+      "metric": "reward_mean",
+      "reference_value": 0.39862177739609483,
+      "replica_value": 0.39468058071746526,
+      "difference": 0.003941196678629577,
+      "issue": "Metric reward_mean differs at step 91"
+    },
+    {
+      "replica": 3,
+      "step": 92,
+      "metric": "reward_mean",
+      "reference_value": 0.40004213459854676,
+      "replica_value": 0.39726449095115424,
+      "difference": 0.002777643647392525,
+      "issue": "Metric reward_mean differs at step 92"
+    },
+    {
+      "replica": 3,
+      "step": 93,
+      "metric": "reward_mean",
+      "reference_value": 0.40771572205110224,
+      "replica_value": 0.4009612100747276,
+      "difference": 0.006754511976374611,
+      "issue": "Metric reward_mean differs at step 93"
+    },
+    {
+      "replica": 3,
+      "step": 94,
+      "metric": "reward_mean",
+      "reference_value": 0.4097814902471339,
+      "replica_value": 0.40278070228445445,
+      "difference": 0.0070007879626794445,
+      "issue": "Metric reward_mean differs at step 94"
+    },
+    {
+      "replica": 3,
+      "step": 95,
+      "metric": "reward_mean",
+      "reference_value": 0.40793757595837876,
+      "replica_value": 0.4065382480182407,
+      "difference": 0.0013993279401380843,
+      "issue": "Metric reward_mean differs at step 95"
+    },
+    {
+      "replica": 3,
+      "step": 96,
+      "metric": "reward_mean",
+      "reference_value": 0.4121358874680728,
+      "replica_value": 0.4162966623903285,
+      "difference": 0.0041607749222556945,
+      "issue": "Metric reward_mean differs at step 96"
+    },
+    {
+      "replica": 3,
+      "step": 97,
+      "metric": "reward_mean",
+      "reference_value": 0.42139035998170454,
+      "replica_value": 0.42158118202493833,
+      "difference": 0.00019082204323378482,
+      "issue": "Metric reward_mean differs at step 97"
+    },
+    {
+      "replica": 3,
+      "step": 98,
+      "metric": "reward_mean",
+      "reference_value": 0.4152532683093998,
+      "replica_value": 0.4246358361548519,
+      "difference": 0.009382567845452106,
+      "issue": "Metric reward_mean differs at step 98"
+    },
+    {
+      "replica": 3,
+      "step": 99,
+      "metric": "reward_mean",
+      "reference_value": 0.4212652562006001,
+      "replica_value": 0.4225947098270221,
+      "difference": 0.0013294536264219503,
+      "issue": "Metric reward_mean differs at step 99"
+    },
+    {
+      "replica": 3,
+      "step": 100,
+      "metric": "reward_mean",
+      "reference_value": 0.42368008731011025,
+      "replica_value": 0.42209345483256805,
+      "difference": 0.0015866324775422047,
+      "issue": "Metric reward_mean differs at step 100"
+    },
+    {
+      "replica": 3,
+      "step": 101,
+      "metric": "reward_mean",
+      "reference_value": 0.4314031729522169,
+      "replica_value": 0.4268963200109563,
+      "difference": 0.004506852941260631,
+      "issue": "Metric reward_mean differs at step 101"
+    },
+    {
+      "replica": 3,
+      "step": 102,
+      "metric": "reward_mean",
+      "reference_value": 0.43533631884137797,
+      "replica_value": 0.4293633875143223,
+      "difference": 0.005972931327055675,
+      "issue": "Metric reward_mean differs at step 102"
+    },
+    {
+      "replica": 3,
+      "step": 103,
+      "metric": "reward_mean",
+      "reference_value": 0.4391059948442269,
+      "replica_value": 0.43815027515165045,
+      "difference": 0.0009557196925764622,
+      "issue": "Metric reward_mean differs at step 103"
+    },
+    {
+      "replica": 3,
+      "step": 104,
+      "metric": "reward_mean",
+      "reference_value": 0.4422883248028046,
+      "replica_value": 0.4351037592768974,
+      "difference": 0.007184565525907238,
+      "issue": "Metric reward_mean differs at step 104"
+    },
+    {
+      "replica": 3,
+      "step": 105,
+      "metric": "reward_mean",
+      "reference_value": 0.4405384604331537,
+      "replica_value": 0.44090721451957454,
+      "difference": 0.0003687540864208416,
+      "issue": "Metric reward_mean differs at step 105"
+    },
+    {
+      "replica": 3,
+      "step": 106,
+      "metric": "reward_mean",
+      "reference_value": 0.44936931640525024,
+      "replica_value": 0.44440987345411065,
+      "difference": 0.004959442951139592,
+      "issue": "Metric reward_mean differs at step 106"
+    },
+    {
+      "replica": 3,
+      "step": 107,
+      "metric": "reward_mean",
+      "reference_value": 0.44461800909910865,
+      "replica_value": 0.4520658590735978,
+      "difference": 0.007447849974489162,
+      "issue": "Metric reward_mean differs at step 107"
+    },
+    {
+      "replica": 3,
+      "step": 108,
+      "metric": "reward_mean",
+      "reference_value": 0.4504885499225719,
+      "replica_value": 0.4479969523032709,
+      "difference": 0.0024915976193010114,
+      "issue": "Metric reward_mean differs at step 108"
+    },
+    {
+      "replica": 3,
+      "step": 109,
+      "metric": "reward_mean",
+      "reference_value": 0.4562845121896158,
+      "replica_value": 0.4506600610998098,
+      "difference": 0.005624451089805971,
+      "issue": "Metric reward_mean differs at step 109"
+    },
+    {
+      "replica": 3,
+      "step": 110,
+      "metric": "reward_mean",
+      "reference_value": 0.4555358458917112,
+      "replica_value": 0.4612163155037782,
+      "difference": 0.005680469612066974,
+      "issue": "Metric reward_mean differs at step 110"
+    },
+    {
+      "replica": 3,
+      "step": 111,
+      "metric": "reward_mean",
+      "reference_value": 0.4568592822007695,
+      "replica_value": 0.4579156128736602,
+      "difference": 0.0010563306728907373,
+      "issue": "Metric reward_mean differs at step 111"
+    },
+    {
+      "replica": 3,
+      "step": 112,
+      "metric": "reward_mean",
+      "reference_value": 0.4655986010422859,
+      "replica_value": 0.46345636376213395,
+      "difference": 0.0021422372801519485,
+      "issue": "Metric reward_mean differs at step 112"
+    },
+    {
+      "replica": 3,
+      "step": 113,
+      "metric": "reward_mean",
+      "reference_value": 0.4655599828038766,
+      "replica_value": 0.4690563769454031,
+      "difference": 0.003496394141526471,
+      "issue": "Metric reward_mean differs at step 113"
+    },
+    {
+      "replica": 3,
+      "step": 114,
+      "metric": "reward_mean",
+      "reference_value": 0.4682461268876445,
+      "replica_value": 0.47179573495217825,
+      "difference": 0.003549608064533749,
+      "issue": "Metric reward_mean differs at step 114"
+    },
+    {
+      "replica": 3,
+      "step": 115,
+      "metric": "reward_mean",
+      "reference_value": 0.46828868293519027,
+      "replica_value": 0.47607050115738664,
+      "difference": 0.007781818222196368,
+      "issue": "Metric reward_mean differs at step 115"
+    },
+    {
+      "replica": 3,
+      "step": 116,
+      "metric": "reward_mean",
+      "reference_value": 0.47413903112100625,
+      "replica_value": 0.47333125367632495,
+      "difference": 0.0008077774446813013,
+      "issue": "Metric reward_mean differs at step 116"
+    },
+    {
+      "replica": 3,
+      "step": 117,
+      "metric": "reward_mean",
+      "reference_value": 0.4824028554873442,
+      "replica_value": 0.47427585129236666,
+      "difference": 0.008127004194977527,
+      "issue": "Metric reward_mean differs at step 117"
+    },
+    {
+      "replica": 3,
+      "step": 118,
+      "metric": "reward_mean",
+      "reference_value": 0.4780425230946828,
+      "replica_value": 0.47741839354481,
+      "difference": 0.0006241295498727872,
+      "issue": "Metric reward_mean differs at step 118"
+    },
+    {
+      "replica": 3,
+      "step": 119,
+      "metric": "reward_mean",
+      "reference_value": 0.4824762118750762,
+      "replica_value": 0.48477178372755264,
+      "difference": 0.002295571852476419,
+      "issue": "Metric reward_mean differs at step 119"
+    },
+    {
+      "replica": 3,
+      "step": 120,
+      "metric": "reward_mean",
+      "reference_value": 0.48210331300143555,
+      "replica_value": 0.48909332264260613,
+      "difference": 0.00699000964117058,
+      "issue": "Metric reward_mean differs at step 120"
+    },
+    {
+      "replica": 3,
+      "step": 121,
+      "metric": "reward_mean",
+      "reference_value": 0.48747434053899463,
+      "replica_value": 0.49310479199413476,
+      "difference": 0.005630451455140129,
+      "issue": "Metric reward_mean differs at step 121"
+    },
+    {
+      "replica": 3,
+      "step": 122,
+      "metric": "reward_mean",
+      "reference_value": 0.49345573518349906,
+      "replica_value": 0.4949677436045855,
+      "difference": 0.0015120084210864526,
+      "issue": "Metric reward_mean differs at step 122"
+    },
+    {
+      "replica": 3,
+      "step": 123,
+      "metric": "reward_mean",
+      "reference_value": 0.49926957590329324,
+      "replica_value": 0.49542073737500475,
+      "difference": 0.0038488385282884896,
+      "issue": "Metric reward_mean differs at step 123"
+    },
+    {
+      "replica": 3,
+      "step": 124,
+      "metric": "reward_mean",
+      "reference_value": 0.49292612828095045,
+      "replica_value": 0.4990231083846596,
+      "difference": 0.0060969801037091265,
+      "issue": "Metric reward_mean differs at step 124"
+    },
+    {
+      "replica": 3,
+      "step": 125,
+      "metric": "reward_mean",
+      "reference_value": 0.5007627815206033,
+      "replica_value": 0.5003455837590024,
+      "difference": 0.00041719776160087374,
+      "issue": "Metric reward_mean differs at step 125"
+    },
+    {
+      "replica": 3,
+      "step": 126,
+      "metric": "reward_mean",
+      "reference_value": 0.5008357880828979,
+      "replica_value": 0.5059254064750156,
+      "difference": 0.005089618392117745,
+      "issue": "Metric reward_mean differs at step 126"
+    },
+    {
+      "replica": 3,
+      "step": 127,
+      "metric": "reward_mean",
+      "reference_value": 0.5108152455367012,
+      "replica_value": 0.5027777687251141,
+      "difference": 0.008037476811587063,
+      "issue": "Metric reward_mean differs at step 127"
+    },
+    {
+      "replica": 3,
+      "step": 128,
+      "metric": "reward_mean",
+      "reference_value": 0.5044953885356135,
+      "replica_value": 0.5045200805007972,
+      "difference": 2.4691965183731845e-05,
+      "issue": "Metric reward_mean differs at step 128"
+    },
+    {
+      "replica": 3,
+      "step": 129,
+      "metric": "reward_mean",
+      "reference_value": 0.5142131152027106,
+      "replica_value": 0.5133616380985564,
+      "difference": 0.0008514771041542302,
+      "issue": "Metric reward_mean differs at step 129"
+    },
+    {
+      "replica": 3,
+      "step": 130,
+      "metric": "reward_mean",
+      "reference_value": 0.5176346392712635,
+      "replica_value": 0.518778843837166,
+      "difference": 0.0011442045659024735,
+      "issue": "Metric reward_mean differs at step 130"
+    },
+    {
+      "replica": 3,
+      "step": 131,
+      "metric": "reward_mean",
+      "reference_value": 0.5141599934641966,
+      "replica_value": 0.5128388331261411,
+      "difference": 0.001321160338055516,
+      "issue": "Metric reward_mean differs at step 131"
+    },
+    {
+      "replica": 3,
+      "step": 132,
+      "metric": "reward_mean",
+      "reference_value": 0.5169780940670253,
+      "replica_value": 0.5191022483874709,
+      "difference": 0.002124154320445548,
+      "issue": "Metric reward_mean differs at step 132"
+    },
+    {
+      "replica": 3,
+      "step": 133,
+      "metric": "reward_mean",
+      "reference_value": 0.5193277925054538,
+      "replica_value": 0.5240503265620658,
+      "difference": 0.004722534056612049,
+      "issue": "Metric reward_mean differs at step 133"
+    },
+    {
+      "replica": 3,
+      "step": 134,
+      "metric": "reward_mean",
+      "reference_value": 0.5233464876892965,
+      "replica_value": 0.5271940901079446,
+      "difference": 0.0038476024186481217,
+      "issue": "Metric reward_mean differs at step 134"
+    },
+    {
+      "replica": 3,
+      "step": 135,
+      "metric": "reward_mean",
+      "reference_value": 0.529004767576281,
+      "replica_value": 0.5296282612735038,
+      "difference": 0.00062349369722281,
+      "issue": "Metric reward_mean differs at step 135"
+    },
+    {
+      "replica": 3,
+      "step": 136,
+      "metric": "reward_mean",
+      "reference_value": 0.53259092967333,
+      "replica_value": 0.534178144366159,
+      "difference": 0.0015872146928289643,
+      "issue": "Metric reward_mean differs at step 136"
+    },
+    {
+      "replica": 3,
+      "step": 137,
+      "metric": "reward_mean",
+      "reference_value": 0.5327683727016971,
+      "replica_value": 0.5308760781146078,
+      "difference": 0.0018922945870892827,
+      "issue": "Metric reward_mean differs at step 137"
+    },
+    {
+      "replica": 3,
+      "step": 138,
+      "metric": "reward_mean",
+      "reference_value": 0.534157281138747,
+      "replica_value": 0.5374682718854965,
+      "difference": 0.0033109907467494537,
+      "issue": "Metric reward_mean differs at step 138"
+    },
+    {
+      "replica": 3,
+      "step": 139,
+      "metric": "reward_mean",
+      "reference_value": 0.5368756801428551,
+      "replica_value": 0.5334380339017598,
+      "difference": 0.003437646241095327,
+      "issue": "Metric reward_mean differs at step 139"
+    },
+    {
+      "replica": 3,
+      "step": 140,
+      "metric": "reward_mean",
+      "reference_value": 0.5380453195849644,
+      "replica_value": 0.5392188328059888,
+      "difference": 0.001173513221024436,
+      "issue": "Metric reward_mean differs at step 140"
+    },
+    {
+      "replica": 3,
+      "step": 141,
+      "metric": "reward_mean",
+      "reference_value": 0.5443507765815299,
+      "replica_value": 0.543643776994846,
+      "difference": 0.0007069995866838541,
+      "issue": "Metric reward_mean differs at step 141"
+    },
+    {
+      "replica": 3,
+      "step": 142,
+      "metric": "reward_mean",
+      "reference_value": 0.5424471200654933,
+      "replica_value": 0.5491134780993739,
+      "difference": 0.006666358033880604,
+      "issue": "Metric reward_mean differs at step 142"
+    },
+    {
+      "replica": 3,
+      "step": 143,
+      "metric": "reward_mean",
+      "reference_value": 0.5526325366650916,
+      "replica_value": 0.552309017846948,
+      "difference": 0.00032351881814363104,
+      "issue": "Metric reward_mean differs at step 143"
+    },
+    {
+      "replica": 3,
+      "step": 144,
+      "metric": "reward_mean",
+      "reference_value": 0.5499127343965956,
+      "replica_value": 0.5514333373539835,
+      "difference": 0.0015206029573878732,
+      "issue": "Metric reward_mean differs at step 144"
+    },
+    {
+      "replica": 3,
+      "step": 145,
+      "metric": "reward_mean",
+      "reference_value": 0.5513443359986668,
+      "replica_value": 0.5497350275895231,
+      "difference": 0.0016093084091437504,
+      "issue": "Metric reward_mean differs at step 145"
+    },
+    {
+      "replica": 3,
+      "step": 146,
+      "metric": "reward_mean",
+      "reference_value": 0.5535304249249976,
+      "replica_value": 0.5547248850041449,
+      "difference": 0.0011944600791472526,
+      "issue": "Metric reward_mean differs at step 146"
+    },
+    {
+      "replica": 3,
+      "step": 147,
+      "metric": "reward_mean",
+      "reference_value": 0.5599101086936653,
+      "replica_value": 0.5617237307052648,
+      "difference": 0.0018136220115995139,
+      "issue": "Metric reward_mean differs at step 147"
+    },
+    {
+      "replica": 3,
+      "step": 148,
+      "metric": "reward_mean",
+      "reference_value": 0.5646323831740857,
+      "replica_value": 0.5644040450598103,
+      "difference": 0.00022833811427536155,
+      "issue": "Metric reward_mean differs at step 148"
+    },
+    {
+      "replica": 3,
+      "step": 149,
+      "metric": "reward_mean",
+      "reference_value": 0.5586959557002312,
+      "replica_value": 0.5589989173631027,
+      "difference": 0.0003029616628714704,
+      "issue": "Metric reward_mean differs at step 149"
+    },
+    {
+      "replica": 3,
+      "step": 150,
+      "metric": "reward_mean",
+      "reference_value": 0.5641927599329658,
+      "replica_value": 0.5701971709810496,
+      "difference": 0.006004411048083802,
+      "issue": "Metric reward_mean differs at step 150"
+    },
+    {
+      "replica": 3,
+      "step": 151,
+      "metric": "reward_mean",
+      "reference_value": 0.5633186728791163,
+      "replica_value": 0.5714122986391471,
+      "difference": 0.00809362576003081,
+      "issue": "Metric reward_mean differs at step 151"
+    },
+    {
+      "replica": 3,
+      "step": 152,
+      "metric": "reward_mean",
+      "reference_value": 0.5658125271883491,
+      "replica_value": 0.565430493666755,
+      "difference": 0.0003820335215940496,
+      "issue": "Metric reward_mean differs at step 152"
+    },
+    {
+      "replica": 3,
+      "step": 153,
+      "metric": "reward_mean",
+      "reference_value": 0.5680817151245566,
+      "replica_value": 0.5705948073979769,
+      "difference": 0.0025130922734202255,
+      "issue": "Metric reward_mean differs at step 153"
+    },
+    {
+      "replica": 3,
+      "step": 154,
+      "metric": "reward_mean",
+      "reference_value": 0.5721224666068392,
+      "replica_value": 0.575835313340795,
+      "difference": 0.003712846733955777,
+      "issue": "Metric reward_mean differs at step 154"
+    },
+    {
+      "replica": 3,
+      "step": 155,
+      "metric": "reward_mean",
+      "reference_value": 0.5791696132840748,
+      "replica_value": 0.572342791840737,
+      "difference": 0.006826821443337794,
+      "issue": "Metric reward_mean differs at step 155"
+    },
+    {
+      "replica": 3,
+      "step": 156,
+      "metric": "reward_mean",
+      "reference_value": 0.5749489243122108,
+      "replica_value": 0.5816973154345028,
+      "difference": 0.006748391122291975,
+      "issue": "Metric reward_mean differs at step 156"
+    },
+    {
+      "replica": 3,
+      "step": 157,
+      "metric": "reward_mean",
+      "reference_value": 0.5784682150807545,
+      "replica_value": 0.5819987524452598,
+      "difference": 0.0035305373645052596,
+      "issue": "Metric reward_mean differs at step 157"
+    },
+    {
+      "replica": 3,
+      "step": 158,
+      "metric": "reward_mean",
+      "reference_value": 0.579929974623718,
+      "replica_value": 0.586912627267757,
+      "difference": 0.006982652644038967,
+      "issue": "Metric reward_mean differs at step 158"
+    },
+    {
+      "replica": 3,
+      "step": 159,
+      "metric": "reward_mean",
+      "reference_value": 0.5852999046027586,
+      "replica_value": 0.5902196940888637,
+      "difference": 0.004919789486105053,
+      "issue": "Metric reward_mean differs at step 159"
+    },
+    {
+      "replica": 3,
+      "step": 160,
+      "metric": "reward_mean",
+      "reference_value": 0.5899967823447952,
+      "replica_value": 0.5847600056811385,
+      "difference": 0.005236776663656739,
+      "issue": "Metric reward_mean differs at step 160"
+    },
+    {
+      "replica": 3,
+      "step": 161,
+      "metric": "reward_mean",
+      "reference_value": 0.5887689049702177,
+      "replica_value": 0.5888523704346296,
+      "difference": 8.34654644118471e-05,
+      "issue": "Metric reward_mean differs at step 161"
+    },
+    {
+      "replica": 3,
+      "step": 162,
+      "metric": "reward_mean",
+      "reference_value": 0.5976101512478373,
+      "replica_value": 0.5903510364115366,
+      "difference": 0.007259114836300706,
+      "issue": "Metric reward_mean differs at step 162"
+    },
+    {
+      "replica": 3,
+      "step": 163,
+      "metric": "reward_mean",
+      "reference_value": 0.6002188497195441,
+      "replica_value": 0.5907627655738918,
+      "difference": 0.009456084145652244,
+      "issue": "Metric reward_mean differs at step 163"
+    },
+    {
+      "replica": 3,
+      "step": 164,
+      "metric": "reward_mean",
+      "reference_value": 0.595267019939868,
+      "replica_value": 0.6004638302132246,
+      "difference": 0.005196810273356611,
+      "issue": "Metric reward_mean differs at step 164"
+    },
+    {
+      "replica": 3,
+      "step": 165,
+      "metric": "reward_mean",
+      "reference_value": 0.5993902255172812,
+      "replica_value": 0.6037151991553934,
+      "difference": 0.0043249736381122394,
+      "issue": "Metric reward_mean differs at step 165"
+    },
+    {
+      "replica": 3,
+      "step": 166,
+      "metric": "reward_mean",
+      "reference_value": 0.6045249463346415,
+      "replica_value": 0.6041643468400687,
+      "difference": 0.0003605994945727886,
+      "issue": "Metric reward_mean differs at step 166"
+    },
+    {
+      "replica": 3,
+      "step": 167,
+      "metric": "reward_mean",
+      "reference_value": 0.6057592291653153,
+      "replica_value": 0.6020500852817576,
+      "difference": 0.0037091438835576973,
+      "issue": "Metric reward_mean differs at step 167"
+    },
+    {
+      "replica": 3,
+      "step": 168,
+      "metric": "reward_mean",
+      "reference_value": 0.6054522124539258,
+      "replica_value": 0.6032079098030716,
+      "difference": 0.0022443026508541797,
+      "issue": "Metric reward_mean differs at step 168"
+    },
+    {
+      "replica": 3,
+      "step": 169,
+      "metric": "reward_mean",
+      "reference_value": 0.6122816583242654,
+      "replica_value": 0.6081251773950097,
+      "difference": 0.00415648092925569,
+      "issue": "Metric reward_mean differs at step 169"
+    },
+    {
+      "replica": 3,
+      "step": 170,
+      "metric": "reward_mean",
+      "reference_value": 0.6145296813330899,
+      "replica_value": 0.6111405574940452,
+      "difference": 0.003389123839044772,
+      "issue": "Metric reward_mean differs at step 170"
+    },
+    {
+      "replica": 3,
+      "step": 171,
+      "metric": "reward_mean",
+      "reference_value": 0.6094846758856666,
+      "replica_value": 0.612636076653113,
+      "difference": 0.003151400767446466,
+      "issue": "Metric reward_mean differs at step 171"
+    },
+    {
+      "replica": 3,
+      "step": 172,
+      "metric": "reward_mean",
+      "reference_value": 0.612075772329054,
+      "replica_value": 0.6157411207839633,
+      "difference": 0.0036653484549092896,
+      "issue": "Metric reward_mean differs at step 172"
+    },
+    {
+      "replica": 3,
+      "step": 173,
+      "metric": "reward_mean",
+      "reference_value": 0.6184383105681521,
+      "replica_value": 0.6167785551811084,
+      "difference": 0.001659755387043771,
+      "issue": "Metric reward_mean differs at step 173"
+    },
+    {
+      "replica": 3,
+      "step": 174,
+      "metric": "reward_mean",
+      "reference_value": 0.62246740860932,
+      "replica_value": 0.622040535853347,
+      "difference": 0.0004268727559730845,
+      "issue": "Metric reward_mean differs at step 174"
+    },
+    {
+      "replica": 3,
+      "step": 175,
+      "metric": "reward_mean",
+      "reference_value": 0.6198668850642447,
+      "replica_value": 0.6220428388190629,
+      "difference": 0.0021759537548181607,
+      "issue": "Metric reward_mean differs at step 175"
+    },
+    {
+      "replica": 3,
+      "step": 176,
+      "metric": "reward_mean",
+      "reference_value": 0.6213928513177005,
+      "replica_value": 0.6214862319419241,
+      "difference": 9.33806242235935e-05,
+      "issue": "Metric reward_mean differs at step 176"
+    },
+    {
+      "replica": 3,
+      "step": 177,
+      "metric": "reward_mean",
+      "reference_value": 0.6234482065063237,
+      "replica_value": 0.6298511472630337,
+      "difference": 0.006402940756709996,
+      "issue": "Metric reward_mean differs at step 177"
+    },
+    {
+      "replica": 3,
+      "step": 178,
+      "metric": "reward_mean",
+      "reference_value": 0.6312359915447235,
+      "replica_value": 0.6269921647241316,
+      "difference": 0.004243826820591989,
+      "issue": "Metric reward_mean differs at step 178"
+    },
+    {
+      "replica": 3,
+      "step": 179,
+      "metric": "reward_mean",
+      "reference_value": 0.6291645201549849,
+      "replica_value": 0.6319963364719884,
+      "difference": 0.002831816317003466,
+      "issue": "Metric reward_mean differs at step 179"
+    },
+    {
+      "replica": 3,
+      "step": 180,
+      "metric": "reward_mean",
+      "reference_value": 0.6360126424342902,
+      "replica_value": 0.6364181118484229,
+      "difference": 0.00040546941413266424,
+      "issue": "Metric reward_mean differs at step 180"
+    },
+    {
+      "replica": 3,
+      "step": 181,
+      "metric": "reward_mean",
+      "reference_value": 0.634333752070123,
+      "replica_value": 0.6353102596430731,
+      "difference": 0.0009765075729500916,
+      "issue": "Metric reward_mean differs at step 181"
+    },
+    {
+      "replica": 3,
+      "step": 182,
+      "metric": "reward_mean",
+      "reference_value": 0.635574536030831,
+      "replica_value": 0.6386575313200304,
+      "difference": 0.0030829952891994195,
+      "issue": "Metric reward_mean differs at step 182"
+    },
+    {
+      "replica": 3,
+      "step": 183,
+      "metric": "reward_mean",
+      "reference_value": 0.6407553290087257,
+      "replica_value": 0.642724770424771,
+      "difference": 0.001969441416045381,
+      "issue": "Metric reward_mean differs at step 183"
+    },
+    {
+      "replica": 3,
+      "step": 184,
+      "metric": "reward_mean",
+      "reference_value": 0.6405315954634807,
+      "replica_value": 0.6352565546380673,
+      "difference": 0.005275040825413413,
+      "issue": "Metric reward_mean differs at step 184"
+    },
+    {
+      "replica": 3,
+      "step": 185,
+      "metric": "reward_mean",
+      "reference_value": 0.6470314481600521,
+      "replica_value": 0.6446113743974875,
+      "difference": 0.0024200737625645896,
+      "issue": "Metric reward_mean differs at step 185"
+    },
+    {
+      "replica": 3,
+      "step": 186,
+      "metric": "reward_mean",
+      "reference_value": 0.6482462397712293,
+      "replica_value": 0.6393444600010905,
+      "difference": 0.00890177977013884,
+      "issue": "Metric reward_mean differs at step 186"
+    },
+    {
+      "replica": 3,
+      "step": 187,
+      "metric": "reward_mean",
+      "reference_value": 0.6469277633990227,
+      "replica_value": 0.6479310550086654,
+      "difference": 0.0010032916096427424,
+      "issue": "Metric reward_mean differs at step 187"
+    },
+    {
+      "replica": 3,
+      "step": 188,
+      "metric": "reward_mean",
+      "reference_value": 0.649423946681048,
+      "replica_value": 0.6464340578175518,
+      "difference": 0.0029898888634961596,
+      "issue": "Metric reward_mean differs at step 188"
+    },
+    {
+      "replica": 3,
+      "step": 189,
+      "metric": "reward_mean",
+      "reference_value": 0.6516793785001384,
+      "replica_value": 0.652776248836598,
+      "difference": 0.0010968703364596655,
+      "issue": "Metric reward_mean differs at step 189"
+    },
+    {
+      "replica": 3,
+      "step": 190,
+      "metric": "reward_mean",
+      "reference_value": 0.6491222455359229,
+      "replica_value": 0.6534160321254321,
+      "difference": 0.004293786589509185,
+      "issue": "Metric reward_mean differs at step 190"
+    },
+    {
+      "replica": 3,
+      "step": 191,
+      "metric": "reward_mean",
+      "reference_value": 0.6528036761318325,
+      "replica_value": 0.6551170729291759,
+      "difference": 0.0023133967973433256,
+      "issue": "Metric reward_mean differs at step 191"
+    },
+    {
+      "replica": 3,
+      "step": 192,
+      "metric": "reward_mean",
+      "reference_value": 0.654607228287008,
+      "replica_value": 0.6553970646153945,
+      "difference": 0.0007898363283864729,
+      "issue": "Metric reward_mean differs at step 192"
+    },
+    {
+      "replica": 3,
+      "step": 193,
+      "metric": "reward_mean",
+      "reference_value": 0.6613600564741582,
+      "replica_value": 0.6537388085919613,
+      "difference": 0.007621247882196869,
+      "issue": "Metric reward_mean differs at step 193"
+    },
+    {
+      "replica": 3,
+      "step": 194,
+      "metric": "reward_mean",
+      "reference_value": 0.6588039295216295,
+      "replica_value": 0.6577525523391039,
+      "difference": 0.0010513771825255702,
+      "issue": "Metric reward_mean differs at step 194"
+    },
+    {
+      "replica": 3,
+      "step": 195,
+      "metric": "reward_mean",
+      "reference_value": 0.6616532623903661,
+      "replica_value": 0.6596490466895748,
+      "difference": 0.0020042157007913453,
+      "issue": "Metric reward_mean differs at step 195"
+    },
+    {
+      "replica": 3,
+      "step": 196,
+      "metric": "reward_mean",
+      "reference_value": 0.6671689458490867,
+      "replica_value": 0.658564924191135,
+      "difference": 0.00860402165795171,
+      "issue": "Metric reward_mean differs at step 196"
+    },
+    {
+      "replica": 3,
+      "step": 197,
+      "metric": "reward_mean",
+      "reference_value": 0.6656607726612849,
+      "replica_value": 0.6652841761691327,
+      "difference": 0.0003765964921521592,
+      "issue": "Metric reward_mean differs at step 197"
+    },
+    {
+      "replica": 3,
+      "step": 198,
+      "metric": "reward_mean",
+      "reference_value": 0.6696754302588167,
+      "replica_value": 0.6648155180834703,
+      "difference": 0.004859912175346426,
+      "issue": "Metric reward_mean differs at step 198"
+    },
+    {
+      "replica": 3,
+      "step": 199,
+      "metric": "reward_mean",
+      "reference_value": 0.6721189772081583,
+      "replica_value": 0.6710362093173668,
+      "difference": 0.001082767890791425,
+      "issue": "Metric reward_mean differs at step 199"
+    }
+  ],
+  "dataloader_notes": []
+}

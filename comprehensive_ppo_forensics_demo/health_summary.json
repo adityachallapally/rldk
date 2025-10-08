@@ -1,0 +1,13 @@
+{
+  "status": "critical",
+  "overall_health_score": 0.6257451156435778,
+  "training_stability_score": 0.8365240194310372,
+  "convergence_quality_score": 0.8755649610140971,
+  "total_anomalies": 4,
+  "critical_anomalies": 1,
+  "warning_anomalies": 3,
+  "current_kl": 0.09306061074802013,
+  "current_kl_coef": 1.0972007501394976,
+  "current_reward_mean": 1.8900000000000001,
+  "current_entropy": 0.6099999999999999
+}

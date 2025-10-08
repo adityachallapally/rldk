@@ -1,0 +1,19 @@
+name: rldk-gates
+on: [push, pull_request]
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install rldk
+      - run: rldk reward-health run --scores artifacts/scores.jsonl --config .rldk/health.yaml --out artifacts/health --gate
+  determinism:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install rldk
+      - run: rldk check-determinism --runs 2 --tolerance 0.01 --gate

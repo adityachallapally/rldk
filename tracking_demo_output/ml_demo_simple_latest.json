@@ -1,0 +1,171 @@
+{
+  "experiment_id": "b4ae76f6-721e-436e-be0d-1e5d343f0c8f",
+  "experiment_name": "ml_demo_simple",
+  "timestamp": "2025-09-11T20:37:08.146799",
+  "config": {
+    "experiment_name": "ml_demo_simple",
+    "experiment_id": "b4ae76f6-721e-436e-be0d-1e5d343f0c8f",
+    "output_dir": "tracking_demo_output",
+    "enable_dataset_tracking": true,
+    "enable_model_tracking": true,
+    "enable_environment_tracking": true,
+    "enable_seed_tracking": true,
+    "enable_git_tracking": true,
+    "save_to_json": true,
+    "save_to_yaml": false,
+    "save_to_wandb": false,
+    "tags": [
+      "classification",
+      "demo",
+      "simple"
+    ],
+    "notes": "Demonstration of comprehensive tracking system for ML pipeline",
+    "metadata": {}
+  },
+  "datasets": {
+    "train_data": {
+      "name": "train_data",
+      "type": "list",
+      "algorithm": "sha256",
+      "metadata": {
+        "split": "train",
+        "n_samples": 500,
+        "data_type": "features"
+      },
+      "timestamp": "2025-09-11T20:37:08.155281",
+      "length": 500,
+      "checksum": "49168e5bedb5a53c06f848e57fbdbefe4916e196c14b4b7d52b5bf46903c7bc6"
+    },
+    "test_data": {
+      "name": "test_data",
+      "type": "list",
+      "algorithm": "sha256",
+      "metadata": {
+        "split": "test",
+        "n_samples": 100,
+        "data_type": "features"
+      },
+      "timestamp": "2025-09-11T20:37:08.156022",
+      "length": 100,
+      "checksum": "032045fd0115e03f08eeb79696d62c8d5b7347ea694646ba2d7619142c2de1f2"
+    }
+  },
+  "models": {
+    "simple_classifier": {
+      "name": "simple_classifier",
+      "type": "SimpleModel",
+      "algorithm": "sha256",
+      "metadata": {
+        "task": "classification",
+        "architecture": "simple",
+        "input_size": 10,
+        "hidden_size": 5,
+        "output_size": 1
+      },
+      "timestamp": "2025-09-11T20:37:08.156676",
+      "model_class": "SimpleModel",
+      "model_module": "__main__",
+      "model_repr": "SimpleModel(input_size=10, hidden_size=5, output_size=1)",
+      "attributes": [
+        "input_size",
+        "hidden_size",
+        "output_size",
+        "layers"
+      ],
+      "architecture_checksum": "207ed49255dd0f40e5194b04454f2b38cf55f4e9a24a8e76131e02604f3e6697"
+    },
+    "large_classifier": {
+      "name": "large_classifier",
+      "type": "LargeModel",
+      "algorithm": "sha256",
+      "metadata": {
+        "task": "classification",
+        "architecture": "large",
+        "num_layers": 10,
+        "layer_size": 1000,
+        "parameters": 10000000
+      },
+      "timestamp": "2025-09-11T20:37:08.157050",
+      "model_class": "LargeModel",
+      "model_module": "__main__",
+      "model_repr": "LargeModel(num_layers=10, layer_size=1000, parameters=10000000)",
+      "attributes": [
+        "num_layers",
+        "layer_size",
+        "layers",
+        "parameters"
+      ],
+      "architecture_checksum": "7cb495e2764d1c129fe4ff90fbf434478e5c53abd39efa9e03fe070caa9c7739"
+    }
+  },
+  "environment": {
+    "timestamp": "2025-09-11T20:37:08.147456",
+    "python_version": "3.13.3 (main, Apr  8 2025, 19:55:40) [GCC 14.2.0]",
+    "python_executable": "/usr/bin/python3",
+    "system": {
+      "platform": "Linux-6.1.147-x86_64-with-glibc2.41",
+      "system": "Linux",
+      "release": "6.1.147",
+      "machine": "x86_64",
+      "processor": "x86_64",
+      "architecture": [
+        "64bit",
+        ""
+      ],
+      "hostname": "cursor",
+      "python_implementation": "CPython"
+    },
+    "environment_checksum": "e8d51cf713d3f9baf3872571b34494b79c09163e70d3999d394530c9882a55bd"
+  },
+  "seeds": {
+    "timestamp": "2025-09-11T20:37:08.154993",
+    "set_seed": 42,
+    "seeds": {
+      "python": {
+        "seed": 42,
+        "state": "mock_state_42"
+      },
+      "numpy": {
+        "seed": 42,
+        "state": "mock_state_42"
+      },
+      "torch": {
+        "seed": 42,
+        "state": "mock_state_42"
+      },
+      "cuda": {
+        "available": false,
+        "message": "CUDA not available"
+      }
+    },
+    "seed_checksum": "1f96dfd304c6917589ee193377accece4b48da657c89224f491e34b48099269a"
+  },
+  "git": {
+    "timestamp": "2025-09-11T20:37:08.153113",
+    "repo_path": "/workspace",
+    "commit": {
+      "hash": "e7b6a0622f5c8301403add5f67f6f69706cb442f",
+      "available": true
+    },
+    "git_checksum": "d33ee1586ab9cb4b57ff0b6971f3046bed1109c84b74a9b90c6aa2ec2f9b305a"
+  },
+  "metadata": {
+    "optimizer": "Adam",
+    "loss_function": "CrossEntropyLoss",
+    "learning_rate": 0.001,
+    "batch_size": 32,
+    "num_epochs": 10,
+    "final_accuracy": 0.95
+  },
+  "tags": [
+    "classification",
+    "demo",
+    "simple",
+    "binary_classification",
+    "pytorch",
+    "test_run",
+    "reproducible"
+  ],
+  "notes": "Simple ML demo with 500 training samples, final accuracy: 0.95",
+  "finished_at": "2025-09-11T20:37:08.163703"
+}

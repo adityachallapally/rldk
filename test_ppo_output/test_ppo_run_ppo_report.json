@@ -1,0 +1,15 @@
+{
+  "run_id": "test_ppo_run",
+  "total_steps": 5,
+  "final_reward_mean": 0.9,
+  "final_reward_std": 0.2,
+  "final_kl_mean": 0.09,
+  "final_entropy": 1.6,
+  "max_policy_collapse_risk": 0.0,
+  "max_reward_hacking_risk": 0.0,
+  "average_training_stability": 1.0,
+  "total_alerts": 5,
+  "alert_types": [
+    "high_reward_variance"
+  ]
+}

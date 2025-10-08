@@ -1,0 +1,79 @@
+rules:
+  - id: grpo_strict_kl_spike
+    where: name in ("kl", "kl_mean", "policy_kl", "grpo/kl_mean")
+    condition: value > 0.22
+    window:
+      size: 2
+      kind: consecutive
+    grace_steps: 8
+    cooldown_steps: 10
+    actions:
+      - warn:
+          msg: "Strict GRPO KL guard tripped at {value:.3f}"
+      - stop:
+          msg: "Stopping due to GRPO KL {value:.3f}"
+  - id: grpo_strict_kl_coef_stall
+    where: name in ("kl_coef", "kl_coeff", "kl_coefficient", "beta")
+    condition: max(value) - min(value) < 0.002
+    window:
+      size: 15
+      kind: rolling
+    grace_steps: 18
+    cooldown_steps: 25
+    actions:
+      - warn:
+          msg: "KL coefficient flatlined near {value:.4f}"
+      - stop:
+          msg: "Strict KL coefficient stall detected"
+  - id: grpo_strict_advantage_collapse
+    where: name in ("advantage_std", "adv_std", "advantage_stddev")
+    condition: mean(value) < 0.6
+    window:
+      size: 6
+      kind: rolling
+    grace_steps: 8
+    cooldown_steps: 14
+    actions:
+      - warn:
+          msg: "Advantage std collapsed to {value:.3f}"
+      - stop:
+          msg: "Stopping due to advantage variance collapse"
+  - id: grpo_strict_acceptance_swings
+    where: name in ("acceptance_rate", "accept_rate", "acceptance")
+    condition: max(value) - min(value) > 0.3
+    window:
+      size: 10
+      kind: rolling
+    grace_steps: 10
+    cooldown_steps: 18
+    actions:
+      - warn:
+          msg: "Acceptance rate unstable (latest {value:.2f})"
+      - stop:
+          msg: "Stopping due to acceptance-rate instability"
+  - id: grpo_strict_entropy_floor
+    where: name in ("entropy", "entropy_mean", "policy_entropy")
+    condition: mean(value) < 1.95
+    window:
+      size: 8
+      kind: rolling
+    grace_steps: 10
+    cooldown_steps: 15
+    actions:
+      - warn:
+          msg: "Entropy breached strict floor at {value:.3f}"
+      - stop:
+          msg: "Stopping due to entropy collapse"
+  - id: grpo_strict_reward_saturation
+    where: name in ("reward_mean", "reward", "group_reward_mean")
+    condition: max(value) - min(value) < 0.02
+    window:
+      size: 25
+      kind: rolling
+    grace_steps: 25
+    cooldown_steps: 25
+    actions:
+      - warn:
+          msg: "Rewards saturated around {value:.3f}"
+      - stop:
+          msg: "Stopping due to saturated rewards"

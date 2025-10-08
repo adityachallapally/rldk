@@ -1,0 +1,37 @@
+{
+  "version": "1",
+  "passed": true,
+  "culprit": null,
+  "fixes": [
+    "Set torch.backends.cudnn.deterministic = True",
+    "Set torch.backends.cudnn.benchmark = False",
+    "Use torch.manual_seed() consistently",
+    "Disable dropout or use deterministic=True",
+    "Use deterministic reduction operations"
+  ],
+  "replica_variance": {
+    "reward_mean": 0.03707908616021234
+  },
+  "rng_map": {
+    "python_hash_seed": "42",
+    "omp_threads": "1",
+    "mkl_threads": "1",
+    "numexpr_threads": "1",
+    "torch_deterministic": "True (enforced)",
+    "torch_seed": "Set per replica (42 + replica_id)",
+    "numpy_seed": "Set per replica (42 + replica_id)",
+    "random_seed": "Set per replica (42 + replica_id)",
+    "cuda_launch_blocking": "N/A (CPU only)",
+    "cublas_workspace": "N/A (CPU only)",
+    "cudnn_deterministic": "N/A (CPU only)",
+    "cudnn_benchmark": "N/A (CPU only)",
+    "tf32_disabled": "N/A (CPU only)",
+    "cuda_seed": "N/A (CPU only)"
+  },
+  "mismatches": [],
+  "dataloader_notes": [
+    "Replica 1 shows identical early metrics - may need worker_init_fn and shuffle=False",
+    "Replica 2 shows identical early metrics - may need worker_init_fn and shuffle=False",
+    "Replica 3 shows identical early metrics - may need worker_init_fn and shuffle=False"
+  ]
+}

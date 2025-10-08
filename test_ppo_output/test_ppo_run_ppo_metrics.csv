@@ -1,0 +1,6 @@
+rollout_reward_mean,rollout_reward_std,rollout_reward_min,rollout_reward_max,rollout_length_mean,rollout_length_std,policy_kl_mean,policy_kl_std,policy_entropy_mean,policy_entropy_std,policy_clip_frac,policy_loss,value_loss,value_mean,value_std,advantage_mean,advantage_std,learning_rate,gradient_norm,clip_ratio,tokens_per_second,samples_per_second,gpu_utilization,policy_collapse_risk,reward_hacking_risk,training_stability
+0.5,0.2,0.0,0.0,0.0,0.0,0.05,0.0,2.0,0.0,0.1,0.0,0.3,0.0,0.0,0.0,0.0,1e-05,0.5,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+0.6,0.2,0.0,0.0,0.0,0.0,0.060000000000000005,0.0,1.9,0.0,0.1,0.0,0.25,0.0,0.0,0.0,0.0,1e-05,0.5,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+0.7,0.2,0.0,0.0,0.0,0.0,0.07,0.0,1.8,0.0,0.1,0.0,0.19999999999999998,0.0,0.0,0.0,0.0,1e-05,0.5,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+0.8,0.2,0.0,0.0,0.0,0.0,0.08,0.0,1.7,0.0,0.1,0.0,0.14999999999999997,0.0,0.0,0.0,0.0,1e-05,0.5,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+0.9,0.2,0.0,0.0,0.0,0.0,0.09,0.0,1.6,0.0,0.1,0.0,0.09999999999999998,0.0,0.0,0.0,0.0,1e-05,0.5,0.0,0.0,0.0,0.0,0.0,0.0,1.0

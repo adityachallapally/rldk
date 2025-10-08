@@ -1,0 +1,28 @@
+{
+  "diverged": true,
+  "first_step": 2,
+  "tripped_signals": ["kl_spike", "advantage_reward_hacking"],
+  "suspected_causes": [
+    "Tokenizer configuration change",
+    "Different pad_direction setting",
+    "Modified truncate_at parameter"
+  ],
+  "repro": {
+    "command": "rldk diff reference/runs/summarization/good reference/runs/summarization/tokenizer_changed --first",
+    "changes": [
+      "pad_direction: left -> right",
+      "truncate_at: 512 -> 256"
+    ]
+  },
+  "details": {
+    "kl_divergence": {
+      "step_2": 0.15,
+      "step_3": 0.23,
+      "step_4": 0.31
+    },
+    "reward_drift": {
+      "correlation": -0.45,
+      "mae": 0.12
+    }
+  }
+}

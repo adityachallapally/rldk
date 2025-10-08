@@ -1,0 +1,17 @@
+2024-01-01 00:00:01 INFO Starting training run minirun_test
+2024-01-01 00:00:01 INFO Environment: CartPole-v1
+2024-01-01 00:00:01 INFO Algorithm: PPO
+2024-01-01 00:00:01 INFO Seed: 42
+2024-01-01 00:00:01 INFO Learning rate: 0.001
+2024-01-01 00:00:01 INFO Batch size: 32
+2024-01-01 00:00:01 INFO Epochs: 10
+2024-01-01 00:00:01 INFO Starting episode 0
+2024-01-01 00:00:02 INFO Episode 0 reward: 10.0
+2024-01-01 00:00:02 INFO Episode 0 loss: 0.5
+2024-01-01 00:00:02 INFO Starting episode 1
+2024-01-01 00:00:03 INFO Episode 1 reward: 15.0
+2024-01-01 00:00:03 INFO Episode 1 loss: 0.4
+2024-01-01 00:00:03 INFO Starting episode 2
+2024-01-01 00:00:04 INFO Episode 2 reward: 20.0
+2024-01-01 00:00:04 INFO Episode 2 loss: 0.3
+2024-01-01 00:00:04 INFO Training completed successfully
